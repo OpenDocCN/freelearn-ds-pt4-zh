@@ -755,11 +755,14 @@
   id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: Unity Catalog 紧密集成到 Databricks Lakehouse 中，使得构建具备强大数据安全性的近实时数据管道变得简单，使用 Delta
+    Lake 等开放的 Lakehouse 存储格式。
 - en: A quick Delta Lake primer
   id: totrans-88
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 快速了解 Delta Lake
 - en: Delta Lake is a big data file protocol built around a multi-version transaction
     log that provides features such as ACID transactions, schema enforcement, time
     travel, data file management, and other performance features on top of existing
@@ -767,6 +770,8 @@
   id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: Delta Lake 是一种大数据文件协议，围绕多版本事务日志构建，提供诸如 ACID 事务、模式强制、时间旅行、数据文件管理等性能特性，基于现有的 Lakehouse
+    数据文件。
 - en: Originally, big data architectures had many concurrent processes that both read
     and modified data, leading to data corruption and even data loss. As previously
     mentioned, a two-pronged Lambda architecture was created, providing a layer of
@@ -778,6 +783,8 @@
   id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 最初，大数据架构有许多并发的进程，这些进程既读取又修改数据，导致数据损坏甚至丢失。如前所述，创建了一个双管齐下的 Lambda 架构，在对数据进行流式更新的进程与需要一致数据快照的下游进程（如生成每日报告或刷新仪表盘的
+    BI 工作负载）之间提供了一个隔离层。然而，这些 Lambda 架构重复了数据，以支持这些批处理和流式工作负载，导致了不一致的数据变化，需要在每个工作日结束时进行调和。
 - en: Fortunately, the Delta Lake format provides a common storage layer for a lakehouse
     across disparate workloads and unifies both batch and streaming workloads. As
     such, a Delta table serves as the foundation for a Delta Live Table. Under the
@@ -787,11 +794,14 @@
   id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 幸运的是，Delta Lake 格式提供了一个共同的存储层，能够跨不同工作负载统一批处理和流式工作负载。因此，Delta 表成为 Delta Live
+    表的基础。在后台，Delta Live 表由一个 Delta 表支持，该表被添加到数据流图中，并且每当 DLT 管道更新执行时，DLT 系统会更新其状态。
 - en: The architecture of a Delta table
   id: totrans-92
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Delta 表的架构
 - en: The Delta transaction log is a key piece of the architecture for this big data
     format. Each Delta table contains a transaction log, which is a directory name,
     **_delta_log** , located at a ta ble’s root directory. The transaction log is
@@ -800,27 +810,32 @@
   id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: Delta 事务日志是该大数据格式架构的关键部分。每个 Delta 表都包含一个事务日志，这是一个目录名为**_delta_log**，位于表的根目录下。事务日志是一个多版本的记录系统，用于跟踪表在一段线性时间内的状态。
 - en: '![Figure 1.3 – The Delta transaction log sits alongside the partition directories
     and data files in a separate directory titled _delta_log](img/B22011_01_003.jpg)'
   id: totrans-94
   prefs: []
   type: TYPE_IMG
+  zh: '![图 1.3 – Delta 事务日志与分区目录和数据文件一起，存储在一个名为 _delta_log 的单独目录中](img/B22011_01_003.jpg)'
 - en: Figure 1.3 – The Delta transaction log sits alongside the partition directories
     and data files in a separate directory titled _delta_log
   id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 1.3 – Delta 事务日志与分区目录和数据文件一起，存储在一个名为 _delta_log 的单独目录中
 - en: The transaction log informs the Delta Lake engine which data files to read to
     answer a particular query.
   id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 事务日志通知 Delta Lake 引擎读取哪些数据文件来回答特定的查询。
 - en: Within each transaction log directory, there will be one or more files stored
     in the JSON format, as well as other metadata information to help quickly and
     efficiently calculate the Delta table’s state (covered in the following section).
   id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 在每个事务日志目录中，将存储一个或多个 JSON 格式的文件，以及其他元数据，帮助快速有效地计算 Delta 表的状态（将在下一节中介绍）。
 - en: As new data is appended, updated, or even deleted from a Delta table, these
     changes are recorded, or committed, to this directory as metadata information,
     stored as atomic JSON files. The JSON files are named using an ordered integer,
@@ -829,6 +844,7 @@
   id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 随着新数据的附加、更新或甚至删除，这些变化会被记录或提交到该目录作为元数据，以原子 JSON 文件的形式存储。JSON 文件的命名使用有序整数，从**00…0.json**开始，每次成功提交事务后递增一个。
 - en: If a Delta table is partitioned, there will be one or more subdirectories containing
     the partitioning column information within the table’s root directory. Hive-style
     table partitioning is a very common performance technique that can speed up a
@@ -839,6 +855,7 @@
   id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果 Delta 表是分区的，则表的根目录中将包含一个或多个子目录，存储分区列信息。Hive 风格的表分区是一种常见的性能优化技术，可以通过将相似数据存储在同一目录中来加速查询。数据按特定列的值（例如，**"date=2024-01-05"**）进行聚集。根据表分区的列数，分区目录中甚至可能包含更多嵌套的子目录。
 - en: Within these partition subdirectories are one or more data files, stored using
     the Apache Parquet format. Apache Parquet is a popular columnar storage format,
     with efficient data compression and encoding schemes that yield fast data storage
@@ -847,11 +864,14 @@
   id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这些分区子目录中包含一个或多个数据文件，数据文件采用 Apache Parquet 格式存储。Apache Parquet 是一种流行的列式存储格式，具有高效的数据压缩和编码方案，能够快速存储和检索大数据工作负载的数据。因此，选择这种开放格式作为存储
+    Delta 表数据文件的基础。
 - en: The contents of a transaction commit
   id: totrans-101
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 事务提交的内容
 - en: As mentioned earlier, the transaction log is the single source of truth for
     a Delta table. Each committed transaction (the JSON file under the **_delta_log**
     directory) will contain metadata information about the operation, or action, being
@@ -862,17 +882,22 @@
   id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前所述，事务日志是 Delta 表的唯一真实来源。每个已提交的事务（**_delta_log** 目录下的 JSON 文件）将包含关于操作或应用于特定
+    Delta 表的操作的元数据信息。这些 JSON 文件可以视为一组操作。虽然可以有多个并发事务，但事务提交历史会被表读取器按线性顺序回放，结果就是 Delta
+    表的最新状态。
 - en: 'Each JSON file could contain any of the following actions, as outlined by the
     Delta Lake protocol:'
   id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个 JSON 文件可能包含以下 Delta Lake 协议中列出的操作：
 - en: '**Change metadata** : This type of action is used to update the name, schema,
     or partitioning information of a table.'
   id: totrans-104
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**更改元数据**：此类型的操作用于更新表的名称、模式或分区信息。'
 - en: '**Add file** : Perhaps the most frequent action applied, this action adds a
     new data file to a table along with statistical information about the first 32
     columns of a Delta table.'
@@ -880,6 +905,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**添加文件**：可能是最常见的操作，此操作将一个新的数据文件添加到表中，并附带有关 Delta 表前 32 列的统计信息。'
 - en: '**Remove file** : This action will logically delete a particular data file.
     Note that the physical data file will remain in cloud storage even after this
     transaction is committed (there’s more about this topic in the *Tombstoned data*
@@ -888,6 +914,8 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**移除文件**：此操作将逻辑删除特定数据文件。请注意，物理数据文件将在此事务提交后仍保留在云存储中（有关此主题的更多内容，请参见 *墓碑数据* *文件*
+    部分）。'
 - en: '**Add Change Data Capture (CDC) information** : This action is used to add
     a CDC file that will contain all the data that has changed as a result of a particular
     table transaction.'
@@ -895,6 +923,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**添加变更数据捕获（CDC）信息**：此操作用于添加一个 CDC 文件，该文件将包含由于特定表操作而发生变化的所有数据。'
 - en: '**Transaction identifiers** : This action is used for Structured Streaming
     workloads and will contain the unique identifier for a particular stream, as well
     as the epoch identifier for the most recently committed Structured Streaming micro-batch.'
@@ -902,6 +931,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**事务标识符**：此操作用于结构化流式工作负载，将包含特定流的唯一标识符，以及最近提交的结构化流微批次的纪元标识符。'
 - en: '**Protocol evolution** : Provides backward compatibility and ensures that old
     Delta Lake table readers can read the metadata information within the transaction
     log.'
@@ -909,6 +939,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**协议演进**：提供向后兼容性，确保旧版 Delta Lake 表读取器能够读取事务日志中的元数据。'
 - en: '**Commit provenance information** : This type of action will conta in information
     about the process of committing a particular data transaction to a table. This
     will include information including the timestamp, the operation type, cluster
@@ -917,6 +948,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**提交溯源信息**：这种操作将包含关于将特定数据事务提交到表的过程的信息。这将包括时间戳、操作类型、集群标识符和用户信息等信息。'
 - en: '**Domain metadata** : This type of action sets the configuration for a particular
     domain. There are two types of domain metadata – system domain and user-controlled
     domain.'
@@ -924,6 +956,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**领域元数据**：这种操作为特定领域设置配置。领域元数据有两种类型——系统领域和用户控制领域。'
 - en: '**Sidecar file information** : This type of action will commit a separate metadata
     file to the transaction log, which contains summary information about the checkpoint
     file that was created (checkpoints are covered in the following section).'
@@ -931,11 +964,13 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**侧车文件信息**：这种操作会将一个单独的元数据文件提交到事务日志，其中包含有关创建的检查点文件的汇总信息（检查点将在接下来的部分中讲解）。'
 - en: Supporting concurrent table reads and writes
   id: totrans-113
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 支持并发的表格读取与写入
 - en: There are two types of concurrency control methods in storage systems – pessimistic
     concurrency control and optimistic concurrency control. A pessimistic concurrency
     control will attempt to thwart possible table conflicts by locking an entire table
@@ -945,6 +980,7 @@
   id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 存储系统中有两种并发控制方法——悲观并发控制和乐观并发控制。悲观并发控制通过锁定整个表，直到当前事务完成，来防止可能的表冲突。相反，乐观并发控制不会锁定表格，而是允许潜在的事务冲突发生。
 - en: The authors of the Delta Lake protocol chose to implement the Delta Lake format
     using optimistic concurrency control. The reason why this design choice was made
     is that most big data workloads will append new data to an existing table, as
@@ -952,51 +988,60 @@
   id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: Delta Lake 协议的作者选择使用乐观并发控制来实现 Delta Lake 格式。做出这一设计选择的原因是，大多数大数据工作负载会将新数据附加到现有表中，而不是修改现有数据。
 - en: 'As an example, let’s look at how Delta Lake will deal with a concurrent write
     conflict between two table writers – Table Writer A and Table Writer B:'
   id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为示例，让我们看看 Delta Lake 如何处理两个表写入者之间的并发写入冲突——表写入者 A 和表写入者 B：
 - en: '![Figure 1.4 – Delta Lake implements an optimistic concurrency scheme to handle
     concurrent write conflicts](img/B22011_01_004.jpg)'
   id: totrans-117
   prefs: []
   type: TYPE_IMG
+  zh: '![图 1.4 – Delta Lake 实现了乐观并发控制方案来处理并发写入冲突](img/B22011_01_004.jpg)'
 - en: Figure 1.4 – Delta Lake implements an optimistic concurrency scheme to handle
     concurrent write conflicts
   id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 1.4 – Delta Lake 实现了乐观并发控制方案来处理并发写入冲突
 - en: Imagine that the two table writers modify the same data files and attempt to
     commit the data changes that conflict with one another. Let’s look at how Delta
     Lake handles this type of scenario.
   id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设两个表的写入者修改了相同的数据文件，并尝试提交彼此冲突的数据更改。我们来看看 Delta Lake 是如何处理这种情况的。
 - en: Writer A will first record the starting version identifier of the transaction
     that it will attempt to commit to the transaction log.
   id: totrans-120
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 写入者 A 首先会记录它尝试提交到事务日志的事务的起始版本标识符。
 - en: Writer A will then write all the data files for the transaction that it would
     like to commit.
   id: totrans-121
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 写入者 A 随后将写入所有它希望提交的事务数据文件。
 - en: Next, Writer A will attempt to commit the transaction to the Delta transaction
     log.
   id: totrans-122
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 接下来，写入者 A 将尝试将事务提交到 Delta 事务日志。
 - en: At the same time, Writer B has already committed their transaction using the
     same table version identifier.
   id: totrans-123
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 与此同时，写入者 B 已经使用相同的表版本标识符提交了他们的事务。
 - en: Writer A detects Writer B’s commit and replays the commit information to determine
     whether any of the underlying data files have changed (e.g., the data has been
     updated).
@@ -1004,6 +1049,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 写入者 A 检测到写入者 B 的提交，并重放提交信息，以确定底层数据文件是否发生了变化（例如，数据是否已被更新）。
 - en: If no data has changed (for example, both Writer A and Writer B commit append-only
     operations to the transaction log), then Writer A will increment the version identifier
     by 1 and attempt to recommit the transaction to the transaction log.
@@ -1011,17 +1057,20 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果没有数据发生变化（例如，写入者 A 和写入者 B 都只是将附加操作提交到事务日志），那么写入者 A 会将版本标识符加 1，并尝试重新提交该事务到事务日志。
 - en: If the data has changed, then Writer A will need to recompute the transaction
     from scratch, increment the version identifier, and attempt to recommit the transaction.
   id: totrans-126
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果数据发生变化，那么写入者A将需要从头开始重新计算事务，递增版本标识符，并尝试重新提交事务。
 - en: Tombstoned data files
   id: totrans-127
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 删除数据文件
 - en: When an update is applied to a Delta table that requires the data within a file
     to be updated, a new file using the **AddFile** operation will be created. Similarly,
     the file containing the out-of-date data will be logically deleted, using a **RemoveFile**
@@ -1029,6 +1078,7 @@
   id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 当对Delta表应用更新，且需要更新文件中的数据时，将使用**AddFile**操作创建一个新文件。同样，包含过时数据的文件将通过**RemoveFile**操作逻辑删除。然后，这两个操作将提交到事务日志中。
 - en: By default, Delta Lake will retain the table metadat a (transaction log data)
     for 30 days before being automatically removed from cloud storage. When a particular
     data file is removed from the Delta transaction log, this is often referred to
@@ -1036,6 +1086,7 @@
   id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，Delta Lake会保留表元数据（事务日志数据）30天，之后会自动从云存储中删除。当某个数据文件从Delta事务日志中删除时，通常称之为**已删除文件**。
 - en: To help control cloud storage costs, these tombstoned files, or files that no
     longer make up the latest Delta table state and are no longer referenced in the
     transaction log, can be removed from cloud storage altogether. A separate Delta
@@ -1044,6 +1095,8 @@
   id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了帮助控制云存储成本，这些已删除的文件，或者那些不再是最新Delta表状态的一部分并且不再在事务日志中被引用的文件，可以从云存储中彻底删除。一个独立的Delta
+    Lake文件管理工具，称为**Vacuum**命令，可以作为独立进程运行，识别所有已删除的数据文件并将其移除。
 - en: 'Furthermore, the **Vacuum** command is configurable, and the length of time
     to remove the table files can be specified as an optional input parameter. For
     example, the following code snippet will execute the **Vacuum** command on the
@@ -1052,6 +1105,7 @@
   id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，**Vacuum**命令是可配置的，可以通过可选的输入参数指定删除表文件的时间长度。例如，以下代码片段将对Delta表**yellow_taxi**执行**Vacuum**命令，移除表历史中最后14天的数据文件：
 - en: '[PRE0]'
   id: totrans-132
   prefs: []
@@ -1062,11 +1116,13 @@
   id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们将在接下来的章节中看到的那样，这个过程会自动运行并管理DLT管道。
 - en: Calculating Delta table state
   id: totrans-134
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 计算Delta表状态
 - en: As alluded to in the previous section, Delta Lake will automatically compact
     metadata in a transaction log. As you can imagine, in big data workloads with
     thousands or even millions of transactions each day, a Delta table can rapidly
@@ -1075,19 +1131,23 @@
   id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前一节所提到的，Delta Lake会自动在事务日志中压缩元数据。正如你可以想象的那样，在拥有成千上万甚至数百万个每日事务的大数据工作负载中，Delta表的大小会迅速增长。同样，事务日志中的提交信息也会相应增长。
 - en: For every 10th commit, Delta Lake will create a checkpoint file, using the Apache
     Parquet format, that contains the latest table state information.
   id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于每第10次提交，Delta Lake将创建一个检查点文件，使用Apache Parquet格式，包含最新的表状态信息。
 - en: '![Figure 1.5 – For every 10th commit, Delta Lake will write a checkpoint file](img/B22011_01_005.jpg)'
   id: totrans-137
   prefs: []
   type: TYPE_IMG
+  zh: '![图 1.5 – 对于每第10次提交，Delta Lake将写入一个检查点文件](img/B22011_01_005.jpg)'
 - en: Figure 1.5 – For every 10th commit, Delta Lake will write a checkpoint file
   id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 1.5 – 对于每第10次提交，Delta Lake将写入一个检查点文件
 - en: Under the hood, a Delta Lake reader creates a separate Apache Spark Job to efficiently
     read the Delta table’s commit logs. For example, to calculate the latest table
     state, a Delta Lake reader will begin by reading the latest checkpoint file and
@@ -1095,6 +1155,7 @@
   id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 在底层，Delta Lake读取器会创建一个独立的Apache Spark作业来高效读取Delta表的提交日志。例如，要计算最新的表状态，Delta Lake读取器将首先读取最新的检查点文件，并应用在文件创建之后可能发生的事务提交。
 - en: Storing the table state information in checkpoint files alongside the data files
     in cloud storage was another pivotal design choice for the Delta Lake format.
     By using this method, calculating a table’s state could scale much better than
@@ -1105,17 +1166,21 @@
   id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 将表状态信息存储在与数据文件一起的检查点文件中，这是 Delta Lake 格式的另一个关键设计选择。通过这种方法，计算表的状态比其他方法（例如使用 Hive
+    Metastore 提供表元数据）能够更好地扩展。当许多大型、活跃度高的表同时查询时，传统的大数据元数据存储（如 Hive Metastore）在检索表元数据以回答查询时难以扩展。
 - en: To further speed up queries, Delta Lake readers will also cache the table state
     in local memory; that way, table readers can calculate which data files will answer
     a particular table query much faster.
   id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了进一步加快查询速度，Delta Lake 读者还将表状态缓存到本地内存中；这样，表读取器可以更快地计算哪些数据文件能回答特定的表查询。
 - en: Time travel
   id: totrans-142
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 时间旅行
 - en: Another file management utility in Delta Lake is the time travel feature that
     allows end users to query a table’s state from a previous version. Time travel
     offers two methods to specify table state – using the table version number assigned
@@ -1123,10 +1188,12 @@
   id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: Delta Lake 中的另一个文件管理工具是时间旅行功能，它允许最终用户查询表的先前版本状态。时间旅行提供了两种方法来指定表的状态——使用事务日志中分配的表版本号或使用时间戳。
 - en: 'Users can query a previous Delta table’s state directly using the SQL syntax:'
   id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户可以使用 SQL 语法直接查询先前的 Delta 表状态：
 - en: '[PRE1]'
   id: totrans-145
   prefs: []
@@ -1137,6 +1204,7 @@
   id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样，Databricks 数据智能平台上的 Python 用户可以使用 Python API：
 - en: '[PRE2]'
   id: totrans-147
   prefs: []
@@ -1148,23 +1216,27 @@
   id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 需要注意的是，默认情况下，**Vacuum** 工具将删除特定 Delta 表中过去七天的所有数据文件。
 - en: As a result, if the **Vacuum** command is run and a user attempts to query table
     history beyond the last seven days, the end user will receive a runtime exception,
     specifying that the data referenced in the transaction log no longer exists.
   id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，如果运行 **Vacuum** 命令并且用户尝试查询超过最后七天的表历史记录，最终用户将收到运行时异常，说明事务日志中引用的数据不再存在。
 - en: Furthermore, Delta Lake’s time travel feature was designed to correct recent
     data issues, so it should not be used for long-term data storage requirements,
     such as implementing an auditing system with a history spanning years.
   id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，Delta Lake 的时间旅行功能是为修复近期数据问题而设计的，因此不应用于长期数据存储要求，例如实现跨越数年的审计系统。
 - en: Tracking table changes using change data feed
   id: totrans-151
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用变更数据馈送跟踪表的更改
 - en: Delta Lake’s **Change Data Feed** ( **CDF** ) feature tracks row-level changes
     that have been made to a Delta table, as well as metadata about those changes.
     For example, CDF will capture information about the operation type, the timestamp
@@ -1173,25 +1245,30 @@
   id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: Delta Lake 的 **变更数据馈送**（**CDF**）功能跟踪已对 Delta 表进行的行级更改，以及有关这些更改的元数据。例如，CDF 会捕获有关操作类型、确认更改发生的时间戳以及其他来源信息（如集群标识和用户信息）。
 - en: For update operations, CDF will capture a snapshot of the row before an update,
     as well as a snapshot of the row after the update has been applied.
   id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于更新操作，CDF 会捕获更新前行的快照，以及更新应用后行的快照。
 - en: '![Figure 1.6 – CDF captures the operation type, commit version, and timestamp](img/B22011_01_006.jpg)'
   id: totrans-154
   prefs: []
   type: TYPE_IMG
+  zh: '![图 1.6 – CDF 捕获操作类型、提交版本和时间戳](img/B22011_01_006.jpg)'
 - en: Figure 1.6 – CDF captures the operation type, commit version, and timestamp
   id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 1.6 – CDF 捕获操作类型、提交版本和时间戳
 - en: 'This feature is not enabled by default but can be configured by updating a
     Delta table’s properties. For example, CDF can be enabled on an existing table
     by altering the table, using a SQL **ALTER** statement:'
   id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 此功能默认未启用，但可以通过更新 Delta 表的属性进行配置。例如，可以通过修改表格并使用 SQL **ALTER** 语句来启用 CDF：
 - en: '[PRE3]'
   id: totrans-157
   prefs: []
@@ -1202,6 +1279,7 @@
   id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样，在创建表时，也可以通过将表属性包含在 **CREATE** **TABLE** 语句中来启用 CDF：
 - en: '[PRE4]'
   id: totrans-159
   prefs: []
@@ -1213,20 +1291,24 @@
   id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们将在下一章中看到的那样，这个功能在 DLT 如何高效地将源表的变更应用到下游数据集并实现**慢变化维度**（**SCDs**）方面非常重要。
 - en: A hands-on example – creating your first Delta Live Tables pipeline
   id: totrans-161
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 动手示例 – 创建您的第一个 Delta Live Tables 数据管道
 - en: In this section, we’ll use a NYC taxi sample dataset to declare a data pipeline,
     using the DLT framework, and apply a basic transformation to enrich the data.
   id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将使用 NYC 出租车示例数据集来声明一个数据管道，使用 DLT 框架，并应用基本的转换来丰富数据。
 - en: Important note
   id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 重要提示
 - en: To get the most value out of this section, it’s recommended to have Databricks
     workspace permissions to create an all-purpose cluster and a DLT pipeline, using
     a cluster policy. In this section, you will attach a notebook to a cluster, execute
@@ -1234,20 +1316,25 @@
   id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了从本节中获得最大的价值，建议具有 Databricks 工作区权限，允许创建一个通用集群和 DLT 数据管道，使用集群策略。在本节中，您将把笔记本连接到集群，执行笔记本单元格，并创建和运行一个新的
+    DLT 数据管道。
 - en: Let’s start by creating a new all-purpose cluster. Navigate to the Databricks
     Compute UI by selecting the **Compute** button from the sidebar navigation on
     the left side.
   id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们从创建一个新的通用集群开始。通过从左侧导航栏选择 **计算** 按钮，导航到 Databricks 计算 UI。
 - en: '![Figure 1.7 – Navigate to the Compute UI from the left-hand sidebar](img/B22011_01_007.jpg)'
   id: totrans-166
   prefs: []
   type: TYPE_IMG
+  zh: '![图 1.7 – 从左侧边栏导航到计算 UI](img/B22011_01_007.jpg)'
 - en: Figure 1.7 – Navigate to the Compute UI from the left-hand sidebar
   id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 1.7 – 从左侧边栏导航到计算 UI
 - en: Click the button titled **Create compute** at the top right. Next, provide a
     name for the cluster. For this exercise, the cluster can be a small, single-node
     cluster. Click the **Single node** radio button for the cluster type. Select the
@@ -1256,11 +1343,14 @@
   id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 点击右上角的 **创建计算** 按钮。接下来，为集群提供一个名称。在此练习中，集群可以是一个小型单节点集群。选择 **单节点** 单选按钮作为集群类型。在运行时下拉菜单中选择最新的
+    DBR。接受默认设置后，再次点击 **创建计算** 按钮。
 - en: Now that we have a cluster up and running, we can begin the development of our
     very first data pipeline.
   id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经启动了一个集群，可以开始开发我们的第一个数据管道。
 - en: Let’s first start by creating a new Databricks notebook under your workspace
     home directory. Create a new notebook by clicking the **Workspace** button on
     the left sidebar, clicking on the **Add** dropdown, and selecting **Notebook**
@@ -1270,12 +1360,17 @@
   id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们首先在您的工作区主页目录下创建一个新的 Databricks 笔记本。通过点击左侧边栏的 **工作区** 按钮，点击 **添加** 下拉菜单并选择
+    **笔记本**，创建一个新的笔记本。给笔记本起一个有意义的名字，例如 **我的第一个 DLT 数据管道**。这个新笔记本将用于声明构成我们 Delta Live
+    Table 数据管道的数据集和依赖关系。
 - en: 'All Databricks workspaces come with a set of sample datasets, located at **/databricks-datasets**
     in the Databricks FileSystem. You can browse the list of available datasets by
     listing the directory contents, using the Databricks FileSystem utility:'
   id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有 Databricks 工作区都附带一组示例数据集，位于 Databricks 文件系统中的**/databricks-datasets**。您可以通过列出目录内容，使用
+    Databricks 文件系统工具浏览可用的数据集列表：
 - en: '[PRE5]'
   id: totrans-172
   prefs: []
@@ -1288,10 +1383,12 @@
   id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们需要导入 **dlt** Python 模块。**dlt** 模块包含函数装饰器，这些装饰器将指示 DLT 系统如何构建我们的数据管道、依赖关系以及一个名为数据流图的内部数据处理图。
 - en: 'Add the following line to a new notebook cell:'
   id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 将以下内容添加到一个新的笔记本单元格中：
 - en: '[PRE6]'
   id: totrans-175
   prefs: []
@@ -1304,6 +1401,8 @@
   id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: DLT 基于 PySpark 构建，因此我们可以利用 Spark DataFrames 来定义如何从云存储中摄取数据以及如何应用数据转换。我们从定义一个函数开始，该函数将使用
+    Spark 从 **/** **databricks-datasets** 目录读取 NYC 出租车示例数据集：
 - en: '[PRE7]'
   id: totrans-177
   prefs: []
@@ -1315,6 +1414,8 @@
   id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个例子中，我们声明了一个有意义名称的简单函数，当调用时，该函数将使用 Spark 读取存储在黄出租车数据集中的原始数据，并将其作为流式 DataFrame
+    返回。
 - en: 'Now, we need to tell the DLT framework that we should use this declared function
     as a part of a data pipeline. We can do this by adding the **@dlt.table()** function
     decorator. This function decorator will create a Delta Live Table from the function
@@ -1323,6 +1424,8 @@
   id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们需要告诉 DLT 框架，我们应该将此声明的函数作为数据管道的一部分使用。我们可以通过添加 **@dlt.table()** 函数装饰器来实现。这个函数装饰器将从函数创建一个
+    Delta Live Table，并将其添加到管道的数据流图中。让我们还向这个函数装饰器的可选 **comment** 参数添加一些描述性文本：
 - en: '[PRE8]'
   id: totrans-180
   prefs: []
@@ -1334,30 +1437,37 @@
   id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 执行笔记本单元格后，Databricks 数据智能平台将检测到一个 DLT 表，打印输出架构，并提示您创建一个新的 DLT 管道。
 - en: '![Figure 1.8 – Databricks will parse the DLT table declaration and print the
     output schema](img/B22011_01_008.jpg)'
   id: totrans-182
   prefs: []
   type: TYPE_IMG
+  zh: '![图 1.8 – Databricks 将解析 DLT 表声明并打印输出架构](img/B22011_01_008.jpg)'
 - en: Figure 1.8 – Databricks will parse the DLT table declaration and print the output
     schema
   id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 1.8 – Databricks 将解析 DLT 表声明并打印输出架构
 - en: Let’s click the **Create Pipeline** button to generate a new DLT pipeline. Give
     the data pipeline a meaningful name, such as **Yellow Taxi Cab Pipeline** . Select
     **Core** as the product edition and **Triggered** as the pipeline execution mode.
   id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们点击 **创建管道** 按钮以生成一个新的 DLT 管道。为数据管道指定一个有意义的名称，例如 **黄出租车管道**。选择 **Core** 作为产品版本，并将
+    **触发式** 作为管道执行模式。
 - en: '![Figure 1.9 – Create a new DLT pipeline using the Core product edition](img/B22011_01_009.jpg)'
   id: totrans-185
   prefs: []
   type: TYPE_IMG
+  zh: '![图 1.9 – 使用 Core 产品版本创建一个新的 DLT 管道](img/B22011_01_009.jpg)'
 - en: Figure 1.9 – Create a new DLT pipeline using the Core product edition
   id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 1.9 – 使用 Core 产品版本创建一个新的 DLT 管道
 - en: Next, under the **Target Location** settings, select the Unity Catalog radio
     button, and specify the target catalog and schema where you would like to store
     the dataset. Under the **Compute** settings, set **Min workers** to **1** and
@@ -1367,16 +1477,21 @@
   id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，在 **目标位置** 设置中，选择 Unity Catalog 单选按钮，并指定您希望存储数据集的目标目录和模式。在 **计算** 设置下，将
+    **最小工作节点数** 设置为 **1**，将 **最大工作节点数** 设置为 **1**。然后，点击 **创建** 按钮接受默认设置。最后，点击 **启动**
+    按钮执行数据管道。您将看到数据流图的可视化表示。
 - en: '![Figure 1.10 – The dataflow graph will contain the streaming table we declared
     in our notebook](img/B22011_01_010.jpg)'
   id: totrans-188
   prefs: []
   type: TYPE_IMG
+  zh: '![图 1.10 – 数据流图将包含我们在笔记本中声明的流式表](img/B22011_01_010.jpg)'
 - en: Figure 1.10 – The dataflow graph will contain the streaming table we declared
     in our notebook
   id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 1.10 – 数据流图将包含我们在笔记本中声明的流式表
 - en: As you can see, our dataflow graph consists of a single streaming table, which
     is a new dataset that will ingest raw NYC taxi trip data from the **/databricks-datasets/**
     location on the Databricks FileSystem. While a trivial example, this example shows
@@ -1387,11 +1502,15 @@
   id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 如您所见，我们的数据流图由一个单一的流式表组成，这是一个新的数据集，将从 Databricks 文件系统中的 **/databricks-datasets/**
+    位置获取原始纽约市出租车旅行数据。虽然这是一个简单的示例，但它展示了 DLT 框架的声明式特性，以及我们如何快速使用熟悉的 PySpark API 声明数据管道。此外，您现在应该对如何从
+    DLT UI 监控和查看我们数据管道的最新状态有了一个基本的了解。
 - en: Summary
   id: totrans-191
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: In this chapter, we examined how and why the data industry has settled on a
     lakehouse architecture, which aims to merge the scalability of ETL processing
     and the fast data warehousing speeds for BI workloads under a single, unified
@@ -1405,6 +1524,8 @@
   id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们探讨了数据行业为何以及如何选择湖仓架构，这种架构旨在将ETL处理的可扩展性与BI工作负载下的数据仓库速度融合到一个统一的架构中。我们了解了实时数据处理如何成为从最新数据中发掘价值的关键，但随着时间的推移，实时数据管道的复杂性增加可能会影响数据工程团队的生产力。最后，我们学习了Delta
+    Live Tables框架的核心概念，以及如何通过几行PySpark代码和函数装饰器，快速声明一个能够高效且低延迟地增量处理数据的实时数据管道。
 - en: In the next chapter, we’ll take a deep dive into the advanced settings of Delta
     Live Tables pipelines and how the framework will optimize the underlying datasets
     for us. Then, we’ll look at more advanced data transformations, using a real-world
@@ -1412,3 +1533,4 @@
   id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将深入探讨Delta Live Tables管道的高级设置，以及该框架如何为我们优化底层数据集。然后，我们将通过一个实际的案例来开发数据管道，学习更复杂的数据转换。
