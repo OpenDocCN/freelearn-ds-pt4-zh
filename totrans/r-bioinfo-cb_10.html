@@ -1,0 +1,760 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Programming with Tidyverse and Bioconductor</h1>
+                </header>
+            
+            <article>
+                
+<p><span>R is a great language to use interactively; however, that does mean many users don't get experience of using it as a language in which to do programming—that is, for automating analyses and saving the user's time and efforts when it comes to repeating stuff. In this chapter, we'll take a look at some techniques for doing just that—in particular, we'll look at how to integrate base R objects into <kbd>tidyverse</kbd> workflows, extend <kbd>Bioconductor</kbd> classes to suit our own needs, and use literate programming and notebook-style coding to keep expressive and readable records of our work.</span></p>
+<p>The following recipes will be covered in this chapter:</p>
+<ul>
+<li>Making base R objects tidy</li>
+<li>Using nested dataframes</li>
+<li>Writing functions for use in <kbd>mutate</kbd></li>
+<li>Working programmatically with Bioconductor classes</li>
+<li>Developing reusable workflows and reports</li>
+<li>Making use of the apply family of functions</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>The sample data you'll need is available from this book's GitHub repository at <a href="https://github.com/PacktPublishing/R-Bioinformatics-Cookbook">https://github.com/PacktPublishing/R-Bioinformatics-Cookbook</a><a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">.</a> If you want to use the code examples as they are written, then you will need to make sure that this data is in a sub-directory of whatever your working directory is.</p>
+<p class="mce-root"/>
+<p>Here are the R packages that you'll need. In general, you can install these packages with<span> </span><kbd>install.packages("package_name")</kbd>. The packages listed under <kbd>Bioconductor</kbd> need to be installed with the dedicated installer. If you need to do anything further, installation will be described in the recipes in which the packages are used:</p>
+<ul>
+<li> <kbd>Bioconductor</kbd>:
+<ul>
+<li><kbd>Biobase</kbd></li>
+<li><kbd>biobroom</kbd> </li>
+<li><kbd>SummarizedExperiment</kbd></li>
+</ul>
+</li>
+<li><kbd>broom</kbd></li>
+<li><kbd>dplyr</kbd></li>
+<li><kbd>ggplot2</kbd></li>
+<li><kbd>knitr</kbd></li>
+<li><kbd>magrittr</kbd></li>
+<li><kbd>purrr</kbd></li>
+<li><kbd>rmarkdown</kbd></li>
+<li><kbd>tidyr</kbd></li>
+</ul>
+<p><kbd>Bioconductor</kbd> is huge and has its own installation manager. You can install the manager with the following code:<a href="https://www.bioconductor.org/install/"/></p>
+<pre>if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")</pre>
+<p>Then, you can install the packages with this code:</p>
+<div>
+<pre>BiocManager::install("package_name")</pre>
+ </div>
+<div class="packt_infobox"><span> </span><span>Further information is available at</span><span> </span><span><a href="https://www.bioconductor.org/install/">https://www.bioconductor.org/install/</a>.</span></div>
+<div>
+<p>Normally, in R, a user will load a library and use functions directly by name. This is great in interactive sessions but it can cause confusion when many packages are loaded. To clarify which package and function I'm using at a given moment, I will occasionally use the<span> </span><kbd>packageName::functionName()</kbd> convention. </p>
+<div class="packt_infobox"><span><span>Sometimes, in the middle of a recipe, I'll interrupt the code so you can see some intermediate output or the structure of an object that's important to understand. Whenever that happens, you'll see a code block where each line begins with <kbd>##</kbd> (double hash) symbols. Consider the following command:<br/></span></span>
+<p><kbd>letters[1:5]</kbd></p>
+<p><span>This will give us the following output:</span></p>
+<p class="mce-root"><kbd>## a b c d e</kbd></p>
+<p><span> Note that the output lines are prefixed with <kbd>##</kbd>.</span></p>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Making base R objects tidy</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>tidyverse</kbd> set of packages (including <kbd>dplyr</kbd>, <kbd>tidyr</kbd>, and <kbd>magrittr</kbd>) have had a huge influence on data processing and analysis in R through their application of the tidy way of working. In essence, this means that data is kept in a particular tidy format, in which each row holds a single observation and each column keeps all observations of a single variable. Such a structure means that analytical steps have predictable inputs and outputs and can be built into fluid and expressive pipelines. However, most base R objects are not tidy and can often need significant programming work to extract the bits that are needed to assemble objects for use downstream. In this recipe, we'll look at some functions for automatically converting some common base R objects into a tidy dataframe.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll need the <kbd>tidyr</kbd>, <kbd>broom</kbd>, and <kbd>biobroom</kbd> <span>packages. </span>We'll use the built-in <kbd>mtcars</kbd> data and <kbd>modencodefly_eset.RData</kbd> from the <kbd>datasets/ch1</kbd> folder of this book's repository.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Making base R objects tidy can be done using the following steps:</p>
+<ol>
+<li>Tidy an <kbd>lm</kbd> object:</li>
+</ol>
+<pre style="padding-left: 60px">library(broom)<br/>model &lt;- lm(mpg ~ cyl + qsec, data = mtcars)<br/>tidy(model) <br/>augment(model)<br/>glance(model)</pre>
+<ol start="2">
+<li>Tidy a <kbd>t_test</kbd> object:</li>
+</ol>
+<pre style="padding-left: 60px">t_test_result &lt;- t.test(x = rnorm(20), y = rnorm(20) )<br/>tidy(t_test_result)</pre>
+<ol start="3">
+<li>Tidy an ANOVA object:</li>
+</ol>
+<pre style="padding-left: 60px">anova_result &lt;- aov(Petal.Length ~ Species, data = iris)<br/>tidy(anova_result)<br/>post_hoc &lt;- TukeyHSD(anova_result)<br/>tidy(post_hoc)</pre>
+<ol start="4">
+<li>Tidy a <kbd>Bioconductor</kbd> <kbd>ExpressionSet</kbd> object:</li>
+</ol>
+<pre style="padding-left: 60px">library(biobroom)<br/>library(Biobase)<br/>load(file.path(getwd(), "datasets", "ch1", "modencodefly_eset.RData") ) <br/>tidy(modencodefly.eset, addPheno = TRUE)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> shows some functions for tidying an <kbd>lm</kbd> object with the <kbd>lm()</kbd> function. The first step is to create the object. Here, we perform a multiple regression model using the <kbd>mtcars</kbd> data. We then use the <kbd>tidy()</kbd> function on the model to return the object summary of components of the model, for example, the coefficient, as a tidy dataframe. The <kbd>augment()</kbd> function returns extra per-observation data for an <kbd>lm</kbd> object should we want that—again, it's in tidy format. The <kbd>glance()</kbd> function inspects the model itself and returns summaries about it<span>—</span>naturally, in tidy format. <kbd>glance()</kbd> is useful for comparing models.</p>
+<p class="mce-root"/>
+<p><em>Step 2</em> shows the same process for the <kbd>t.test</kbd> object. First, we run a t-test on two vectors of random numbers. The <kbd>tidy()</kbd> function gives us all of the details in a tidy dataframe.</p>
+<p>In <em>Step 3</em>, we run an ANOVA on the <kbd>iris</kbd> data. We use the <kbd>aov()</kbd> function to look at the effect of <kbd>Species</kbd> on <kbd>Petal.Length</kbd>. We can use <kbd>tidy()</kbd> again on the result but it gives a summary of the components of the model. In fact, we're probably more interested in the comparisons from a post-hoc test, which is performed using the <kbd>TukeyHSD()</kbd> function on the next line; it too can be used in <kbd>tidy()</kbd>.</p>
+<p>In <em>Step 4</em>, we use the <kbd>biobroom</kbd> version of <kbd>tidy()</kbd> on the <kbd>ExpressionSet</kbd> object. This turns the square matrix of expression values into a tidy dataframe along with columns for sample and other types of data. The extra argument, <kbd>addPheno</kbd>, is specific to this type of object and inserts the phenotype metadata from the <kbd>ExpressionSet</kbd> metadata container. Note that the resulting dataframe is over 2 million lines long—biological datasets can be large and can generate very large dataframes.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using nested dataframes</h1>
+                </header>
+            
+            <article>
+                
+<p>The dataframe is at the core of the tidy way of working and we tend to think of it as a spreadsheet-like rectangular data container with only a single value in each cell. In fact, dataframes can be nested—that is, they can hold other dataframes in specific, single cells. This is achieved internally by replacing a dataframe's vector column with a list column. Each cell is instead a member of a list, so any sort of object can be held within the conceptual single cell of the outer dataframe. In this recipe, we'll look at ways of making a nested dataframe and different ways of working with it. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll need the <kbd>tidyr</kbd>, <kbd>dplyr</kbd>, <kbd>purrr</kbd>, and <kbd>magrittr</kbd> libraries. We'll also use the <kbd>diamonds</kbd> data from the <kbd>ggplot2</kbd> package, though we won't use any functions.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Using nested dataframes can be done with the following steps:</p>
+<ol>
+<li>Create a nested dataframe:</li>
+</ol>
+<pre style="padding-left: 60px">library(tidyr)<br/>library(dplyr)<br/>library(purrr)<br/>library(magrittr)<br/>library(ggplot2)<br/><br/>nested_mt &lt;- nest(mtcars, -cyl)</pre>
+<ol start="2">
+<li>Add a new list column holding the results of <kbd>lm()</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">nested_mt_list_cols &lt;- nested_mt %&gt;% mutate(<br/> model = map(data, ~ lm(mpg ~ wt, data = .x))<br/>)</pre>
+<ol start="3">
+<li>Add a new list column holding the results of <kbd>tidy()</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">nested_mt_list_cols &lt;- nested_mt_list_cols %&gt;% mutate(<br/> tidy_model = map(model, tidy)<br/>)</pre>
+<ol start="4">
+<li>Unnest the whole dataframe:</li>
+</ol>
+<pre style="padding-left: 60px">unnest(nested_mt_list_cols, tidy_model)</pre>
+<ol start="5">
+<li>Run the pipeline in a single step:</li>
+</ol>
+<pre style="padding-left: 60px">models_df &lt;- nest(mtcars, -cyl) %&gt;%<br/> mutate(<br/> model = map(data, ~ lm(mpg ~ wt, data = .x)),<br/> tidy_model = map(model, tidy)<br/> ) %&gt;%<br/> unnest(tidy_model)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p class="mceNonEditable"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we use the <kbd>nest()</kbd> function to nest the <kbd>mtcars</kbd> <span>dataframe. </span>The <kbd>-</kbd> option tells the function which columns to exclude from nesting effectively; making the <kbd>cyl</kbd> column a factor using which the different subsets are created. Conceptually, this is similar to the <kbd>dplyr::group_by()</kbd> function. Inspecting the object gives us this:</p>
+<pre class="mce-root"> A tibble: 3 x 2<br/>## cyl   data <br/>## &lt;dbl&gt; &lt;list&gt; <br/>## 1 6   &lt;tibble [7 × 10]&gt; <br/>## 2 4   &lt;tibble [11 × 10]&gt;<br/>## 3 8   &lt;tibble [14 × 10]&gt;</pre>
+<p class="mce-root">The nested dataframe contains a new column of dataframes called <kbd>data</kbd>, alongside the reduced <kbd>cyl</kbd> column.</p>
+<p>In <em>Step 2</em>, we create a new column on our dataframe by using <kbd>mutate()</kbd>. Within this, we use the <kbd>map()</kbd> function from <kbd>purrr</kbd>, which iterates over items in a list provided as its first argument (so our data column of dataframes) and uses them in the code provided as its second argument. Here, we use the <kbd>lm()</kbd> function on the nested data, one element at a time—note that the <kbd>.x</kbd> <span>variable </span>just means <em>the thing we're currently working on—</em>so, the current item in the list. When run, the list now looks like this:</p>
+<pre>##  cyl   data              model <br/>##  &lt;dbl&gt; &lt;list&gt; &lt;list&gt;<br/>## 1 6   &lt;tibble [7 × 10]&gt;  &lt;lm&gt; <br/>## 2 4   &lt;tibble [11 × 10]&gt; &lt;lm&gt; <br/>## 3 8   &lt;tibble [14 × 10]&gt; &lt;lm&gt;</pre>
+<p>The new <kbd>model</kbd> list column holds our <kbd>lm</kbd> objects. </p>
+<p>Having established that the pattern to add new list columns is to use <kbd>mutate()</kbd> with <kbd>map()</kbd> inside, we can then tidy up the <kbd>lm</kbd> objects in the same way. This is what happens in <em>Step 3</em>. The result gives us the following nested dataframe:</p>
+<pre>##  cyl   data              model  tidy_model <br/>## &lt;dbl&gt; &lt;list&gt;            &lt;list&gt;  &lt;list&gt; <br/>## 1 6   &lt;tibble [7 × 10]&gt;  &lt;lm&gt;   &lt;tibble [2 × 5]&gt;<br/>## 2 4   &lt;tibble [11 × 10]&gt; &lt;lm&gt;   &lt;tibble [2 × 5]&gt;<br/>## 3 8   &lt;tibble [14 × 10]&gt; &lt;lm&gt;   &lt;tibble [2 × 5]&gt;</pre>
+<p class="mce-root"/>
+<p><em>Step 4</em> uses the <kbd>unnest()</kbd> function to return everything to a single dataframe; the second argument, <kbd>tidy_model</kbd>, is the column to unpack. </p>
+<p><em>Step 5</em> repeats the whole of <em>Steps 1</em> to <em>4</em> in a single pipeline, highlighting that these are just regular <kbd>tidyverse</kbd> functions and can be chained together without having to save intermediate steps. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>unnest()</kbd> function will only work when the nested list column members are compatible and can be sensibly aligned and recycled according to the normal rules. In many cases, this won't be true so you will need to manually manipulate the output. The following example shows how we can do that. The workflow is essentially the same as the preceding example, though one change early on is that we use <kbd>dplyr::group_by()</kbd> to create the groups for <kbd>nest()</kbd>.<em> </em>In <kbd>mutate()</kbd>, we pass a custom function to analyze the data, but, otherwise, this step is the same. The last step is the biggest change and takes advantage of <kbd>transmute()</kbd> to drop the unneeded columns and create a new column that is the result of <kbd>map_dbl()</kbd> and a custom summary function. <kbd>map_dbl()</kbd> is like <kbd>map()</kbd> but returns only double numeric vectors. Other <kbd>map_**</kbd> functions also exist.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Writing functions for use in dplyr::mutate()</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>mutate()</kbd> function from <kbd>dplyr</kbd> is extremely useful one for adding new columns to a dataframe based on computations from existing columns. It is a vectorized function, though, and is often misunderstood as working row-wise when it actually works column-wise, that is, on whole vectors with R's built-in recycling. This behavior can often be confusing for those looking to use <kbd>mutate()</kbd> on non-trivial examples or with custom functions, so, in this recipe, we're going to examine how <kbd>mutate()</kbd> actually behaves in certain situations, with the hope that this will be enlightening.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this, we'll need the <kbd>dplyr</kbd> package and the built-in <kbd>iris</kbd> data.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p><span>Writing functions for use in <kbd>dplyr::mutate()</kbd> can be done using the following steps:</span></p>
+<ol>
+<li>Use a function that returns a single value:</li>
+</ol>
+<pre style="padding-left: 60px">return_single_value &lt;- function(x){<br/> sum(x) <br/>}<br/>iris %&gt;% mutate(<br/> result = return_single_value(Petal.Length)<br/>)</pre>
+<ol start="2">
+<li>Use a function that returns the same number of values as given:</li>
+</ol>
+<pre style="padding-left: 60px">return_length_values &lt;- function(x){<br/> paste0("result_", 1:length(x))<br/>}<br/>iris %&gt;% mutate(<br/> result = return_length_values(Petal.Length)<br/>)</pre>
+<ol start="3">
+<li>Use a function that returns neither a single value nor the same number of values as given:</li>
+</ol>
+<pre style="padding-left: 60px">return_three_values &lt;- function(x){<br/> c("A", "b", "C")<br/>}<br/>iris %&gt;% mutate(<br/> result = return_three_values(Petal.Length)<br/>)</pre>
+<ol start="4">
+<li>Force repetition of the function to fit the length of the vector:</li>
+</ol>
+<pre style="padding-left: 60px">rep_until &lt;- function(x){<br/> rep(c("A", "b", "C"), length.out = length(x))<br/>}<br/>iris %&gt;% mutate(<br/> result = rep_until(Petal.Length)<br/>)</pre>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we create a function that, given a vector, returns only a single value (a vector of length one). We then use it in <kbd>mutate()</kbd> to add a column called <kbd>result</kbd> and get the following:</p>
+<pre>## Sepal.Length Sepal.Width Petal.Length Petal.Width Species result <br/>## 1 5.1 3.5 1.4 0.2 setosa 563.7 <br/>## 2 4.9 3.0 1.4 0.2 setosa 563.7 <br/>## 3 4.7 3.2 1.3 0.2 setosa 563.7 <br/>## 4 4.6 3.1 1.5 0.2 setosa 563.7</pre>
+<p>Note how the single value the function returns in the <kbd>result</kbd> column is repeated over and over. With <kbd>length == 1</kbd> vectors, R will recycle the result and place it in every position. </p>
+<p>In <em>Step 2</em>, we go to the opposite end and create a function that, given a vector, returns a vector of identical length (specifically, it returns a vector of the word <kbd>result_</kbd> pasted onto a number representing the position in the vector). When we run it, we get this:</p>
+<pre>## Sepal.Length Sepal.Width Petal.Length Petal.Width Species result <br/>## 1 5.1 3.5 1.4 0.2 setosa result_1 <br/>## 2 4.9 3.0 1.4 0.2 setosa result_2 <br/>## 3 4.7 3.2 1.3 0.2 setosa result_3 <br/>## 4 4.6 3.1 1.5 0.2 setosa result_4</pre>
+<p>Because it is exactly the same length as the rest of the columns of the dataframe, R will accept it and apply it as a new column.</p>
+<p>In <em>Step 3</em>, we create a function that returns a vector of three elements. As the length is neither one nor the length of the other columns of the dataframe, the code fails.</p>
+<p>In <em>Step 4</em>, we look at how we can repeat an incompatible length vector to make it fit should we need to. The <kbd>rep_until()</kbd> function with the <kbd>length.out</kbd> argument repeats its input until the vector is <kbd>length.out</kbd> long. In this way, we get the following column, which is what we were hoping to see with the function in <em>Step 3</em>:</p>
+<pre>## Sepal.Length Sepal.Width Petal.Length Petal.Width Species result <br/>## 1 5.1 3.5 1.4 0.2 setosa A <br/>## 2 4.9 3.0 1.4 0.2 setosa b <br/>## 3 4.7 3.2 1.3 0.2 setosa C <br/>## 4 4.6 3.1 1.5 0.2 setosa A <br/>## 5 5.0 3.6 1.4 0.2 setosa b</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Working programmatically with Bioconductor classes</h1>
+                </header>
+            
+            <article>
+                
+<p>The wide scope of <kbd>Bioconductor</kbd> means that there are a great number of classes and methods for accomplishing pretty much any bioinformatics workflow that you'd want to. Sometimes, though, it would be helpful to have an extra data slot or some other tweak to the tools that would help to simplify our lives. In this recipe, we're going to look at how to extend an existing class to include some extra information that is specific to our particular data. We'll look at extending the <kbd>SummarizedExperiment</kbd> class to add hypothetical barcode information—a type of metadata indicating some nucleotide tags that identify the sample that is included in the sequence read.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll just need the Bioconductor <kbd>SummarizedExperiment</kbd> packages.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Working programmatically with the <kbd>Bioconductor</kbd> classes can be done using the following steps:</p>
+<ol>
+<li>Create a new class inheriting from <kbd>SummarizedExperiment</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">setClass("BarcodedSummarizedExperiment",<br/>   contains = "SummarizedExperiment",<br/>   slots = c(barcode_id = "character", barcode_sequence = "character")<br/> )</pre>
+<ol start="2">
+<li>Create a constructor function:</li>
+</ol>
+<pre style="padding-left: 60px">BarcodedSummarizedExperiment &lt;- function(assays, rowRanges, colData, barcode_id, barcode_sequence){<br/>   new("BarcodedSummarizedExperiment", <br/>       SummarizedExperiment(assays=assays, rowRanges=rowRanges, colData=colData),<br/>       barcode_id = barcode_id,<br/>       barcode_sequence = barcode_sequence<br/>   )<br/>}</pre>
+<p class="mce-root"/>
+<ol start="3">
+<li>Add the required methods to the class:</li>
+</ol>
+<pre style="padding-left: 60px">setGeneric("barcode_id", function(x) standardGeneric("barcode_id"))<br/>setMethod("barcode_id", "BarcodedSummarizedExperiment", function(x) x@barcode_id )</pre>
+<ol start="4">
+<li>Build an instance of the new class:</li>
+</ol>
+<pre style="padding-left: 60px">nrows &lt;- 200<br/>ncols &lt;- 6<br/>counts &lt;- matrix(runif(nrows * ncols, 1, 1e4), nrows)<br/>assays &lt;- list(counts = counts)<br/>rowRanges &lt;- GRanges(    rep(c("chr1", "chr2"), c(50, 150)),<br/>                         IRanges(floor(runif(200, 1e5, 1e6)), width=100),<br/>                         strand=sample(c("+", "-"), 200, TRUE),<br/>                         feature_id=sprintf("ID%03d", 1:200)<br/>)<br/>colData &lt;- DataFrame(<br/>                Treatment=rep(c("ChIP", "Input"), 3),<br/>                row.names=LETTERS[1:6]<br/>)<br/><br/>my_new_barcoded_experiment &lt;- BarcodedSummarizedExperiment(<br/>        assays = assays, <br/>        rowRanges = rowRanges, <br/>        colData = colData, <br/>        barcode_id = letters[1:6], <br/>        barcode_sequence = c("AT", "GC", "TA", "CG","GA", "TC") <br/>)</pre>
+<ol start="5">
+<li>Call the new method:</li>
+</ol>
+<pre style="padding-left: 60px">barcode_id(my_new_barcoded_experiment)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we create a new S4 class using the <kbd>setClass()</kbd> function. This takes the name of the new class as the first argument. The <kbd>contains</kbd> argument specifies which existing class we wish to inherit from (so that our new class will contain all of the functionality of this class plus any new stuff we create). The <kbd>slots</kbd> argument specifies the new data slots we want to add and requires that we give a type for them. Here, we're adding text data slots for the new <kbd>barcode_id</kbd> and <kbd>barcode_sequence</kbd> slots, so use <kbd>character</kbd> for both.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root">In <em>Step 2</em>, we create a constructor function. The name of this function must be the same as the class, and we specify the arguments we need to create a new object in the call to <kbd>function()</kbd>. Within the body, we use the <kbd>new()</kbd> function, whose first argument is the name of the class to instantiate from. The rest of the body is taken up with the mechanics of populating the instance with data; we call the inherited <kbd>SummarizedExperiment</kbd> constructor to populate that part of the new object, and then manually populate the new barcode slots. Every time we run <kbd>BarcodedSummarizedExperiment</kbd>, we will get a new object of that class.</p>
+<p class="mce-root">In <em>Step 3</em>, we add a new function (strictly speaking, in R, it's called a method). If we choose a function name that doesn't already exist as a <kbd>Generic</kbd> function in R, we must register the name of the function with <kbd>setGeneric()</kbd>, which takes the name of the function as its first argument and a boilerplate function as its second. Once the <kbd>Generic</kbd> function is set, we can add actual functions with the <kbd>setMethod()</kbd> function. The name of the new function is the first argument, the class it will attach to is the second, and the code itself is the third. Note that we are just creating an accessor (<kbd>getter</kbd>) function that returns the data in the <kbd>barcode_id</kbd> slot of the current object.</p>
+<p class="mce-root">In <em>Step 4</em>, our preparatory work is done so we can build an instance of the class. In the first six lines of this step, we simply create the data we need to build the object. This is the part that goes into a normal <kbd>SummarizedExperiment</kbd> object; you can see more details on what exactly is going on here in the documentation. We can then actually create <kbd>my_new_barcoded_experiment</kbd> by calling the <kbd>BarcodedSummarizedExperiment</kbd> function with the data we created and some new specific data for the new <kbd>barcode_id</kbd> and <kbd>barcode_sequence</kbd> slots.</p>
+<p class="mce-root">Now, with the object created, in <em>Step 5</em>, we can use our method, calling it like any other function with our new object as the argument.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Developing reusable workflows and reports</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">A very common task in bioinformatics is writing up our results in order to communicate them to a colleague or just to have a good record in our laboratory books (electronic or otherwise). A key skill is to make the work as reproducible as possible so that we can rerun it ourselves when we need to revisit it or someone else interested in what we did can replicate the process. One increasingly popular solution to this problem is to use literate programming techniques and executable notebooks that are a mixture of human-readable text, analytical code, and computational output rolled into a single document. In R, the <kbd>rmarkdown</kbd> package allows us to combine code and text in this way and create output documents in a variety of formats.</p>
+<p class="mce-root">In this recipe, we'll look at the large-scale structure of one such document that can be compiled with <kbd>rmarkdown</kbd>. The RStudio application makes this process very straightforward so we'll look at compilation from within that tool.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll need the RStudio application available at <a href="https://www.rstudio.com/">https://www.rstudio.com/</a> and the <kbd>rmarkdown</kbd> package. The sample code for this recipe is available in the <kbd>example_rmarkdown.rmd</kbd> <span>file </span>in this book's <kbd>datasets/ch10/</kbd> folder. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Developing reusable workflows and reports can be done using the following steps:</p>
+<ol>
+<li>In an external file, add a <kbd>YAML</kbd> header:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">---<br/>title: "R Markdown Report"<br/>author: "R Bioinformatics Cookbook"<br/>date: "`r format(Sys.time(), '%d %B, %Y')`"<br/>output:<br/> html_document:<br/> df_print: paged<br/> bookdown::html_document2:<br/> fig_caption: yes<br/> keep_md: yes<br/> toc: yes<br/>---</pre>
+<ol start="2">
+<li class="mce-root">Then, add some text and code to be interpreted:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">We can include text and create code blocks, the code gets executed and the result passed in<br/><br/>```{r}<br/>x &lt;- iris$Sepal.Width<br/>y &lt;- iris$Sepal.Length<br/>lm(y ~ x, data = iris)<br/>```</pre>
+<p class="mce-root"/>
+<ol start="3">
+<li class="mce-root">Text can be formatted using minimal markup tags:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">## We can format text using Markdown<br/>We can create many text formats including *italics* and **bold**,<br/>We can make lists <br/> 1. First item<br/> 2. Second item</pre>
+<ol start="4">
+<li class="mce-root">Apply further options and carry over variables within a block:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">The whole document acts as a single R session - so variables created in earlier blocks can still be used later.<br/>Plots are presented within the document. Options for blocks can be set in the header<br/><br/>```{r, fig.width=12 }<br/>plot(x, y)<br/>```</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The code here is unique in that it must be run from inside an external document; it won't run in the R console. The compilation step to run the document can be done in a couple of ways. Within RStudio, once <kbd>rmarkdown</kbd> is installed and you are editing a document with a <kbd>.Rmd</kbd> extension, you get a <kbd>knit</kbd> button. Alternatively, you can compile a document from the console with the <kbd>rmarkdown::render()</kbd> function, though I recommend the RStudio IDE for this.</p>
+<p>In <em>Step 1</em> of the actual document, we create a <kbd>YAML</kbd> header that describes how the document should be rendered including output formats, dynamic date insertion, and author and titles. These will be added to your document automatically.</p>
+<p>In <em>Step 2</em>, we actually create some content—the first line is just plaintext and will pass through into the eventual document unmodified as paragraph text. The section within the block delineated by <kbd>```</kbd> is code to be interpreted. Options for the block go inside the curly brackets—here, <kbd>{r}</kbd> means this should be an R code block (some other languages are supported too). The code in this block is run in a new R session, its output captured; and inserted immediately after the code block.</p>
+<p>In <em>Step 3</em>, we create some plaintext with the <kbd>Markdown</kbd> tags. <kbd>##</kbd> gives us a line with a second-level heading, the <kbd>**starred**</kbd> text gives us different formatting options, and we can also create lists. Valid <kbd>Markdown</kbd> is interpreted and the reformatted text is passed into the eventual document.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In <em>Step 4</em>, we start with some more plaintext and follow with a new code block. The options for the code block are set in the curly brackets again—here, we set a width for figures in the plot. Note that the code in this block refers to variables created in an earlier block. Although the document creates a new R session without access to variables already in the usual console, the document itself is a single session so blocks can access earlier block's variables, allowing the code and text to be mixed up at whatever resolution the author requires. Finally, the resulting figure is inserted into the document just like code. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Making use of the apply family of functions</h1>
+                </header>
+            
+            <article>
+                
+<p>Programming in R can sometimes seem a bit tricky; the control flow and looping structures it has, are a bit more basic than in other languages. As many R functions are vectorized, the language actually has some features and functions; that mean we don't need to take the same low-level approach we may have learned in Python or other places. Instead, base R provides the <kbd>apply</kbd> functions to do the job of common looping tasks. These functions all have a loop inside them, meaning we don't need to specify the loop manually. In this recipe, we'll look at using some <kbd>apply</kbd> family functions with common data structures to loop over them and get a result. The common thread in all of the <kbd>apply</kbd> functions is that we have an input data structure that we're going to iterate over and some code (often wrapped in a function definition) that we're going to apply to each item of the structure.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We will only need base R functions and data for this recipe, so you are good to go!</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Making use of the <kbd>apply</kbd> family of functions can be done using the following steps:</p>
+<ol>
+<li>Create a matrix and use <kbd>apply</kbd> to work on it:</li>
+</ol>
+<pre style="padding-left: 60px">m &lt;- matrix(rep(1:10, 10, replace = TRUE), nrow = 10)<br/><br/>apply(m, 1, sum)<br/>apply(m, 2, sum)</pre>
+<p class="mce-root"/>
+<ol start="2">
+<li>Use <kbd>lapply</kbd> over the vector:</li>
+</ol>
+<pre style="padding-left: 60px">numbers &lt;- 1:3<br/>number_of_numbers &lt;- function(x){<br/> rnorm(x)<br/>}<br/>my_list &lt;- lapply(numbers, number_of_numbers)</pre>
+<ol start="3">
+<li>Use <kbd>lapply</kbd> and <kbd>sapply</kbd> over the list:</li>
+</ol>
+<pre style="padding-left: 60px">summary_function &lt;- function(x){<br/> mean(x)<br/>}<br/>lapply(my_list, summary_function)<br/>sapply(my_list, summary_function)</pre>
+<ol start="4">
+<li>Use <kbd>lapply</kbd> over a dataframe:</li>
+</ol>
+<pre style="padding-left: 60px">list_from_data_frame &lt;- lapply(iris, mean, trim = 0.1, na.rm = TRUE )<br/>unlist(list_from_data_frame)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> begins with the creation of a 10 x 10 matrix, with rows holding the same number and columns running from 1 to 10. Inspecting it makes it clear, as partly shown in the following output:</p>
+<pre>## &gt; m <br/>## [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10] <br/>## [1,] 1 1 1 1 1 1 1 1 1 1 <br/>## [2,] 2 2 2 2 2 2 2 2 2 2 <br/>## [3,] 3 3 3 3 3 3 3 3 3 3</pre>
+<p>We then use <kbd>apply()</kbd>: the first argument is the object to loop over, the second is the direction to loop in (or margin, 1 = rows, and 2 = columns), and the third is the code to apply. Here, it's the name of a built-in function, but it could be a custom one. Note it's the margin argument that affects the amount of data that is taken each time. Contrast the two <kbd>apply()</kbd> calls:</p>
+<pre>&gt; apply(m, 1, sum) <br/>[1] 10 20 30 40 50 60 70 80 90 100<br/>&gt; apply(m, 2, sum) <br/>[1] 55 55 55 55 55 55 55 55 55 55</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Clearly, <kbd>margin = 1</kbd> is taking each row at a time, whereas <kbd>margin = 2</kbd> is taking the columns. In any case, <kbd>apply()</kbd> returns a vector of results, meaning the results must be of the same type each time. It is not the same shape as the input data.</p>
+<p>With <em>Step 2</em>, we move onto using <kbd>lapply()</kbd>, which can loop over many types of data structures, but always returns a list with one member for each iteration. Because it's a list, each member can be of a different type. We start by creating a simple vector containing the integers 1 to 3 and a custom function that just creates a vector of random numbers of a given length. Then, we use <kbd>lapply()</kbd> to apply that function over the vector; the first argument to <kbd>lapply()</kbd> is the thing to iterate over, and the second is the code to apply. Note that the current value of the vector we're looping over is passed automatically to the called function as the argument. Inspecting the resulting list, we see the following:</p>
+<pre>&gt;my_list <br/>[[1]] [1] -0.3069078<br/>[[2]] [1] 0.9207697 1.8198781 <br/>[[3]] [1] 0.3801964 -1.3022340 -0.8660626</pre>
+<p>We get a list of one random number, then two, then three, reflecting the change in the original vector.</p>
+<p>In <em>Step 3</em>, we see the difference between <kbd>lapply()</kbd> and <kbd>sapply()</kbd> when running over the same object. Recall <kbd>lapply()</kbd> always returns a list but <kbd>sapply()</kbd> can return a vector (<kbd>s</kbd> can be thought of as standing for <em>simplify</em>). We create a simple summary function to ensure we only get a single value back and <kbd>sapply()</kbd> can be used. Inspecting the results, we see the following:</p>
+<pre>&gt;lapply(my_list, summary_function) <br/>[[1]] [1] -0.3069078 <br/>[[2]] [1] 1.370324 <br/>[[3]] [1] -0.5960334<br/><br/>&gt;sapply(my_list, summary_function) <br/>[1] -0.3069078 1.3703239 -0.5960334<br/><br/></pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Finally, in <em>Step 4</em>, we use <kbd>lapply()</kbd> over a dataframe, namely, the built-in <kbd>iris</kbd> data. By default, it applies to columns on a dataframe, applying the <kbd>mean()</kbd> function to each one in turn. Note the last two arguments (<kbd>trim</kbd> and <kbd>na.rm</kbd>) are not arguments for <kbd>lapply()</kbd>, though, it does look like it. In all of these functions, the arguments after the vector to iterate over and the code (in other words, argument positions 1 and 2) are all passed to the code being run—here, our <kbd>mean()</kbd> function. The column names of the dataframe are used as the member names for the list. You may recall that one of the columns in <kbd>iris</kbd> is categorical, so <kbd>mean()</kbd> doesn't make much sense. Inspect the result to see what <kbd>lapply()</kbd> has done in this case:</p>
+<pre>&gt; lapply(iris, mean, trim = 0.1, na.rm = TRUE ) <br/>$Sepal.Length [1] 5.808333 <br/>$Sepal.Width [1] 3.043333 <br/>$Petal.Length [1] 3.76 <br/>$Petal.Width [1] 1.184167 <br/>$Species [1] NA</pre>
+<p>It has returned <kbd>NA</kbd>. Also, it has generated a warning but not failed. This can be a source of bugs in later analyses.</p>
+<p>With a simple list like this, we can also use <kbd>unlist()</kbd> to get a vector of the results:</p>
+<pre>&gt; unlist(list_from_data_frame)<br/>Sepal.Length Sepal.Width Petal.Length Petal.Width Species <br/>5.808333 3.043333 3.760000 1.184167 NA</pre>
+<p><span>If names are present, the vector is named.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  </body></html>

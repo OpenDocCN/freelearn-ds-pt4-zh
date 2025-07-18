@@ -1,0 +1,1441 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en-US" xml:lang="en-US">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="generator" content="pandoc"/>
+  <title>ch007.xhtml</title>
+  <style>
+  </style>
+  <link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/>
+</head>
+<body epub:type="bodymatter">
+<section id="vectors-and-vector-spaces" class="level2 chapterHead">
+<h1 class="chapterHead"><span class="titlemark"><span class="cmss-10x-x-109">1</span></span><br/>
+<span id="x1-190002"></span><span class="cmss-10x-x-109">Vectors and Vector Spaces</span></h1>
+<blockquote class="packt_quote">
+<p><span class="cmss-10x-x-109">”I want to point out that the class of abstract linear spaces is no larger than the class of spaces whose elements are arrays. So what is gained by abstraction? First of all, the freedom to use a single symbol for an array; this way we can think of vectors as basic building blocks, unencumbered by components. The abstract view leads to simple, transparent proofs of results.”</span></p>
+<div class="cite">
+<p><span class="cmss-10x-x-109">— Peter D. Lax, in Chapter 1 of his book Linear Algebra and its Applications</span></p>
+</div>
+</blockquote>
+<p><span class="cmss-10x-x-109">The mathematics of machine learning rests upon three pillars: </span><span class="cmssi-10x-x-109">linear algebra</span><span class="cmss-10x-x-109">, </span><span class="cmssi-10x-x-109">calculus</span><span class="cmss-10x-x-109">, and </span><span class="cmssi-10x-x-109">probability theory</span><span class="cmss-10x-x-109">. Linear algebra describes how to represent and manipulate data; calculus helps us fit the models; while probability theory helps interpret them.</span></p>
+<p><span class="cmss-10x-x-109">These build on top of each other, and we will start at the beginning: </span><span class="cmssi-10x-x-109">representing and manipulating data</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">To guide us</span><span id="dx1-19001"></span> <span class="cmss-10x-x-109">throughout this section, we will look at the famous Iris dataset (</span> <a href="https://en.wikipedia.org/wiki/Iris_flower_data_set" class="url"><span class="cmtt-10x-x-109">https://en.wikipedia.org/wiki/Iris_flower_data_set</span></a><span class="cmss-10x-x-109">). This contains the measurements from three species of Iris: the lengths and widths of sepals and petals. Each data point includes these four measurements, for which we also have the corresponding species: Iris setosa, Iris virginica, or Iris versicolor. (Sepals are the typically green, leaf-like structures at the base of a flower that protect the developing bud before it opens. Petals are the colorful, soft parts of a flower that attract pollinators like insects or birds.)</span></p>
+<p><span class="cmss-10x-x-109">The dataset can be loaded right away from scikit-learn (</span><a href="https://scikit-learn.org/" class="url"><span class="cmtt-10x-x-109">https://scikit-learn.org/</span></a><span class="cmss-10x-x-109">), so let’s take a look!</span></p>
+<div id="tcolobox-3" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>from sklearn.datasets import load_iris 
+data = load_iris() 
+X, y = data["/span&gt;data, data["/span&gt;target 
+X[:10]</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[5.1, 3.5, 1.4, 0.2], 
+      [4.9, 3. , 1.4, 0.2], 
+      [4.7, 3.2, 1.3, 0.2], 
+      [4.6, 3.1, 1.5, 0.2], 
+      [5. , 3.6, 1.4, 0.2], 
+      [5.4, 3.9, 1.7, 0.4], 
+      [4.6, 3.4, 1.4, 0.3], 
+      [5. , 3.4, 1.5, 0.2], 
+      [4.4, 2.9, 1.4, 0.2], 
+      [4.9, 3.1, 1.5, 0.1]])</code></pre>
+<p><span class="cmss-10x-x-109">Before going into the mathematical definitions, let’s establish a common vocabulary first. The measurements themselves are stored in a tabular format. Rows represent samples, and columns represent measurements. A particular measurement type is often called a </span><span class="cmssi-10x-x-109">feature</span><span class="cmss-10x-x-109">. As </span><span class="cmtt-10x-x-109">X.shape </span><span class="cmss-10x-x-109">tells us, the Iris dataset has 150 data points and four features:</span></p>
+<div id="tcolobox-4" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>X.shape</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>(150, 4)</code></pre>
+<p><span class="cmss-10x-x-109">(Don’t worry if you are not familiar with NumPy. We’ll learn about the details in due time. For now, it’s enough to understand that an array’s shape describes its dimensions.)</span></p>
+<p><span class="cmss-10x-x-109">For a given sample, the corresponding species is called the </span><span class="cmssi-10x-x-109">label</span><span class="cmss-10x-x-109">. In our case, this is either Iris setosa, Iris virginica, or Iris versicolor. Here, the labels are encoded with the numbers 0, 1, and 2:</span></p>
+<div id="tcolobox-5" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>y</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+      0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])</code></pre>
+<p><span class="cmss-10x-x-109">In mathematical terms, the Iris dataset forms a </span><span class="cmssi-10x-x-109">matrix</span><span class="cmss-10x-x-109">, and the data points form </span><span class="cmssi-10x-x-109">vectors</span><span class="cmss-10x-x-109">. Simply speaking, matrices are </span><span class="cmssi-10x-x-109">tables</span><span class="cmss-10x-x-109">, while vectors are </span><span class="cmssi-10x-x-109">tuples</span><span class="cmss-10x-x-109">. (Tuples are just finite and ordered sequences of objects, like </span>(1<span class="cmmi-10x-x-109">.</span>297<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">−</span>2<span class="cmmi-10x-x-109">.</span>35<span class="cmmi-10x-x-109">,</span>32<span class="cmmi-10x-x-109">.</span>3<span class="cmmi-10x-x-109">,</span>29<span class="cmmi-10x-x-109">.</span>874)<span class="cmss-10x-x-109">.) However, this simplistic view doesn’t show us the big picture. Vectors and matrices have a beautiful geometrical and algebraic structure, and exploring their mathematical theory allows us to see the patterns behind the data.</span></p>
+<p><span class="cmss-10x-x-109">How so? Say, besides</span> <span id="dx1-19026"></span><span class="cmss-10x-x-109">representing the data points in a compact form, we want to perform operations on them, like addition and scalar multiplication. Why do we need to add data points together? To give you a simple example, it is often beneficial if the features are on the same scale. If a given feature is distributed on a smaller scale than the others, it will have less influence on the predictions.</span></p>
+<p><span class="cmss-10x-x-109">Think about this: if somebody is whispering to you something from the next room while speakers blast loud music right next to your ear, you won’t hear anything of what the person is saying to you. Large-scale features are the blasting music, while the smaller ones are the whisper. You may obtain much more information from the whisper, but you need to quiet down the music first.</span></p>
+<p><span class="cmss-10x-x-109">To see this phenomenon in action, let’s take a look at the distribution of the features of our dataset!</span></p>
+<div id="tcolobox-6" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>import pandas as pd 
+import seaborn as sns 
+import matplotlib.pyplot as plt 
+import numpy as np 
+ 
+sns.set_theme(style="/span&gt;white rc={"/span&gt;axes.facecolor (0, 0, 0, 0)}) 
+ 
+# Create the data 
+x = X.ravel() 
+labels = ["/span&gt;sepal length /span&gt;sepal width /span&gt;petal length /span&gt;petal width 
+g = np.tile(labels, len(X)) 
+df = pd.DataFrame(dict(x=x, g=g)) 
+ 
+# Initialize the FacetGrid object 
+pal = sns.cubehelix_palette(10, rot=-.25, light=.7) 
+g = sns.FacetGrid(df, row="/span&gt;g hue="/span&gt;g aspect=10, height=1.5, palette=pal) 
+ 
+# Draw the densities 
+g.map(sns.kdeplot, /span&gt;x bw_adjust=.5, clip_on=False, fill=True, alpha=1, linewidth=1.5) 
+g.map(sns.kdeplot, /span&gt;x clip_on=False, color="/span&gt;w lw=2, bw_adjust=.5) 
+ 
+# Add reference line 
+g.refline(y=0, linewidth=2, linestyle="" color=None, clip_on=False) 
+ 
+# Label each plot 
+g.map(lambda x, color, label: plt.gca().text(0, .2, label, fontweight="/span&gt;bold color=color,ha="/span&gt;left va="/span&gt;center transform=plt.gca().transAxes), /span&gt;x 
+ 
+# Adjust subplots and aesthetics 
+g.figure.subplots_adjust(hspace=-.25) 
+g.set_titles("#x0022;) 
+g.set(yticks=[], ylabel="#x0022;) 
+g.despine(bottom=True, left=True) 
+ 
+plt.show()</code></pre>
+</div>
+</div>
+<div class="minipage">
+<p><img src="../media/file3.png" width="360" alt="PIC"/> <span id="x1-19061r1"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.1: The raw features of the Iris dataset</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">You can see in the figure</span> <span id="dx1-19062"></span><span class="cmss-10x-x-109">above that some are more stretched out (like sepal length), while others are narrower (like sepal width). In practical scenarios, this can hurt the predictive performance of our algorithms.</span></p>
+<p><span class="cmss-10x-x-109">To solve it, we can remove the </span><span class="cmssi-10x-x-109">mean </span><span class="cmss-10x-x-109">and the </span><span class="cmssi-10x-x-109">standard deviation </span><span class="cmss-10x-x-109">of a dataset. If the dataset consists of the vectors </span><span class="cmmib-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">x</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">x</span><sub><span class="cmr-8">150</span></sub> <span class="cmss-10x-x-109">, we can calculate their mean by</span></p>
+<div class="math-display">
+<img src="../media/file4.png" class="math-display" alt=" 150 μ = -1--∑ x ∈ ℝ4 150 i=1 i "/>
+</div>
+<p><span class="cmss-10x-x-109">and their standard deviation by</span></p>
+<div class="math-display">
+<img src="../media/file5.png" class="math-display" alt=" ┌ ---------------- ││ 1 1∑50 σ = ∘ ---- (xi − μ )2 ∈ ℝ4, 150 i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">where the subtraction and square operation in </span>(<span class="cmmib-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub> <span class="cmsy-10x-x-109">−</span><span class="cmmib-10x-x-109">μ</span>)<sup><span class="cmr-8">2</span></sup> <span class="cmss-10x-x-109">is taken elementwise.</span></p>
+<p><span class="cmss-10x-x-109">The components of </span><span class="cmmib-10x-x-109">μ </span>= (<span class="cmmi-10x-x-109">μ</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,μ</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">,μ</span><sub><span class="cmr-8">3</span></sub><span class="cmmi-10x-x-109">,μ</span><sub><span class="cmr-8">4</span></sub>) <span class="cmss-10x-x-109">and </span><span class="cmmib-10x-x-109">σ </span>= (<span class="cmmi-10x-x-109">σ</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,σ</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">,σ</span><sub><span class="cmr-8">3</span></sub><span class="cmmi-10x-x-109">,σ</span><sub><span class="cmr-8">4</span></sub>) <span class="cmss-10x-x-109">are the means and variances of the individual features. (Recall that the Iris dataset contains 150 samples and 4 features per sample.)</span></p>
+<p><span class="cmss-10x-x-109">In other words, the mean describes the average of samples, while the standard deviation represents the average distance from the mean. The larger the standard deviation is, the more spread out the samples are.</span></p>
+<p><span class="cmss-10x-x-109">With these quantities, the scaled dataset can be described as</span></p>
+<div class="math-display">
+<img src="../media/file6.png" class="math-display" alt="x1-−-μ- x2-−-μ- x150-−-μ σ , σ ,..., σ , "/>
+</div>
+<p><span class="cmss-10x-x-109">where both the subtraction and the division are taken elementwise.</span></p>
+<p><span class="cmss-10x-x-109">If you are familiar with Python and NumPy, this is how it is done. (Don’t worry if you are not – everything you need to know about them will be explained in the next chapter, with example code.)</span></p>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>
+X_scaled = (X - X.mean(axis=0))/X.std(axis=0)
+X_scaled[:10]
+</code></pre>
+</div>
+
+<pre class="lstlisting"><code>array([[-0.90068117,  1.01900435, -1.34022653, -1.3154443 ], 
+      [-1.14301691, -0.13197948, -1.34022653, -1.3154443 ], 
+      [-1.38535265,  0.32841405, -1.39706395, -1.3154443 ], 
+      [-1.50652052,  0.09821729, -1.2833891 , -1.3154443 ], 
+      [-1.02184904,  1.24920112, -1.34022653, -1.3154443 ], 
+      [-0.53717756,  1.93979142, -1.16971425, -1.05217993], 
+      [-1.50652052,  0.78880759, -1.34022653, -1.18381211], 
+      [-1.02184904,  0.78880759, -1.2833891 , -1.3154443 ], 
+      [-1.74885626, -0.36217625, -1.34022653, -1.3154443 ], 
+      [-1.14301691,  0.09821729, -1.2833891 , -1.44707648]])</code></pre>
+<div id="tcolobox-7" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code># Create the data 
+x = X_scaled.ravel() 
+labels = ["/span&gt;sepal length /span&gt;sepal width /span&gt;petal length /span&gt;petal width 
+g = np.tile(labels, X_scaled.shape[0]) 
+df = pd.DataFrame(dict(x=x, g=g)) 
+ 
+# Initialize the FacetGrid object 
+pal = sns.cubehelix_palette(10, rot=-.25, light=.7) 
+grid = sns.FacetGrid(df, row="/span&gt;g hue="/span&gt;g aspect=10, height=1.5, palette=pal) 
+ 
+# Draw the densities 
+grid.map(sns.kdeplot, /span&gt;x bw_adjust=.5, clip_on=False, fill=True, alpha=1, linewidth=1.5) 
+grid.map(sns.kdeplot, /span&gt;x clip_on=False, color="/span&gt;w lw=2, bw_adjust=.5) 
+ 
+# Add reference line 
+grid.refline(y=0, linewidth=2, linestyle="" color=None, clip_on=False) 
+ 
+# Add labels to each plot 
+grid.map(lambda x, color, label: plt.gca().text(0, .2, label, fontweight="/span&gt;bold color=color,ha="/span&gt;left va="/span&gt;center transform=plt.gca().transAxes), /span&gt;x 
+ 
+# Adjust subplots and aesthetics 
+grid.figure.subplots_adjust(hspace=-.25) 
+grid.set_titles("#x0022;) 
+grid.set(yticks=[], ylabel="#x0022;) 
+grid.despine(bottom=True, left=True) 
+ 
+plt.show()</code></pre>
+</div>
+</div>
+<div class="minipage">
+<p><img src="../media/file9.png" width="360" alt="PIC"/> <span id="x1-19102r2"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.2: The scaled features of the Iris dataset</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">If you compare the</span> <span id="dx1-19103"></span><span class="cmss-10x-x-109">modified version to the original, you can see that its features are on the same scale. In other words, we transformed the dataset to a more expressive one. From a (very) abstract point of view, machine learning is nothing else but a series of learned data transformations, turning raw data into a form where prediction is simple.</span></p>
+<p><span class="cmss-10x-x-109">In a mathematical setting, manipulating data and modeling its relations to the labels arise from the concept of </span><span class="cmssi-10x-x-109">vector spaces </span><span class="cmss-10x-x-109">and transformations between them. Let’s take the first steps by making the definition of vector spaces precise!</span></p>
+<section id="what-is-a-vector-space" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_7"><span class="titlemark"><span class="cmss-10x-x-109">1.1 </span></span> <span id="x1-200002.1"></span><span class="cmss-10x-x-109">What is a vector space?</span></h2>
+<p><span class="cmss-10x-x-109">Representing</span> <span id="dx1-20001"></span><span class="cmss-10x-x-109">multiple measurements as a tuple </span>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,x</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub>) <span class="cmss-10x-x-109">is a natural idea that has a ton of merits. The tuple form suggests that the components belong together in a precise order, giving a clear and concise way to store information.</span></p>
+<p><span class="cmss-10x-x-109">However, this comes at a cost: now we have to work with more complex objects. Despite dealing with tuples like </span>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub>) <span class="cmss-10x-x-109">instead of numbers, there are similarities. For instance, any two tuple </span><span class="cmmib-10x-x-109">x </span>= (<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub>) <span class="cmss-10x-x-109">and </span><span class="cmmib-10x-x-109">y </span>= (<span class="cmmi-10x-x-109">y</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,y</span><sub><span class="cmmi-8">n</span></sub>)</p>
+<ul>
+<li><span class="cmss-10x-x-109">can be added together by </span><span class="cmmib-10x-x-109">x</span><span class="cmbx-10x-x-109">+ </span><span class="cmmib-10x-x-109">y </span>= (<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">y</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub> + <span class="cmmi-10x-x-109">y</span><sub><span class="cmmi-8">n</span></sub>)<span class="cmss-10x-x-109">,</span></li>
+<li><span class="cmss-10x-x-109">and can be multiplied with scalars: if </span><span class="cmmi-10x-x-109">c </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">c</span><span class="cmmib-10x-x-109">x </span>= (<span class="cmmi-10x-x-109">cx</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,cx</span><sub><span class="cmmi-8">n</span></sub>)<span class="cmss-10x-x-109">.</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">It’s almost like using a number.</span></p>
+<p><span class="cmss-10x-x-109">These operations have clear geometric interpretations as well. Addition is the same as </span><span class="cmssi-10x-x-109">translation</span><span class="cmss-10x-x-109">, while multiplication with a scalar is a simple </span><span class="cmssi-10x-x-109">stretching</span><span class="cmss-10x-x-109">. (Or squeezing, if </span><span class="cmmi-10x-x-109">|c|&lt;1<span class="cmss-10x-x-109">.)</span> </span></p>
+<div class="minipage">
+<p><img src="../media/file10.png" width="360" alt="PIC"/> <span id="x1-20002r3"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.3: Geometric interpretation of addition and scalar multiplication</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">On the other hand, if we want to follow our geometric intuition (which we definitely do), it is unclear how to define vector multiplication. Even though the definition</span></p>
+<div class="math-display">
+<img src="../media/file11.png" class="math-display" alt="xy = (x1y1,...,xnyn) "/>
+</div>
+<p><span class="cmss-10x-x-109">makes sense algebraically, we don’t see what it means in a geometric sense.</span></p>
+<p><span class="cmss-10x-x-109">When we think about vectors and</span> <span id="dx1-20003"></span><span class="cmss-10x-x-109">vector spaces, we are thinking about a mathematical structure that fits our intuitive views and expectations. So, let’s turn these into the definition!</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-20004r2"></span> <span class="cmbx-10x-x-109">Definition 2.</span> </span><span class="cmbx-10x-x-109">(Vector spaces)</span></p>
+<p>A <span class="cmti-10x-x-109">vector space </span>is a mathematical structure (<span class="cmmi-10x-x-109">V,F,</span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅</span>), where</p>
+<p><span class="cmti-10x-x-109">(a) </span><span class="cmmi-10x-x-109">V </span>is the set of vectors,</p>
+<p><span class="cmti-10x-x-109">(b) </span><span class="cmmi-10x-x-109">F </span>is a field of scalars (most commonly the real numbers <span class="msbm-10x-x-109">ℝ </span>or the complex numbers <span class="msbm-10x-x-109">ℂ</span>),</p>
+<p><span class="cmti-10x-x-109">(c) </span>+ : <span class="cmmi-10x-x-109">V </span><span class="cmsy-10x-x-109">×</span><span class="cmmi-10x-x-109">V </span><span class="cmsy-10x-x-109">→ </span><span class="cmmi-10x-x-109">V </span>is the addition operation, satisfying the following properties:</p>
+<ul>
+<li><span class="cmmib-10x-x-109">x</span><span class="cmbx-10x-x-109">+ </span><span class="cmmib-10x-x-109">y </span><span class="cmbx-10x-x-109">= </span><span class="cmmib-10x-x-109">y </span><span class="cmbx-10x-x-109">+ </span><span class="cmmib-10x-x-109">x </span>(commutativity),</li>
+<li><span class="cmmib-10x-x-109">x</span><span class="cmbx-10x-x-109">+ (</span><span class="cmmib-10x-x-109">y </span><span class="cmbx-10x-x-109">+ </span><span class="cmmib-10x-x-109">z</span><span class="cmbx-10x-x-109">) = (</span><span class="cmmib-10x-x-109">x</span><span class="cmbx-10x-x-109">+ </span><span class="cmmib-10x-x-109">y</span><span class="cmbx-10x-x-109">) + </span><span class="cmmib-10x-x-109">z </span>(associativity),</li>
+<li>there is an element <span class="cmbx-10x-x-109">0 </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span>such that <span class="cmmib-10x-x-109">x </span><span class="cmbx-10x-x-109">+ 0 = </span><span class="cmmib-10x-x-109">x </span>(existence of the null vector),</li>
+<li>and there is an inverse <span class="cmbsy-10x-x-109">−</span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span>for each <span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span>such that <span class="cmmib-10x-x-109">x</span><span class="cmbx-10x-x-109">+(</span><span class="cmbsy-10x-x-109">−</span><span class="cmmib-10x-x-109">x</span><span class="cmbx-10x-x-109">) = 0</span> (existence of additive inverses)</li>
+</ul>
+<p>for all vectors <span class="cmmib-10x-x-109">x,y,z </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span>,</p>
+<p><span class="cmti-10x-x-109">(d) </span>and <span class="cmsy-10x-x-109">⋅ </span>: <span class="cmmi-10x-x-109">F </span><span class="cmsy-10x-x-109">×</span><span class="cmmi-10x-x-109">V </span><span class="cmsy-10x-x-109">→</span><span class="cmmi-10x-x-109">V </span>is the scalar multiplication operation, satisfying</p>
+<ul>
+<li><span class="cmmi-10x-x-109">a</span>(<span class="cmmi-10x-x-109">b</span><span class="cmmib-10x-x-109">x</span>) = (<span class="cmmi-10x-x-109">ab</span>)<span class="cmmib-10x-x-109">x </span>(associativity),</li>
+<li><span class="cmmi-10x-x-109">a</span><span class="cmbx-10x-x-109">(</span><span class="cmmib-10x-x-109">x</span><span class="cmbx-10x-x-109">+ </span><span class="cmmib-10x-x-109">y</span><span class="cmbx-10x-x-109">) </span>= <span class="cmmi-10x-x-109">a</span><span class="cmmib-10x-x-109">x </span>+ <span class="cmmi-10x-x-109">a</span><span class="cmmib-10x-x-109">y </span>(distributivity),</li>
+<li>and 1<span class="cmmib-10x-x-109">x </span>= <span class="cmmib-10x-x-109">x</span></li>
+</ul>
+<p>for all scalars <span class="cmmi-10x-x-109">a,b </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">F </span>and vectors <span class="cmmib-10x-x-109">x,y </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span>.</p>
+</div>
+<p><span class="cmss-10x-x-109">This definition is overloaded with new concepts, so let’s unpack it.</span></p>
+<p><span class="cmss-10x-x-109">First, looking at operations like addition and scalar multiplication as </span><span class="cmssi-10x-x-109">functions </span><span class="cmss-10x-x-109">might be unusual for you, but this is a perfectly natural representation. (We’ll learn about functions later in detail, but for now, feel free to think about them intuitively.) In writing, we use the notation </span><span class="cmmib-10x-x-109">x </span>+ <span class="cmmib-10x-x-109">y </span><span class="cmss-10x-x-109">, but when thinking about </span>+ <span class="cmss-10x-x-109">as a function of two variables, we might as well write</span> +(<span class="cmmib-10x-x-109">x</span><span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">y</span>)<span class="cmss-10x-x-109">. The form </span><span class="cmmib-10x-x-109">x </span>+ <span class="cmmib-10x-x-109">y </span><span class="cmss-10x-x-109">is called </span><span class="cmssi-10x-x-109">infix </span><span class="cmss-10x-x-109">notation, while </span>+(<span class="cmmib-10x-x-109">x</span><span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">y</span>) <span class="cmss-10x-x-109">is called </span><span class="cmssi-10x-x-109">prefix </span><span class="cmss-10x-x-109">notation.</span></p>
+<p><span class="cmss-10x-x-109">In vector spaces, the inputs of addition are two vectors and the result is a single vector, thus </span>+ <span class="cmss-10x-x-109">is a function that maps the Cartesian product </span><span class="cmmi-10x-x-109">V </span><span class="cmsy-10x-x-109">×</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">to </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">Similarly, scalar multiplication takes a scalar and a vector, resulting in a vector; meaning a function that maps </span><span class="cmmi-10x-x-109">F </span><span class="cmsy-10x-x-109">×</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">to </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">(The Cartesian product </span><span class="cmmi-10x-x-109">V </span><span class="cmsy-10x-x-109">×</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">is just a set of ordered pairs:</span></p>
+<div class="math-display">
+<img src="../media/file12.png" class="math-display" alt="V × V = {(u,v) : u,v ∈ V }. "/>
+</div>
+<p><span class="cmss-10x-x-109">Feel free to check out the set theory appendix (</span><span class="cmssi-10x-x-109">Appendix </span><a href="ch037.xhtml#basics-of-set-theory"><span class="cmssi-10x-x-109">C</span></a><span class="cmss-10x-x-109">) for more details, but for now, the intuitive understanding is enough.)</span></p>
+<p><span class="cmss-10x-x-109">This is also good place to note that mathematical definitions are always formalized in hindsight, after the objects themselves are somewhat crystallized and familiar to the users. Mathematics is often presented as definitions first, theorems second. This is not how it is done in practice. Examples motivate definitions, not the other way around.</span></p>
+<p><span class="cmss-10x-x-109">In general, the field of scalars can be something other than real or complex numbers. The term </span><span class="cmssi-10x-x-109">field </span><span class="cmss-10x-x-109">refers to a well-defined mathematical structure, which makes a natural notion mathematically precise. Without going into the technical details, we will think about fields as “a set of numbers where addition and multiplication work just as for real numbers”.</span></p>
+<p><span class="cmss-10x-x-109">Since we are not</span> <span id="dx1-20005"></span><span class="cmss-10x-x-109">concerned with the most general case, we will use </span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">or </span><span class="msbm-10x-x-109">ℂ </span><span class="cmss-10x-x-109">to avoid unnecessary difficulty. If you are not familiar with the exact mathematical definition of a field, don’t worry – just think of </span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">each time you read the word “field”.</span></p>
+<p><span class="cmss-10x-x-109">When everything is clear from the context, </span>(<span class="cmmi-10x-x-109">V,</span><span class="msbm-10x-x-109">ℝ</span><span class="cmmi-10x-x-109">,</span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅</span>) <span class="cmss-10x-x-109">will often be referred to as </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">for notational simplicity. So, if the field </span><span class="cmmi-10x-x-109">F </span><span class="cmss-10x-x-109">is not specified, it is implicitly assumed to be </span><span class="msbm-10x-x-109">ℝ</span><span class="cmss-10x-x-109">. When we want to emphasize this, we’ll call these </span><span class="cmssi-10x-x-109">real </span><span class="cmss-10x-x-109">vector spaces.</span></p>
+<p><span class="cmss-10x-x-109">At first sight, </span><span class="cmssi-10x-x-109">Definition </span><a href="ch007.xhtml#x1-20004r2"><span class="cmssi-10x-x-109">2</span></a> <span class="cmss-10x-x-109">is certainly too complex to comprehend. It seems like just a bunch of sets, operations, and properties thrown together. However, to help us build a mental model, we can imagine a vector as an arrow, starting from the null vector. (Recall that the null vector </span>0 <span class="cmss-10x-x-109">is that special one for which </span><span class="cmmib-10x-x-109">x </span>+ 0 = <span class="cmmi-10x-x-109">x </span><span class="cmss-10x-x-109">holds for all </span><span class="cmmib-10x-x-109">x</span><span class="cmss-10x-x-109">. Thus, it can be considered as an arrow with zero length; the origin.)</span></p>
+<p><span class="cmss-10x-x-109">To further familiarize ourselves with the concept, let’s see some examples of vector spaces!</span></p>
+<section id="examples-of-vector-spaces" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_8"><span class="titlemark"><span class="cmss-10x-x-109">1.1.1 </span></span> <span id="x1-210002.1.1"></span><span class="cmss-10x-x-109">Examples of vector spaces</span></h3>
+<p><span class="cmss-10x-x-109">Examples are</span> <span id="dx1-21001"></span><span class="cmss-10x-x-109">one of the best ways of building insight into seemingly difficult concepts like vector spaces. We humans, usually think in terms of </span><span class="cmssi-10x-x-109">models </span><span class="cmss-10x-x-109">instead of abstractions. (Yes, this includes pure mathematicians. Even though they might deny it.)</span></p>
+<p><span class="cmssbx-10x-x-109">Example 1. </span><span class="cmss-10x-x-109">The most ubiquitous instance of the vector space is </span>(<span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">,</span><span class="msbm-10x-x-109">ℝ</span><span class="cmmi-10x-x-109">,</span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅</span>)<span class="cmss-10x-x-109">, the same one we used to motivate the definition itself. (</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">refers to the </span><span class="cmssi-10x-x-109">n</span><span class="cmss-10x-x-109">-fold Cartesian product of the set of real numbers. If you are unfamiliar with this notion, check the set theory tutorial in </span><span class="cmssi-10x-x-109">Appendix C</span><span class="cmss-10x-x-109">.)</span></p>
+<p>(<span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">,</span><span class="msbm-10x-x-109">ℝ</span><span class="cmmi-10x-x-109">,</span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅</span>) <span class="cmss-10x-x-109">is the canonical model, the one we use to guide us throughout our studies. If </span><span class="cmmi-10x-x-109">n </span>= 2<span class="cmss-10x-x-109">, we are simply talking about the familiar Euclidean plane.</span></p>
+<div class="minipage">
+<p><img src="../media/file13.png" width="399" alt="PIC"/> <span id="x1-21002r4"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.4: The Euclidean plane as a vector space</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Using </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">2</span></sup> <span class="cmss-10x-x-109">or </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">3</span></sup> <span class="cmss-10x-x-109">for visualization can help a lot. What works here will usually work in the general case, although sometimes this can be dangerous. Math relies on both intuition and logic. We develop ideas using our intuition, but we confirm them with our logic.</span></p>
+<p><span class="cmssbx-10x-x-109">Example 2. </span><span class="cmss-10x-x-109">Vector spaces are not just a collection of finite tuples. An example is</span> <span id="dx1-21003"></span><span class="cmss-10x-x-109">the space of polynomial functions with real coefficients, defined by</span></p>
+<div class="math-display">
+<img src="../media/file14.png" class="math-display" alt=" ∑n ℝ [x ] = { pixi : pi ∈ ℝ, n = 0,1,...}. i=0 "/>
+</div>
+<p><span class="cmss-10x-x-109">Two polynomials </span><span class="cmmi-10x-x-109">p</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">q</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">can be added together by</span></p>
+<div class="math-display">
+<img src="../media/file15.png" class="math-display" alt=" ∑n i p(x)+ q(x) := (pi + qi)x , k=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">and can be multiplied with a real scalar by</span></p>
+<div class="math-display">
+<img src="../media/file16.png" class="math-display" alt=" ∑n cp(x) = cpixi. k=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">With these operations, </span>(<span class="msbm-10x-x-109">ℝ</span>[<span class="cmmi-10x-x-109">x</span>]<span class="cmmi-10x-x-109">,</span><span class="msbm-10x-x-109">ℝ</span><span class="cmmi-10x-x-109">,</span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅</span>) <span class="cmss-10x-x-109">is a vector space. Although most of the time we percieve polynomials as functions, they can be represented as tuples of coefficients as well:</span></p>
+<div class="math-display">
+<img src="../media/file17.png" class="math-display" alt="∑n pixi ← → (p0,...,pn). i=0 "/>
+</div>
+<p><span class="cmss-10x-x-109">Note that </span><span class="cmmi-10x-x-109">n </span><span class="cmss-10x-x-109">– the degree of the polynomial – is unbounded. As a consequence, this vector space has a significantly richer structure than </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmssbx-10x-x-109">Example 3. </span><span class="cmss-10x-x-109">The previous example can be further generalized. Let </span><span class="cmmi-10x-x-109">C</span>([0<span class="cmmi-10x-x-109">,</span>1]) <span class="cmss-10x-x-109">denote the</span><span id="dx1-21004"></span> <span class="cmss-10x-x-109">set of all continuous real functions </span><span class="cmmi-10x-x-109">f </span>: [0<span class="cmmi-10x-x-109">,</span>1] <span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ</span><span class="cmss-10x-x-109">. Then </span>(<span class="cmmi-10x-x-109">C</span>(<span class="msbm-10x-x-109">ℝ</span>)<span class="cmmi-10x-x-109">,</span><span class="msbm-10x-x-109">ℝ</span><span class="cmmi-10x-x-109">,</span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅</span>) <span class="cmss-10x-x-109">is a vector space, where the addition and scalar multiplication are defined elementwise:</span></p>
+<div class="math-display">
+<img src="../media/file18.png" class="math-display" alt="(f + g )(x) := f(x)+ g(x), (cf)(x) = cf (x ) "/>
+</div>
+<p><span class="cmss-10x-x-109">for all </span><span class="cmmi-10x-x-109">f,g </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">C</span>(<span class="msbm-10x-x-109">ℝ</span>) <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">c </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><span class="cmss-10x-x-109">. (Although continuity is a concept that we haven’t defined yet, feel free to think of a continuous function as one whose graph can be drawn without lifting your pen.)</span></p>
+<p><span class="cmss-10x-x-109">Yes, that is right: functions can be thought of as vectors as well. Spaces of functions play a significant role in mathematics, and they come in several different forms. We often restrict the space to continuous functions, differentiable functions, or basically any subset that is closed under the given operations.</span></p>
+<p><span class="cmss-10x-x-109">(In fact, </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">can be also thought of as a function space. From an abstract viewpoint, each vector </span><span class="cmmib-10x-x-109">x </span>= (<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub>) <span class="cmss-10x-x-109">is a mapping from </span><span class="cmsy-10x-x-109">{</span>1<span class="cmmi-10x-x-109">,</span>2<span class="cmmi-10x-x-109">,…,n</span><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">to </span><span class="msbm-10x-x-109">ℝ</span><span class="cmss-10x-x-109">.)</span></p>
+<p><span class="cmss-10x-x-109">Function spaces are encountered in more advanced topics, such as </span><a href="http://proceedings.mlr.press/v97/behrmann19a/behrmann19a.pdf"><span class="cmss-10x-x-109">inverting ResNet architectures</span></a><span class="cmss-10x-x-109">, which we won’t deal with in this book. However, it is worth seeing examples that are different (and not as straightforward) as </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">.</span></p>
+</section>
+</section>
+<section id="the-basis" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_9"><span class="titlemark"><span class="cmss-10x-x-109">1.2 </span></span> <span id="x1-220002.2"></span><span class="cmss-10x-x-109">The basis</span></h2>
+<p><span class="cmss-10x-x-109">Although our</span><span id="dx1-22001"></span> <span class="cmss-10x-x-109">vector spaces contain infinitely many vectors, we can reduce the complexity by finding special subsets that can express </span><span class="cmssi-10x-x-109">any </span><span class="cmss-10x-x-109">other vector.</span></p>
+<p><span class="cmss-10x-x-109">To make this idea precise, let’s consider our recurring example </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">. There, we have a special vector set</span></p>
+<table class="align-star">
+<tbody>
+<tr class="odd">
+<td class="align-odd"><span class="cmmib-10x-x-109">e</span><sub><span class="cmr-8">1</span></sub></td>
+<td class="align-even">= (1<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,…,</span>0)</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="even">
+<td class="align-odd"><span class="cmmib-10x-x-109">e</span><sub><span class="cmr-8">2</span></sub></td>
+<td class="align-even">= (0<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,…,</span>0)</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="odd">
+<td class="align-odd"></td>
+<td class="align-even"><img src="../media/file19.png" class="vdots" alt=".. ."/></td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="even">
+<td class="align-odd"><span class="cmmib-10x-x-109">e</span><sub><span class="cmmi-8">n</span></sub></td>
+<td class="align-even">= (0<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,…,</span>1)</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+</tbody>
+</table>
+<p><span class="cmss-10x-x-109">which can be used to express each vector </span><span class="cmmib-10x-x-109">x </span>= (<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub>) <span class="cmss-10x-x-109">as</span></p>
+<div class="math-display">
+<img src="../media/file20.png" class="math-display" alt=" n x = ∑ xe , x ∈ ℝ, e ∈ ℝn i i i i i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">For instance, </span><span class="cmmib-10x-x-109">e</span><sub><span class="cmr-8">1</span></sub> = (1<span class="cmmi-10x-x-109">,</span>0) <span class="cmss-10x-x-109">and </span><span class="cmmib-10x-x-109">e</span><sub><span class="cmr-8">2</span></sub> = (0<span class="cmmi-10x-x-109">,</span>1) <span class="cmss-10x-x-109">in </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">What we have just seen feels extremely trivial and it seems to only complicate things. Why would we need to write vectors in the form of </span><span class="cmmib-10x-x-109">x </span>= <span class="cmex-10x-x-109">∑</span> <sub><span class="cmmi-8">i</span><span class="cmr-8">=1</span></sub><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub><span class="cmmib-10x-x-109">e</span><sub><span class="cmmi-8">i</span></sub><span class="cmss-10x-x-109">, instead of simply using the coordinates </span>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub>) <span class="cmss-10x-x-109">? Because, in fact, the coordinate notation depends on the underlying vector set (</span><span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">e</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">e</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">in our case) used to express other vectors.</span></p>
+<p><span class="cmss-10x-x-109">A vector is </span><span class="cmssi-10x-x-109">not </span><span class="cmss-10x-x-109">the same as its coordinates! A single vector can have multiple different coordinates in different systems, and switching between these is a useful tool.</span></p>
+<p><span class="cmss-10x-x-109">Thus, the set </span><span class="cmmi-10x-x-109">E </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">e</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">e</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">}⊆</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">is rather special, as it significantly reduces the complexity of representing vectors. With the vector addition and scalar multiplication operations, it </span><span class="cmssi-10x-x-109">spans </span><span class="cmss-10x-x-109">our vector space entirely. </span><span class="cmmi-10x-x-109">E </span><span class="cmss-10x-x-109">is an instance of a vector space </span><span class="cmssi-10x-x-109">basis</span><span class="cmss-10x-x-109">, a set that serves as a skeleton of </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">In this section, we are going to introduce and study the concept of vector space basis in detail.</span></p>
+<section id="linear-combinations-and-independence" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_10"><span class="titlemark"><span class="cmss-10x-x-109">1.2.1 </span></span> <span id="x1-230002.2.1"></span><span class="cmss-10x-x-109">Linear combinations and independence</span></h3>
+<p><span class="cmss-10x-x-109">Let’s zoom out from</span> <span id="dx1-23001"></span><span class="cmss-10x-x-109">the special case </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">and start talking about general vector spaces. From our motivating example regarding bases, we have seen that sums of the form</span></p>
+<div class="math-display">
+<img src="../media/file21.png" class="math-display" alt="∑n xivi, i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">where the </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub><span class="cmss-10x-x-109">-s are vectors and the </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">coefficients are scalars, play a crucial role. These are called </span><span class="cmssi-10x-x-109">linear combinations</span><span class="cmss-10x-x-109">. A linear combination is called </span><span class="cmssi-10x-x-109">trivial </span><span class="cmss-10x-x-109">if all of the coefficients are zero.</span></p>
+<p><span class="cmss-10x-x-109">Given a set of vectors, the same vector can potentially be expressed as a linear combination in multiple ways. For example, if </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub> = (1<span class="cmmi-10x-x-109">,</span>0)<span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">2</span></sub> = (0<span class="cmmi-10x-x-109">,</span>1)<span class="cmss-10x-x-109">, and </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">3</span></sub> = (1<span class="cmmi-10x-x-109">,</span>1)<span class="cmss-10x-x-109">, then</span></p>
+<table class="align-star">
+<tbody>
+<tr class="odd">
+<td class="align-odd">(2<span class="cmmi-10x-x-109">,</span>1)</td>
+<td class="align-even">= 2<span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">2</span></sub></td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="even">
+<td class="align-odd"></td>
+<td class="align-even">= <span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">3</span></sub><span class="cmmi-10x-x-109">.</span></td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+</tbody>
+</table>
+<p><span class="cmss-10x-x-109">This suggests that the set </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">3</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">is redundant, as it contains duplicate information. The concept of </span><span class="cmssi-10x-x-109">linear dependence and independence </span><span class="cmss-10x-x-109">makes this precise.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-23002r3"></span> <span class="cmbx-10x-x-109">Definition 3.</span> </span><span class="cmbx-10x-x-109">(Linear dependence and independence)</span></p>
+<p>Let <span class="cmmi-10x-x-109">V </span>be a vector space and <span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">} </span>be a subset of its vectors. <span class="cmmi-10x-x-109">S</span> is said to be <span class="cmti-10x-x-109">linearly dependent </span>if it only contains the zero vector, or there is a nonzero <span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">k</span></sub> that can be expressed as a linear combination of the other vectors <span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">k</span><span class="cmsy-8">−</span><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">k</span><span class="cmr-8">+1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub>.</p>
+<p><span class="cmmi-10x-x-109">S </span>is said to be <span class="cmti-10x-x-109">linearly independent </span>if it is not linearly dependent.</p>
+</div>
+<p><span class="cmss-10x-x-109">Linear dependence</span> <span id="dx1-23003"></span><span class="cmss-10x-x-109">and independence can be looked at from a different angle. If</span></p>
+<div class="math-display">
+<img src="../media/file22.png" class="math-display" alt=" k∑−1 ∑n vk = xivi + xivi, i=1 i=k+1 "/>
+</div>
+<p><span class="cmss-10x-x-109">for some nonzero </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">k</span></sub><span class="cmss-10x-x-109">, then by subtracting </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">k</span></sub><span class="cmss-10x-x-109">, we obtain that the null vector can be obtained as a nontrivial linear combination</span></p>
+<div class="math-display">
+<img src="../media/file23.png" class="math-display" alt=" ∑n 0 = xivi i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">for some scalars </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub><span class="cmss-10x-x-109">, where </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">k</span></sub> = <span class="cmsy-10x-x-109">−</span>1<span class="cmss-10x-x-109">. This is an equivalent definition of linear dependence. With this, we have proved the following theorem.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-23004r2"></span> <span class="cmbx-10x-x-109">Theorem 2.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">be a vector space and </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">}</span><span class="cmti-10x-x-109">be a subset of its vectors.</span></p>
+<p><span class="cmti-10x-x-109">(a) </span><span class="cmmi-10x-x-109">S </span><span class="cmti-10x-x-109">is linearly dependent if and only if the null vector </span><span class="cmbx-10x-x-109">0 </span><span class="cmti-10x-x-109">can be obtained as a nontrivial linear combination.</span></p>
+<p><span class="cmti-10x-x-109">(b) </span><span class="cmmi-10x-x-109">S </span><span class="cmti-10x-x-109">is linearly independent if and only if whenever </span><span class="cmbx-10x-x-109">0 </span>= <span class="cmex-10x-x-109">∑</span> <sub><span class="cmmi-8">i</span><span class="cmr-8">=1</span></sub><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub><span class="cmti-10x-x-109">, all coefficients </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub> <span class="cmti-10x-x-109">are zero.</span></p>
+</div>
+</section>
+<section id="spans-of-vector-sets" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_11"><span class="titlemark"><span class="cmss-10x-x-109">1.2.2 </span></span> <span id="x1-240002.2.2"></span><span class="cmss-10x-x-109">Spans of vector sets</span></h3>
+<p><span class="cmss-10x-x-109">Linear combinations</span> <span id="dx1-24001"></span><span class="cmss-10x-x-109">provide a way to take a small set of vectors and generate a whole lot of others from them. For a set of vectors </span><span class="cmmi-10x-x-109">S</span><span class="cmss-10x-x-109">, taking all of its possible linear combinations is called </span><span class="cmssi-10x-x-109">spanning</span><span class="cmss-10x-x-109">, and the generated set is called the </span><span class="cmssi-10x-x-109">span</span><span class="cmss-10x-x-109">. Formally, it is defined by</span></p>
+<div class="math-display">
+<img src="../media/file24.png" class="math-display" alt=" ∑n span(S ) = { xivi : n ∈ ℕ, vi ∈ S,xi is a scalar}. i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">Note that the vector set </span><span class="cmmi-10x-x-109">S </span><span class="cmss-10x-x-109">is not necessarily finite. To help illustrate the concept of span, we can visualize the process in three dimensions. The span of two linearly independent vectors is a </span><span class="cmssi-10x-x-109">plane</span><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file25.png" width="370" alt="PIC"/> <span id="x1-24002r5"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.5: The span of two linearly independent vectors </span><span class="cmmib-10x-x-109">u</span><span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">v </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">3</span></sup> </span>
+</div>
+<p><span class="cmss-10x-x-109">When we talk about the span of a finite set </span><span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">}</span><span class="cmss-10x-x-109">, we denote the span as</span></p>
+<div class="math-display">
+<img src="../media/file26.png" class="math-display" alt="span (v ,...,v ). 1 n "/>
+</div>
+<p><span class="cmss-10x-x-109">This helps us avoid overcomplicating notations by naming every set.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-24003r1"></span> <span class="cmbx-10x-x-109">Proposition 1.</span> </span> <span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">be a vector space and </span><span class="cmmi-10x-x-109">S,S</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,S</span><sub><span class="cmr-8">2</span></sub> <span class="cmsy-10x-x-109">⊆</span><span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">be subsets of its vectors.</span></p>
+<p><span class="cmti-10x-x-109">(a) If </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">1</span></sub> <span class="cmsy-10x-x-109">⊆</span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">2</span></sub><span class="cmti-10x-x-109">, then</span> span(<span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">1</span></sub>) <span class="cmsy-10x-x-109">⊆</span> span(<span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">2</span></sub>)<span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(b)</span> span(span(<span class="cmmi-10x-x-109">S</span>)) = span(<span class="cmmi-10x-x-109">S</span>)<span class="cmti-10x-x-109">.</span></p>
+</div>
+<p><span class="cmss-10x-x-109">This is our very first proof! Give it a read, and if it’s too difficult, move on and revisit it later. Just make sure that you understand what the proposition says.</span></p>
+<div id="tcolobox-8" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">The property </span><span class="cmssi-10x-x-109">(a) </span><span class="cmss-10x-x-109">follows directly from the definition. To prove </span><span class="cmssi-10x-x-109">(b)</span><span class="cmss-10x-x-109">, we have to show that</span> span(<span class="cmmi-10x-x-109">S</span>) <span class="cmsy-10x-x-109">⊆</span> span(span(<span class="cmmi-10x-x-109">S</span>)) <span class="cmss-10x-x-109">and</span> span(span(<span class="cmmi-10x-x-109">S</span>)) <span class="cmsy-10x-x-109">⊆</span> span(<span class="cmmi-10x-x-109">S</span>)<span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">(This is one of those </span><span class="cmssi-10x-x-109">steep learning curve </span><span class="cmss-10x-x-109">moments, but think about it for a second: two sets </span><span class="cmmi-10x-x-109">A </span><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">B </span><span class="cmss-10x-x-109">are equal if and only if </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">⊆ </span><span class="cmmi-10x-x-109">B </span><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">B </span><span class="cmsy-10x-x-109">⊆</span><span class="cmmi-10x-x-109">A</span><span class="cmss-10x-x-109">.)</span></p>
+<p><span class="cmss-10x-x-109">The former follows from the definition. For the latter, let </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span> span(span(<span class="cmmi-10x-x-109">S</span>))<span class="cmss-10x-x-109">. Then</span></p>
+<div class="math-display">
+<img src="../media/file27.png" class="math-display" alt=" ∑n x = xivi i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">for some </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub> <span class="cmsy-10x-x-109">∈</span> span(<span class="cmmi-10x-x-109">S</span>)<span class="cmss-10x-x-109">. Because of </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">being in the span of </span><span class="cmmi-10x-x-109">S</span><span class="cmss-10x-x-109">, we have</span></p>
+<div class="math-display">
+<img src="../media/file28.png" class="math-display" alt=" ∑m vi = vi,juj j=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">for some </span><span class="cmmib-10x-x-109">u</span><sub><span class="cmmi-8">j</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">S</span><span class="cmss-10x-x-109">. Thus,</span></p>
+<div class="math-display">
+<img src="../media/file29.png" class="math-display" alt=" ∑n ∑n ∑m ∑m ∑n x = xivi = xi vi,juj = ( xivi,j)uj, i=1 i=1 j=1 j=1 i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">implying that </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span> span(<span class="cmmi-10x-x-109">S</span>) <span class="cmss-10x-x-109">as well.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Because of</span> span(span(<span class="cmmi-10x-x-109">S</span>)) = span(<span class="cmmi-10x-x-109">S</span>)<span class="cmss-10x-x-109">, if </span><span class="cmmi-10x-x-109">S </span><span class="cmss-10x-x-109">is linearly dependent, we can remove the redundant vectors and still keep the span the same.</span></p>
+<p><span class="cmss-10x-x-109">Think about it: if </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">and, say, </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub> = <span class="cmex-10x-x-109">∑</span> <sub><span class="cmmi-8">i</span><span class="cmr-8">=1</span></sub><sup><span class="cmmi-8">n</span><span class="cmsy-8">−</span><span class="cmr-8">1</span></sup><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">, then </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub> <span class="cmsy-10x-x-109">∈</span> span(<span class="cmmi-10x-x-109">S </span><span class="cmsy-10x-x-109">∖{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">}</span>)<span class="cmss-10x-x-109">. So,</span></p>
+<div class="math-display">
+<img src="../media/file30.png" class="math-display" alt="span(S ∖{vn }) = span (span(S ∖ {vn})) = span (S ). "/>
+</div>
+<p><span class="cmss-10x-x-109">(The operation </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∖</span><span class="cmmi-10x-x-109">B </span><span class="cmss-10x-x-109">is the set difference, containing all that are elements of </span><span class="cmmi-10x-x-109">A</span><span class="cmss-10x-x-109">, but not elements of </span><span class="cmmi-10x-x-109">B</span><span class="cmss-10x-x-109">. Feel free to check out </span><span class="cmssi-10x-x-109">Appendix C </span><span class="cmss-10x-x-109">for more details.)</span></p>
+<p><span class="cmss-10x-x-109">Among sets of vectors, those that generate the entire vector space are special. After all this setup, we are ready to make a formal definition. Any set of vectors </span><span class="cmmi-10x-x-109">S </span><span class="cmss-10x-x-109">that have the property</span> span(<span class="cmmi-10x-x-109">S</span>) = <span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">is called a </span><span class="cmssi-10x-x-109">generating set </span><span class="cmss-10x-x-109">for </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmmi-10x-x-109">S </span><span class="cmss-10x-x-109">can be</span> <span id="dx1-24004"></span><span class="cmss-10x-x-109">thought of as a “lossless compression” of </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">, as it contains all the information needed to reconstruct any element in </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">, yet it is smaller than the entire space. Thus, we want to reduce the size of the generating set as much as possible. This leads us to one of the most important concepts in linear algebra: minimal generating sets, or </span><span class="cmssi-10x-x-109">bases</span><span class="cmss-10x-x-109">, as we prefer to call them.</span></p>
+</section>
+<section id="bases-the-minimal-generating-sets" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_12"><span class="titlemark"><span class="cmss-10x-x-109">1.2.3 </span></span> <span id="x1-250002.2.3"></span><span class="cmss-10x-x-109">Bases, the minimal generating sets</span></h3>
+<p><span class="cmss-10x-x-109">With all the</span> <span id="dx1-25001"></span><span class="cmss-10x-x-109">intuition we have built so far, let’s jump into the definition right away!</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-25002r4"></span> <span class="cmbx-10x-x-109">Definition 4.</span> </span><span class="cmbx-10x-x-109">(Basis)</span></p>
+<p>Let <span class="cmmi-10x-x-109">V </span>be a vector space and <span class="cmmi-10x-x-109">S </span>be a subset of its vectors. <span class="cmmi-10x-x-109">S </span>is a <span class="cmti-10x-x-109">basis </span>of <span class="cmmi-10x-x-109">V</span> if:</p>
+<p><span class="cmti-10x-x-109">(a) </span><span class="cmmi-10x-x-109">S </span>is linearly independent,</p>
+<p><span class="cmti-10x-x-109">(b) </span>and span(<span class="cmmi-10x-x-109">S</span>) = <span class="cmmi-10x-x-109">V </span>.</p>
+<p>The elements of a basis set are called <span class="cmti-10x-x-109">basis vectors</span>.</p>
+</div>
+<p><span class="cmss-10x-x-109">It can be shown that these defining properties mean that every vector </span><span class="cmmi-10x-x-109">x </span><span class="cmss-10x-x-109">can be </span><span class="cmssi-10x-x-109">uniquely </span><span class="cmss-10x-x-109">written as a linear combination of </span><span class="cmmi-10x-x-109">S</span><span class="cmss-10x-x-109">. (This is left as an exercise for the reader.)</span></p>
+<p><span class="cmss-10x-x-109">Let’s see some examples! In </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">3</span></sup><span class="cmss-10x-x-109">, the set </span><span class="cmsy-10x-x-109">{</span>(1<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,</span>0)<span class="cmmi-10x-x-109">,</span>(0<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span>0)<span class="cmmi-10x-x-109">,</span>(0<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,</span>1)<span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">is a basis, but so is </span><span class="cmsy-10x-x-109">{</span>(1<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span>1)<span class="cmmi-10x-x-109">,</span>(1<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span>0)<span class="cmmi-10x-x-109">,</span>(0<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span>1)<span class="cmsy-10x-x-109">}</span><span class="cmss-10x-x-109">. So, there can be more than one basis for the same vector space.</span></p>
+<p><span class="cmss-10x-x-109">For </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">, the most commonly used basis is </span><span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">e</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">e</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">}</span><span class="cmss-10x-x-109">, where </span><span class="cmmib-10x-x-109">e</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">is a vector whose all coordinates are 0, except the </span><span class="cmmi-10x-x-109">i</span><span class="cmss-10x-x-109">-th one, which is </span>1<span class="cmss-10x-x-109">. This is called the </span><span class="cmssi-10x-x-109">standard basis</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">In terms of the “information” contained in a set of vectors, bases hit the sweet spot. Adding any new vector to a basis set would introduce redundancy; removing any of its elements would cause the set to be incomplete.</span></p>
+<p><span class="cmss-10x-x-109">These notions are formalized in the two theorems below.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-25003r3"></span> <span class="cmbx-10x-x-109">Theorem 3.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">be a vector space and </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmti-10x-x-109">be a subset of vectors. The following are equivalent:</span></p>
+<p><span class="cmti-10x-x-109">(a) </span><span class="cmmi-10x-x-109">S </span><span class="cmti-10x-x-109">is a basis.</span></p>
+<p><span class="cmti-10x-x-109">(b) </span><span class="cmmi-10x-x-109">S </span><span class="cmti-10x-x-109">is linearly independent and for any </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span><span class="cmsy-10x-x-109">∖</span><span class="cmmi-10x-x-109">S</span><span class="cmti-10x-x-109">, the vector set </span><span class="cmmi-10x-x-109">S </span><span class="cmsy-10x-x-109">∪{</span><span class="cmmib-10x-x-109">x</span><span class="cmsy-10x-x-109">} </span><span class="cmti-10x-x-109">is linearly dependent. In other words, </span><span class="cmmi-10x-x-109">S </span><span class="cmti-10x-x-109">is a maximal linearly independent set.</span></p>
+</div>
+<div id="tcolobox-9" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">To show the equivalence of two propositions, we have to prove two things: that </span><span class="cmssi-10x-x-109">(a) </span><span class="cmss-10x-x-109">implies </span><span class="cmssi-10x-x-109">(b)</span><span class="cmss-10x-x-109">; and that </span><span class="cmssi-10x-x-109">(b) </span><span class="cmss-10x-x-109">implies </span><span class="cmssi-10x-x-109">(a)</span><span class="cmss-10x-x-109">. Let’s start with the first one!</span></p>
+<p><span class="cmssi-10x-x-109">(a)</span> <img src="../media/file31.png" class="Longrightarrow" width="15" alt="=⇒"/> <span class="cmssi-10x-x-109">(b) </span><span class="cmss-10x-x-109">If </span><span class="cmmi-10x-x-109">S </span><span class="cmss-10x-x-109">is a basis, then any </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">can be written as</span></p>
+<div class="math-display">
+<img src="../media/file32.png" class="math-display" alt=" n ∑ x = xivi i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">for some </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><span class="cmss-10x-x-109">. Thus, by definition, </span><span class="cmmi-10x-x-109">S </span><span class="cmsy-10x-x-109">∪{</span><span class="cmmib-10x-x-109">x</span><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">is linearly dependent.</span></p>
+<p><span class="cmssi-10x-x-109">(b)</span> <img src="../media/file33.png" class="Longrightarrow" width="15" alt="=⇒"/> <span class="cmssi-10x-x-109">(a) </span><span class="cmss-10x-x-109">Our goal is to show that any </span><span class="cmmib-10x-x-109">x </span><span class="cmss-10x-x-109">can be written as a linear combination of the vectors in </span><span class="cmmi-10x-x-109">S</span><span class="cmss-10x-x-109">. By our assumption, </span><span class="cmmi-10x-x-109">S </span><span class="cmsy-10x-x-109">∪{</span><span class="cmmib-10x-x-109">x</span><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">is linearly dependent, so </span><span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">can be written as a nontrivial linear combination:</span></p>
+<div class="math-display">
+<img src="../media/file34.png" class="math-display" alt=" ∑n 0 = αx + xivi, i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">where not all coefficients are zero. Because </span><span class="cmmi-10x-x-109">S </span><span class="cmss-10x-x-109">is linearly independent, </span><span class="cmmi-10x-x-109">α </span><span class="cmss-10x-x-109">cannot be zero (as it would imply the linear dependence of </span><span class="cmmi-10x-x-109">S</span><span class="cmss-10x-x-109">, which would go against our assumptions). Thus,</span></p>
+<div class="math-display">
+<img src="../media/file35.png" class="math-display" alt=" ∑n x = − xivi, i=1 α "/>
+</div>
+<p><span class="cmss-10x-x-109">showing that </span><span class="cmmi-10x-x-109">S </span><span class="cmss-10x-x-109">is a basis.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Next, we</span> <span id="dx1-25004"></span><span class="cmss-10x-x-109">are going to show that every vector of a basis is essential.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-25005r4"></span> <span class="cmbx-10x-x-109">Theorem 4.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">be a vector space and </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">}</span><span class="cmti-10x-x-109">a basis. Then, for any </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">S</span><span class="cmti-10x-x-109">,</span></p>
+<div class="math-display">
+<img src="../media/file36.png" class="math-display" alt="span(S ∖ {vi}) ⊂ V, "/>
+</div>
+<p><span class="cmti-10x-x-109">that is, the span of </span><span class="cmmi-10x-x-109">S </span><span class="cmsy-10x-x-109">∖{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub><span class="cmsy-10x-x-109">}</span><span class="cmti-10x-x-109">is a proper subset of </span><span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">.</span></p>
+</div>
+<div id="tcolobox-10" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">We are going to prove this by contradiction. Without loss of generality, we can assume that </span><span class="cmmi-10x-x-109">i </span>= 1<span class="cmss-10x-x-109">. If</span></p>
+<div class="math-display">
+<img src="../media/file37.png" class="math-display" alt="span(S ∖{v1 }) = V, "/>
+</div>
+<p><span class="cmss-10x-x-109">then</span></p>
+<div class="math-display">
+<img src="../media/file38.png" class="math-display" alt=" n ∑ v1 = xivi. i=2 "/>
+</div>
+<p><span class="cmss-10x-x-109">This means that </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">is </span><span class="cmssi-10x-x-109">not </span><span class="cmss-10x-x-109">linearly independent, contradicting our assumptions.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">In other words, the above results mean that a basis is a </span><span class="cmssi-10x-x-109">maximal linearly independent </span><span class="cmss-10x-x-109">and a </span><span class="cmssi-10x-x-109">minimal generating </span><span class="cmss-10x-x-109">set at the same time.</span></p>
+<p><span class="cmss-10x-x-109">Given a basis </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">}</span><span class="cmss-10x-x-109">, we implictly write the vector </span><span class="cmmib-10x-x-109">x </span>= <span class="cmex-10x-x-109">∑</span> <sub><span class="cmmi-8">i</span><span class="cmr-8">=1</span></sub><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">as </span><span class="cmmib-10x-x-109">x </span>= (<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub>)<span class="cmss-10x-x-109">. Since this</span><span id="dx1-25006"></span> <span class="cmss-10x-x-109">decomposition is unique, we can do this without issues. The coefficients </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">are also called </span><span class="cmssi-10x-x-109">coordinates</span><span class="cmss-10x-x-109">. (Note that the coordinates strongly depend on the basis. Given two different bases, the coordinates of the same vector can be different.)</span></p>
+</section>
+<section id="finite-dimensional-vector-spaces" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_13"><span class="titlemark"><span class="cmss-10x-x-109">1.2.4 </span></span> <span id="x1-260002.2.4"></span><span class="cmss-10x-x-109">Finite dimensional vector spaces</span></h3>
+<p><span class="cmss-10x-x-109">As we</span> <span id="dx1-26001"></span><span class="cmss-10x-x-109">have seen previously, a single vector space can have many different bases, so bases are not unique. A very natural question that arises in this context is the following. If </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">1</span></sub> <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">2</span></sub> <span class="cmss-10x-x-109">are two bases for </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">, then does </span><span class="cmmi-10x-x-109">jS</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">j </span>= <span class="cmmi-10x-x-109">jS</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">j </span><span class="cmss-10x-x-109">hold? (Where </span><span class="cmmi-10x-x-109">jSj </span><span class="cmss-10x-x-109">denotes the </span><span class="cmssi-10x-x-109">cardinality </span><span class="cmss-10x-x-109">of the set </span><span class="cmmi-10x-x-109">S</span><span class="cmss-10x-x-109">, that is, its “size”.)</span></p>
+<p><span class="cmss-10x-x-109">In other words, can we do better if we select our basis more cleverly? It turns out that we cannot, and the sizes of </span><span class="cmssi-10x-x-109">any </span><span class="cmss-10x-x-109">two basis sets is equal. We are not going to prove this, but here is the theorem in its entirety.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-26002r5"></span> <span class="cmbx-10x-x-109">Theorem 5.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><img src="../media/file39.png" class="math" width="12" alt="V "/> <span class="cmti-10x-x-109">be a vector space, and let </span><img src="../media/file40.png" class="math" width="12" alt="S1 "/> <span class="cmti-10x-x-109">and </span><img src="../media/file41.png" class="math" width="12" alt="S2 "/> <span class="cmti-10x-x-109">be two bases of </span><img src="../media/file42.png" class="math" width="12" alt="V "/><span class="cmti-10x-x-109">. Then, </span><img src="../media/file43.png" class="math" width="12" alt="|S1| = |S2| "/><span class="cmti-10x-x-109">.</span></p>
+</div>
+<p><span class="cmss-10x-x-109">This gives us a way to define the </span><span class="cmssi-10x-x-109">dimension </span><span class="cmss-10x-x-109">of a vector space, which is simply the cardinality of its basis. We’ll denote the dimension of </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">as</span> dim(<span class="cmmi-10x-x-109">V </span>)<span class="cmss-10x-x-109">. For example, </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">is </span><span class="cmmi-10x-x-109">n</span><span class="cmss-10x-x-109">-dimensional, as shown by the standard basis </span><span class="cmsy-10x-x-109">{</span>(1<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,…,</span>0)<span class="cmmi-10x-x-109">,…,</span>(0<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,…,</span>1)<span class="cmsy-10x-x-109">}</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">If you recall the previous theorems, we assumed that a basis is finite. You might ask the question: is this always true? The answer is no. Examples 2 and 3 show that this is not the case. For instance, the countably infinite set </span><span class="cmsy-10x-x-109">{</span>1<span class="cmmi-10x-x-109">,x,x</span><sup><span class="cmr-8">2</span></sup><span class="cmmi-10x-x-109">,x</span><sup><span class="cmr-8">3</span></sup><span class="cmmi-10x-x-109">,…</span><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">is a basis for </span><span class="msbm-10x-x-109">ℝ</span>[<span class="cmmi-10x-x-109">x</span>]<span class="cmss-10x-x-109">. So, according to the theorem above, no finite basis can exist there.</span></p>
+<p><span class="cmss-10x-x-109">This marks an important distinction between vector spaces: those with finite bases are called </span><span class="cmssi-10x-x-109">finite-dimensional</span><span class="cmss-10x-x-109">. I have some good news: </span><span class="cmssi-10x-x-109">all </span><span class="cmss-10x-x-109">finite-dimensional real vector spaces are essentially </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">. (Recall that we call a vector space </span><span class="cmssi-10x-x-109">real </span><span class="cmss-10x-x-109">if its scalars are the real numbers.)</span></p>
+<p><span class="cmss-10x-x-109">To see why, suppose that </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">is an </span><span class="cmmi-10x-x-109">n</span><span class="cmss-10x-x-109">-dimensional real vector space with basis </span><span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">}</span><span class="cmss-10x-x-109">, and define the mapping </span><span class="cmmi-10x-x-109">φ </span>: <span class="cmmi-10x-x-109">V </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">by</span></p>
+<div class="math-display">
+<img src="../media/file44.png" class="math-display" alt=" ∑n φ : xivi → (x1,...,xn). i=1 "/>
+</div>
+<p><span class="cmmi-10x-x-109">φ </span><span class="cmss-10x-x-109">is invertible and preserves the structure of </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">, that is, the addition and scalar multiplication operations. Indeed, if </span><span class="cmmib-10x-x-109">u</span><span class="cmmi-10x-x-109">,</span><span class="cmmib-10x-x-109">v </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">α,β </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">φ</span>(<span class="cmmi-10x-x-109">α</span><span class="cmmib-10x-x-109">u </span>+ <span class="cmmi-10x-x-109">β</span><span class="cmmib-10x-x-109">v</span>) = <span class="cmmi-10x-x-109">αφ</span>(<span class="cmmib-10x-x-109">x</span>) + <span class="cmmi-10x-x-109">βφ</span>(<span class="cmmib-10x-x-109">y</span>)<span class="cmss-10x-x-109">. Such mappings are called </span><span class="cmssi-10x-x-109">isomorphisms</span><span class="cmss-10x-x-109">. The word itself is derived from ancient Greek, with </span><span class="cmssi-10x-x-109">isos </span><span class="cmss-10x-x-109">meaning </span><span class="cmssi-10x-x-109">same </span><span class="cmss-10x-x-109">and </span><span class="cmssi-10x-x-109">morphe </span><span class="cmss-10x-x-109">meaning </span><span class="cmssi-10x-x-109">shape</span><span class="cmss-10x-x-109">. Even</span> <span id="dx1-26003"></span><span class="cmss-10x-x-109">though this sounds abstract, the existence of an isomorphism between two vector spaces mean that they have the same structure. So, </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">is not just an example of finite dimensional real vector spaces, it is a universal model of them. Note that if the scalars are not the real numbers, the isomorphism to </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">is not true. (We’ll talk more about transformations like this in later chapters.)</span></p>
+<p><span class="cmss-10x-x-109">Considering that we’ll almost exclusively deal with finite dimensional real vector spaces, this is good news. Using </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">is not just a heuristic, it is a good mental model.</span></p>
+</section>
+<section id="why-are-bases-so-important" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_14"><span class="titlemark"><span class="cmss-10x-x-109">1.2.5 </span></span> <span id="x1-270002.2.5"></span><span class="cmss-10x-x-109">Why are bases so important?</span></h3>
+<p><span class="cmss-10x-x-109">If every finite-dimensional real vector space is essentially the same as </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">, what do we gain from abstraction? Sure, we can just work with </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">without talking about bases, but to develop a deep understanding of the core mathematical concepts in machine learning, we need the abstraction.</span></p>
+<p><span class="cmss-10x-x-109">Let’s look</span> <span id="dx1-27001"></span><span class="cmss-10x-x-109">ahead briefly and see an example. If you have some experience with neural networks, you know that matrices play an essential role there. Without any context, matrices are just a table of numbers with seemingly arbitrary rules of computation. Have you ever wondered why matrix multiplication is defined the way it is?</span></p>
+<p><span class="cmss-10x-x-109">Although we haven’t precisely defined matrices yet, you have probably encountered them previously. We’ll learn all about them in </span><span class="cmssi-10x-x-109">Chapter </span><a href="ch009.xhtml#linear-algebra-in-practice"><span class="cmssi-10x-x-109">3</span></a> <span class="cmss-10x-x-109">and </span><span class="cmssi-10x-x-109">Chapter </span><a href="ch010.xhtml#linear-transformations"><span class="cmssi-10x-x-109">4</span></a><span class="cmss-10x-x-109">, but for the two matrices</span></p>
+<div class="math-display">
+<img src="../media/file45.png" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ |a1,1 a1,2 ... a1,n| | b1,1 b1,2 ... b1,n| ||a2,1 a2,2 ... a2,n|| || b2,1 b2,2 ... b2,n|| | . . . . | | . . . . | A = || .. .. .. .. || , B = || .. .. .. .. || , ||a a ... a || ||b b ... b || ⌈ n,1 n,2 n,n⌉ ⌈ n,1 n,2 n,n⌉ "/>
+</div>
+<p><span class="cmss-10x-x-109">their product </span><span class="cmmi-10x-x-109">AB </span><span class="cmss-10x-x-109">is defined by</span></p>
+<div class="math-display">
+<img src="../media/file46.png" class="math-display" alt=" ⌊∑ ∑ ∑ ⌋ nk=1 a1,kbk,1 nk=1 a1,kbk,2 ... nk=1a1,kbk,n ||∑n ∑n ∑n || || k=1 a2,kbk,1 k=1 a2,kbk,2 ... k=1a2,kbk,n|| AB = || ... ... ... ... || , |∑n ∑n ∑n | |⌈ k=1 an,kbk,1 k=1 an,kbk,2 ... k=1an,kbk,n|⌉ "/>
+</div>
+<p><span class="cmss-10x-x-109">that is, the </span>(<span class="cmmi-10x-x-109">i,j</span>)<span class="cmss-10x-x-109">-th element of </span><span class="cmmi-10x-x-109">AB </span><span class="cmss-10x-x-109">is defined by</span></p>
+<div class="math-display">
+<img src="../media/file47.png" class="math-display" alt=" n ∑ a b . i,kk,j k=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">This definition feels random. Why not just take the componentwise product</span> (<span class="cmmi-10x-x-109">a</span><sub><span class="cmmi-8">i,j</span></sub><span class="cmmi-10x-x-109">b</span><sub><span class="cmmi-8">i,j</span></sub>)<sub><span class="cmmi-8">i,j</span><span class="cmr-8">=1</span></sub><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">? The definition becomes crystal clear once we look at a matrix as a tool to describe linear transformations between vector spaces, as the elements of the matrix describe the images of basis vectors. In this context, multiplication of</span> <span id="dx1-27002"></span><span class="cmss-10x-x-109">matrices is just the composition of linear transformations.</span></p>
+<p><span class="cmss-10x-x-109">Instead of just putting out the definition and telling you how to use it, I want you to </span><span class="cmssi-10x-x-109">understand </span><span class="cmss-10x-x-109">why it is defined that way. In the next chapters, we are going to learn every nook and cranny of matrix multiplication.</span></p>
+</section>
+<section id="the-existence-of-bases" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_15"><span class="titlemark"><span class="cmss-10x-x-109">1.2.6 </span></span> <span id="x1-280002.2.6"></span><span class="cmss-10x-x-109">The existence of bases</span></h3>
+<p><span class="cmss-10x-x-109">At this point, you</span> <span id="dx1-28001"></span><span class="cmss-10x-x-109">might ask the question: for a given vector space, are we guaranteed to find a basis? Without such a guarantee, the previous setup might be wasted. (As there might not be a basis to work with.)</span></p>
+<p><span class="cmss-10x-x-109">Fortunately, this is not the case. As the proof is extremely difficult, we will not show this, but this is so important that we should at least state the theorem. If you are interested in how this can be done, I included a proof sketch. Feel free to skip this, as it is not going to be essential for our purposes.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-28002r6"></span> <span class="cmbx-10x-x-109">Theorem 6.</span> </span></p>
+<p><span class="cmti-10x-x-109">Every vector space has a basis.</span></p>
+</div>
+<div id="tcolobox-11" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">(Sketch.) The proof of this uses an advanced technique called </span><span class="cmssi-10x-x-109">transfinite induction</span><span class="cmss-10x-x-109">, which is way beyond our scope. (Check out </span><span class="cmssi-10x-x-109">Naive Set Theory </span><span class="cmss-10x-x-109">by Paul Halmos for details.) Instead of being precise, let’s just focus on building intuition about how to construct a basis for any vector space.</span></p>
+<p><span class="cmss-10x-x-109">For our vector space </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">, we will build a basis one by one. Given any non-null vector </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmss-10x-x-109">, if</span> span(<span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">1</span></sub>)<span class="cmmi-10x-x-109">≠V </span><span class="cmss-10x-x-109">, the set </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">1</span></sub> = <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">is not yet a basis. Thus, we can find a vector </span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">2</span></sub> <span class="cmsy-10x-x-109">∈ </span><span class="cmmi-10x-x-109">V </span><span class="cmsy-10x-x-109">∖</span> span(<span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">1</span></sub>) <span class="cmss-10x-x-109">so that </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">2</span></sub> := <span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">1</span></sub> <span class="cmsy-10x-x-109">∪{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">2</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">is still linearly independent.</span></p>
+<p><span class="cmss-10x-x-109">Is </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">2</span></sub> <span class="cmss-10x-x-109">a basis? If not, we can continue the process. In case the process stops in finitely many steps, we are done. However, this is not guaranteed. Think about </span><span class="msbm-10x-x-109">ℝ</span>[<span class="cmmi-10x-x-109">x</span>]<span class="cmss-10x-x-109">, the vector space of polynomials, which is not finite-dimensional, as we saw in </span><span class="cmssi-10x-x-109">Section </span><a href="ch007.xhtml#finite-dimensional-vector-spaces"><span class="cmssi-10x-x-109">1.2.4</span></a><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">This is where we need to employ some set-theoretical heavy machinery (which we don’t have).</span></p>
+<p><span class="cmss-10x-x-109">If the process doesn’t stop, we need to find a set </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmsy-8">ℵ</span><sub><span class="cmr-6">0</span></sub></sub> <span class="cmss-10x-x-109">that contains all </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">as a subset. (Finding this </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmsy-8">ℵ</span><sub><span class="cmr-6">0</span></sub></sub> <span class="cmss-10x-x-109">set is the tricky part.) Is </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmsy-8">ℵ</span><sub><span class="cmr-6">0</span></sub></sub> <span class="cmss-10x-x-109">a basis? If not, we continue the process.</span></p>
+<p><span class="cmss-10x-x-109">This is difficult to show, but the process eventually stops, and we can’t add any more vectors to our linearly independent vector set without destroying the independence property. When this happens, we have found a </span><span class="cmssi-10x-x-109">maximal linearly independent </span><span class="cmss-10x-x-109">set — that is, a basis.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">For finite dimensional vector spaces, the above process is easy to describe. In fact, one of the pillars of linear algebra is the so-called</span><span id="dx1-28003"></span> <span class="cmss-10x-x-109">Gram-Schmidt process, used to explicitly construct special bases for vector spaces. As several quintessential results rely on this, we are going to study it in detail during the next chapters.</span></p>
+</section>
+<section id="subspaces" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_16"><span class="titlemark"><span class="cmss-10x-x-109">1.2.7 </span></span> <span id="x1-290002.2.7"></span><span class="cmss-10x-x-109">Subspaces</span></h3>
+<p><span class="cmss-10x-x-109">Before we get our</span> <span id="dx1-29001"></span><span class="cmss-10x-x-109">hands dirty with vectors in Python, there is one more subject we need to talk about, one</span> <span id="dx1-29002"></span><span class="cmss-10x-x-109">that will come in handy when talking about linear transformations. (But again, linear transformations are at the heart of machine learning. Everything we learn is to get to know them better.) For a given vector space </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">, we are often interested in one of its subsets that is a vector space in its entirety. This is described by the concept of </span><span class="cmssi-10x-x-109">subspaces</span><span class="cmss-10x-x-109">.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-29003r5"></span> <span class="cmbx-10x-x-109">Definition 5.</span> </span><span class="cmbx-10x-x-109">(Subspaces)</span></p>
+<p>Let <span class="cmmi-10x-x-109">V </span>be a vector space. The set <span class="cmmi-10x-x-109">U </span><span class="cmsy-10x-x-109">⊆</span><span class="cmmi-10x-x-109">V </span>is a <span class="cmti-10x-x-109">subspace </span>of <span class="cmmi-10x-x-109">V </span>if it is closed under addition and scalar multiplication.</p>
+<p><span class="cmmi-10x-x-109">U </span>is a <span class="cmti-10x-x-109">proper subspace </span>if it is a subspace and <span class="cmmi-10x-x-109">U </span><span class="cmsy-10x-x-109">⊂</span><span class="cmmi-10x-x-109">V </span>.</p>
+</div>
+<p><span class="cmss-10x-x-109">By definition, subspaces are vector spaces themselves, so we can define their dimension as well. There are at least two subspaces of each vector space: itself and </span><span class="cmsy-10x-x-109">{</span>0<span class="cmsy-10x-x-109">}</span><span class="cmss-10x-x-109">. These are called </span><span class="cmssi-10x-x-109">trivial </span><span class="cmss-10x-x-109">subspaces. Besides those, the span of a set of vectors is always a subspace. One such example is illustrated in </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">1.5</span></a><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">One of the most important aspects of subspaces is that we can use them to create more subspaces. This notion is made precise below.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-29004r6"></span> <span class="cmbx-10x-x-109">Definition 6.</span> </span><span class="cmbx-10x-x-109">(Direct sum of subspaces)</span></p>
+<p>Let <span class="cmmi-10x-x-109">V </span>be a vector space and <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,U</span><sub><span class="cmr-8">2</span></sub> be two of its subspaces. The <span class="cmti-10x-x-109">direct sum</span> of <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> and <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub> is defined by</p>
+<div class="math-display">
+<img src="../media/file48.png" class="math-display" alt="U1 + U2 = {u1 + u2 : u1 ∈ U1, u2 ∈ U2}. "/>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">You can easily verify that </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub> <span class="cmss-10x-x-109">is a subspace indeed, moreover </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub> = span(<span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> <span class="cmsy-10x-x-109">∪</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub>)<span class="cmss-10x-x-109">. Subspaces and their direct sum play an essential role in several topics, such as matrix decompositions. For example, we’ll see later that many of them are equivalent to decomposing a linear space into a sum of vector spaces.</span></p>
+<p><span class="cmss-10x-x-109">The ability to select a basis whose subsets span certain given subspaces often comes in handy. This is formalized by the next result.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-29005r7"></span> <span class="cmbx-10x-x-109">Theorem 7.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">be a vector space and </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,U</span><sub><span class="cmr-8">2</span></sub> <span class="cmti-10x-x-109">be two of its subspaces such that </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub> = <span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">. Moreover, let </span><span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">p</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">p</span><sub><span class="cmmi-8">k</span></sub><span class="cmsy-10x-x-109">} ⊆ </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> <span class="cmti-10x-x-109">be a basis of </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> <span class="cmti-10x-x-109">and </span><span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">q</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">q</span><sub><span class="cmmi-8">l</span></sub><span class="cmsy-10x-x-109">}⊆</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub> <span class="cmti-10x-x-109">be a basis of </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub><span class="cmti-10x-x-109">. Then the union</span></p>
+<div class="math-display">
+<img src="../media/file49.png" class="math-display" alt="{p1,...,pk} ∪ {q1,...,ql} "/>
+</div>
+<p><span class="cmti-10x-x-109">is a basis in </span><span class="cmmi-10x-x-109">V </span><span class="cmti-10x-x-109">.</span></p>
+</div>
+<div id="tcolobox-12" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">This</span> <span id="dx1-29006"></span><span class="cmss-10x-x-109">follows</span><span id="dx1-29007"></span> <span class="cmss-10x-x-109">directly from the direct sum’s definition. If </span><span class="cmmi-10x-x-109">V </span>= <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub><span class="cmss-10x-x-109">, then any </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">can be written in the form </span><span class="cmmib-10x-x-109">x </span>= <span class="cmmib-10x-x-109">a </span>+ <span class="cmmib-10x-x-109">b</span><span class="cmss-10x-x-109">, where </span><span class="cmmib-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> <span class="cmss-10x-x-109">and </span><span class="cmmib-10x-x-109">b </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">In turn, since </span><span class="cmmib-10x-x-109">p</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">p</span><sub><span class="cmmi-8">k</span></sub> <span class="cmss-10x-x-109">form a basis in </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> <span class="cmss-10x-x-109">and </span><span class="cmmib-10x-x-109">q</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">q</span><sub><span class="cmmi-8">l</span></sub> <span class="cmss-10x-x-109">form a basis in </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub><span class="cmss-10x-x-109">, the vectors </span><span class="cmmib-10x-x-109">a </span><span class="cmss-10x-x-109">and </span><span class="cmmib-10x-x-109">b </span><span class="cmss-10x-x-109">can be written as</span></p>
+<div class="math-display">
+<img src="../media/file50.png" class="math-display" alt=" k l a = ∑ a p , b = ∑ bq . i=1 i i i=1 i i "/>
+</div>
+<p><span class="cmss-10x-x-109">Thus, any </span><span class="cmmib-10x-x-109">x </span><span class="cmss-10x-x-109">takes the form</span></p>
+<div class="math-display">
+<img src="../media/file51.png" class="math-display" alt=" ∑k ∑ l x = aipi + biqi, i=1 i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">which is the definition of the basis.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">We are barely scratching the surface. Bases are essential, but they only provide the skeleton for the vector spaces encountered in practice. To properly represent and manipulate data, we need to build a geometric structure around this skeleton. How can we measure the “distance” between two measurements? What about their similarity?</span></p>
+<p><span class="cmss-10x-x-109">Besides all that, there is an even more crucial question: how on earth will we represent vectors inside a computer? In the next section, we will take a look at the data structures of Python, laying the foundation for the data manipulations and transformations we’ll do later.</span></p>
+</section>
+</section>
+<section id="vectors-in-practice" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_17"><span class="titlemark"><span class="cmss-10x-x-109">1.3 </span></span> <span id="x1-300002.3"></span><span class="cmss-10x-x-109">Vectors in practice</span></h2>
+<p><span class="cmss-10x-x-109">So far, we</span> <span id="dx1-30001"></span><span class="cmss-10x-x-109">have mostly talked about the theory of vectors and vector spaces. However, our ultimate goal is to build computational models for discovering and analyzing patterns in data. To put theory into practice, we will take a look at how vectors are represented in computations.</span></p>
+<p><span class="cmss-10x-x-109">In computer science, there is a stark contrast between how we think about mathematical structures and how we represent them inside a computer. Until this point, our goal was to develop a mathematical framework that enables us to reason about the structure of data and its transformations. We want a language that is</span></p>
+<ul>
+<li><span class="cmss-10x-x-109">expressive,</span></li>
+<li><span class="cmss-10x-x-109">easy to speak,</span></li>
+<li><span class="cmss-10x-x-109">as compact as possible.</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">However, our</span> <span id="dx1-30002"></span><span class="cmss-10x-x-109">goals change when we aim to do computations instead of pure logical reasoning. We want implementations that are</span></p>
+<ul>
+<li><span class="cmss-10x-x-109">easy to work with,</span></li>
+<li><span class="cmss-10x-x-109">memory-efficient,</span></li>
+<li><span class="cmss-10x-x-109">fast to access, manipulate and transform.</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">These are often contradicting requirements, and particular situations might prefer one over the other. For instance, if we have plenty of memory but want to perform lots of computations, we can sacrifice size for speed. Because of all the potential use-cases, there are multiple formats to represent the same mathematical concepts. These are called </span><span class="cmssi-10x-x-109">data structures</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">Different programming languages implement vectors differently. Because Python is ubiquitous in data science and machine learning, it’ll be our language of choice. In this chapter, we are going to study all the possible data structures in Python to see which one is suitable to represent vectors for high performance computations.</span></p>
+<section id="tuples" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_18"><span class="titlemark"><span class="cmss-10x-x-109">1.3.1 </span></span> <span id="x1-310002.3.1"></span><span class="cmss-10x-x-109">Tuples</span></h3>
+<p><span class="cmss-10x-x-109">In</span> <span id="dx1-31001"></span><span class="cmss-10x-x-109">standard Python, there are (at least) two built-in data structures that can be</span><span id="dx1-31002"></span> <span class="cmss-10x-x-109">used to represent vectors: </span><span class="cmssi-10x-x-109">tuples </span><span class="cmss-10x-x-109">and </span><span class="cmssi-10x-x-109">lists</span><span class="cmss-10x-x-109">. Let’s start with tuples! They can be simply defined by enumerating their elements between two parentheses, separating them with commas.</span></p>
+<div id="tcolobox-13" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_tuple = (1, 3.5, -2.71, /span&gt;a string 42) 
+v_tuple</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>(1, 3.5, -2.71, ’a string’, 42)</code></pre>
+<div id="tcolobox-14" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>type(v_tuple)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>tuple</code></pre>
+<p><span class="cmss-10x-x-109">A single tuple can hold elements of various types. Even though we’ll exclusively deal with floats in computational linear algebra, this property is extremely useful for general-purpose programming.</span></p>
+<p><span class="cmss-10x-x-109">We can access the elements of a tuple by indexing. Just like in several other programming languages, indexing starts from zero. This is in stark contrast with mathematics, where</span> <span id="dx1-31008"></span><span class="cmss-10x-x-109">we often start indexing from one. Accordingly, in most languages designed for scientific computing, such as Fortran, Matlab, or Julia, indexing starts from one.</span></p>
+<p><span class="cmss-10x-x-109">(Don’t tell this to anybody else, but indexing from zero used to drive me crazy. I am a mathematician by training.)</span></p>
+<div id="tcolobox-15" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_tuple[0]</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>1</code></pre>
+<p><span class="cmss-10x-x-109">The</span> <span id="dx1-31011"></span><span class="cmss-10x-x-109">size of a tuple can be accessed by calling the built-in </span><span class="cmtt-10x-x-109">len </span><span class="cmss-10x-x-109">function.</span></p>
+<div id="tcolobox-16" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>len(v_tuple)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>5</code></pre>
+<p><span class="cmss-10x-x-109">Besides indexing, we can also access multiple elements by </span><span class="cmssi-10x-x-109">slicing</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-17" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_tuple[1:4]</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>(3.5, -2.71, ’a string’)</code></pre>
+<p><span class="cmss-10x-x-109">Slicing works by specifying the first and last elements with an optional step size, using the syntax </span><span class="cmtt-10x-x-109">object[first:last:step]</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">Tuples are rather inflexible, as you cannot change their components. Attempting to do so results in a </span><span class="cmtt-10x-x-109">TypeError</span><span class="cmss-10x-x-109">, Python’s standard way of telling you that the object does not support the method you are trying to call. (In our case, item assignment.)</span></p>
+<div id="tcolobox-18" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_tuple[0] = 2</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>--------------------------------------------------------------------------- 
+TypeError                               Traceback (most recent call last) 
+Cell In[22], line 1 
+----&gt;/span&gt; 1 v_tuple[0] = 2 
+ 
+TypeError: ’tuple’ object does not support item assignment</code></pre>
+<p><span class="cmss-10x-x-109">Besides that, extending the</span> <span id="dx1-31023"></span><span class="cmss-10x-x-109">tuple with additional elements is also not supported. As</span> <span id="dx1-31024"></span><span class="cmss-10x-x-109">we cannot change the state of a </span><span class="cmtt-10x-x-109">tuple </span><span class="cmss-10x-x-109">object in any way after it has been instantiated, they are </span><span class="cmssi-10x-x-109">immutable</span><span class="cmss-10x-x-109">. Depending on the use-case, immutability can be an advantage and a disadvantage as well. Immutable objects eliminate accidental changes, but each operation requires the creation of a new object, resulting in a computational overhead. Thus, tuples are not going to be optimal to represent large amounts of data in complex computations.</span></p>
+<p><span class="cmss-10x-x-109">This issue is solved by </span><span class="cmssi-10x-x-109">lists</span><span class="cmss-10x-x-109">. Let’s take a look at them, and the new problems they introduce!</span></p>
+</section>
+<section id="lists" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_19"><span class="titlemark"><span class="cmss-10x-x-109">1.3.2 </span></span> <span id="x1-320002.3.2"></span><span class="cmss-10x-x-109">Lists</span></h3>
+<p><span class="cmss-10x-x-109">Lists are</span> <span id="dx1-32001"></span><span class="cmss-10x-x-109">the</span> <span id="dx1-32002"></span><span class="cmss-10x-x-109">workhorses of Python. In contrast with tuples, lists are extremely flexible and easy to use, albeit this comes at the cost of runtime. Similarly to tuples, a </span><span class="cmtt-10x-x-109">list </span><span class="cmss-10x-x-109">object can be created by enumerating its objects between square brackets, separated by commas.</span></p>
+<div id="tcolobox-19" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_list = [1, 3.5, -2.71, /span&gt;qwerty 
+type(v_list)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>list</code></pre>
+<p><span class="cmss-10x-x-109">Just like tuples, accessing the elements of a list is done by indexing or slicing. We can do all kinds of operations on a list: overwrite its elements, append items, or even remove others.</span></p>
+<div id="tcolobox-20" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_list[0] = /span&gt;this is a string/span&gt; 
+v_list</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[’this is a string’, 3.5, -2.71, ’qwerty’]</code></pre>
+<p><span class="cmss-10x-x-109">This example illustrates that lists can hold elements of various types as well. Adding and removing elements can be done with methods like </span><span class="cmtt-10x-x-109">append</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">push</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">pop</span><span class="cmss-10x-x-109">, and </span><span class="cmtt-10x-x-109">remove</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">Before trying that, let’s quickly take note of the memory address of our example list, accessed by calling the </span><span class="cmtt-10x-x-109">id </span><span class="cmss-10x-x-109">function.</span></p>
+<div id="tcolobox-21" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_list_addr = id(v_list) 
+v_list_addr</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>126433407319488</code></pre>
+<p><span class="cmss-10x-x-109">This number simply refers to an address in my computer’s memory, where the </span><span class="cmtt-10x-x-109">v_list </span><span class="cmss-10x-x-109">object is located. Quite literally, as this book is compiled on my personal computer.</span></p>
+<p><span class="cmss-10x-x-109">Now, we are</span> <span id="dx1-32012"></span><span class="cmss-10x-x-109">going to</span> <span id="dx1-32013"></span><span class="cmss-10x-x-109">perform a few simple operations on our list and show that the memory address doesn’t change. Thus, no new object is created.</span></p>
+<div id="tcolobox-22" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_list.append([42])    # adding the list [42] to the end of our list 
+v_list</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[’this is a string’, 3.5, -2.71, ’qwerty’, [42]]</code></pre>
+<div id="tcolobox-23" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>id(v_list) == v_list_addr    # adding elements doesn’t create any new objects</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>True</code></pre>
+<div id="tcolobox-24" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_list.pop(1)    # removing the element at the index /span&gt; 
+v_list</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[’this is a string’, -2.71, ’qwerty’, [42]]</code></pre>
+<div id="tcolobox-25" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>id(v_list) == v_list_addr    # removing elements still doesn’t create any new objects</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>True</code></pre>
+<p><span class="cmss-10x-x-109">Unfortunately, adding lists together achieves a result that is completely different from our expectations.</span></p>
+<div id="tcolobox-26" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>[1, 2, 3] + [4, 5, 6]</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[1, 2, 3, 4, 5, 6]</code></pre>
+<p><span class="cmss-10x-x-109">Instead of adding the corresponding elements together, like we want vectors to behave, the lists are concatenated. This feature is handy when writing general-purpose applications. However, this is not well-suited for scientific computations. “Scalar multiplication” also has strange results.</span></p>
+<div id="tcolobox-27" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>3*[1, 2, 3]</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[1, 2, 3, 1, 2, 3, 1, 2, 3]</code></pre>
+<p><span class="cmss-10x-x-109">Multiplying a list with an integer repeats the list by the specified number of times. Given the behavior of the </span><span class="cmtt-10x-x-109">+ </span><span class="cmss-10x-x-109">operator on lists, this seems logical as multiplication with an integer is repeated addition:</span></p>
+<div class="math-display">
+<img src="../media/file52.png" class="math-display" alt="a⋅b = b◟+--⋅◝⋅⋅◜+--b◞. a times "/>
+</div>
+<p><span class="cmss-10x-x-109">Overall, lists can do much more than we need to represent vectors. Although we potentially want to change elements of our vectors, we don’t</span><span id="dx1-32028"></span> <span class="cmss-10x-x-109">need to add or remove</span><span id="dx1-32029"></span> <span class="cmss-10x-x-109">elements from them, and we also don’t need to store objects other than floats. Can we sacrifice these extra features and obtain an implementation that’s suitable for our purposes yet has lightning-fast computational performance? Yes. Enter NumPy arrays.</span></p>
+</section>
+<section id="numpy-arrays" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_20"><span class="titlemark"><span class="cmss-10x-x-109">1.3.3 </span></span> <span id="x1-330002.3.3"></span><span class="cmss-10x-x-109">NumPy arrays</span></h3>
+<p><span class="cmss-10x-x-109">Even though</span> <span id="dx1-33001"></span><span class="cmss-10x-x-109">Python’s built-in data structures</span> <span id="dx1-33002"></span><span class="cmss-10x-x-109">are amazing, they are optimized for ease of use, not for scientific computation. This problem was realized early on in the language’s development and was addressed by the </span><a href="https://numpy.org/"><span class="cmss-10x-x-109">NumPy</span></a> <span class="cmss-10x-x-109">library.</span></p>
+<p><span class="cmss-10x-x-109">One of the main selling points of Python is how fast and straightforward it is to write code, even for complex tasks. This comes at the price of speed. However, in machine learning, speed is crucial for us. When training a neural network, a small set of operations are repeated millions of times. Even a small percentage of improvement in performance can save hours, days, or even weeks in the case of extremely large models.</span></p>
+<p><span class="cmss-10x-x-109">The C language is at the other end of the spectrum. While C code is hard to write, it executes blazingly fast when done correctly. As Python is written in C, a tried and true method for achieving fast performance is to call functions written in C from Python. In a nutshell, this is what NumPy provides: C arrays and operations, all in Python.</span></p>
+<p><span class="cmss-10x-x-109">To get a glimpse into the deep underlying issues with Python’s built-in data structures, we should put numbers and arrays under our magnifying glass. Inside a computer’s memory, objects are represented as fixed-length 0-1 sequences. Each component is called a </span><span class="cmssi-10x-x-109">bit</span><span class="cmss-10x-x-109">. Bits are usually grouped into 8-, 16-, 32-, 64-, or even 128 sized chunks. Depending on what we want to represent, identical sequences can mean different things. For instance, the 8-bit sequence </span><span class="cmssi-10x-x-109">00100110 </span><span class="cmss-10x-x-109">can represent the integer 38 or the ASCII character “&amp;.</span></p>
+<div class="minipage">
+<p><img src="../media/file53.png" width="213" alt="PIC"/> <span id="x1-33003r6"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.6: An 8-bit object in memory</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">By specifying the </span><span class="cmssi-10x-x-109">data type</span><span class="cmss-10x-x-109">, we can decode binary objects. 32-bit integers are called </span><span class="cmtt-10x-x-109">int32 </span><span class="cmss-10x-x-109">types, 64-bit floats are </span><span class="cmtt-10x-x-109">float64</span><span class="cmss-10x-x-109">, and so on.</span></p>
+<p><span class="cmss-10x-x-109">Since a</span> <span id="dx1-33004"></span><span class="cmss-10x-x-109">single bit contains very little information, memory is addressed by dividing</span> <span id="dx1-33005"></span><span class="cmss-10x-x-109">it into 32- or 64-bit sized chunks and numbering them consecutively. This address is a </span><span class="cmssi-10x-x-109">hexadecimal </span><span class="cmss-10x-x-109">number, starting from 0. (For simplicity, let’s assume that the memory is addressed by 64 bits. This is customary in modern computers.)</span></p>
+<p><span class="cmss-10x-x-109">A natural way to store a sequence of related objects (with matching data type) is to place them next to each other in the memory. This data structure is called an </span><span class="cmssi-10x-x-109">array</span><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file54.png" width="456" alt="PIC"/> <span id="x1-33006r7"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.7: An array of int64 objects</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">By storing the memory address of the first object, say </span><span class="cmtt-10x-x-109">0x23A0</span><span class="cmss-10x-x-109">, we can instantly retrieve the </span><span class="cmssi-10x-x-109">k</span><span class="cmss-10x-x-109">-th element by accessing the memory at </span><span class="cmtt-10x-x-109">0x23A0 + k</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">We call this the static array or often the C array because this is how it is done in the magnificent C language. Although this implementation of arrays is lightning fast, it is relatively inflexible. First, you can only store</span> <span id="dx1-33007"></span><span class="cmss-10x-x-109">objects of a single type. Second, you have to know the size of your array</span> <span id="dx1-33008"></span><span class="cmss-10x-x-109">in advance, as you cannot use memory addresses that overextend the pre-allocated part. Thus, before you start working with your array, you have to allocate memory for it. (That is, reserve space so that other programs won’t overwrite it.)</span></p>
+<p><span class="cmss-10x-x-109">However, in Python, you can store arbitrarily large and different objects in the same list, with the option of removing and adding elements to it.</span></p>
+<div id="tcolobox-28" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>l = [2**142 + 1, /span&gt;a string 
+l.append(lambda x: x) 
+l</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[5575186299632655785383929568162090376495105, 
+ ’a string’, 
+ /span&gt;function __main__.&lt;/span&gt;lambdax)&gt;</code></pre>
+<p><span class="cmss-10x-x-109">In the example above, </span><span class="cmtt-10x-x-109">l[0] </span><span class="cmss-10x-x-109">is an integer so large that it doesn’t fit into 128 bits. Also, there are all kinds of objects in our list, including a function. How is this possible?</span></p>
+<p><span class="cmss-10x-x-109">Python’s </span><span class="cmtt-10x-x-109">list </span><span class="cmss-10x-x-109">provides a flexible data structure by</span></p>
+<ol>
+<li><span id="x1-33016x1"><span class="cmss-10x-x-109">Overallocating the memory, and</span></span></li>
+<li><span id="x1-33018x2"><span class="cmss-10x-x-109">Keeping memory addresses to the objects in the list instead of the objects themselves.</span></span></li>
+</ol>
+<p><span class="cmss-10x-x-109">(At least in the most widespread CPython implementation (</span> <a href="https://docs.python.org/3/faq/design.html/#how-are-lists-implemented-in-cpython" class="url"><span class="cmtt-10x-x-109">https://docs.python.org/3/faq/design.html\#how-are-lists-implemented-in-cpython</span></a><span class="cmss-10x-x-109">).)</span></p>
+<div class="minipage">
+<p><img src="../media/file55.png" width="426" alt="PIC"/> <span id="x1-33019r8"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.8: CPython implementation of lists</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">By checking the memory addresses of each object in our list </span><span class="cmtt-10x-x-109">l</span><span class="cmss-10x-x-109">, we can see that they are all over the memory.</span></p>
+<div id="tcolobox-29" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>[id(x) for x in l]</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[126433412959232, 126433407528240, 126433410174944]</code></pre>
+<p><span class="cmss-10x-x-109">Due to the</span> <span id="dx1-33022"></span><span class="cmss-10x-x-109">overallocation, deletion or insertion can</span> <span id="dx1-33023"></span><span class="cmss-10x-x-109">always be done simply by shifting the remaining elements. Since the list stores the memory address of its elements, all types of objects can be stored within a single structure.</span></p>
+<p><span class="cmss-10x-x-109">However, this comes at a cost. Because the objects are not contiguous in memory, we lose locality of reference (</span><a href="https://en.wikipedia.org/wiki/Locality_of_reference" class="url"><span class="cmtt-10x-x-109">https://en.wikipedia.org/wiki/Locality_of_reference</span></a><span class="cmss-10x-x-109">), meaning that since we frequently access distant locations of the memory, our reads are much slower. Thus, looping over a Python list is not efficient.</span></p>
+<p><span class="cmss-10x-x-109">So, NumPy arrays are essentially the good old C arrays in Python, with the user-friendly interface of Python lists. (If you have ever worked with C, you know how big of a blessing this is.) Let’s see how to work with them!</span></p>
+<p><span class="cmss-10x-x-109">First, we import the </span><span class="cmtt-10x-x-109">numpy </span><span class="cmss-10x-x-109">library. (To save on the characters, it is customary to import it as </span><span class="cmtt-10x-x-109">np</span><span class="cmss-10x-x-109">.)</span></p>
+<div id="tcolobox-30" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>import numpy as np</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">The main data structure is </span><span class="cmtt-10x-x-109">np.ndarray</span><span class="cmss-10x-x-109">, short for </span><span class="cmssi-10x-x-109">n</span><span class="cmss-10x-x-109">-dimensional array. We can use the </span><span class="cmtt-10x-x-109">np.array </span><span class="cmss-10x-x-109">function to create NumPy arrays from standard Python containers or initialize from scratch. (Yes, I know. This is confusing, but you’ll get used to it. Just take a mental note that </span><span class="cmtt-10x-x-109">np.ndarray </span><span class="cmss-10x-x-109">is the class, and </span><span class="cmtt-10x-x-109">np.array </span><span class="cmss-10x-x-109">is the function you use to create NumPy arrays from Python objects.)</span></p>
+<div id="tcolobox-31" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>X = np.array([87.7, 4.5, -4.1, 42.1414, -3.14, 2.001])    # creating a NumPy array from a Python list 
+X</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([87.7   ,  4.5   , -4.1   , 42.1414, -3.14  ,  2.001 ])</code></pre>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.ones(shape=7) # initializing a NumPy array from scratch using ones</code></pre>
+</div>
+<pre class="lstlisting"><code>array([1., 1., 1., 1., 1., 1., 1.])</code></pre>
+<div id="tcolobox-32" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.zeros(shape=5)    # initializing a NumPy array from scratch using zeros</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([0., 0., 0., 0., 0.])</code></pre>
+<p><span class="cmss-10x-x-109">We can even initialize NumPy arrays using random numbers.</span></p>
+<div id="tcolobox-33" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.random.rand(10)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([0.92428404, 0.37719596, 0.92071695, 0.56905245, 0.12024811, 
+      0.02868856, 0.53215047, 0.51749348, 0.21022765, 0.96749756])</code></pre>
+<p><span class="cmss-10x-x-109">Most</span> <span id="dx1-33035"></span><span class="cmss-10x-x-109">importantly, when we have a given array, we can</span><span id="dx1-33036"></span> <span class="cmss-10x-x-109">initialize another one with the same dimensions using the </span><span class="cmtt-10x-x-109">np.zeros_like</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">np.ones_like</span><span class="cmss-10x-x-109">, and </span><span class="cmtt-10x-x-109">np.empty_like </span><span class="cmss-10x-x-109">functions.</span></p>
+<div id="tcolobox-34" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.zeros_like(X)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([0., 0., 0., 0., 0., 0.])</code></pre>
+<p><span class="cmss-10x-x-109">Just like Python lists, NumPy arrays support item assignments and slicing.</span></p>
+<div id="tcolobox-35" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>X[0] = 1545.215 
+X</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([1545.215 ,    4.5   ,   -4.1   ,   42.1414,   -3.14  ,    2.001 ])</code></pre>
+<div id="tcolobox-36" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>X[1:4]</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([ 4.5   , -4.1   , 42.1414])</code></pre>
+<p><span class="cmss-10x-x-109">However, as</span> <span id="dx1-33044"></span><span class="cmss-10x-x-109">expected, you can only store a single data type within</span><span id="dx1-33045"></span> <span class="cmss-10x-x-109">each </span><span class="cmtt-10x-x-109">ndarray</span><span class="cmss-10x-x-109">. When trying to assign a string as the first element, we get an error message.</span></p>
+<div id="tcolobox-37" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>X[0] = /span&gt;str/span&gt;</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>--------------------------------------------------------------------------- 
+ValueError                              Traceback (most recent call last) 
+Cell In[48], line 1 
+----&gt;/span&gt; 1 X[0] = /span&gt;str/span&gt; 
+ 
+ValueError: could not convert string to float: ’str’</code></pre>
+<p><span class="cmss-10x-x-109">As you might have guessed, every </span><span class="cmtt-10x-x-109">ndarray </span><span class="cmss-10x-x-109">has a data type attribute that can be accessed at </span><span class="cmtt-10x-x-109">ndarray.dtype</span><span class="cmss-10x-x-109">. If a conversion can be made between the value to be assigned and the data type, it is automatically performed, making the item assignment successful.</span></p>
+<div id="tcolobox-38" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>X.dtype</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>dtype(’float64’)</code></pre>
+<div id="tcolobox-39" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>val = 23 
+type(val)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>int</code></pre>
+<div id="tcolobox-40" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>X[0] = val 
+X</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([23.    ,  4.5   , -4.1   , 42.1414, -3.14  ,  2.001 ])</code></pre>
+<p><span class="cmss-10x-x-109">NumPy arrays are iterable, just like other container types in Python.</span></p>
+<div id="tcolobox-41" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>for x in X: 
+    print(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>23.0 
+4.5 
+-4.1 
+42.1414 
+-3.14 
+2.001</code></pre>
+<p><span class="cmss-10x-x-109">Are</span> <span id="dx1-33069"></span><span class="cmss-10x-x-109">these</span> <span id="dx1-33070"></span><span class="cmss-10x-x-109">suitable to represent vectors? Yes. We’ll see why!</span></p>
+</section>
+<section id="numpy-arrays-as-vectors" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_21"><span class="titlemark"><span class="cmss-10x-x-109">1.3.4 </span></span> <span id="x1-340002.3.4"></span><span class="cmss-10x-x-109">NumPy arrays as vectors</span></h3>
+<p><span class="cmss-10x-x-109">Let’s talk about</span> <span id="dx1-34001"></span><span class="cmss-10x-x-109">vectors once more. From now on, we are going to use NumPy </span><span class="cmtt-10x-x-109">ndarray</span><span class="cmss-10x-x-109">-s to model vectors.</span></p>
+<div id="tcolobox-42" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_1 = np.array([-4.0, 1.0, 2.3]) 
+v_2 = np.array([-8.3, -9.6, -7.7])</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">The addition and scalar multiplication operations are supported by default and perform as expected.</span></p>
+<div id="tcolobox-43" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_1 + v_2    # adding v_1 and v_2 together as vectors</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([-12.3,  -8.6,  -5.4])</code></pre>
+<div id="tcolobox-44" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>10.0*v_1    # multiplying v_1 with a scalar</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([-40.,  10.,  23.])</code></pre>
+<div id="tcolobox-45" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>v_1 * v_2    # the elementwise product of v_1 and v_2</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([ 33.2 ,  -9.6 , -17.71])</code></pre>
+<div id="tcolobox-46" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.zeros(shape=3) + 1</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([1., 1., 1.])</code></pre>
+<p><span class="cmss-10x-x-109">Because of the dynamic typing of Python, we can (often) plug NumPy arrays into functions intended for scalars.</span></p>
+<div id="tcolobox-47" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def f(x): 
+    return 3*x**2 - x**4 
+f(v_1)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([-208.    ,    2.    ,  -12.1141])</code></pre>
+<p><span class="cmss-10x-x-109">So far, NumPy arrays</span> <span id="dx1-34016"></span><span class="cmss-10x-x-109">satisfy almost everything we require to represent vectors. There is only one box to be checked: performance. To investigate this, we measure the execution time with Python’s built-in </span><span class="cmtt-10x-x-109">timeit </span><span class="cmss-10x-x-109">tool.</span></p>
+<p><span class="cmss-10x-x-109">In its first argument, </span><span class="cmtt-10x-x-109">timeit </span><span class="cmss-10x-x-109">(</span><a href="https://docs.python.org/3/library/timeit.html" class="url"><span class="cmtt-10x-x-109">https://docs.python.org/3/library/timeit.html</span></a><span class="cmss-10x-x-109">) takes a function to be executed and timed. Instead of passing a function object, it also accepts executable statements as a string. Since function calls have a significant computational overhead in Python, we are passing code rather than a function object in order to be more precise with the time measurements.</span></p>
+<p><span class="cmss-10x-x-109">Below, we compare adding together two NumPy arrays vs. Python lists containing a thousand zeros.</span></p>
+<div id="tcolobox-48" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>from timeit import timeit 
+ 
+ 
+n_runs = 100000 
+size = 1000 
+ 
+ 
+t_add_builtin = timeit( 
+    x + y for x, y in zip(v_1, v_2)]" 
+    setup=f/span&gt;size={size}; v_1 = [0 for _ in range(size)]; v_2 = [0 for _ in range(size)]" 
+    number=n_runs 
+) 
+ 
+t_add_numpy = timeit( 
+    /span&gt;v_1 + v_2" 
+    setup=f/span&gt;import numpy as np; size={size}; v_1 = np.zeros(shape=size); 
+    v_2 = np.zeros(shape=size) 
+    number=n_runs 
+) 
+ 
+ 
+print(f/span&gt;Built-in addition:       \t{t_add_builtin} s 
+print(f/span&gt;NumPy addition:          \t{t_add_numpy} s 
+print(f/span&gt;Performance improvement: \t{t_add_builtin/t_add_numpy:.3f} times faster</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>Built-in addition:             3.3522969299992837 s 
+NumPy addition:               0.09616518099937821 s 
+Performance improvement:       34.860 times faster</code></pre>
+<p><span class="cmss-10x-x-109">NumPy arrays</span> <span id="dx1-34044"></span><span class="cmss-10x-x-109">are much-much faster. This is because they are</span></p>
+<ul>
+<li><span class="cmss-10x-x-109">contiguous in memory,</span></li>
+<li><span class="cmss-10x-x-109">homogeneous in type,</span></li>
+<li><span class="cmss-10x-x-109">with operations implemented in C.</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">This is just the tip of the iceberg. We have only seen a small part of it, but NumPy provides much more than a fast data structure. As we progress in the book, we’ll slowly dig deeper and deeper, eventually discovering the vast array of functionalities it provides.</span></p>
+</section>
+<section id="is-numpy-really-faster-than-python" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_22"><span class="titlemark"><span class="cmss-10x-x-109">1.3.5 </span></span> <span id="x1-350002.3.5"></span><span class="cmss-10x-x-109">Is NumPy really faster than Python?</span></h3>
+<p><span class="cmss-10x-x-109">NumPy is</span><span id="dx1-35001"></span> <span class="cmss-10x-x-109">designed to be faster than vanilla Python. Is this really the case? Not all the time. If you use it wrong, it might even hurt performance! To know when it is beneficial to use NumPy, we will look at why exactly it is faster in practice.</span></p>
+<p><span class="cmss-10x-x-109">To simplify the investigation, our toy problem will be random number generation. Suppose that we need just a single random number. Should we use NumPy? Let’s test it! We are going to compare it with the built-in random number generator by running both ten million times, measuring the execution time.</span></p>
+<div id="tcolobox-49" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>from numpy.random import random as random_np 
+from random import random as random_py 
+ 
+ 
+n_runs = 10000000 
+t_builtin = timeit(random_py, number=n_runs) 
+t_numpy = timeit(random_np, number=n_runs) 
+ 
+print(f/span&gt;Built-in random:\t{t_builtin} s 
+print(f/span&gt;NumPy random:   \t{t_numpy} s</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>Built-in random:      0.47474874800172984 s 
+NumPy random:         5.1664929229991685 s</code></pre>
+<p><span class="cmss-10x-x-109">For generating a single random number, NumPy is significantly slower. Why is this the case? What if we need an array instead of a single number? Will this also be slower?</span></p>
+<p><span class="cmss-10x-x-109">This</span> <span id="dx1-35014"></span><span class="cmss-10x-x-109">time, let’s generate a list/array of a thousand elements.</span></p>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>size = 1000
+n_runs = 10000
+
+t_builtin_list = timeit(
+    "[random_py() for _ in range(size)]",
+    setup=f"from random import random as random_py; size={size}",
+    number=n_runs
+)
+
+t_numpy_array = timeit(
+    "random_np(size)",
+    setup=f"from numpy.random import random as random_np; size={size}",
+    number=n_runs
+)
+
+print(f"Built-in random with lists:\t{t_builtin_list}s")
+print(f"NumPy random with arrays:  \t{t_numpy_array}s")</code></pre>
+</div>
+<pre class="lstlisting"><code>Built-in random with lists:    0.5773125300001993s 
+NumPy random with arrays:       0.08449692800058983s</code></pre>
+<p><span class="cmss-10x-x-109">(Again, I don’t want to wrap the timed expressions in lambdas since function calls have an overhead in Python. I want to be as precise as possible, so I pass them as strings to the </span><span class="cmtt-10x-x-109">timeit </span><span class="cmss-10x-x-109">function.)</span></p>
+<p><span class="cmss-10x-x-109">Things are looking much different now. When generating an array of random numbers, NumPy wins hands down.</span></p>
+<p><span class="cmss-10x-x-109">There are some curious things about this result as well. First, we generated a single random number 10000000 times. Second, we generated an array of 1000 random numbers 10000 times. In both cases, we have 10000000 random numbers in the end. Using the built-in method, it took ˜2x time when we put them in a list. However, with NumPy, we see a ˜30x speedup compared to itself when working with arrays! (The actual numbers might be different on your computer.)</span></p>
+<p><span class="cmss-10x-x-109">To see what happens behind the scenes, we are going to profile the code using cProfiler (</span><a href="https://docs.python.org/3/library/profile.html" class="url"><span class="cmtt-10x-x-109">https://docs.python.org/3/library/profile.html</span></a><span class="cmss-10x-x-109">). With this, we’ll see exactly how many times a given function was called and how much time we spent inside it.</span></p>
+<p><span class="cmss-10x-x-109">Let’s take a look at the built-in function first. In the following function, we create 10000000 random numbers, just as before.</span></p>
+<div id="tcolobox-50" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def builtin_random_single(n_runs): 
+    for _ in range(n_runs): 
+        random_py()</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">From</span> <span id="dx1-35037"></span><span class="cmss-10x-x-109">Jupyter Notebooks, where this book is written, cProfiler can be called with the magic command </span><span class="cmtt-10x-x-109">%prun</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-51" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>n_runs = 10000000 
+ 
+%prun builtin_random_single(n_runs)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code> 10000558 function calls (10000539 primitive calls) in 2.082 seconds 
+ 
+   Ordered by: internal time 
+ 
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function) 
+       1    0.937    0.937    1.671    1.671 2471337341.py:1(builtin_random_single) 
+ 10000000    0.911    0.000    0.911    0.000 {method ’random’ of ’_random.Random’ objects} 
+     4/0    0.213    0.053    0.000         {method ’poll’ of ’select.epoll’ objects} 
+      10    0.009    0.001    0.016    0.002 socket.py:626(send) 
+       2    0.009    0.004    0.015    0.008 {method ’__exit__’ of ’sqlite3.Connection’ objects}</code></pre>
+<p><span class="cmss-10x-x-109">There are two important columns here for our purposes. </span><span class="cmtt-10x-x-109">ncalls </span><span class="cmss-10x-x-109">shows how many times a function was called, while </span><span class="cmtt-10x-x-109">tottime </span><span class="cmss-10x-x-109">is the total time spent in a function, excluding time spent in subfunctions.</span></p>
+<p><span class="cmss-10x-x-109">The built-in function </span><span class="cmtt-10x-x-109">random.random() </span><span class="cmss-10x-x-109">was called 10000000 times as expected. Take note of the total time spent in the function. (I can’t give you an exact figure here, as it depends on the machine this book is built on.)</span></p>
+<p><span class="cmss-10x-x-109">What about the NumPy version? The results are surprising.</span></p>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def numpy_random_single(n_runs):
+    for _ in range(n_runs):
+        random_np()
+
+%prun numpy_random_single(n_runs)</code></pre>
+</div>
+<pre class="lstlisting"><code>448 function calls (444 primitive calls) in 7.203 seconds 
+ 
+   Ordered by: internal time 
+ 
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function) 
+       1    7.029    7.029    7.029    7.029 2015715881.py:1(numpy_random_single) 
+       2    0.136    0.068    0.136    0.068 {method ’poll’ of ’select.epoll’ objects} 
+       2    0.015    0.007    0.015    0.007 {method ’__exit__’ of ’sqlite3.Connection’ objects} 
+       1    0.011    0.011    0.011    0.011 {method ’execute’ of ’sqlite3.Connection’ objects} 
+       3    0.010    0.003    7.339    2.446 base_events.py:1910(_run_once) 
+       7    0.000    0.000    0.000    0.000 socket.py:626(send) 
+       1    0.000    0.000    0.000    0.000 {method ’disable’ of ’_lsprof.Profiler’ objects} 
+       1    0.000    0.000    0.026    0.026 history.py:833(_writeout_input_cache) 
+       1    0.000    0.000    0.000    0.000 inspect.py:3102(_bind) 
+   88/84    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}</code></pre>
+<p><span class="cmss-10x-x-109">Similarly, as before, the </span><span class="cmtt-10x-x-109">numpy.random.random() </span><span class="cmss-10x-x-109">function was indeed called 10000000 times, as expected. Yet, the script spent significantly more time in this function than in the Python built-in random before. Thus, it is more costly per call.</span></p>
+<p><span class="cmss-10x-x-109">When we start</span> <span id="dx1-35073"></span><span class="cmss-10x-x-109">working with large arrays and lists, things change dramatically. Next, we generate a list/array of 1000 random numbers, while measuring the execution time.</span></p>
+<div id="tcolobox-52" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def numpy_random_single(n_runs): 
+    for _ in range(n_runs): 
+        random_np() 
+%prun numpy_random_single(n_runs)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>448 function calls (444 primitive calls) in 7.203 seconds 
+ 
+   Ordered by: internal time 
+ 
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function) 
+       1    7.029    7.029    7.029    7.029 2015715881.py:1(numpy_random_single) 
+       2    0.136    0.068    0.136    0.068 {method ’poll’ of ’select.epoll’ objects} 
+       2    0.015    0.007    0.015    0.007 {method ’__exit__’ of ’sqlite3.Connection’ objects} 
+       1    0.011    0.011    0.011    0.011 {method ’execute’ of ’sqlite3.Connection’ objects} 
+       3    0.010    0.003    7.339    2.446 base_events.py:1910(_run_once) 
+       7    0.000    0.000    0.000    0.000 socket.py:626(send) 
+       1    0.000    0.000    0.000    0.000 {method ’disable’ of ’_lsprof.Profiler’ objects} 
+       1    0.000    0.000    0.026    0.026 history.py:833(_writeout_input_cache) 
+       1    0.000    0.000    0.000    0.000 inspect.py:3102(_bind) 
+   88/84    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}</code></pre>
+<p><span class="cmss-10x-x-109">As we see, about 60% of the time was spent on the list comprehensions. (Note that </span><span class="cmtt-10x-x-109">tottime </span><span class="cmss-10x-x-109">doesn’t count subfunction calls like calls to </span><span class="cmtt-10x-x-109">random.random() </span><span class="cmss-10x-x-109">here.)</span></p>
+<p><span class="cmss-10x-x-109">Now we are ready to see why NumPy is faster when used right.</span></p>
+<div id="tcolobox-53" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def numpy_random_array(size, n_runs): 
+    for _ in range(n_runs): 
+        random_np(size) 
+%prun numpy_random_array(size, n_runs)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>149 function calls (148 primitive calls) in 0.132 seconds 
+ 
+   Ordered by: internal time 
+ 
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function) 
+       1    0.122    0.122    0.122    0.122 1681905588.py:1(numpy_random_array) 
+       2    0.009    0.004    0.009    0.004 {method ’__exit__’ of ’sqlite3.Connection’ objects} 
+     2/1    0.000    0.000    0.122    0.122 {built-in method builtins.exec}</code></pre>
+<p><span class="cmss-10x-x-109">With each</span> <span id="dx1-35105"></span><span class="cmss-10x-x-109">of the 10000 function calls, we get a </span><span class="cmtt-10x-x-109">numpy.ndarray </span><span class="cmss-10x-x-109">of 1000 random numbers. The reason why NumPy is fast when used right is that its arrays are extremely efficient to work with. They are like C arrays instead of Python lists.</span></p>
+<p><span class="cmss-10x-x-109">As we have seen, there are two significant differences between them.</span></p>
+<ul>
+<li><span class="cmss-10x-x-109">Python lists are dynamic, so for instance, you can append and remove elements. NumPy arrays have fixed lengths, so you cannot add or delete without creating a new one.</span></li>
+<li><span class="cmss-10x-x-109">Python lists can hold several data types simultaneously, while a NumPy array can only contain one.</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">So, NumPy arrays are less flexible but significantly more performant. When this additional flexibility is not needed, NumPy outperforms Python.</span></p>
+<p><span class="cmss-10x-x-109">To see precisely at which size does NumPy overtakes Python in random number generation, we can compare the two by measuring the execution times for several sizes.</span></p>
+<div id="tcolobox-54" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>sizes = list(range(1, 100)) 
+ 
+runtime_builtin = [ 
+    timeit( 
+        random_py() for _ in range(size)]" 
+        setup=f/span&gt;from random import random as random_py; size={size}" 
+        number=100000 
+    ) 
+    for size in sizes 
+] 
+ 
+ 
+runtime_numpy = [ 
+    timeit( 
+        /span&gt;random_np(size) 
+        setup=f/span&gt;from numpy.random import random as random_np; size={size}" 
+        number=100000 
+    ) 
+    for size in sizes</code></pre>
+</div>
+</div>
+<pre class="lstinputlisting"><code>sizes = import matplotlib.pyplot as plt
+
+
+with plt.style.context("seaborn-v0_8"):
+    plt.figure(figsize=(10, 5))
+    plt.plot(sizes, runtime_builtin, label="built-in")
+    plt.plot(sizes, runtime_numpy, label="NumPy")
+    plt.xlabel("array size")
+    plt.ylabel("time (seconds)")
+    plt.title("Runtime of random array generation")
+    plt.legend()
+    plt.show()</code></pre>
+<div class="minipage">
+<p><img src="../media/file63.png" width="560" alt="PIC"/> <span id="x1-35137r9"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 1.9: Runtime of random array generation</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Around 20, NumPy</span> <span id="dx1-35138"></span><span class="cmss-10x-x-109">starts to beat Python in performance. Of course, this number might be different for other operations like calculating the sine or adding numbers together, but the tendency will be the same. Python will slightly outperform NumPy for small input sizes, but NumPy wins by a large margin as the size grows.</span></p>
+</section>
+</section>
+<section id="summary" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_23"><span class="titlemark"><span class="cmss-10x-x-109">1.4 </span></span> <span id="x1-360002.4"></span><span class="cmss-10x-x-109">Summary</span></h2>
+<p><span class="cmss-10x-x-109">In this chapter, we have learned what vectors are and why we must use them in data science and machine learning. Vectors are not just a bunch of numbers bundled together but a mathematical structure that allows us to reason about data more effectively, both in theory and in practice. Contrary to popular belief, vectors are vectors not because they have direction and magnitude but because you can add them together.</span></p>
+<p><span class="cmss-10x-x-109">This is formalized by the concept of </span><span class="cmssi-10x-x-109">vector spaces</span><span class="cmss-10x-x-109">, providing the mathematical framework for our studies. Vector spaces are best described by </span><span class="cmssi-10x-x-109">bases</span><span class="cmss-10x-x-109">, that is, minimal and linearly independent generating sets. Understanding vector spaces and their bases will pay enormous dividends when we study linear transformations, the most important building block of predictive models.</span></p>
+<p><span class="cmss-10x-x-109">Besides the leap of abstraction provided by vectors, we reap significant benefits in practice by vectorizing our code, compressing complex logic into one-liners such as data scaling:</span></p>
+<pre id="verbatim-1" class="lstinputlisting"><code>X_scaled = (X - X.mean(axis=0)) / X.std(axis=0)</code></pre>
+<p><span class="cmss-10x-x-109">Besides the conceptual jump from scalars to vectors and matrices, efficient data processing is made possible by NumPy (short for Numerical Python), the number one library in the machine learning toolkit. If a tensor library doesn’t use NumPy, it is inspired by it. We already understand its basics and know why and when to use it.</span></p>
+<p><span class="cmss-10x-x-109">In the next chapter, we continue exploring vector spaces. Bases are cool and all, but besides them, vector spaces have a beautiful and rich geometric structure. Let’s see it!</span></p>
+</section>
+<section id="problems" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_24"><span class="titlemark"><span class="cmss-10x-x-109">1.5 </span></span> <span id="x1-370002.5"></span><span class="cmss-10x-x-109">Problems</span></h2>
+<p><span class="cmssbx-10x-x-109">Problem 1. </span><span class="cmss-10x-x-109">Not all vector spaces are infinite. There are some that only contain a finite number of vectors, as we shall see next in this problem. Define the set</span></p>
+
+<img src="../media/file64.png" width="150" class="math-display" alt="ℤ2 := {0,1}, "/>
+
+<p><span class="cmss-10x-x-109">where the operations </span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅ </span><span class="cmss-10x-x-109">are defined by the rules</span></p>
+<table class="align-star">
+<tbody>
+<tr class="odd">
+<td class="align-odd">0 + 0</td>
+<td class="align-even">= 0</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="even">
+<td class="align-odd">0 + 1</td>
+<td class="align-even">= 1</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="odd">
+<td class="align-odd">1 + 0</td>
+<td class="align-even">= 1</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="even">
+<td class="align-odd">1 + 1</td>
+<td class="align-even">= 0</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+</tbody>
+</table>
+<p><span class="cmss-10x-x-109">and</span></p>
+<table class="align-star">
+<tbody>
+<tr class="odd">
+<td class="align-odd">0 <span class="cmsy-10x-x-109">⋅ </span>0</td>
+<td class="align-even">= 0</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="even">
+<td class="align-odd">0 <span class="cmsy-10x-x-109">⋅ </span>1</td>
+<td class="align-even">= 0</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="odd">
+<td class="align-odd">1 <span class="cmsy-10x-x-109">⋅ </span>0</td>
+<td class="align-even">= 0</td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="even">
+<td class="align-odd">1 <span class="cmsy-10x-x-109">⋅ </span>1</td>
+<td class="align-even">= 1<span class="cmmi-10x-x-109">.</span></td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+</tbody>
+</table>
+<p><span class="cmss-10x-x-109">This is called binary (or modulo-2) arithmetic.</span></p>
+<p><span class="cmssi-10x-x-109">(a) </span><span class="cmss-10x-x-109">Show that </span>(<span class="msbm-10x-x-109">ℤ</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">,</span><span class="msbm-10x-x-109">ℤ</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">,</span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅</span>) <span class="cmss-10x-x-109">is a vector space.</span></p>
+<p><span class="cmssi-10x-x-109">(b) </span><span class="cmss-10x-x-109">Show that</span>(<span class="msbm-10x-x-109">ℤ</span><sub><span class="cmr-8">2</span></sub><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">,</span><span class="msbm-10x-x-109">ℤ</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">,</span>+<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">⋅</span>) <span class="cmss-10x-x-109">is also a vector space, where </span><span class="msbm-10x-x-109">ℤ</span><sub><span class="cmr-8">2</span></sub><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">is the n-fold Cartesian product</span></p>
+<div class="math-display">
+<img src="../media/file65.png" class="math-display" alt=" n ℤ 2 = ℤ◟2-×-⋅⋅◝◜⋅×-ℤ2◞, n times "/>
+</div>
+<p><span class="cmss-10x-x-109">and the addition and scalar multiplication are defined elementwise:</span></p>
+<table class="align-star">
+<tbody>
+<tr class="odd">
+<td class="align-odd"><span class="cmmib-10x-x-109">x</span><span class="cmbx-10x-x-109">+ </span><span class="cmmib-10x-x-109">y</span></td>
+<td class="align-even">= (<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">y</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub> + <span class="cmmi-10x-x-109">y</span><sub><span class="cmmi-8">n</span></sub>)<span class="cmmi-10x-x-109">, </span><span class="cmmib-10x-x-109">x,y </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℤ</span><sub><span class="cmr-8">2</span></sub><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">,</span></td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+<tr class="even">
+<td class="align-odd"><span class="cmmi-10x-x-109">c</span><span class="cmmib-10x-x-109">x</span></td>
+<td class="align-even">= (<span class="cmmi-10x-x-109">cx</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,cx</span><sub><span class="cmmi-8">n</span></sub>)<span class="cmmi-10x-x-109">, c </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℤ</span><sub><span class="cmr-8">2</span></sub><span class="cmmi-10x-x-109">.</span></td>
+<td class="align-label"></td>
+<td class="align-label"></td>
+</tr>
+</tbody>
+</table>
+<p><span class="cmssbx-10x-x-109">Problem 2. </span><span class="cmss-10x-x-109">Are the following vector sets linearly independent?</span></p>
+<p><span class="cmssi-10x-x-109">(a) </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">1</span></sub> = <span class="cmsy-10x-x-109">{</span>(1<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,</span>0)<span class="cmmi-10x-x-109">,</span>(1<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span>0)<span class="cmmi-10x-x-109">,</span>(1<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span>1)<span class="cmsy-10x-x-109">}⊆</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">3</span></sup></p>
+<p><span class="cmssi-10x-x-109">(b) </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">2</span></sub> = <span class="cmsy-10x-x-109">{</span>(1<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span>1)<span class="cmmi-10x-x-109">,</span>(1<span class="cmmi-10x-x-109">,</span>2<span class="cmmi-10x-x-109">,</span>4)<span class="cmmi-10x-x-109">,</span>(1<span class="cmmi-10x-x-109">,</span>3<span class="cmmi-10x-x-109">,</span>9)<span class="cmsy-10x-x-109">}⊆</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">3</span></sup></p>
+<p><span class="cmssi-10x-x-109">(c) </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">3</span></sub> = <span class="cmsy-10x-x-109">{</span>(1<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span>1)<span class="cmmi-10x-x-109">,</span>(1<span class="cmmi-10x-x-109">,</span>1<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">−</span>1)<span class="cmmi-10x-x-109">,</span>(1<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">−</span>1<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">−</span>1)<span class="cmsy-10x-x-109">}⊆</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">3</span></sup></p>
+<p><span class="cmssi-10x-x-109">(d) </span><span class="cmmi-10x-x-109">S</span><sub><span class="cmr-8">4</span></sub> = <span class="cmsy-10x-x-109">{</span>(<span class="cmmi-10x-x-109">π,e</span>)<span class="cmmi-10x-x-109">,</span>(<span class="cmsy-10x-x-109">−</span>42<span class="cmmi-10x-x-109">,</span>13<span class="cmmi-10x-x-109">∕</span>6)<span class="cmmi-10x-x-109">,</span>(<span class="cmmi-10x-x-109">π</span><sup><span class="cmr-8">3</span></sup><span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">−</span>2)<span class="cmsy-10x-x-109">}⊆</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">2</span></sup></p>
+<p><span class="cmssbx-10x-x-109">Problem 3. </span><span class="cmss-10x-x-109">Let </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">be a finite </span><span class="cmmi-10x-x-109">n</span><span class="cmss-10x-x-109">-dimensional vector space and let </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmi-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,v</span><sub><span class="cmmi-8">m</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">be a linearly independent set of vectors, </span><span class="cmmi-10x-x-109">m/span&gt;<span class="cmmi-10x-x-109">n</span><span class="cmss-10x-x-109">. Show that there is a basis set </span><span class="cmmi-10x-x-109">B </span><span class="cmss-10x-x-109">such that </span><span class="cmmi-10x-x-109">S </span><span class="cmsy-10x-x-109">⊂</span><span class="cmmi-10x-x-109">B</span><span class="cmss-10x-x-109">.</span> </span></p>
+<p><span class="cmssbx-10x-x-109">Problem 4. </span><span class="cmss-10x-x-109">Let </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">be a vector space and </span><span class="cmmi-10x-x-109">S </span>= <span class="cmsy-10x-x-109">{</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">be its basis. Show that every vector </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">can be uniquely written as a linear combination of vectors in </span><span class="cmmi-10x-x-109">S</span><span class="cmss-10x-x-109">. (That is, if </span><span class="cmmib-10x-x-109">x </span>= <span class="cmex-10x-x-109">∑</span> <sub><span class="cmmi-8">i</span><span class="cmr-8">=1</span></sub><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">α</span><sub><span class="cmmi-8">i</span></sub><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub> = <span class="cmex-10x-x-109">∑</span> <sub><span class="cmmi-8">i</span><span class="cmr-8">=1</span></sub><sup><span class="cmmi-8">n</span></sup><span class="cmmi-10x-x-109">β</span><sub><span class="cmmi-8">i</span></sub><span class="cmmib-10x-x-109">v</span><sub><span class="cmmi-8">i</span></sub><span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">α</span><sub><span class="cmmi-8">i</span></sub> = <span class="cmmi-10x-x-109">β</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">for all </span><span class="cmmi-10x-x-109">i </span>= 1<span class="cmmi-10x-x-109">,…,n</span><span class="cmss-10x-x-109">.)</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 5. </span><span class="cmss-10x-x-109">Let </span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">be an arbitrary vector space and </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,U</span><sub><span class="cmr-8">2</span></sub> <span class="cmsy-10x-x-109">⊆</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">be two of its subspaces. Show that </span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub> = span(<span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> <span class="cmsy-10x-x-109">∪</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub>)<span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">Hint: to prove the equality of these two sets, you need to show two things: 1) if </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub><span class="cmss-10x-x-109">, then </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span> span(<span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> <span class="cmsy-10x-x-109">∪</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub>) <span class="cmss-10x-x-109">as well, 2) if </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span> span(<span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> <span class="cmsy-10x-x-109">∪</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub>)<span class="cmss-10x-x-109">, then </span><span class="cmmib-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">U</span><sub><span class="cmr-8">2</span></sub> <span class="cmss-10x-x-109">as well.</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 6. </span><span class="cmss-10x-x-109">Consider the vector space of polynomials with real coefficients, defined by</span></p>
+<div class="math-display">
+<img src="../media/file66.png" class="math-display" alt=" n ℝ [x] = {p(x) = ∑ pxi : p ∈ ℝ, n = 0,1,...}. i i i=0 "/>
+</div>
+<p><span class="cmssi-10x-x-109">(a) </span><span class="cmss-10x-x-109">Show that</span></p>
+<div class="math-display">
+<img src="../media/file67.png" class="math-display" alt=" ∑n i xℝ[x] := {p(x) = pix : pi ∈ ℝ, n = 1,2,...} i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">is a proper subspace of </span><span class="msbm-10x-x-109">ℝ</span>[<span class="cmmi-10x-x-109">x</span>]<span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmssi-10x-x-109">(b) </span><span class="cmss-10x-x-109">Show that</span></p>
+<div class="math-display">
+<img src="../media/file68.png" class="math-display" alt="f : ℝ[x] → xℝ [x ], p(x) ↦→ xp(x) "/>
+</div>
+<p><span class="cmss-10x-x-109">is a bijective and linear. (A function </span><span class="cmmi-10x-x-109">f </span>: <span class="cmmi-10x-x-109">X </span><span class="cmsy-10x-x-109">→</span><span class="cmmi-10x-x-109">Y </span><span class="cmss-10x-x-109">is bijective if every </span><span class="cmmi-10x-x-109">y </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">Y </span><span class="cmss-10x-x-109">has exactly one </span><span class="cmmi-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="cmmi-10x-x-109">X </span><span class="cmss-10x-x-109">for which </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">y</span><span class="cmss-10x-x-109">. If you are not comfortable with this notion, feel free to revisit this problem after </span><a href="#"><span class="cmss-10x-x-109">Chapter 9</span></a><span class="cmss-10x-x-109">.)</span></p>
+<p><span class="cmss-10x-x-109">In general, a linear and bijective function </span><span class="cmmi-10x-x-109">f </span>: <span class="cmmi-10x-x-109">U </span><span class="cmsy-10x-x-109">→</span><span class="cmmi-10x-x-109">V </span><span class="cmss-10x-x-109">between vector spaces is called an </span><span class="cmssi-10x-x-109">isomorphism</span><span class="cmss-10x-x-109">. Given the existence of such a function, we call the vector spaces </span><span class="cmmi-10x-x-109">U </span><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">V </span><span class="cmssi-10x-x-109">isomorphic</span><span class="cmss-10x-x-109">, meaning that they have an identical algebraic structure.</span></p>
+<p><span class="cmss-10x-x-109">Combining </span><span class="cmssi-10x-x-109">(a) </span><span class="cmss-10x-x-109">and </span><span class="cmssi-10x-x-109">(b)</span><span class="cmss-10x-x-109">, we obtain that </span><span class="msbm-10x-x-109">ℝ</span>[<span class="cmmi-10x-x-109">X</span>] <span class="cmss-10x-x-109">is isomorphic with its proper subspace </span><span class="cmmi-10x-x-109">x</span><span class="msbm-10x-x-109">ℝ</span>[<span class="cmmi-10x-x-109">X</span>]<span class="cmss-10x-x-109">. This is quite an interesting phenomenon: a vector space that is algebraically identical to its proper subspace. (Note that this cannot happen in finite dimensions, such as </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">.)</span></p>
+</section>
+<section id="join-our-community-on-discord1" class="level3 likesectionHead">
+<h2 class="likesectionHead sigil_not_in_toc" id="sigil_toc_id_25"><span id="x1-38000"></span><span class="cmss-10x-x-109">Join our community on Discord</span></h2>
+<p><span class="cmss-10x-x-109">Read this book alongside other users, Machine Learning experts, and the author himself. Ask questions, provide solutions to other readers, chat with the author via Ask Me Anything sessions, and much more. Scan the QR code or visit the link to join the community.</span> <a href="https://packt.link/math" class="url"><span class="cmtt-10x-x-109">https://packt.link/math</span></a></p>
+<p><img src="../media/file1.png" width="85" alt="PIC"/></p>
+</section>
+</section>
+</body>
+</html>

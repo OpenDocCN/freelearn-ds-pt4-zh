@@ -1,0 +1,784 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Building Objects and Packages for Code Reuse</h1>
+                </header>
+            
+            <article>
+                
+<p><span>In this final chapter, we'll take a look at taking our code out of our own machines and sharing it with the world. The person we'll share with most often will be ourselves! So, with a view to making our own programming lives easier and more streamlined, we'll look at how to create objects and classes to simplify our own workflows and how to bundle them into packages for reuse in other projects. We'll look at tools for sharing code on sites such as GitHub and how to check that everything in your code works the way it is supposed to.</span></p>
+<p>The following recipes will be covered in this chapter:</p>
+<ul>
+<li>Creating simple S3 objects to simplify code</li>
+<li>Taking advantage of generic object functions with S3 classes</li>
+<li>Creating structured and formal objects with the S4 system</li>
+<li>Simple ways to package code for sharing and reuse</li>
+<li>Using <kbd>devtools</kbd> to host code from GitHub</li>
+<li>Building a unit test suite to ensure that functions work as you intend</li>
+<li>Using continuous integration with Travis to keep code tested and up to date</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>The sample data you'll need is available from this book's GitHub repository at <a href="https://github.com/PacktPublishing/R-Bioinformatics-Cookbook">https://github.com/PacktPublishing/R-Bioinformatics-Cookbook</a><a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">.</a> If you want to use the code examples as they are written, then you will need to make sure that this data is in a sub-directory of whatever your working directory is.</p>
+<p>Here are the R packages that you'll need. In general, you can install these with<span> </span><kbd>install.packages("package_name")</kbd>. The packages listed under <kbd>Bioconductor</kbd> need to be installed with the dedicated installer. If you need to do anything further, installation will be described in the recipes in which the packages are used:</p>
+<ul>
+<li><kbd>devtools</kbd></li>
+<li><kbd>usethis</kbd></li>
+</ul>
+<p>For some of the later recipes, we'll also need an installation of the <kbd>git</kbd> version control system. Check out the official website to get the latest version for your system: <a href="https://git-scm.com/downloads">https://git-scm.com/downloads</a>. You will also find a GitHub account on the GitHub website useful. Check out <a href="https://github.com/">https://github.com/</a><a href="https://github.com/"> if you don't already have a GitHub account.</a></p>
+<div>
+<p>Normally, in R, a user will load a library and use functions directly by name. This is great in interactive sessions but it can cause confusion when many packages are loaded. To clarify which package and function I'm using at a given moment, I will occasionally use the<span> </span><kbd>packageName::functionName()</kbd> convention. </p>
+<div class="packt_infobox">Sometimes, in the middle of a recipe, I'll interrupt the code so you can see some intermediate output or the structure of an object that's important to understand. Whenever that happens, you'll see a code block where each line begins with <kbd>##</kbd> (double hash) symbols. Consider the following command:<br/>
+<br/>
+<span><kbd>letters[1:5]<br/>
+<br/></kbd></span> <span>This will give us the following output:<br/>
+<br/></span> <span><kbd>## a b c d e<br/>
+<br/></kbd></span> <span>Note that the output lines are prefixed with</span> <kbd>##</kbd><span>.</span></div>
+</div>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Creating simple S3 objects to simplify code</h1>
+                </header>
+            
+            <article>
+                
+<p>Creating your own objects can do a great deal to simplify your code and workflows, making them easier for you to reproduce and reuse and abstracting away a lot of the internal logic of a program so that the cognitive load on you as a programmer is reduced and you can concentrate more on the bioinformatic and analytical aspects of the project you're working on. R actually has numerous ways of creating objects and classes. In this recipe, we'll look at its simplest, most ad hoc method—S3. This is a pretty informal way of creating objects and classes but does suffice in a lot of cases.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll need just base R functions, so there's no need to install anything.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Creating simple S3 objects to simplify code can be done using the following steps:</p>
+<ol>
+<li>Create a constructor function:</li>
+</ol>
+<pre style="padding-left: 60px">SimpleGenome &lt;- function( nchr=NA, lengths = NA){<br/> <br/> genome &lt;- list(<br/> chromosome_count = nchr,<br/> chromosome_lengths = lengths<br/> )<br/> class(genome) &lt;- append(class(genome), "SimpleGenome")<br/> return(genome)<br/>}</pre>
+<ol start="2">
+<li>Call the constructor to make new objects:</li>
+</ol>
+<pre style="padding-left: 60px">ecoli &lt;- SimpleGenome(nchr = 1, lengths = c(4600000) )<br/>bakers_yeast &lt;- SimpleGenome(nchr = 1, lengths=c(12100000))<br/><br/></pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> is where all the work happens. This is all we need to create an S3 object. As you can see, it is very lightweight code. We simply create a function that generates and returns a data structure. Our class is supposed to represent a simplistic genome and we want it to hold some basic information about a genome. The <kbd>SimpleGenome()</kbd> function is our constructor of objects. The genome list created by <kbd>SimpleGenome</kbd> is the data structure that makes up the body of the eventual object. The members of this list are the slots of the object, so we create members called <kbd>chromosome_count</kbd> and <kbd>chromosome_length</kbd> to represent some features of the genome. With that done, we carry out the important step—we append the class name (<kbd>SimpleGenome</kbd>) to the class attribute of the genome list. It is this that makes R recognize the object as being of the <kbd>SimpleGenome</kbd> class. We can now return the created S3 object.</p>
+<p>In <em>step 2</em>, we simply use the constructor to make instances of the class. Inspecting the resulting objects looks like this:</p>
+<pre>&gt; ecoli <br/>$chromosome_count <br/>[1] 1 <br/>$chromosome_lengths <br/>[1] 4600000 <br/>attr(,"class") <br/>[1] "list" "SimpleGenome"<br/><br/>&gt; bakers_yeast <br/>$chromosome_count <br/>[1] 1 <br/>$chromosome_lengths <br/>[1] 12100000 <br/>attr(,"class") <br/>[1] "list" "SimpleGenome" </pre>
+<p>We can see the object slots, the differences in the objects, and the class containing the new <kbd>SimpleGenome</kbd> object. This is how we create an S3 object; it's a simple but effective way of doing things. The advantages over just creating a normal data structure such as a list are not immediately obvious, but when we look at how to create methods in the next recipe the reasons will be clearer.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Taking advantage of generic object functions with S3 classes</h1>
+                </header>
+            
+            <article>
+                
+<p>Once we have an S3 object, we will need to create functions to work with it. These are really what makes working with the objects easy in the long run. It is in these functions that we can abstract away the processing of the data in the objects and reduce the work we are doing each time we use them. R's object system is based on generic functions. These are grouped functions with the same base name, but a class-specific name extension. Each group is called a method and R will decide which of the particular functions belonging to a method will be called based on the class of the object the method is called on. This means we can call <kbd>plot()</kbd> on objects of class <kbd>A</kbd> and get a completely different sort of figure than if we called it on an object of class <kbd>B</kbd>. In this recipe, we'll have a look at how that works.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll use base R functions, so no need to install any packages, but we will use the built-in <kbd>iris</kbd> data.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it... </h1>
+                </header>
+            
+            <article>
+                
+<p>Taking advantage of generic object functions with S3 classes can be done using the following steps:</p>
+<ol>
+<li>Create a generic function in the <kbd>plot()</kbd> method:</li>
+</ol>
+<pre style="padding-left: 60px">plot.SimpleGenome &lt;- function(x){<br/> barplot(x$chromosome_lengths, main = "Chromosome Lengths")<br/>}</pre>
+<ol start="2">
+<li>Create an object and use it in <kbd>plot()</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">athal &lt;- SimpleGenome(nchr = 5, lengths = c(34964571, 22037565, 25499034, 20862711, 31270811 ) )<br/>plot(athal)</pre>
+<ol start="3">
+<li>Create a new method first:</li>
+</ol>
+<pre style="padding-left: 60px">genomeLength &lt;- function(x){<br/> UseMethod("genomeLength", x)<br/>}<br/><br/>genomeLength.SimpleGenome &lt;- function(x){<br/> return(sum(x$chromosome_lengths))<br/>}<br/>genomeLength(athal)</pre>
+<ol start="4">
+<li>Modify an existing object's class:</li>
+</ol>
+<pre style="padding-left: 60px">some_data &lt;- iris<br/>summary(some_data)<br/>class(some_data) &lt;- c("my_new_class", class(some_data) )<br/>class(some_data)</pre>
+<ol start="5">
+<li>Create a generic function for the new class:</li>
+</ol>
+<pre style="padding-left: 60px">summary.my_new_class &lt;- function(x){<br/> col_types &lt;- sapply(x, class)<br/> return(paste0("object contains ", length(col_types), " columns of classes:", paste (col_types, sep =",", collapse = "," )))<br/>}<br/>summary(some_data)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>step 1</em>, we create a generic function called <kbd>plot.SimpleGenome()</kbd>. The special naming convention here marks this out as a member of the group of generic plot functions specific to objects of the <kbd>SimpleGenome</kbd> <span>class. </span>The convention is <kbd>method.class</kbd>. This is all we need for the generic plot method to work.</p>
+<p>In <em>step 2</em>, we actually create a <kbd>SimpleGenome</kbd> object as we did in the <em>Creating simple S3 objects to simplify code</em> recipe in this chapter (you'll need to make sure that recipe's <em>step 1</em> was executed in the current session for this step to work), and then call <kbd>plot()</kbd> on it. The <kbd>plot</kbd> method looks up the generic function for the <kbd>SimpleGenome</kbd> objects and runs that object, giving us the barplot we expect, as shown in the following diagram: </p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-623 image-border" src="Images/a0f08b74-f112-4fdb-a319-9c4823670dd8.png" style="width:31.08em;height:35.75em;" width="561" height="645"/></p>
+<p>With <em>step 3</em>, we take things a little deeper. In this step, we want to use a method name (<kbd>genome_lengths</kbd>) that doesn't already exist (you can use the <kbd>methods()</kbd> function to see those that exist), so we must first create the method group. We do that by creating a function that calls the <kbd>UseMethod()</kbd> function, with the name of the method we want to create as the enclosing function name and the first argument. With that done, we can create the generic function for our <kbd>SimpleGenome</kbd> class and use it on our objects by simply calling <kbd>genomeLength()</kbd>. As our generic function simply adds up the <kbd>chromosome_lengths</kbd> vector, we get a result like this:</p>
+<pre>&gt; genomeLength(athal)<br/>[1] 134634692</pre>
+<p><em>Step 4</em> shows the mechanics of the class lookup system. We first make a copy of the <kbd>iris</kbd> data and then use the <kbd>summary()</kbd> method on it, giving the standard result for a dataframe:</p>
+<pre>&gt; summary(some_data) <br/>Sepal.Length Sepal.Width Petal.Length Petal.Width Species <br/>Min. :4.300 Min. :2.000 Min. :1.000 Min. :0.100 setosa :50 <br/>1st Qu.:5.100 1st Qu.:2.800 1st Qu.:1.600 1st Qu.:0.300 versicolor:50</pre>
+<p>Next, we use the <kbd>class()</kbd> function, in <em>step 4</em>, to add a new class to the <kbd>some_data</kbd> object. Note we add it as the first element of the vector. We can see that the <kbd>data.frame</kbd> class is still there but is later in the order than the one we added:</p>
+<pre>&gt; class(some_data) <br/>[1] "my_new_class" "data.frame"</pre>
+<p>Then, in <em>step 5</em>, we create a generic <kbd>summary()</kbd> function for <kbd>my_new_class</kbd> so that it returns a very different type of summary. We see that when we call it:</p>
+<pre>&gt; summary(some_data) <br/>[1] "object contains 5 columns of classes:numeric,numeric,numeric,numeric,factor"</pre>
+<p>The point to note is that, although the object had more than one class, by default, the first generic function that matches a class is chosen. Try switching the order of the <kbd>class</kbd> attribute if you'd like to test this out.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Creating structured and formal objects with the S4 system</h1>
+                </header>
+            
+            <article>
+                
+<p>S4 is a more formal counterpart to S3, particularly in that it has formal class definitions so it can't be used ad hoc but it does work in quite a similar way to S3, so what we've learned already will be generally applicable. In this recipe, we'll quickly run through how to create a class similar to our <kbd>SimpleGenome</kbd> object in the first two recipes of this chapter, with the S4 system. Knowing S4 will be advantageous if you wish to write code to extend <kbd>Bioconductor</kbd>, as that is written in S4. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Again, we'll just use base R, so nothing to install.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Creating structured and formal objects with the S4 system can be done using the following steps:</p>
+<ol>
+<li>Write the class definition:</li>
+</ol>
+<pre style="padding-left: 60px">S4genome &lt;- setClass("S4genome", slots = list(chromosome_count = "numeric", chromosome_lengths = "numeric" ))</pre>
+<ol start="2">
+<li>Create a generic function:</li>
+</ol>
+<pre style="padding-left: 60px">setGeneric( "chromosome_count", <br/> function(x){ standardGeneric("chromosome_count") }<br/>)</pre>
+<ol start="3">
+<li>Create the method:</li>
+</ol>
+<pre style="padding-left: 60px">setMethod( "chromosome_count", "S4genome", function(x){ slot(x, "chromosome_count")} )</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works</h1>
+                </header>
+            
+            <article>
+                
+<p>The outline here is very similar to the previous two recipes. In <em>step 1</em>, we create a class definition using the <kbd>setClass()</kbd> function; the first argument is the name of the class, and the <kbd>slots</kbd> argument is a proper list of slot names for the objects and the type for each one. The S4 class needs the types to be defined. In-use objects can be instantiated in the same way as for S3:</p>
+<pre>## &gt; ecoli &lt;- S4genome(chromosome_count = 1, chromosome_lengths = c(4600000) ) <br/>## &gt; ecoli An object of class "S4genome" <br/>## Slot "chromosome_count": [1] 1 <br/>## Slot "chromosome_lengths": [1] 4600000 </pre>
+<p>In <em>step 2</em>, we create a generic function, <kbd>chromosome_count</kbd>, using the <kbd>setGeneric()</kbd> function, passing the name and a function that calls the <kbd>standardGeneric()</kbd> function. This is pretty much boilerplate code, so follow it now and check it out in the documentation when you need more details.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In <em>step 3</em>, we create the method. We use the <kbd>setMethod()</kbd> function to create a <kbd>chromosome_count</kbd> method. The second argument is the class this method will be called on, and finally, we pass the code we want for the method. The anonymous function simply calls the <kbd>slot()</kbd> function on the object passed to it. <kbd>slot()</kbd> returns the contents of the slot named in the second argument.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<p>If you do wish to go further with S4 to extend Bioconductor classes, see the tutorials provided by Bioconductor themselves at <a href="https://www.bioconductor.org/help/course-materials/2017/Zurich/S4-classes-and-methods.html">https://www.bioconductor.org/help/course-materials/2017/Zurich/S4-classes-and-methods.html</a>.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Simple ways to package code for sharing and reuse</h1>
+                </header>
+            
+            <article>
+                
+<p>Inevitably, there will come a time when you want to be able to reuse some functions or classes and not have to type (or—horror—copy and paste) them in every time. Having just one reliable version of things in one place makes it easy to manage and keep on top of mistakes and changes in code. So, in this recipe, we'll look at two simple ways of wrapping code up to reuse it. We'll touch on the very basics of package creation, though the packages we will make will be quite bare-bones and will need quite some fleshing out<span>—</span>especially with documentation and tests—before you consider releasing them. The packages you make in this way, though, will help you out as you develop your code.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this, we'll need the <kbd>devtools</kbd> and <kbd>usethis</kbd> packages and the source code file, <kbd>my_source_file.R</kbd>, in the <kbd>datasets/ch11</kbd> folder of this book's repository.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Wrapping code for sharing and reuse can be done using the following steps:</p>
+<ol>
+<li>Load an existing source code file:</li>
+</ol>
+<pre style="padding-left: 60px">source(file.path(getwd(), "datasets", "ch11", "my_source_file.R"))<br/>my_sourced_function()</pre>
+<ol start="2">
+<li>Create a package skeleton:</li>
+</ol>
+<pre style="padding-left: 60px">usethis::create_package("newpackage")</pre>
+<ol start="3">
+<li>Write code:</li>
+</ol>
+<pre style="padding-left: 60px">my_package_function &lt;- function(x){<br/> return( c("I come from a package!") )<br/>}</pre>
+<ol start="4">
+<li>Load the package code into memory:</li>
+</ol>
+<pre style="padding-left: 60px">devtools::load_all()</pre>
+<ol start="5">
+<li>Install the package into your current R installation:</li>
+</ol>
+<pre style="padding-left: 60px">devtools::install()<br/>library(newpackage)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The first step of this code shows a very effective but very rudimentary method of loading in your own pre-written external code. We use the <kbd>source()</kbd> function to load in a file of R code to the current namespace. The particular file here contains normal R functions and nothing else. The <kbd>source()</kbd> function simply reads the code in the external file and executes it as if it was typed directly into the current console. As the file just contains functions, then you have to get those loaded into memory for immediate use. </p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p><em>Step 2</em> takes things a step further and creates a bare-bones package with the <kbd>usethis::create_package()</kbd><em> </em>function. The function creates a new folder with the name that you provide (so, in this case, <kbd>newpackage</kbd>) and puts all of the essential files and folders you need for a package in there. You can now fill the <kbd>R/</kbd> subfolder in the package with R code that will eventually be loaded when you load the package. Try it with the function in <em>step 3</em>; add this function to a file called <kbd>my_functions.R</kbd> in the <kbd>R/</kbd> folder. It doesn't matter too much what the files in the <kbd>R/</kbd> folder are called and you can have many—make sure they end in <kbd>.R</kbd> though.</p>
+<p><em>Step 4</em> will take your source package and load it into memory using the <kbd>devtools::load_all()</kbd> function. This roughly emulates what happens when we call the <kbd>library()</kbd> function but without actually installing the package. By using <kbd>devtools::load_all()</kbd>, we can quickly load code to test it out, without having to first install it, so if we need to change the code, we don't have a broken version installed. We don't provide any arguments, so it loads the package in the current directory (if you provide a path as the first argument, it will load the package it finds there).</p>
+<p>In <em>step 5</em>, we actually install the code properly into R. We use the <kbd>devtools::install()</kbd> function and it builds the package and copies the built version into the normal place in R. We can now load the built version as any other package with library (<kbd>newpackage</kbd>). Note that this means that we have two copies of the package—the one we installed and the one we are working on. You'll need to repeat steps four and five as needed as you develop more code and add it to your package.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using devtools to host code from GitHub</h1>
+                </header>
+            
+            <article>
+                
+<p>Good practice in developing code means keeping it in some sort of version control system. One popular system among many is Git and the Git-sharing website GitHub. In this recipe, we'll look at using the <kbd>usethis</kbd> package to add some useful non-code files that help to describe how another user can reuse our code and the current state of its development and adding a mechanism to make sure the downstream user has the other packages that yours depends on. We'll look at how to then send the package to GitHub and how it can be installed directly from there.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We will need the <kbd>usethis</kbd> and <kbd>devtools</kbd> packages.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Using <kbd>devtools</kbd> to host code from GitHub can be done using the following steps:</p>
+<ol>
+<li>Add some useful metadata and license files to the package:</li>
+</ol>
+<pre style="padding-left: 60px">usethis::use_mit_license(name = "Dan MacLean")<br/>usethis::use_readme_rmd()<br/>usethis::use_lifecycle_badge("Experimental")<br/>usethis::use_version()</pre>
+<ol start="2">
+<li>Add to the list of dependencies that will be automatically installed when your package is installed:</li>
+</ol>
+<pre style="padding-left: 60px">usethis::use_package("ggplot2")</pre>
+<ol start="3">
+<li>Automatically set up the local Git repository and get GitHub credentials:</li>
+</ol>
+<pre style="padding-left: 60px">usethis::use_git()<br/>usethis::browse_github_token() <br/>usethis::use_github()</pre>
+<ol start="4">
+<li>Install the package from GitHub:</li>
+</ol>
+<pre style="padding-left: 60px">devtools::install_github("user/repo")</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The code in <em>step 1</em> is really simple but it adds a lot to a package. The <kbd>usethis::use_mit_license()</kbd> <span>function</span> adds a text file called <kbd>LICENSE</kbd> that is populated with the text of the MIT license. Without a license file, it's difficult for others to see under what terms they can use the software. The MIT license is a simple and permissive one that's good for general open source software but there are alternatives; see this site for more help on choosing the right license for you: <a href="https://choosealicense.com/">https://choosealicense.com/</a>. Check out the <kbd>usethis</kbd> documentation regarding licenses for related functions that let you add other license types. The argument name in all of these functions allows you to specify the copyright holder of the software—it might be worth checking this out—if you're working for a company or institute, legal copyright may belong to them.</p>
+<p>The <kbd>usethis::use_readme_rmd()</kbd> <span>function </span>adds a blank <kbd>.Rmd</kbd> file to which you can add code and text and which will be built into a regular markdown file and used on the front GitHub page of your repository as a <kbd>README</kbd> file. Put stuff describing your packages' objectives, basic usage, and installation instructions here as a minimum.</p>
+<p class="mce-root"/>
+<p>A helpful thing to add to your documentation is an indication of the stage of development. The <kbd>usethis::use_lifecycle_badge()</kbd> function lets you create a nice little graphical badge that displays where your package is up to. The terms you can use as the first argument are defined here: <a href="https://www.tidyverse.org/lifecycle/">https://www.tidyverse.org/lifecycle/</a>. Allied to this is the <kbd>usethis::use_version()</kbd> function, which will help you to increment the version major, minor, or patch version of your software. </p>
+<p>In <em>step 2</em>, we manage the dependencies your package needs. These should be installed automatically by the package manager software when a user installs your package; R requires that they are placed in particular places in the package metadata description file. The <kbd>usethis::use_package()</kbd> function does this for you.</p>
+<p>In <em>step 3</em>, we use the <kbd>usethis::use_git()</kbd> function to create a local <kbd>git</kbd> repository in the current directory; it also performs an initial commit of the current code to the repository. The <kbd>usethis::browse_github_token()</kbd> <span>function </span>will open a web browser window and navigate to GitHub on a page that will let you get a GitHub access token so your R session can interact with GitHub. Once you have this, <kbd>usethis::use_github()</kbd> will take the local <kbd>git</kbd> repository and create a repository on GitHub, make its origin remote, and push the code. <span>You only need to do this once. When the <kbd>git</kbd> and GitHub repositories exist, you'll need to manage versioning manually using something such as RStudio's <kbd>git</kbd> panel or the command-line version of <kbd>git</kbd>.</span></p>
+<p>In <em>step 4</em>, we see how a remote user can install your package, simply using the <kbd>devtools::install_github()</kbd> function with whatever username and repository name are appropriate. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Building a unit test suite to ensure that functions work as you intend</h1>
+                </header>
+            
+            <article>
+                
+<p>Most programmers test code obsessively and the practice of unit testing has arisen so that we have a formal way of testing functions that can be automated and help to reduce the time it takes to build even moderately complex code projects. A well-engineered and maintained software package has a unit test suite for as many of its component functions as it is possible to do. In this recipe, we'll look at how to use the <kbd>usethis</kbd> package to add the component files and folders for an automated test suite that uses the <kbd>testthat</kbd> package. It's beyond the scope of this book to look at the philosophy of why and how to write tests in any detail, but you can check out the <kbd>testthat</kbd> package documentation here, <a href="https://testthat.r-lib.org/">https://testthat.r-lib.org/</a>, for a nice primer. </p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll need the <kbd>usethis</kbd>, <kbd>testthat</kbd>, and <kbd>devtools</kbd> packages.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Use the following steps to build a unit test suite to ensure that functions work as you intend:</p>
+<ol>
+<li>Create the test folder structure:</li>
+</ol>
+<pre style="padding-left: 60px">usethis::use_testthat()</pre>
+<ol start="2">
+<li>Add a new test:</li>
+</ol>
+<pre style="padding-left: 60px">usethis::use_test("adds")<br/><br/>test_that("addition works", {<br/> expect_equal(1 + 1, 2)<br/>})</pre>
+<ol start="3">
+<li>Run the actual tests:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">devtools::test()</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> is a typical <kbd>usethis</kbd> style function that creates some common filesystem components for your package—<kbd>use_testthat()</kbd> simply builds the folder structure that the underlying testing engine <kbd>testthat</kbd> needs.</p>
+<p><em>Step 2</em> puts the <kbd>usethiss::use_test()</kbd> function to work to create a test file—it uses the value of the function argument as the suffix of a filename so that, in this case, with <kbd>adds</kbd> as the argument, we get a file called <kbd>test-adds.R</kbd> in the <kbd>tests/testthat</kbd> folder. We can then add <kbd>tests</kbd> to that file. Each test will follow the basic pattern shown in the second line of this step. The <kbd>test_that()</kbd> function is called; its first argument is a bit of text that is printed to the console at test time, so we know which test is being worked on. The second argument is a block of assertions from the <kbd>testthat</kbd> package that compare the output from a function with an expected value. If the two match, the test passes; otherwise, it fails. There are many assertions in <kbd>testthat</kbd> that allow you to test many types of output and objects. You can see these in the documentation: <a href="https://testthat.r-lib.org/">https://testthat.r-lib.org/</a>. Note that the test should be in the test file and saved, not typed into the console.</p>
+<p class="mce-root"/>
+<p>In <em>step 3</em>, we use the <kbd>devtools::test()</kbd> function in the console to run the test suite automatically. The results of the tests are printed to the console and you can modify the functions as needed then re-run this step. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using continuous integration with Travis to keep code tested and up to date</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Continuous Integration</strong> (<strong>CI</strong>) is a team programming practice that was developed to help large teams working on the same project to keep all of their code, dependencies, and tests working together as well as possible. The tools developed to facilitate this can also help us to manage our own software projects and keep on top of problems that arise from our own updates, updates in the packages we have used as dependencies, and even updates to R and the operating system in certain cases. <kbd>Travis.CI</kbd> is one CI service that is supported in the <kbd>devtools</kbd> package. With <kbd>Travis.CI</kbd> integrated into your project, the Travis server will build a new virtual computer, install an operating system on it, install R and all of the package dependencies your package needs, then install your package and run its test suite. Travis will then send the results to you. This process is repeated at intervals—notably, every time you do a push to GitHub so you can keep an eye on what is breaking with your code and get an early handle on problems. In this recipe, we'll look at how to set up Travis for your package project.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, you'll need the <kbd>usethis</kbd> package and a package project hosted on GitHub. The earlier recipes in this chapter will help you with that if you don't already have that set up.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>To use CI with Travis to keep code tested and up to date, we create a <kbd>.travis.yml</kbd> file:</p>
+<pre>usethis::use_travis()</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The only line of code in this recipe creates a file called <kbd>.travis.yml</kbd> in the root of your package directory. This file works as a hook on GitHub so that, once the repository is updated, the <kbd>Travis.CI</kbd> server will carry out a new build of the virtual server and package and run the tests, then email you the results at the address associated with your GitHub account. Although it is only one line, this is probably one of the most impactful single lines in this whole book! The <kbd>.travis.yml</kbd> file carries configuration options for the Travis build and much can be added to customize the output. One common addition to that file is as follows:</p>
+<pre><span class="pl-ent">warnings_are_errors</span><span>: </span><span class="pl-c1">false</span></pre>
+<p>This will tell Travis that warnings from R code are not to be counted as errors and won't make the build fail. </p>
+<p>A build can take time; expect even simple code to take 15 minutes. More complicated projects will take longer.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  </body></html>

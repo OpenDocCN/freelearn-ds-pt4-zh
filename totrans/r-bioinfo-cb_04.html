@@ -1,0 +1,852 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Phylogenetic Analysis and Visualization</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">The comparison of sequences in order to infer evolutionary relationships is a fundamental technique of <span>bioinformatics</span>. It has a long history in R, too. There are many packages outside of Bioconductor for evolutionary analysis. In the recipes in this chapter, we will take a good look at how to work with tree formats from a variety of sources. A key focus will be how to manipulate trees to focus on particular parts and work with visualizations based on the new <kbd>ggplot</kbd>-based tree visualization packages, and the latter's usefulness in terms of viewing and annotating large trees. </p>
+<p>The following recipes will be covered in this chapter:</p>
+<ul>
+<li class="mce-root"><span>Reading and writing varied tree formats with ape and treeio</span></li>
+<li>Visualizing trees of many genes quickly with ggtree</li>
+<li>Quantifying distances between trees with treespace</li>
+<li>Extracting and working with subtrees using ape</li>
+<li>Creating dot plots for alignment visualization</li>
+<li>Reconstructing trees from alignments using phangorn</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>The sample data you'll need is available from this book's GitHub repository at <a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">https://github.com/danmaclean/R_Bioinformatics_Cookbook</a><a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">.</a> If you want to use the code examples as they are written, then you will need to make sure that this data is located in a subdirectory of whatever your working directory is.</p>
+<p>Here are the R packages that you'll need. The majority of these will install with<span> <kbd>install.packages()</kbd>; others are a little more complicated:</span></p>
+<ul>
+<li><kbd>ape</kbd></li>
+<li><kbd>adegraphics</kbd></li>
+<li> <kbd>Bioconductor:</kbd>
+<ul>
+<li><kbd>Biostrings</kbd> </li>
+<li><kbd>ggtree</kbd></li>
+<li><kbd>treeio</kbd></li>
+<li><kbd>msa</kbd></li>
+</ul>
+</li>
+<li><kbd>devtools</kbd></li>
+<li><kbd>dotplot</kbd></li>
+<li><kbd>ggplot2</kbd></li>
+<li><kbd>phangorn</kbd></li>
+<li><kbd>treespace</kbd></li>
+</ul>
+<p><kbd>Bioconductor</kbd> is huge and has its own installation manager. You can install it with the following code:<a href="https://www.bioconductor.org/install/"/></p>
+<pre>if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install()</pre>
+<div class="packt_infobox"><span> </span><span>Further information is available at</span><span> </span><span><a href="https://www.bioconductor.org/install/">https://www.bioconductor.org/install/</a>.</span></div>
+<p>Normally, in R, a user will load a library and use the functions directly by name. This is great in interactive sessions, but it can cause confusion when many packages are loaded. To clarify which package and function I'm using at a given moment, I will occasionally use the<span> </span><kbd>packageName::functionName()</kbd> convention. </p>
+<div class="packt_infobox"><span>Sometimes, in the middle of a recipe, I'll interrupt the code so that you can see some intermediate output or the structure of an object that's important to understand. Whenever that happens, you'll see a code block where each line begins with <kbd>##</kbd> (double hash) symbols. Consider the following command:<br/>
+<br/></span> <kbd>letters[1:5]</kbd> <br/>
+<br/>
+<span>This will give us the following output:<br/>
+<br/></span> <kbd>## a b c d e</kbd> <br/>
+<br/>
+<span>Note that the output lines are prefixed with <kbd>##</kbd>.</span></div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Reading and writing varied tree formats with ape and treeio</h1>
+                </header>
+            
+            <article>
+                
+<p>Phylogenetic analysis is a cornerstone of biology and bioinformatics. The programs are diverse and complex, the computations are long-running, and the datasets are often large. Many programs are standalone and many have proprietary input and output formats. This has created a very complex ecosystem that we must navigate when dealing with phylogenetic data, meaning that, often, the simplest strategy is to use combinations of tools to load, convert, and save the results of analyses in order to be able to use them in different packages. In this recipe, we'll look at dealing with phylogenetic tree data in R. <span>To date, R support for the wide range of tree formats is restricted, </span>but a few core packages have sufficient standardized objects such that workflows can focus on a few types and conversion to those types is streamlined. We'll look at using the <kbd>ape</kbd> and <kbd>treeio</kbd> packages to get tree data into and out of R. </p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p><span>For this section, we'll need the tree and phylogenetic information in</span> <kbd>datasets/ch4/</kbd><span> from the book's data repository, specifically the</span> <kbd>mammal_tree.nwk</kbd> <span>and</span> <kbd>mammal_tree.nexus</kbd><span> files, which are Newick and Nexus format trees of a mammal phylogeny (you can see brief descriptions of these file types in this book's <a href="">Appendix</a>). We'll need</span> <kbd>beast_mcc.tree</kbd>, <span>which is a tree file from a run of BEAST, and</span> <kbd>RAxML_bipartitionsBranchLabels.H3</kbd>, <span>which is an RAxML output file. Both of these files are taken from the extensive data provided with the</span> <kbd>treeio</kbd><span> package. We'll require the Bioconductor package,</span> <kbd>treeio</kbd><span>, and the</span> <kbd>ape</kbd><span> package.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p><span>Reading and writing tree formats with <kbd>ape</kbd> and <kbd>treeio</kbd> can be executed using the following steps:</span></p>
+<div>
+<ol>
+<li>Load the <kbd>ape</kbd> library and load in trees:</li>
+</ol>
+<pre style="padding-left: 60px">library(ape)<br/>newick &lt;-ape::read.tree(file.path(getwd(), "datasets", "ch4", "mammal_tree.nwk"))<br/>nexus &lt;-ape::read.nexus(file.path(getwd(), "datasets", "ch4", "mammal_tree.nexus"))</pre>
+<ol start="2">
+<li>Load the <kbd>treeio</kbd> library and load in BEAST/RAxML output:</li>
+</ol>
+<pre style="padding-left: 60px">library(treeio)<br/>beast &lt;- read.beast(file.path(getwd(), "datasets", "ch4", "beast_mcc.tree"))<br/>raxml &lt;- read.raxml(file.path(getwd(), "datasets", "ch4", "RAxML_bipartitionsBranchLabels.H3"))</pre></div>
+<ol start="3">
+<li>Check the object types that the different functions return:</li>
+</ol>
+<pre style="padding-left: 60px">class(newick)<br/><span>class(nexus)</span><br/><br/>class(beast)<br/>class(raxml)</pre>
+<div>
+<ol start="4">
+<li>Convert <kbd>tidytree</kbd> to <kbd>phylo</kbd>, and vice versa:</li>
+</ol>
+<pre style="padding-left: 60px">beast_phylo &lt;- treeio::as.phylo(beast)<br/>newick_tidytree &lt;- treeio::as.treedata(newick)</pre>
+<ol start="5">
+<li>Write output files using the following code:</li>
+</ol>
+<pre style="padding-left: 60px">treeio::write.beast(newick_tidytree,file = "mammal_tree.beast")<br/>ape::write.nexus(beast_phylo, file = "beast_mcc.nexus")</pre></div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we make use of very straightforward loading functions from <kbd>ape</kbd>—we use the <kbd>read.tree()</kbd> and <kbd>read.nexus()</kbd> functions, which can read the generic format trees. In <em>Step 2</em>, we repeat this using the specific format functions from <kbd>treeio</kbd> for BEAST and RaXML output. <em>Step 3</em> simply confirms the object types that the function returns; note that <kbd>ape</kbd> gives <kbd>phylo</kbd> objects, while <kbd>treeio</kbd> gives <kbd>treedata</kbd> objects. The two are interconverted using <kbd>as.phylo()</kbd> and <kbd>as.treedata()</kbd><em> </em>from <kbd>treeio</kbd> in <em>Step 4</em>. By converting in this way, we can get input in many formats into downstream analysis in R. Finally, we write the files in <em>Step 5</em>.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<p>The loading functions we used in <em>Step 2</em> are just a couple of those available. Refer to the <kbd>treeio</kbd> package vignettes for a comprehensive list.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Visualizing trees of many genes quickly with ggtree</h1>
+                </header>
+            
+            <article>
+                
+<p>Once you have computed a tree, the first thing you will want to do with it is take a look. That's possible in many programs, but R has an extremely powerful, flexible, and fast system in the form of the <kbd>ggtree</kbd> package. In this recipe, we'll learn how to get data into ggtree and re-layout, highlight, and annotate tree images in just a few commands. </p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You'll need the <kbd>ggplot2</kbd>, <kbd>ggtree</kbd><strong>, </strong>and <kbd>ape</kbd> packages. You'll also require the <kbd>itol.nwk</kbd> <span>file </span>from the <kbd>datasets/ch4</kbd> folder of this book's repository, which is a Newick tree of 191 species from the <em>Interactive Tree of Life</em> online tool's public dataset. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Visualizing trees of many genes quickly with <kbd>ggtree</kbd> can be executed using the following steps:</p>
+<ol>
+<li>Load the libraries and get a <kbd>phylo</kbd> object of the Newick tree:</li>
+</ol>
+<pre style="padding-left: 60px">library(ggplot2)<br/>library(ggtree)<br/>itol &lt;-ape::read.tree(file.path(getwd(), "datasets", "ch4", "itol.nwk")) </pre>
+<ol start="2">
+<li> Make a basic tree plot:</li>
+</ol>
+<pre style="padding-left: 60px">ggtree(itol)</pre>
+<ol start="3">
+<li>Make a circular plot:</li>
+</ol>
+<pre style="padding-left: 60px">ggtree(itol, layout = "circular")</pre>
+<ol start="4">
+<li>Rotate and invert the tree:</li>
+</ol>
+<pre style="padding-left: 60px">ggtree(itol) + coord_flip() + scale_x_reverse()</pre>
+<ol start="5">
+<li>Add labels to the tree tips:</li>
+</ol>
+<pre style="padding-left: 60px">ggtree(itol) + geom_tiplab( color = "blue", size = 2)</pre>
+<ol start="6">
+<li>Make a strip of color to annotate a particular clade:</li>
+</ol>
+<pre style="padding-left: 60px">ggtree(itol, layout = "circular") + geom_strip(13,14, color="red", barsize = 1)</pre>
+<ol start="7">
+<li>Make a blob of color to highlight a particular clade:</li>
+</ol>
+<pre style="padding-left: 60px">ggtree(itol, layout = "unrooted") + geom_hilight_encircle(node = 11, fill = "steelblue")</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>This code achieves a lot very quickly. It can do this by virtue of its <kbd>ggplot</kbd>-like layer syntax. Here's what each step does and its output:</p>
+<ol>
+<li>Load in a tree from a file. The tree here has 191 tips, so it's quite large. It happens to be in Newick format, so we use the <kbd>ape</kbd> <kbd>read.tree()</kbd> function. Note that we don't need to have a <kbd>treedata</kbd> object for <kbd>ggtree</kbd> in subsequent steps; the <kbd>phylo</kbd> object returned from <kbd>read.tree()</kbd> is perfectly acceptable to <kbd>ggtree()</kbd>.</li>
+<li>Create a basic tree with <kbd>ggtree()</kbd>. This function is a wrapper for a longer <kbd>ggplot</kbd>-style syntax, specifically, <kbd>ggplot(itol) + aes(x,y) + geom_tree() + theme_tree()</kbd>. Hence, all the usual <kbd>ggplot</kbd> functions can be used as extra layers in the plot. The code in this step gives us the following plot:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-585 image-border" src="Images/c524bc24-5636-45da-be9e-51680a5a4897.png" style="width:37.83em;height:37.25em;" width="1083" height="1068"/></p>
+<ol start="3">
+<li>Change the layout of the plot. Setting the layout argument to circular gives us a round tree. There are many other tree types available through this argument:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-586 image-border" src="Images/93e048c2-c9fe-4549-b707-0a97cdf0df0d.png" style="width:44.67em;height:46.75em;" width="805" height="843"/></p>
+<ol start="4">
+<li>We can change the left-right direction of the tree to a top-bottom one using the standard <kbd>ggplot</kbd> functions, <kbd>coord_flip()</kbd> and <kbd>scale_x_reverse()</kbd>, to make the plot look like this:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-587 image-border" src="Images/53da2023-c4e1-496c-a52b-72a3b0a210d9.png" style="width:44.58em;height:45.00em;" width="1060" height="1069"/></p>
+<ol start="5">
+<li>We can add names to the end of the tips with <kbd>geom_tiplab()</kbd>. The size argument sets the text size. This code generates the following output:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-588 image-border" src="Images/6da4e55f-8f77-41ed-a213-a6e0191e5ca6.png" style="width:46.33em;height:44.42em;" width="1115" height="1068"/></p>
+<ol start="6">
+<li>By adding a <kbd>geom_strip()</kbd> layer, we can annotate clades in the tree with a block of color. The first argument (<kbd>13</kbd> in this instance) is the start node in the tree, while the second argument is the end node in the tree for the strip of color. The <kbd>barsize</kbd> argument sets the width of the color block. The result looks like this:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-589 image-border" src="Images/4d934492-a6da-4a18-97c4-e0a8fa840ebe.png" style="width:46.08em;height:46.42em;" width="826" height="832"/></p>
+<ol start="7">
+<li>We can highlight clades in unrooted trees with blobs of color using the <kbd>geom_hilight_encircle()</kbd> geom. We need to pick a value for the <kbd>node</kbd> argument, which tells <kbd>ggtree()</kbd> which node to center the color over. The code here provides the following output:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-590 image-border" src="Images/c6da3037-3ccc-40ac-8cbd-a8adbc0201d5.png" style="width:42.67em;height:42.17em;" width="1076" height="1064"/></p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Steps 6</em> and <em>7</em> here relied on us knowing which nodes in the tree to manipulate. This isn't always obvious as the nodes are identified by number and not name. We can get at the node number we want if we use the <kbd>MRCA()</kbd> (<strong>Most Recent Common Ancestor</strong>) function. Simply pass it a vector of node names and it returns the ID of the node that represents the MRCA:</p>
+<pre>MRCA(itol, tip=c("Photorhabdus_luminescens", "Blochmannia_floridanus"))</pre>
+<p>This will give the following output:</p>
+<pre>## 206</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Quantifying differences between trees with treespace</h1>
+                </header>
+            
+            <article>
+                
+<p>Comparing trees to differentiate or group them can help researchers to see patterns of evolution. Multiple trees of a single gene tracked across species or strains can reveal differences in how that gene is changing across species. At the core of these approaches are metrics of distances between trees. In this recipe, we'll calculate one such metric to find pairwise differences between 20 different gene trees in 15 different species—hence, 15 different tips with identical names in each tree. Such similarity in trees is usually needed to compare and get distances, and we can't do an analysis like this unless these conditions are met.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll use the <kbd>treespace</kbd> package to compute distances and clusters. We'll use <kbd>ape</kbd> and <kbd>adegraphics</kbd> for accessory loading and visualization functions. The input data here will be all 20 files in <kbd>datasets/ch4/gene_trees</kbd>, each of which is a Newick-format tree for a single gene in each of 15 species.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Quantifying differences between trees with <kbd>treespace</kbd> can be executed using the following steps:</p>
+<ol>
+<li>Load the libraries:</li>
+</ol>
+<pre style="padding-left: 60px">library(ape)<br/>library(adegraphics)<br/>library(treespace)</pre>
+<ol start="2">
+<li>Load all the tree files into a <kbd>multiPhylo</kbd> object:</li>
+</ol>
+<pre style="padding-left: 60px">treefiles &lt;- list.files(file.path(getwd(), "datasets", "ch4", "gene_trees"), full.names = TRUE) <br/>tree_list &lt;- lapply(treefiles, read.tree) <br/>class(tree_list) &lt;- "multiPhylo"</pre>
+<ol start="3">
+<li>Compute the Kendall-Colijn distances:</li>
+</ol>
+<pre style="padding-left: 60px">comparisons &lt;- treespace(tree_list, nf = 3)</pre>
+<ol start="4">
+<li>Plot pairwise distances:</li>
+</ol>
+<pre style="padding-left: 60px">adegraphics::table.image(comparisons$D, nclass=25)</pre>
+<ol start="5">
+<li>Plot <strong>principal component analysis</strong><span> </span><span>(</span><strong>PCA</strong>) and clusters:</li>
+</ol>
+<pre style="padding-left: 60px">plotGroves(comparisons$pco, lab.show=TRUE, lab.cex=1.5) <br/>groves &lt;- findGroves(comparisons, nclust = 4) <br/>plotGroves(groves)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The short and sweet code here is really powerful—and gives us a lot of analysis in a few commands.</p>
+<p>In <em>Step 1</em>, initially, we load the libraries we require. </p>
+<p>In <em>Step 2</em>, after loading the necessary libraries, we make a character vector, <kbd>treefiles</kbd>, which holds paths to the 20 trees we wish to use. The <kbd>list.files()</kbd> <span>function that </span>we use takes a filesystem path as its argument and returns the names of files it finds in that path. As <kbd>treefiles</kbd> is a vector, we can use it as the first argument to <kbd>lapply()</kbd>.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In case you're not familiar with it, <kbd>lapply()</kbd> is an iterator function that returns an R list (hence, <kbd>lapply()</kbd>).<strong><em> </em></strong>Simply put, <kbd>lapply()</kbd> runs the function named in the second argument over the list of things in the first. The current thing is passed as the target function's first argument. So, in <em>Step 2</em>, we run the <strong>ape</strong> <kbd>read.tree()</kbd> function on each file named in <kbd>treefiles</kbd> and receive a list of <kbd>phylo</kbd> tree objects in return. The final step is to ensure that the <kbd>tree_list</kbd> object has the class, <kbd>multiPhylo</kbd>, so that we satisfy the requirements of the downstream functions. Helpfully, a <kbd>multiPhylo</kbd> object is a list-like object anyway, so we can get away with adding the <kbd>multiPhylo</kbd> <span>string</span> to the class attribute with the <kbd>class()</kbd> function.</p>
+<p>In <em>Step 3</em>, the <kbd>treespace()</kbd> <span>function</span><span> </span>from the package of the same name does an awful lot of analysis. First, it runs pairwise comparisons of all trees in the input, and then it carries out clustering using PCA. These are returned in a list object, with a member <em>D</em> containing the pairwise distances for the trees, and <kbd>pco</kbd> containing the PCA. The default distance metric, the Kendall-Colijn distance, is particularly suitable for rooted gene trees as we have here, though the metric can be changed. The argument <kbd>nf</kbd> simply tells us how many of the principal components to retain. As our aim is plotting, we won't need more than three.</p>
+<p>In <em>Step 4</em>, we plot the distance matrix in <kbd>comparisons$D</kbd> using the <kbd>table.image()</kbd> function in <kbd>adegraphics</kbd>—a convenient heatmap-style function. The <kbd>nclass</kbd> <span>argument</span><span> </span>tells us how many levels of color to use. We get a plot as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-591 image-border" src="Images/5d616d00-9d11-4851-95b7-458c94ed1d72.png" style="width:37.67em;height:25.67em;" width="591" height="403"/></p>
+<p class="mce-root"/>
+<p class="CDPAlignLeft CDPAlign">In <em>Step 5</em>, the <kbd>plotGroves()</kbd> function<em> </em>plots a <kbd>treespace</kbd> object directly, so we can see the plot of the PCA:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-592 image-border" src="Images/2fca568c-2421-475d-9025-70ce3394583a.png" style="width:34.67em;height:34.58em;" width="509" height="507"/></p>
+<p>We can use the <kbd>findGroves()</kbd> function to group the trees into the number of groups given by the <kbd>nclust</kbd> argument and re-plot to view that:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-595 image-border" src="Images/cb693e11-7f01-419f-b7ad-0b6d5073334c.png" style="width:34.00em;height:33.58em;" width="512" height="507"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>If you have many trees and the plot is crowded, you can create an interactive plot that can be zoomed and panned using the following code:</p>
+<pre>plotGrovesD3(comparisons$pco, treeNames=paste0("species_", 1:10) )</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Extracting and working with subtrees using ape</h1>
+                </header>
+            
+            <article>
+                
+<p>In this short recipe, we'll look at how easy it can be to manipulate trees; specifically, how to pull out a subtree as a new object and how to combine trees into other trees. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll need a single example tree; the <kbd>mammal_tree.nwk</kbd> <span>file </span>in the <kbd>datasets/ch4</kbd> folder will be fine. All the functions we require can be found in the <kbd>ape</kbd> package.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Extracting and working with subtrees using <kbd>ape</kbd> can be executed using the following steps:</p>
+<ol>
+<li>Load the <kbd>ape</kbd> library and then load the tree:</li>
+</ol>
+<pre style="padding-left: 60px">library(ape)<br/>newick &lt;-read.tree(file.path(getwd(), "datasets", "ch4", "mammal_tree.nwk"))</pre>
+<ol start="2">
+<li>Get a list of all of the subtrees:</li>
+</ol>
+<pre style="padding-left: 60px">l &lt;- subtrees(newick)<br/>plot(newick)<br/>plot(l[[4]], sub = "Node 4")</pre>
+<ol start="3">
+<li>Extract a specific subtree:</li>
+</ol>
+<pre style="padding-left: 60px">small_tree &lt;- extract.clade(newick, 9)</pre>
+<ol start="4">
+<li>Combine two trees:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">new_tree &lt;- bind.tree(newick, small_tree, 3)<br/>plot(new_tree)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The functions in this recipe are really straightforward, but extremely useful. </p>
+<p><em>Step 1</em> is a familiar tree-loading step. We need a phylo object tree to progress. </p>
+<p><em>Step 2</em> uses the <kbd>subtrees()</kbd> function, which extracts all non-trivial (greater than one node) subtrees and puts them in a list. The members of the list are numbered according to the node number in the original tree, and each object in the list is a <kbd>phylo</kbd> object, like the parent. We can inspect the original tree and the subtree at node 4 using the <kbd>plot()</kbd> function, which generates the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-596 image-border" src="Images/87afa2f7-6e77-427a-a027-224ee38952cc.png" style="width:100.83em;height:34.25em;" width="1210" height="411"/></p>
+<p class="CDPAlignLeft CDPAlign">In <em>Step 3</em>, we get a single specific subtree using the <kbd>extract.clade()</kbd> function. The first argument to this function is the tree, while the second is the node that will be extracted. In fact, all nodes downstream of this node are taken and a new <kbd>phylo</kbd> object is returned. </p>
+<p class="CDPAlignLeft CDPAlign">The last example shows how to use the <kbd>bind.tree()</kbd> function to combine two <kbd>phylo</kbd> objects. The first argument is the major tree, which will receive the tree of the second argument. Here, we'll be stitching <kbd>small_tree</kbd> onto Newick. The third argument is the node in the major tree to which the second tree will be joined. Again, a new <kbd>phylo</kbd> object is returned. When we plot the new tree, we can see the repeated segment relative to our original tree:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-597 image-border" src="Images/fe646dab-df22-4c39-9200-2a1a3acbd0c1.png" style="width:33.67em;height:19.67em;" width="535" height="312"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>A minor problem with the preceding functions is that they expect us to know the node number we want to work with. A simple way to access this is by using the interactive <kbd>subtreeplot()</kbd> command. The <kbd>subtreeplot(newick)</kbd> <span>code </span>generates an interactive plot for the tree <span>provided, </span>like the one here. By clicking on particular nodes in the tree, we can get the viewer to render the subtree and print the node ID. We can then use the node ID in the functions:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-598 image-border" src="Images/77fd4bed-d815-4939-85c0-146c10beaaf5.png" style="width:29.58em;height:42.50em;" width="531" height="763"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Creating dot plots for alignment visualization</h1>
+                </header>
+            
+            <article>
+                
+<p>Dot plots of pairs of aligned sequences are probably the oldest alignment visualization. In these plots, the positions of two sequences are plotted on the <em>x</em> <span>axis </span>and <em>y</em> axis, and for every coordinate in that space, a point is drawn if the letters (nucleotides or amino acids) correspond at that <kbd>(x,y)</kbd> coordinate. Since the plot can show regions that match that aren't generally in the same region of the two sequences, this is a good way to visually spot insertions and deletions and structural rearrangements in the two sequences. In this recipe, we'll look at a speedy method for constructing a dot plot using the <kbd>dotplot</kbd> package and a bit of code for getting a grid plot of all pairwise dot plots for sequences in a file.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll need the <kbd>datasets/ch4/bhlh.fa</kbd> <span>file, </span>which contains three <strong>basic helix-loop-helix</strong> (<strong>bHLH</strong>) transcription factor sequences from pea, soy, and lotus. We'll also need the <kbd>dotplot</kbd> package, which isn't on CRAN or Bioconductor, so you'll need to install it from GitHub using the <kbd>devtools</kbd> package. The following code should work:</p>
+<pre>library(devtools)
+install_github("evolvedmicrobe/dotplot", build_vignettes = FALSE)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Creating dot plots for alignment visualization can be executed using the following steps:</p>
+<ol>
+<li>Load the libraries and sequences:</li>
+</ol>
+<pre style="padding-left: 60px">library(Biostrings)<br/>library(ggplot2)<br/>library(dotplot)<br/>seqs &lt;- readAAStringSet(file.path(getwd(), "datasets", "ch4", "bhlh.fa"))</pre>
+<ol start="2">
+<li>Make a basic dot plot:</li>
+</ol>
+<pre style="padding-left: 60px">dotPlotg(as.character(seqs[[1]]), as.character(seqs[[2]] ))</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="3">
+<li>Change the dot plot and apply the <kbd>ggplot2</kbd> themes and labels:</li>
+</ol>
+<pre style="padding-left: 60px">dotPlotg(as.character(seqs[[1]]), as.character(seqs[[2]] ), wsize=7, wstep=5, nmatch=4) + <br/>theme_bw() + <br/>labs(x=names(seqs)[1], y=names(seqs)[2] )</pre>
+<ol start="4">
+<li>Make a function that will create a dot plot from sequences <span>provided </span>and the sequence index:</li>
+</ol>
+<pre style="padding-left: 60px">make_dot_plot &lt;- function(i=1, j=1, seqs = NULL){<br/> seqi &lt;- as.character(seqs[[i]])<br/> seqj &lt;- as.character(seqs[[j]])<br/> namei &lt;- names(seqs)[i]<br/> namej &lt;- names(seqs)[j]<br/> return( dotPlotg(seqi, seqj ) + theme_bw() + labs(x=namei, y=namej) )<br/>}</pre>
+<ol start="5">
+<li>Set up data structures to run the function:</li>
+</ol>
+<pre style="padding-left: 60px">combinations &lt;- expand.grid(1:length(seqs),1:length(seqs))<br/>plots &lt;- vector("list", nrow(combinations) )</pre>
+<ol start="6">
+<li>Run the function on all the possible combinations of pairs of sequences:</li>
+</ol>
+<pre style="padding-left: 60px">for (r in 1:nrow(combinations)){<br/> i &lt;- combinations[r,]$Var1[[1]]<br/> j &lt;- combinations[r,]$Var2[[1]]<br/> plots[[r]] &lt;- make_dot_plot(i,j, seqs)<br/>}</pre>
+<ol start="7">
+<li>Plot the grid of plots:</li>
+</ol>
+<pre style="padding-left: 60px">cowplot::plot_grid(plotlist = plots)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The first part of this recipe is pretty familiar. We load in the libraries and use <kbd>Biostrings</kbd> to load in our protein sequences. Note that our sequences in the <kbd>seqs</kbd> variable are an instance of the <kbd>XStringSet</kbd> class.</p>
+<p class="mce-root"/>
+<p>In <em>Step 2</em>, we can create a basic dot plot using the <kbd>dotplotg()</kbd> <span>function</span>. The arguments are the sequences we want to plot. Note that we can't pass the <kbd>XStringSet</kbd> objects directly; we need to pass character vectors, so we coerce our sequences into that format with the <kbd>as.character()</kbd> function. Running this code gives us the following dot plot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-599 image-border" src="Images/7d3856f1-de5c-4fe1-ad63-781cf25c3445.png" style="width:56.00em;height:40.00em;" width="672" height="480"/></p>
+<p class="mce-root"/>
+<p>In <em>Step 3</em>, we elaborate on the basic dot plot by first changing the way a match is considered. With the <kbd>wsize=7</kbd> option, we state that we are looking at seven residues at a time (instead of the default of one), the <kbd>wstep=5</kbd> option tells the plotter to jump five residues each step (instead of one, again), and the <kbd>nmatch=4</kbd> option tells the plotter to mark a window as matching if four of the residues are identical. We then customize the plot by adding a <kbd>ggplot2</kbd> theme to it in the usual <kbd>ggplot</kbd> manner and add axis names with the label function. From this, we get the following dot plot. Note how it is different to the first one:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-600 image-border" src="Images/05cbd1a9-77a9-4c60-a456-5463b1e45d44.png" style="width:56.00em;height:40.00em;" width="672" height="480"/></p>
+<p>The custom function, <kbd>make_dot_plot()</kbd>, defined in <em>Step 4</em> takes two numbers in variables, <kbd>i</kbd> and <kbd>j</kbd>, and an <kbd>XStringSet</kbd> object in the <kbd>seqs</kbd> argument. It then converts the i-th and j-th sequence in the <kbd>seqs</kbd> object to characters and stores those in <kbd>seqi</kbd> and <kbd>seqj</kbd> variables. It also extracts the names of those sequences to <kbd>namei</kbd> and <kbd>namej</kbd>. Finally, it creates and returns a dot plot using the variables created</p>
+<p class="mce-root"/>
+<p>To use the function, we need two things; the combinations of sequences to be plotted and a list to hold the results in. In <em>Step 4</em>, the <kbd>expand.grid()</kbd> function is used to create a data frame of all possible combinations of sequences by number, which we store in the <kbd>combinations</kbd> variable. The <kbd>plots</kbd> variable, created with the <kbd>vector()</kbd> function, contains a <kbd>list</kbd> object with the right number of slots to hold the resultant dot plots.</p>
+<p><em>Step 6</em> is a loop that iterates over each row of the combination's data frame, extracting the sequence numbers we wish to work with and storing them in the <kbd>i</kbd> and <kbd>j</kbd> variables. The <kbd>make_dot_plot()</kbd> function is then called with <kbd>i</kbd>, <kbd>j</kbd>, and <kbd>seqs</kbd>, and its results stored in the <kbd>plots</kbd> list we created.</p>
+<p>Finally, in <em>Step 7</em>, we use the <kbd>cowplot</kbd> library function, <kbd>plot_grid()</kbd>, with our list of plots to make a master plot of all possible combinations that looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="Images/bec8bae0-5740-4178-bd18-9f17a5f6de59.png" width="672" height="480"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Reconstructing trees from alignments using phangorn</h1>
+                </header>
+            
+            <article>
+                
+<p>So far in this chapter, we've assumed that trees are already available and ready to use. Of course, there are many ways to make a phylogenetic tree and, in this recipe, we'll take a look at some of the different methods available.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this chapter, we'll use the <kbd>datasets/ch4/</kbd> file, the <kbd>abc.fa</kbd> file of yeast ABC transporter sequences, the <kbd>Bioconductor Biostrings</kbd> package, and the <kbd>msa</kbd> and <kbd>phangorn</kbd> packages from CRAN.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it... </h1>
+                </header>
+            
+            <article>
+                
+<p>Constructing trees using <kbd>phangorn</kbd> can be executed using the following steps:</p>
+<ol>
+<li>Load in the libraries and sequences, and make an alignment:</li>
+</ol>
+<pre style="padding-left: 60px">library(Biostrings)<br/>library(msa)<br/>library(phangorn)<br/><br/>seqs &lt;- readAAStringSet(file.path(getwd(), "datasets", "ch4", "abc.fa"))<br/>aln &lt;- msa::msa(seqs, method=c("ClustalOmega"))</pre>
+<ol start="2">
+<li>Convert the alignment to the <kbd>phyDat</kbd> object:</li>
+</ol>
+<pre style="padding-left: 60px">aln &lt;- as.phyDat(aln, type = "AA")</pre>
+<ol start="3">
+<li>Make UPGMA and neighbor-joining trees from a distance matrix:</li>
+</ol>
+<pre style="padding-left: 60px">dist_mat &lt;- dist.ml(aln)<br/><br/>upgma_tree &lt;- upgma(dist_mat)<br/>plot(upgma_tree, main="UPGMA")<br/><br/>nj_tree &lt;- NJ(dist_mat)<br/>plot(nj_tree,"unrooted", main="NJ")</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="4">
+<li>Calculate the bootstraps and plot:</li>
+</ol>
+<pre style="padding-left: 60px">bootstraps &lt;- bootstrap.phyDat(aln,FUN=function(x) { NJ(dist.ml(x)) } , bs=100)<br/>plotBS(nj_tree, bootstraps, p = 10)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The first step carries out a loading and amino acid sequence alignment, as we've seen in an earlier recipe with the <kbd>msa</kbd> package, returning an <kbd>MsaAAMultipleAlignment</kbd> object.</p>
+<p>The second step uses the<span> </span><kbd>as.phyDat()</kbd> <span>function to </span>convert the alignment to a <kbd>phyDat</kbd> object that can be used by the <kbd>phangorn</kbd> functions.</p>
+<p>In <em>Step 3</em>, we actually make trees. Trees are made from a distance matrix, which we can compute with <kbd>dist.ml()</kbd> and our alignment (this is a maximum-likelihood distance measure; other functions can be used here if needed). The <kbd>dist_mat</kbd> is passed to the <kbd>upgma()</kbd> and <kbd>NJ()</kbd> functions to make UPGMA and neighbor-joining trees, respectively. These return standard <kbd>phylo</kbd> objects that can be worked with in many other functions. Here, we plot directly:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-601 image-border" src="Images/807b4486-43e0-4838-b9e6-a3147134c115.png" style="width:89.50em;height:31.83em;" width="1074" height="382"/></p>
+<p>In the final step, we use the <kbd>bootstraps.phyDat()</kbd> function to compute bootstrap support for the branches in the tree. The first argument is the <kbd>phyDat</kbd> object, <kbd>aln</kbd>, while the second argument, <kbd>FUN</kbd>, requires a function to calculate trees. Here, we use an anonymous function wrapping the <kbd>NJ()</kbd> method we used to generate <kbd>nj_tree</kbd> in the first place. The <kbd>bs</kbd> argument tells the functions how many bootstraps to compute. Finally, we can plot the resultant bootstraps onto the tree using the <kbd>plotBS()</kbd> function.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  </body></html>

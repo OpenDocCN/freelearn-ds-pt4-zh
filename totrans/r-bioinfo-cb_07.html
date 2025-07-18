@@ -1,0 +1,879 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Producing Publication and Web-Ready Visualizations</h1>
+                </header>
+            
+            <article>
+                
+<p>Designing and producing publication-quality visualizations is a key task and one of the most rewarding things bioinformaticians gets to do with data. R is not short of excellent packages for creating graphics, that is, beyond the powerful base graphics system and <kbd>ggplot2</kbd>. In the recipes in this chapter, we'll look at how to create plots for many different data types that aren't of the typical bar/scatter plot type. We'll also look at networks, interactive and 3D graphics, and circular genome plots.</p>
+<p>The following recipes will be covered in this chapter:</p>
+<ul>
+<li>Visualizing multiple distributions with ridgeplots</li>
+<li>Creating colormaps for two-variable data</li>
+<li>Representing relational data as networks</li>
+<li>Creating interactive web graphics with plotly</li>
+<li>Constructing three-dimensional plots with plotly</li>
+<li>Constructing circular genome plots of polyomic data</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>The sample data you'll need for this chapter is available in this book's<span> GitHub repository: </span><a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">https://github.com/danmaclean/R_Bioinformatics_Cookbook</a><a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">.</a><span> If you want to use the code examples as they are written, then you will need to make sure that the data is in a subdirectory of your working directory.</span></p>
+<p>Here are the R packages that you'll need. You can install them with <kbd>install.packages("package_name")</kbd>. The packages listed under <kbd>Bioconductor</kbd> need to be installed with a dedicated installer, which is also described in this section. If you need to do anything else, the installation steps will be described in the recipes in which the packages are used:</p>
+<ul>
+<li><kbd>circlize</kbd></li>
+<li><kbd>dplyr</kbd></li>
+<li><kbd>ggplot2</kbd></li>
+<li><kbd>ggridges</kbd></li>
+<li><kbd>gplots</kbd></li>
+<li><kbd>plotly</kbd></li>
+<li><kbd>RColorBrewer</kbd></li>
+<li><kbd>readr</kbd></li>
+<li><kbd>magrittr</kbd></li>
+<li><kbd>tidyr</kbd></li>
+<li><kbd>viridis</kbd></li>
+</ul>
+<p><kbd>Bioconductor</kbd> is huge and has its own installation manager. You can install the manager with the following code:<a href="https://www.bioconductor.org/install/"/></p>
+<pre>if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")</pre>
+<p>Then, you can install the packages with the following code:</p>
+<div>
+<pre>BiocManager::install("package_name")</pre></div>
+<div class="packt_infobox"><span>Further information is available at</span><span> </span><span><a href="https://www.bioconductor.org/install/">https://www.bioconductor.org/install/</a>.</span></div>
+<div>
+<p>Normally, in R, a user will load a library and use the functions directly by name. This is great in interactive sessions, but it can cause confusion when many packages are loaded. To clarify which package and function I'm using at a given moment, I will occasionally use the<span> </span><kbd>packageName::functionName()</kbd> convention.</p>
+</div>
+<div class="packt_infobox"><span><span>Sometimes, in the middle of a recipe, I'll interrupt the flow of code so that you can see some intermediate output or the structure of an object that's important to understand. Whenever that happens, you'll see a code block where each line begins with ## double hash symbols. Consider the following command:<br/>
+<br/></span></span>
+<p><kbd>letters[1:5]</kbd></p>
+<p><span>This will give us the following output:</span></p>
+<p class="mce-root"><kbd>## a b c d e</kbd></p>
+<p><span> Note that the output lines are prefixed with <kbd>##</kbd>.</span></p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Visualizing multiple distributions with ridgeplots</h1>
+                </header>
+            
+            <article>
+                
+<p>Visualizing distributions of some measured quantity is an extremely common task in bioinformatics, and one that base R handles admirably with its <kbd>hist()</kbd> and <kbd>density()</kbd> functions and the generic <kbd>plot()</kbd> methods, which can create plots of the objects. The <kbd>ggplot</kbd> graphics system has a neat way of plotting many density graphs in a per factor level manner, resulting in a compact and very readable graphic—a so-called ridgeplot. In this recipe, we'll look at how to create a ridgeplot.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll use the <kbd>ggplot</kbd> and <kbd>ggridges</kbd> packages. For the dataset, we'll use one from the <kbd>datasets</kbd> package that usually comes preinstalled with R. We're going to use the <kbd>airquality</kbd> data. You can see this if you type <kbd>airquality</kbd> straight into the R console.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Visualizing multiple distributions with ridgeplots can be done using the following steps:</p>
+<ol>
+<li>Load the libraries:</li>
+</ol>
+<pre style="padding-left: 60px">library(ggplot2)
+library(ggridges)</pre>
+<ol start="2">
+<li>Build a <kbd>ggplot</kbd> description:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">ggplot(airquality) + aes(Temp, Month, group = Month) + geom_density_ridges()</pre>
+<ol start="3">
+<li>Explicitly make <kbd>Month</kbd> a factor:</li>
+</ol>
+<pre style="padding-left: 60px">ggplot(airquality) + aes(Temp, as.factor(Month) ) + geom_density_ridges()</pre>
+<ol start="4">
+<li>Color the ridges:</li>
+</ol>
+<pre style="padding-left: 60px">ggplot(airquality) + aes(Temp, Month, group = Month,  fill = ..x..) + 
+  geom_density_ridges_gradient() + 
+  scale_fill_viridis(option = "C", name = "Temp")</pre>
+<ol start="5">
+<li>Reshape the dataframe and add facets:</li>
+</ol>
+<pre style="padding-left: 60px">library(tidyr)
+airquality %&gt;%
+  gather(key = "Measurement", value = "value", Ozone, Solar.R, Wind, Temp ) %&gt;%
+  ggplot() + aes(value, Month, group = Month) + 
+  geom_density_ridges_gradient() +
+  facet_wrap( ~ Measurement, scales = "free")</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>After loading the libraries we needed in <em>Step 1</em>, in <em>Step 2</em>, we created a standard <kbd>ggplot</kbd> description using the <kbd>geom_ridges()</kbd> function from the <kbd>ggridges</kbd> package. If you haven't seen a ggplot plot before, they're very straightforward. A ggplot plot has three layers, built up using at least three functions—the <kbd>ggplot()</kbd> function is always the first and allows us to specify the dataset. The next, which is added on top with the <kbd>+</kbd> operator, is the <kbd>aes()</kbd> function or aesthetic function, which we can think of as being the things we want to see in the plot. The first argument represents the thing on the <em>x</em> axis, while the second argument represents the thing on the <em>y </em>axis. The <kbd>group = Month</kbd> argument is specific to the ridgeplot and tells the plotting function how to group data points. It is needed here since the <kbd>Month</kbd> data is numeric, not a factor. Finally, we add <kbd>geom_density_ridges()</kbd> to create the right sort of plot.</p>
+<p class="CDPAlignLeft CDPAlign">In <em>Step 3</em>, we followed the same sort of procedure as <em>Step 2</em>, but this time, as an alternative, we use <kbd>as.factor(Month)</kbd>, which explicitly converts the <kbd>Month</kbd> data into a factor before processing and rendering the group. This deems the <kbd>Month</kbd> step unnecessary. The plots from these steps look as follows, with <em>Step 2</em> on the left and <em>Step 3</em> on the right:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-611 image-border" src="Images/386fb9ba-2bec-45cf-bb1f-3203c30ae6c8.png" style="width:225.67em;height:83.33em;" width="2708" height="1000"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In <em>Step 4</em>, we added color to the ridges. Essentially, the <kbd>ggplot</kbd> construction is the same, except it has the addition of <kbd>fill = ..x..</kbd> in the <kbd>aes()</kbd> function, which tells the plot that color should be filled in the <em>x</em> axis direction. We then use a slightly different <kbd>geom</kbd> function, <kbd>geom_density_ridges_gradient()</kbd>, which is capable of coloring its ridges. In the last new layer, with <kbd>scale_fill_viridis()</kbd>, we chose a color scale from the viridis color scale library (loaded at the top). The <kbd>"C"</kbd> option specifies the particular color scale, while <kbd>name</kbd> specifies the name for the scale. The resulting plot looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-612 image-border" src="Images/3cf10b88-19e3-4d92-bcf4-f03969c0e5f7.png" style="width:112.00em;height:80.00em;" width="1344" height="960"/></p>
+<p class="mce-root"/>
+<p>Finally, in <em>Step 5</em>, we split the data by a further dimension and added facets containing different aspects of the same dataset in the same style of plot. The <kbd>airquality</kbd> data needs to be preprocessed a little for this to be possible. We load the <kbd>tidyr</kbd> package and use the <kbd>gather()</kbd> function to take the values named columns (specifically Ozone, Solar.R, Wind, and Temp) into a single column called value and add a new column called Measurement that records the original column that the observation came from. Then, we pipe the result into <kbd>ggplot()</kbd>. The construction is nearly identical to before (note that our <em>x</em> axis is now value, not Temp, as this is where the temperatures are stored in the reshaped dataframe), with the addition of the <kbd>facet_wrap()</kbd> function at the end, which uses formula notation to select the subsets of the data to display in individual facets. The option scales are <kbd>"free"</kbd> and allow each of the resulting facets to have their own scales. The result is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="Images/4ddd1065-e5d0-4614-acf0-91f5f9d3c55b.png" width="1344" height="960"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Creating colormaps for two-variable data</h1>
+                </header>
+            
+            <article>
+                
+<p>Colormaps, also known as heatmaps, are plots of two-dimensional matrices in which the numeric values are converted into a color at a particular scale. There are numerous various ways in which we can plot these in R; most graphics packages have some way of doing this. In this recipe, we'll use the base package's <kbd>heatmap()</kbd> function to visualize some matrices.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll need just the <kbd>ggplot</kbd> packages, as well as the built-in <kbd>WorldPhones</kbd> dataset.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Creating colormaps for two-variable data can be done using the following steps:</p>
+<ol>
+<li>Create a basic heatmap:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">heatmap(WorldPhones)</pre>
+<ol start="2">
+<li>Remove the dendrogram:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">heatmap(WorldPhones, Rowv = NA, Colv = NA)</pre>
+<ol start="3">
+<li>Add a color scale to the groups:</li>
+</ol>
+<pre style="padding-left: 60px">cc &lt;- rainbow(ncol(WorldPhones), start = 0, end = .3)
+
+heatmap(WorldPhones, ColSideColors = cc)</pre>
+<ol start="4">
+<li>Change the palette:</li>
+</ol>
+<pre style="padding-left: 60px">library(RColorBrewer)
+heatmap(WorldPhones, ColSideColors = cc, 
+        col = colorRampPalette(brewer.pal(8, "PiYG"))(25))</pre>
+<ol start="5">
+<li>Rescale the data:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">heatmap(WorldPhones, ColSideColors = cc, scale = "column")</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we passed the base <kbd>heatmap()</kbd> function a matrix, which returns a plot that looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-666 image-border" src="Images/e6e8d896-0aa1-4eba-991f-c749b2933354.png" style="width:20.50em;height:21.83em;" width="946" height="1007"/></p>
+<p class="CDPAlignLeft CDPAlign">In <em>Step 2</em>, we used the <kbd>Rowv</kbd> and <kbd>Colv</kbd> arguments to remove the dendrogram. Note that, in the resulting plot, the columns are in the same order as in the matrix. By using the dendrograms, we can rearrange the columns and rows. The treeless plot looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-667 image-border" src="Images/984dd795-1719-45b8-b22e-de1f7b48d9ee.png" style="width:19.92em;height:21.42em;" width="928" height="997"/></p>
+<p>In <em>Step 3</em>, we created a palette object using the <kbd>rainbow()</kbd> function, which returns the colors for a plot. The first argument to <kbd>rainbow()</kbd> is the number of colors. Here, we are using <kbd>ncol(WorldPhones)</kbd> to get one color per column for the dataset. The start and end arguments specify where to start and end the color selection in the rainbow. We can then use the <strong>CC</strong> palette object in the <kbd>ColSideColors</kbd> argument to get a color key for the columns. We can use more similar columns to get more similar colors, as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-668 image-border" src="Images/171a8ed7-dbd4-4093-88a9-de35fa1e9abb.png" style="width:25.67em;height:27.75em;" width="928" height="1004"/></p>
+<p>In <em>Step 4</em>, we provided a palette object to the <kbd>col</kbd> argument to change the overall palette of the heatmap. We used the <kbd>colorRampPalette()</kbd> function to make a sequential palette from a smaller list of specific colors. This will interpolate the colors to make a full palette. We passed <kbd>colorRampPalette()</kbd> the <span><kbd>RColorBrewer</kbd> package function known</span> as <kbd>brewer.pal()</kbd>, w<span>hich, with the provided options, will return eight colors from the <strong>pink-yellow-green</strong> (<strong>PiYG</strong>) pallete. The resulting heatmap is colored like so:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-669 image-border" src="Images/62b784e1-0480-40db-a5c6-6bf8c09948d9.png" style="width:21.17em;height:23.00em;" width="929" height="1007"/></p>
+<p>Finally, in <em>Step 5</em>, we applied a numeric transformation to the data within the visualization step. We use the <kbd>scale</kbd> option of <kbd>heatmap()</kbd> to normalize the data in the plot. Note that setting the value to <strong>column</strong> does this column-wise while setting it to <kbd>row</kbd> does this row-wise. The default base package <kbd>scale()</kbd> function is used for this. Rescaling the numbers in the plot is what is responsible for the color change, and is not the result of a direct selection from a palette. The plot is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-670 image-border" src="Images/cb43c3e2-11a7-49d8-9b0b-c6b7bc0d6725.png" style="width:21.08em;height:23.00em;" width="916" height="999"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">See also </h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>heatmap()</kbd> function has been followed up by other packages that follow a similar syntax but extend its capabilities. Try <kbd>heatmap.2()</kbd> and <kbd>heatmap.3()</kbd> in the <kbd>gplots</kbd> package. A <kbd>heatmap.2()</kbd> plot can be seen in the following histogram. It's very similar to <kbd>heatmap()</kbd>, but has an added color key and histogram plot by default:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-671 image-border" src="Images/fe5afabd-d1d9-45ab-b0e9-089e40921f89.png" style="width:36.08em;height:27.58em;" width="1334" height="1020"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Representing relational data as networks</h1>
+                </header>
+            
+            <article>
+                
+<p>Networks, or graphs, are extremely powerful data representations for relationships between entities that are central to a large number of biological studies. Network analysis can reveal a lot about community structures in ecological studies, reveal potential drug targets in protein-protein interactions, and help us understand the interactions involved in complex metabolic reactions. The underlying data structures that represent networks can be complex. Thankfully, R has got some very powerful packages, in particular, <kbd>igraph</kbd> and <kbd>ggraph</kbd>, that we can use to access information about our networks and make plots. In this recipe, we'll look at some ways of generating plots for a reasonably sized network.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll need the <kbd>ggraph</kbd> and <kbd>igraph</kbd> packages and dependencies, including <kbd>magrittr</kbd>, <kbd>readr</kbd>, and <kbd>dplyr</kbd>. We'll need the <kbd>bio-DM-LC.edges</kbd> file from the <kbd>datasets/ch7</kbd> folder of this book repository. This is a file that contains some gene functional associations from WormNet. The network contains ~1,100 edges and ~650 nodes. You can read more about the data here: <a href="http://networkrepository.com/bio-DM-LC.php">http://networkrepository.com/bio-DM-LC.php</a>. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root"><span>Representing relational data as networks can be done using the following steps:</span></p>
+<ol>
+<li>Load the packages and prepare the dataframe:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">library(ggraph)
+library(magrittr)<br/><br/>df &lt;- readr::read_delim(file.path(getwd(), "datasets", "ch7", "bio-DM-LC.edges"), <br/>                        delim = " ", <br/>                        col_names = c("nodeA", "nodeB", "weight")) %&gt;% <br/>      dplyr::mutate(edge_type = c("A","B"), length(weight), replace = TRUE))</pre>
+<ol start="2">
+<li>Create an <kbd>igraph</kbd> object and use it in a basic plot:</li>
+</ol>
+<pre style="padding-left: 60px">graph &lt;- igraph::graph_from_data_frame(df)
+
+ggraph(graph, layout = "kk") + 
+  geom_edge_link() + 
+  geom_node_point() + 
+  theme_void()</pre>
+<ol start="3">
+<li>Color the edges according to their value or type:</li>
+</ol>
+<pre style="padding-left: 60px">ggraph(graph, layout = "fr") + 
+  geom_edge_link(aes(colour = edge_type)) + 
+  geom_node_point() + 
+  theme_void()</pre>
+<ol start="4">
+<li>Add the node attributes and color nodes accordingly:</li>
+</ol>
+<pre style="padding-left: 60px">igraph::V(graph)$category &lt;- sample(c("Nucleus", "Mitochondrion", "Cytoplasm"), length(igraph::V(graph)), replace = TRUE )
+igraph::V(graph)$degree &lt;- igraph::degree(graph)
+
+ggraph(graph, layout = "fr") + 
+  geom_edge_link(aes(colour = edge_type)) + 
+  geom_node_point(aes(size = degree, colour = category)) + 
+  theme_void()<br/><br/></pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we loaded the libraries we needed and then prepared the dataframe from the file of edges. The input file is basically an edge list. Each row describes a connection with one of the target nodes in the first column and one in the second. The third column contains a value representing the strength of the interaction between those two nodes, which we'll think of as an edge weight. The fields are separated by a single space and the file has no header with column names. As such, we set the values of the <kbd>delim</kbd> and <kbd>col_names</kbd> arguments appropriately. We pipe the dataframe to the <kbd>dplyr::mutate()</kbd> function to add an extra column called <kbd>edge_type</kbd>. In this column, we randomly assign either <kbd>"A"</kbd> or <kbd>"B"</kbd> to each row using the <kbd>sample()</kbd> function. The resulting object is saved in the <kbd>df</kbd> variable.</p>
+<p>In <em>Step 2</em>, we created the igraph object from <kbd>df</kbd> using the <kbd>igraph::graph_from_data_frame()</kbd> function and saved it to the <kbd>graph</kbd> variable. We passed the <kbd>igraph</kbd> graph object as the first object to the <kbd>ggraph()</kbd> function, which works analogously to <kbd>ggplot()</kbd><em>.</em> It takes the <kbd>graph</kbd> object and a layout argument. (Here, we use <kbd>"kk"</kbd>, but the exact one to use will be heavily dependent on the data itself.) Then, we added layers with the <kbd>+</kbd> operator. First, we added the <kbd>geom_edge_link()</kbd> layer, which draws the edges, then <kbd>geom_node_point()</kbd>, which draws the nodes, and finally, we add <kbd>theme_void()</kbd>, which removes the background gray panel and white lines and leaves a clear background for the network. The initial plot looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="Images/2cc1a139-5b20-4d55-88fc-754f5213eb3b.png" style="width:30.00em;height:21.42em;" width="1344" height="960"/></p>
+<p>In <em>Step 3</em>, we added some data-based customizations. We started by changing the layout algorithm to <kbd>"fr"</kbd>, which gives a nicer and more spread out view. Then, we used the <kbd>aes()</kbd> function in <kbd>geom_edge_link()</kbd> to set the edge color to be mapped to the <kbd>edge_type</kbd> value. The remaining layers were added like they were previously. By doing this, we get the following plot: </p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-672 image-border" src="Images/772fcbe4-3dab-4b75-8f60-0a43e50b9507.png" style="width:36.42em;height:25.42em;" width="1335" height="930"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="CDPAlignLeft CDPAlign">In <em>Step 4</em>, we set up some attributes for the nodes. This is simpler than it looks. The <kbd>V()</kbd> function from <kbd>igraph</kbd> returns a simple vector of the node IDs in the <kbd>graph</kbd> object (nodes are called vertices in igraph jargon), so we calculate the length of the vector and use it to make a random vector of the <kbd>Nucleus</kbd>, <kbd>Mitochondrion</kbd>, and <kbd>Cytoplasm</kbd> values. We can then assign these new values to the nodes by using the <kbd>V()</kbd> function with <kbd>$</kbd> indexing. We can create any attribute we like, so <kbd>igraph::V(graph)$category</kbd> creates a new attribute called <strong>category</strong>. We can assign the new values straight to the attribute using the standard <kbd><em>&lt;-</em></kbd> assignment operator. The next step is similar; <kbd>igraph::V(graph)$degree</kbd> create<span>s an attribute called <strong>degree</strong>. In our case, we assign the result of the <kbd>igraph::degree()</kbd> function. Degree is the graph jargon term for the number of edges that meet at a node. We now have new attributes and can color our graph accordingly. The <kbd>ggraph()</kbd> construction proceeds as it did previously, but in the <kbd>geom_node_point()</kbd> layer, we use <kbd>aes()</kbd> to map color to our new category attribute and size to our new <kbd>degree</kbd> attribute. The resulting plot looks like this:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-673 image-border" src="Images/29ba5b4d-1884-41ee-bdbe-c1758200658b.png" style="width:44.50em;height:30.83em;" width="1336" height="926"/></p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Hive plots are a nice way of plotting networks, especially when you have three node types or some sort of directional structure. You can create a hive plot out of the same sort of data we already have, like so:</p>
+<pre>ggraph(graph, 'hive', axis = 'category') +
+  geom_edge_hive(aes(colour = edge_type, alpha = ..index..)) + 
+  geom_axis_hive(aes(colour = category)) + 
+  theme_void()</pre>
+<p>Here, we set up the layout type to be <kbd>hive</kbd> and specify the attribute on which to make the axis <kbd>category</kbd>. The edge description in <kbd>geom_edge_hive()</kbd> is pretty much like it was previously, with an <kbd>alpha</kbd> argument called <kbd>..index..</kbd> that adds a transparency element to the edges based on how early they are plotted. The <kbd>geom</kbd> node is replaced with <kbd>geom_axis_hive()</kbd>, in which we use <kbd>aes()</kbd> to map a color to the category. The resultant plot looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-674 image-border" src="Images/c88697a7-7aab-4240-8c29-eb4b1abc601a.png" style="width:45.00em;height:30.75em;" width="1346" height="920"/></p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Creating interactive web graphics with plotly</h1>
+                </header>
+            
+            <article>
+                
+<p>Exploring a dataset interactively through a graphical user interface can be a rewarding and enlightening way to analyze and interrogate data. Dynamically adding and removing data from a plot, zooming in and out of specific parts, or allowing the plot to change with time-dependent on underlying data can allow us to see trends and features we could not see with static plots. In this recipe, we'll look at using the <kbd>plotly</kbd> library to create interactive graphics in R, building up from a basic plot to a more involved one.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll use the built-in Orange data, which describes changes in the circumference of orange trees' trunks over time. This is part of the (usually) preinstalled <kbd>datasets</kbd> package, so you should be able to access it straight away.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Creating interactive web graphics with <kbd>plotly</kbd> can be done using the following steps:</p>
+<ol>
+<li>Load the library and make a basic plot:</li>
+</ol>
+<pre style="padding-left: 60px">library(plotly)<br/>plot_ly(data = Orange, x = ~age, y = ~circumference)</pre>
+<ol start="2">
+<li>Map the color and size of markers and hover over text to data:</li>
+</ol>
+<pre style="padding-left: 60px">plot_ly(data = Orange, x = ~age, y = ~ circumference,
+        color = ~Tree, size = ~age,
+        text = ~paste("Tree ID: ", Tree, "&lt;br&gt;Age: ", age, "Circ: ", circumference)
+        )</pre>
+<ol start="3">
+<li>Add a second series/trace:</li>
+</ol>
+<pre style="padding-left: 60px">trace_1 &lt;- rnorm(35, mean = 120, sd = 10)
+new_data &lt;- data.frame(Orange, trace_1)
+
+plot_ly(data = new_data, x = ~age, y = ~ circumference,
+        color = ~Tree, size = ~age,
+        text = ~paste("Tree ID: ", Tree, "&lt;br&gt;Age: ", age, "Circ: ", circumference)
+        
+)  %&gt;% add_trace(y = ~trace_1, mode = 'lines' ) %&gt;%
+  add_trace(y = ~circumference, mode = 'markers' )</pre>
+<ol start="4">
+<li>Add a drop-down menu so that you can select the plot type:</li>
+</ol>
+<pre style="padding-left: 60px">plot_ly(data = Orange, x = ~age, y = ~ circumference,
+        color = ~Tree, size = ~age,
+        text = ~paste("Tree ID: ", Tree, "&lt;br&gt;Age: ", age, "Circ: ", circumference)
+
+)  %&gt;%
+  add_trace(y = ~circumference, mode = 'marker' ) %&gt;%
+  layout(
+    title = "Plot with switchable trace",
+      updatemenus = list(
+        list(
+          type = "dropdown",
+            y = 0.8,
+            buttons = list(
+              list(method = "restyle",
+                   args = list("mode", "markers"),
+                   label = "Marker"
+              ),
+              list(method = "restyle",
+                   args = list("mode", "lines"),
+                   label = "Lines"
+                   )
+              
+            )
+          )
+      )
+  )</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>After loading the library in <em>Step 1</em>, we used the core <kbd>plot_ly()</kbd> function to create the simplest plot possible. We passed <kbd>plot_ly()</kbd> the name of the dataframe, and the columns for the <em>x</em> and <em>y</em> axes as formulae—hence the <kbd>~</kbd> sign. At this point, we haven't explicitly specified the trace type, what <kbd>plotly</kbd> calls its series or data tracks,<span> </span>so it guesses and makes a scatter plot, as shown in the following graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-675 image-border" src="Images/6861dbc2-2587-4488-8c0d-0d405cd4e12d.png" style="width:44.50em;height:32.50em;" width="681" height="497"/></p>
+<p><span>Note the menu icons at the top of the plot and the hover text that appears when you mouse over a data point. These figures can be interacted with perfectly well within an interactive R session but are better suited to HTML-based documents such as compiled R markdown.</span></p>
+<p>In <em>Step 2</em>, we mapped the features in the plot to aspects of the data. We set the size and color to map to the Tree ID and age columns, again as a formula with the <kbd>~</kbd> syntax. We also set the hover text for each point and used <kbd>paste()</kbd> to compile the exact format. Note that the hover text is HTML-based and that we can use tags such as <kbd>&lt;br&gt;</kbd> to format the hover as we choose. Our plot is now improved to look like the following:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-676 image-border" src="Images/b17950f4-e633-40ba-a6ad-339251331123.png" style="width:47.00em;height:34.25em;" width="681" height="496"/></p>
+<p class="CDPAlignLeft CDPAlign">In <em>Step 3</em>, our major change is to explicitly specify the trace data. To highlight that traces can carry data outside of the original dataframe, we created a new data vector called <kbd>trace_1</kbd> using <kbd>rnorm()</kbd>, which contains 35 random numbers with a mean of 120 and a standard deviation of 1. We created our plot in the same way as we created the plot in <em>Step 2</em>, but this time we used the <kbd>magrittr</kbd> pipe to send the plot object to the <kbd>add_trace()</kbd> function. Here, we pass the new <kbd>trace_1</kbd> object as our <kbd>y</kbd> value and set <kbd>mode</kbd> to <kbd>"lines"</kbd> to get a line graph. Again, we piped that to another <kbd>add_trace()</kbd> function (we can build up a plot from multiple trace series in this way), but this time used the original dataframe column circumference and set <kbd>mode</kbd> to <kbd>"markers"</kbd>. The resulting plot looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-677 image-border" src="Images/65b6953c-b853-42f4-a768-d1a6741e6542.png" style="width:48.83em;height:36.08em;" width="672" height="496"/></p>
+<p>In <em>Step 4</em>, we introduced menus into our plot. The menu we implemented will allow us to switch between trace types—from lines to markers and back. The step started with the same basic call to <kbd>plot_ly()</kbd> and then piping to just one trace this time. Next, we piped to the <kbd>layout</kbd> function, which takes a plot title in the <kbd>title</kbd> argument and a complicated list of options for the <kbd>updatemenus</kbd> argument. You must pass a list of lists to <kbd>updatemenus</kbd> that has three members <span>–</span> <kbd>type</kbd>, <kbd>y</kbd>, and <kbd>buttons</kbd>. <kbd>type</kbd> sets the type of menu—<span>in this case,</span> we want a dropdown;<span> </span><kbd>y</kbd> sets the position of the menu on the <em>y</em> axis as a value between 0 and 1, and <kbd>buttons</kbd> requires another list of lists in which each sublist describes a menu option. Each sublist has the <kbd>members</kbd> method, as well as <kbd>args</kbd> and <kbd>labels</kbd>. The <kbd>setting</kbd> method is used to <kbd>"restyle"</kbd>, which means the plot will update on menu selection. The <kbd>args</kbd> member requires another list specifying the <kbd>"mode"</kbd> and <kbd>"type"</kbd> for the current menu option. Finally, <kbd>label</kbd> specifies the text that will appear in the menu itself for this menu option. The plot looks as follows when we select <strong>Marker</strong> in the dropdown, which renders on the left:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-678 image-border" src="Images/3ae09760-4a47-4a46-9a18-1c78a8a9e5ef.png" style="width:45.92em;height:33.25em;" width="681" height="493"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Constructing three-dimensional plots with plotly</h1>
+                </header>
+            
+            <article>
+                
+<p>Most plots we generate in bioinformatics are static and stuck in a two-dimensional plane, but modern web technologies allow us to interact with three-dimensional objects with dynamic rendering. The <kbd>plotly</kbd> library has tools for rendering different kinds of 3D plots and in this recipe, we'll look at how to construct a 3D surface plot and a scatter plot with <em>x</em>, <em>y</em>, and <em>z</em> axes.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll use the <kbd>plotly</kbd> library again and the built-in <kbd>longley</kbd> dataset of economic data. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Constructing three-dimensional plots with <kbd>plotly</kbd> can be done using the following steps:</p>
+<ol>
+<li>Set up the data objects:</li>
+</ol>
+<pre style="padding-left: 60px">library(plotly)
+
+d &lt;- data.frame(
+  x &lt;- seq(1,10, by = 0.5),
+  y &lt;- seq(1,10, by = 0.5)
+)
+
+z &lt;- matrix(rnorm(length(d$x) * length(d$y) ), nrow = length(d$x), ncol = length(d$y))</pre>
+<ol start="2">
+<li>Create the basic surface plot:</li>
+</ol>
+<pre style="padding-left: 60px">plot_ly(d, x = ~x , y = ~y, z = ~z) %&gt;% 
+  add_surface()</pre>
+<ol start="3">
+<li>Add a reactive contour plot layer:</li>
+</ol>
+<pre style="padding-left: 60px">plot_ly(d, x = ~x , y = ~y, z = ~z) %&gt;% 
+  add_surface(
+    contours = list(
+    z = list(
+      show=TRUE,
+      usecolormap=TRUE,
+      highlightcolor="#ff0000",
+      project=list(z=TRUE)
+      )
+    )
+  )</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we begin by building a dataset that's appropriate for the type of plot. For the surface 3D plot, we need a dataframe of <em>x</em> and <em>y</em> coordinates, which we create directly using <kbd>data.frame()</kbd> and save in a variable called <kbd>d</kbd>. The dataframe, <kbd>d</kbd>, contains a sequence of 20 values between 0 and 10 in the x and y columns (10 values each). You should think of this dataframe as specifying the width and length of the 3D field, and not the actual data values. The data values come in a distinct matrix object with the dimensions specified by the dataframe. We created a matrix of appropriate dimension using the <kbd>matrix()</kbd> function with random normal values from the <kbd>rnorm()</kbd> function. Once we have these two structures, we can use them in <kbd>plot_ly()</kbd> while specifying <kbd>d</kbd>, <kbd>x</kbd>, and <kbd>y</kbd>, like we did for two-dimensional plots, and with the new <em>z </em>axis, which gets our matrix. The result is piped to the <kbd>add_surface()</kbd> function, which renders the data as a three-dimensional surface. The plot will look something like the following:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-679 image-border" src="Images/937a3979-ea5e-45ba-9899-98ff241c9740.png" style="width:37.00em;height:26.58em;" width="627" height="450"/></p>
+<div class="packt_infobox"><span>Note that by clicking and dragging within the plot area, you can adjust the camera view.</span></div>
+<p>In <em>Step 2</em>, we elaborate on the plot by adding a reactive contour plot under (or over) the 3D surface. We used the contours option in the <kbd>add_surface()</kbd> function. This takes a list of options. The first <kbd>z</kbd> specifies what to do with the contour. It takes a further list with members to control the appearance of the contour map, the most important being <kbd>highlightcolor</kbd>, which specifies the color to draw <span>onto the contour plot</span> to show the current level of the 3D plot the mouse is hovering over. The rendered image looks something like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-680 image-border" src="Images/2e83eb40-202c-4423-be61-9b5b2f8558cf.png" style="width:39.92em;height:31.67em;" width="584" height="463"/></p>
+<p>In <em>Step 3</em>, we changed tack and drew a scatter plot in three dimensions. This is more straightforward. We passed the Longley data to the <kbd>plot_ly()</kbd> function, along with the dimensions and the data columns to map to. We also added a marker option to map color to the GNP column. Finally, we piped the basic plot object to the <kbd>add_markers()</kbd> function to get the final plot, which renders like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-681 image-border" src="Images/eccfaa8a-99e6-482b-b01c-87726e45f6a8.png" style="width:39.33em;height:33.33em;" width="536" height="454"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Constructing circular genome plots of polyomic data</h1>
+                </header>
+            
+            <article>
+                
+<p>A whole genome analysis of multiple data series is often presented in a circular manner with concentric circles, each showing different kinds of data with a different representation in each. These plots, called Circos plots, are extremely powerful and can show a lot of dense information in a compact form. In this recipe, we'll look at constructing such plots in R from common genomics data files.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>To make Circos plots, we'll use the <kbd>circlize</kbd> package and the four files prefixed with <kbd>arabidopsis</kbd> in the <kbd>datasets/ch7/</kbd> folder of this book's repository.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Constructing circular genome plots of polyomic data can be done using the following steps:</p>
+<ol>
+<li>Load the library and read the chromosome length information:</li>
+</ol>
+<pre style="padding-left: 60px"><span class="hljs-keyword">library</span><span>(circlize)</span><br/>df &lt;- readr::read_tsv(file.path( getwd(), "datasets", "ch7", "arabidopsis.gff"), col_names = FALSE) %&gt;% 
+  dplyr::select(X1, X4, X5)</pre>
+<ol start="2">
+<li>Initialize the plot and chromosome track, and then add links:</li>
+</ol>
+<pre style="padding-left: 60px">circos.genomicInitialize(df)
+circos.link("Chr4", c(9000000, 1200000), 
+            "Chr5", c(12000000,15000000),
+            col = "red")</pre>
+<ol start="3">
+<li>Load in link information from the file and draw it:</li>
+</ol>
+<pre style="padding-left: 60px">circos.clear()
+
+source_links &lt;- read.delim(file.path(getwd(), "datasets", "ch7", "arabidopsis_out_links.bed"), header = FALSE) 
+target_links &lt;- read.delim(file.path(getwd(), "datasets", "ch7", "arabidopsis_in_links.bed"), header = FALSE)
+
+circos.genomicInitialize(df)
+circos.genomicLink(source_links, target_links, col = "blue")</pre>
+<ol start="4">
+<li>Load in the gene positions and add a density track:</li>
+</ol>
+<pre style="padding-left: 60px">circos.clear()<br/><br/>gene_positions &lt;- read.delim(file.path(getwd(), "datasets", "ch7", "arabidopsis_genes.bed"), header = FALSE)
+circos.genomicInitialize(df)
+circos.genomicDensity(gene_positions, window.size = 1e6, col = "#0000FF80", track.height = 0.1)</pre>
+<ol start="5">
+<li>Load in the heatmap data. Then, add a heatmap track:</li>
+</ol>
+<pre style="padding-left: 60px">circos.clear()
+
+heatmap_data &lt;- read.delim(file.path(getwd(), "datasets", "ch7", "arabidopsis_quant_data.bed"), header = FALSE)
+<br/>col_fun = colorRamp2(c(10, 12, 15), c("green", "black", "red"))
+circos.genomicInitialize(df)
+circos.genomicHeatmap(heatmap_data, col = col_fun, side = "inside", border = "white")</pre>
+<ol start="6">
+<li>Combine the tracks:</li>
+</ol>
+<pre style="padding-left: 60px">circos.clear()
+
+circos.genomicInitialize(df)
+circos.genomicHeatmap(heatmap_data, col = col_fun, side = "inside", border = "white")<br/>circos.genomicDensity(gene_positions, window.size = 1e6, col = "#0000FF80", track.height = 0.1)
+circos.genomicLink(source_links, target_links, col = "blue")</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we begin by reading in the <kbd>arabidopsis.gff</kbd> file, a file that describes the lengths of the chromosomes we'd like to use in our plot. We only needed the name, start, and end columns, so we piped the data to the <kbd>dplyr::select()</kbd> function to keep the appropriate columns, that is, <kbd>X1</kbd>, <kbd>X4</kbd>, and <kbd>X5</kbd>. As a <kbd>.gff</kbd> file has no column headings, the <kbd>read_tsv()</kbd> functions give the column names X1 ... Xn. We saved the result in the <kbd>df</kbd> object.</p>
+<p>In <em>Step 2</em>, we started building the plot. We used the <kbd>circos.genomicInitialize()</kbd> function with <kbd>df</kbd> to create the plot's backbone and coordinate system and then manually added a single link. The <kbd>circos.link()</kbd> function allows us to create a single origin and destination using the chromosome's name, c(start, end) format, thereby coloring the link in the requested color. The plot currently looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-682 image-border" src="Images/ce859647-57e4-40da-887e-055c9c9ff227.png" style="width:35.33em;height:35.00em;" width="826" height="819"/></p>
+<p>At the start of <em>Step 3</em>, we used <kbd>circos.clear()</kbd> to completely reset the plot. Resetting is only necessary for the purposes of this tutorial as we want to build things step-wise; you can likely ignore it in your own coding. The next stage is to load in a file of genomic regions that represent the source of some links and a separate file of genomic regions that represent the target of some links. These two files should be in BED format and row N in the source file must correspond to row N in the target file. Then, we reinitialized the plot with <kbd>circos.genomicInitialize()</kbd> and used <kbd>circos.genomicLink()</kbd> to add many links in one command, passing it the objects of the source link data and the target data before coloring them all blue. The plot looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-683 image-border" src="Images/678fa268-b228-4375-883b-f933cf5b2d0d.png" style="width:41.75em;height:41.17em;" width="824" height="813"/></p>
+<p class="mce-root"/>
+<p>In <em>Step 4</em>, after clearing the plot, we read in another BED file of gene positions from <kbd>arabidopsis_genes.bed</kbd>. We want to add this information as a density track that counts the number of features in the windows of user-specified length and plots them as a density curve. To do this, we use the <kbd>circos.genomicDensity()</kbd> function, passing it the dataframe of <kbd>gene_positions</kbd>, selecting a window size of 1 million, a color (note the color is in the eight-digit HEX format that allows us to add transparency to the color), and <kbd>track.height</kbd>, which specifies the proportion of the plot to use for this track. The track looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-684 image-border" src="Images/7a08f401-61ce-4069-9ec2-1cd1b20bbe70.png" style="width:42.33em;height:42.00em;" width="822" height="816"/></p>
+<p>In <em>Step 5</em>, we added a more complex track—a heatmap that can represent many columns of quantitative data. The file format here is extended BED format, with a chromosome name, start, and end with data in any further columns. We have three extra columns of data in our sample <kbd>arabidopsis_quant_data.bed</kbd> file. We load the bed file into <kbd>heatmap_data</kbd> with <kbd>read.delim()</kbd>. Next, we created a color function and saved it as <kbd>col_fun</kbd> to help draw the heatmap. The <kbd>colorRamp2()</kbd> function takes a vector of the minimum, middle, and maximum values of the data as its argument, for which the colors specified in the second argument should be used. So, with <kbd>10</kbd>, <kbd>12</kbd>, and <kbd>15</kbd> and <kbd>green</kbd>, <kbd>red</kbd>, and <kbd>black</kbd>, we drew 10 in green, 12 in black, and 15 in red, respectively. The colors for the values in-between those points are calculated automatically by <kbd>colorRamp2()</kbd>. To draw the heatmap, we used the <kbd>circos.genomicHeatmap()</kbd> function, passing <kbd>col_fun</kbd> to the <kbd>col</kbd> argument. The <kbd>side</kbd> argument specifies whether to draw inside or outside the circle, while the <kbd>border</kbd> argument specifies the color of the lines between heatmap elements. The plot looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-685 image-border" src="Images/9cd724a1-0585-4cd5-95f6-80b48894a4c7.png" style="width:34.42em;height:34.25em;" width="827" height="824"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Finally, in <em>Step 6</em>, we put all of this together. By clearing and reinitializing the plot, we specified the order of the tracks from outside to in by calling the relevant functions in outside first to inside last order:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-686 image-border" src="Images/45d052d2-678b-4bee-9ba8-30f3f2adca7e.png" style="width:42.83em;height:42.25em;" width="832" height="821"/></p>
+<p>The final plot, as seen in the preceding image, gets<span> </span><kbd>circos.genomicHeatmap()</kbd>, then <kbd>circos.genomicDensity()</kbd>, and then <kbd>circos.genomicLink()</kbd><em> </em>to give us the circular genome plot.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  </body></html>

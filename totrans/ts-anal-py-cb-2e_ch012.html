@@ -1,0 +1,1189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+lang="en"
+xmlns="http://www.w3.org/1999/xhtml"
+xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Time Series Analysis with Python Cookbook, 2E - Second Edition</title>
+<link rel="stylesheet" type="text/css" href="../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/><link rel="stylesheet" type="text/css" href="../styles/stylesheet2.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content"><section id="additional-statistical-modeling-techniques-for-time-series" class="level1 pkt" data-number="12">
+<h1 data-number="12">11 Additional Statistical Modeling Techniques for Time Series</h1>
+<section id="join-our-book-community-on-discord-10" class="level2" data-number="12.1">
+<h2 data-number="12.1">Join our book community on Discord</h2>
+<p>
+<img style="width:15rem" src="../media/file0.png" width="200" height="200"/>
+</p>
+<p><a href="https://packt.link/zmkOY">https://packt.link/zmkOY</a></p>
+<p>In <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods</em>, you were introduced to popular forecasting techniques such as <em>exponential smoothing, non-seasonal ARIMA</em>, <em>and seasonal ARIMA</em>. These methods, often referred to as classical statistical forecasting approaches, are fast, simple to implement, and easy to interpret.</p>
+<p>In this chapter, you will dive head-first and learn about additional statistical methods that build on the foundation you gained from the previous chapter. This chapter will introduce a few libraries that can automate time series forecasting and model optimization - Facebook's (meta) <code>Prophet</code> library. Additionally, you will explore <code>statsmodels'</code> <strong>vector autoregressive (VAR)</strong> class for working with multivariate time series and the <code>arch</code> library, which supports <strong>GARCH</strong> for modeling volatility in financial data.</p>
+<p>The main goal of this chapter is to familiarize you with <strong>automated forecasting tools</strong> (like Prophet) and introduce the concept of <strong>multivariate time series modeling</strong> with VAR models. You will also gain an understanding of how to model and forecast <strong>volatility</strong> in financial time series, which is essential for risk management and financial decision-making.</p>
+<p>In this chapter, we will cover the following recipes:</p>
+<ul>
+<li>Forecasting time series data using Facebook Prophet</li>
+<li>Forecasting multivariate time series data using VAR</li>
+<li>Evaluating vector autoregressive (VAR) models</li>
+<li>Forecasting volatility in financial time series data with GARCH</li>
+</ul>
+</section>
+<section id="technical-requirements-10" class="level2" data-number="12.2">
+<h2 data-number="12.2">Technical requirements</h2>
+<p>You can download the Jupyter Notebooks to follow along and the necessary datasets for this chapter from this book's GitHub repository:</p>
+<ul>
+<li>Jupyter Notebooks: <a href="https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch11/Chapter%2011.ipynb">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch11/Chapter%2011.ipynb</a></li>
+<li>Datasets: <a href="https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch11">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch11</a></li>
+</ul>
+<p>There are common libraries that you will be using throughout the recipes in this chapter. You can import them in advance by using the following code:</p>
+<div class="C0-CodePACKT">
+<pre><code>import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+import warnings
+warnings.filterwarnings('ignore')
+plt.rc("figure", figsize=(16, 5))</code></pre>
+</div>
+</section>
+<section id="forecasting-time-series-data-using-facebook-prophet" class="level2" data-number="12.3">
+<h2 data-number="12.3">Forecasting time series data using Facebook Prophet</h2>
+<p>The <strong>Prophet</strong> library is a popular open-source project that was initially developed at Facebook (now Meta), based on a 2017 paper that proposed an algorithm for time series forecasting titled <em>Forecasting at Scale</em>. The project gained popularity due to its simplicity, ability to create performant forecasting models, and ability to handle complex seasonality, holiday effects, missing data, and outliers. Prophet automates many aspects of designing a forecasting model while providing rich built-in visualizations. Additional capabilities include building growth models (like <strong>saturated forecasts</strong>), working with uncertainty in trend and seasonality, and <strong>detecting changepoints</strong>.</p>
+<p>In this recipe, you will use the <code>Milk Production</code> dataset for benchmarking performance. This is the same dataset introduced in <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods</em>. Using the same dataset helps in understanding and comparing different methods.</p>
+<p>Prophet is an <strong>additive regression model</strong> that can handle <strong>non-linear trends</strong>, especially when there are strong seasonal effects. The model decomposes time series data into three main components: <em>trend</em>, <em>seasonality</em>, and <em>holidays</em>, represented in the following form:</p>
+<figure>
+<img src="../media/file244.png" width="594" height="53"/>
+</figure>
+<p>Where:</p>
+<ul>
+<li>is the trend function,</li>
+<li>represents the periodic seasonality function,</li>
+<li>accounts for the effects of holidays,</li>
+<li>is the residual error term.</li>
+</ul>
+<p>Prophet uses <strong>Bayesian inference</strong> to automate tuning and optimization of the model components. Behind the scenes, it relies on <strong>Stan</strong>, a state-of-the-art platform for Bayesian modeling, with <strong>cmdstand</strong> and <strong>cmdstanpy</strong> as the current Python interface (replacing the earlier <strong>PyStan</strong>). Recent updates have improved compatibility with Apple M1/M2 chips and enhanced model customization options, such as adjusting the handling of holidays and scaling output.</p>
+<section id="getting-ready-35" class="level3" data-number="12.3.1">
+<h3 data-number="12.3.1">Getting ready</h3>
+<p>You can find the Jupyter Notebooks and necessary datasets from this book's GitHub repository. Please refer to the <em>Technical requirements</em> section of this chapter for more information. We use Prophet 1.0 version for this recipe.</p>
+<p>Creating a new Python environment when installing new libraries like Prophet is always a good idea. If you need a quick refresher on creating a virtual Python environment, check out the <em>Development environment setup recipe</em> from <em>Chapter 1</em>, <em>Getting Started with Time Series Analysis</em>. The chapter covers two methods: using <code>conda</code> and <code>venv</code>.</p>
+<p>For example, you can create the environment using conda as in the following example:</p>
+<div class="C0-SHConPACKT">
+<pre><code>conda create -n prophet python=3.11 -y</code></pre>
+</div>
+<p>This preceding code will create a new virtual environment named <code>prophet</code>. To make the new <code>prophet</code> environment visible in Jupyter, you can run the following code:</p>
+<div class="C0-SHConPACKT">
+<pre><code>python -m ipykernel install --user --name prophet --display-name "Prophet"
+conda activate prophet</code></pre>
+</div>
+<p>Once the new environment is activated, you can install the Prophet library. To install using <strong>pip,</strong> you can run the following:</p>
+<div class="C0-SHConPACKT">
+<pre><code>pip install prophet</code></pre>
+</div>
+<p>To install using <strong>conda,</strong> use the following command:</p>
+<div class="C0-SHConPACKT">
+<pre><code>conda install -c conda-forge prophet</code></pre>
+</div>
+</section>
+<section id="how-to-do-it-44" class="level3" data-number="12.3.2">
+<h3 data-number="12.3.2">How to do it…</h3>
+<p>Prophet requires the input data to be in a pandas DataFrame with two specific columns: a <strong>datetime</strong> column named <code>ds</code> and a target variable column named <code>y </code>– this is the variable you wish to forecast. Prophet does not work with a <code>Datetimeindex</code> directly. Hence, it’s crucial to have these columns explicitly named. If your data contains more than two columns, Prophet will only recognize <code>ds</code> and <code>y</code>, and ignore the rest by default. However, if you want to include additional predictors (regressors), use the <code>add_regressor</code> method. If these columns are missing or incorrectly named, Prophet will throw an error.</p>
+<p>To ensure your data is formatted properly, follow these steps:</p>
+<ol>
+<li>Start by reading the <code>milk_productions.csv </code>file and rename the columns <code>ds</code> and <code>y</code>:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from prophet import Prophet
+milk_file = Path('../../datasets/Ch11/milk_production.csv')
+milk = pd.read_csv(milk_file, parse_dates=['month'])
+milk.columns = ['ds', 'y']
+milk.info()
+&gt;&gt;
+&lt;class 'pandas.core.frame.DataFrame'&gt;
+RangeIndex: 168 entries, 0 to 167
+Data columns (total 2 columns):
+ #   Column  Non-Null Count  Dtype        
+---  ------  --------------  -----        
+ 0   ds      168 non-null    datetime64[ns]
+ 1   y       168 non-null    int64        
+dtypes: datetime64[ns](1), int64(1)
+memory usage: 2.8 KB</code></pre>
+</div>
+<ol>
+<li>Split the data into <strong>test</strong> and <strong>train</strong> sets. Let's go with a <code>90/10</code> split by using the following code:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>idx = round(len(milk) * 0.90)
+train = milk[:idx]
+test = milk[idx:]
+print(f'Train: {train.shape}')
+print(f'Test: {test.shape}')
+&gt;&gt;
+Train: (151, 2)
+Test: (17, 2)</code></pre>
+</div>
+<ol>
+<li>You can create an instance of the Prophet class and fit it on the training set in one line with the <code>fit</code> method. The milk production time series is <em>monthly</em>, with both a trend and a steady seasonal fluctuation (additive). The default <code>seasonality_mode</code> in Prophet is <code>additive</code>, so leave it as-is:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from prophet import Prophet
+model = Prophet().fit(train)</code></pre>
+</div>
+<ol>
+<li>Some setup needs to be done before you can use the model to make predictions. Use the <code>make_future_dataframe</code> method to extend the <code>train</code> DataFrame forward for a specific number of periods and at a specified frequency:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>future = m_milk.make_future_dataframe(len(test), freq='MS')</code></pre>
+</div>
+<p>This extends the training data by 17 months (the number of periods in the <code>test</code> set). In total, you should have the exact number of periods that are in the milk DataFrame (train and test). The frequency is set to <strong>month start</strong> with <code>freq='MS'</code>. The <code>future</code> object only contains one column, <code>ds</code>, of type <code>datetime64[ns]</code> , which is used to populate the predicted values:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>len(milk) == len(future)
+&gt;&gt; True
+print(future.tail())
+&gt;&gt;
+            ds
+163 1975-08-01
+164 1975-09-01
+165 1975-10-01
+166 1975-11-01
+167 1975-12-01</code></pre>
+</div>
+<ol>
+<li>Use the <code>predict</code> method to take the <code>future</code> DataFrame and make the predictions. The result will be a DataFrame that's the same length as <code>forecast</code> but now with additional columns:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>forecast = model.predict(future)
+forecast.columns.tolist()
+&gt;&gt;
+['ds',
+ 'trend',
+ 'yhat_lower',
+ 'yhat_upper',
+ 'trend_lower',
+ 'trend_upper',
+ 'additive_terms',
+ 'additive_terms_lower',
+ 'additive_terms_upper',
+ 'yearly',
+ 'yearly_lower',
+ 'yearly_upper',
+ 'multiplicative_terms',
+ 'multiplicative_terms_lower',
+ 'multiplicative_terms_upper',
+ 'yhat']</code></pre>
+</div>
+<p>Notice that Prophet returned a lot of details to help you understand how the model performs. Of interest are <code>ds</code> and the predicted value, <code>yhat</code>. Both <code>yhat_lower</code> and <code>yhat_upper</code> represent the uncertainty intervals for the prediction (<code>yhat</code>).</p>
+<ol>
+<li>The <code>model</code> object provides two plotting methods: <code>plot</code> and <code>plot_components</code>. Start by using <code>plot</code> to visualize the forecast from Prophet:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>model.plot(forecast,
+           ylabel='Milk Production in Pounds',
+           include_legend=True);</code></pre>
+</div>
+<p>This should produce a plot of the Prophet forecast: the dots in the plot represent the training data point, the line over the dots represents the estimated forecast for the historical data, the line is extended beyond the training points reflect the future prediction</p>
+<figure>
+<img src="../media/file245.png" alt="Figure 11.4 – Plotting the forecast (historical and future) using Prophet" width="994" height="580"/><figcaption aria-hidden="true">Figure 11.4 – Plotting the forecast (historical and future) using Prophet</figcaption>
+</figure>
+<p>If you only want to show the forecast just for the periods beyond the training set you can use the following code:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>predicted = model.predict(test)
+model.plot(predicted,
+           ylabel='Milk Production in Pounds',
+          include_legend=True);</code></pre>
+</div>
+<p>Here you are only forecasting for the length of the test dataset. The predict method will only capture the <code>ds</code> column (datetime). This should produce a plot that's similar to the one shown in <em>Figure 11.4</em>, but it will only show the forecast line for future data points (beyond the training points)– that is, the future forecast.</p>
+<figure>
+<img src="../media/file246.png" alt="Figure 11.5 – Plotting the forecast (historical and future) using Prophet" width="1002" height="587"/><figcaption aria-hidden="true">Figure 11.5 – Plotting the forecast (historical and future) using Prophet</figcaption>
+</figure>
+<p>The shaded area in <em>Figure 11.4</em> represents the uncertainty intervals. This is represented by the <code>yhat_lower</code> and <code>yhat_upper</code> columns in the <code>forecast</code> DataFrame.</p>
+<ol>
+<li>The next important plot deals with the forecast components. Use the <code>plot_components</code> method to plot the components:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>model.plot_components(forecast);</code></pre>
+</div>
+<p>The number of subplots will depend on the number of components that have been identified in the forecast. For example, if holiday was included, then it will show the <code>holiday</code> component. In our example, there will be two subplots: <code>trend</code> and <code>yearly</code>:</p>
+<figure>
+<img src="../media/file247.png" alt="Figure 11.6 – Plotting the components showing trend and seasonality (annual)" width="891" height="580"/><figcaption aria-hidden="true">Figure 11.6 – Plotting the components showing trend and seasonality (annual)</figcaption>
+</figure>
+<p><em>Figure 11.6</em> breaks down the trend and seasonality of the training data. If you look at <em>Figure 11.6</em>, you will see a positive upward trend that has become steady (slowing down) since 1972. Additionally, the seasonal pattern shows an increase in production around summertime.</p>
+<p>The shaded area in the trend plot represents the uncertainty interval for estimating the trend. The data is stored in the <code>trend_lower </code>and <code>trend_upper</code> columns of the <code>forecast</code> DataFrame.</p>
+<ol>
+<li>Finally, compare with out-of-sample data (the test data) to see how well the model performs:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>ax = test.plot(x='ds', y='y',
+                    label='Actual',
+                    style='-.',
+                    figsize=(12,4))
+predicted.plot(x='ds', y='yhat',
+               label='Predicted',
+               ax=ax,
+               title='Milk Production Actual vs Forecast');</code></pre>
+</div>
+<p>Compare the following plot with <em>Figure 10.43 from Chapter 10</em> to see how <strong>Prophet</strong> compares to the <strong>SARIMA</strong> model that you obtained using <code>auto_arima</code>:</p>
+<figure>
+<img src="../media/file248.png" alt="Figure 11.7 – Comparing Prophet's forecast against test data" width="985" height="403"/><figcaption aria-hidden="true">Figure 11.7 – Comparing Prophet's forecast against test data</figcaption>
+</figure>
+<p>Notice that for the highly seasonal milk production data, the model did a great job. Generally, Prophet shines when it's working with strong seasonal time series data.</p>
+</section>
+<section id="how-it-works-43" class="level3" data-number="12.3.3">
+<h3 data-number="12.3.3">How it works…</h3>
+<p>Prophet streamlines many aspects of building and optimizing time series models, but a few key instructions are required at the start to allow Prophet to properly tune the model. For example, initializing the model, you need to decide whether the seasonal effect should be additive or multiplicative. You also specify parameters like the frequency of the data (e.g., <code>freq='MS'</code> for monthly data) when extending the forecast horizon using the <code>make_future_dataframe</code> method.</p>
+<p>When you instantiated a model with <code>model = Prophet()</code>, Prophet used the default values for parameters like <code>yearly_seasonality='auto'</code>, <code>weekly_seasonality='auto'</code>, and <code>daily_seasonality='auto'</code>. This lets Prophet <strong>automatically</strong> determine which seasonal components to include based on the data. In the case of the Milk Production dataset, only yearly seasonality is detected, as shown below:</p>
+<div class="C0-CodePACKT">
+<pre><code>model.seasonalities
+&gt;&gt;
+OrderedDict([('yearly',
+              {'period': 365.25,
+               'fourier_order': 10,
+               'prior_scale': 10.0,
+               'mode': 'additive',
+               'condition_name': None})])</code></pre>
+</div>
+<p>Prophet also provides <strong>uncertainty intervals</strong> for predictions, which are influenced by three factors:</p>
+<ul>
+<li><strong>Observation noise</strong>: refers to the random variations in the observed data that cannot be explained by the model.</li>
+<li><strong>Parameter uncertainty</strong>: refers to the uncertainty in estimating the model parameters. For example, adjusting the <code>mcmc_samples</code> parameter (<strong>Markov Chain Monte Carlo</strong> or <strong>MCMC</strong> sampling) to get the uncertainty in seasonal components. The defaults value is set to zero (<code>0</code>).</li>
+<li><strong>Future trend uncertainty</strong>: refers to uncertainty about future changes in trends based on historical data. For example, increasing the <code>changepoint_prior_scale</code> parameter can increase the forecast uncertainty. The default value is set to <code>0.05</code>. Additionally the width of the uncertainty intervals can also be adjusted with the <code>interval_width</code> parameter (defaults to 0.80 or 80%).</li>
+</ul>
+<p>By default, the <code>uncertainty_samples</code> parameter is set to <code>1000</code>, which means Prophet will run 1000 simulations using <strong>Hamiltonian Monte Carlo (HMC)</strong> algorithm to estimate uncertainty. You can adjust this to control the number of simulation or even turn off uncertainty estimates entirely by setting <code>uncertainty_samples=0</code> or <code>uncertainty_samples=False</code>. If uncertainty samples are disabled, Prophet will omit uncertainty intervals like <code>yhat_lower</code> and <code>yhat_upper</code> from the forecast results.</p>
+<div class="C0-CodePACKT">
+<pre><code>model = Prophet(uncertainty_samples=False).fit(train)
+forecast = model.predict(future)
+forecast.columns.tolist()
+&gt;&gt;
+['ds', 'trend', 'additive_terms', 'yearly', 'multiplicative_terms', 'yhat']</code></pre>
+</div>
+<p>Prophet’s strength lies in its ability to <strong>automatically detect changepoints</strong>, which are points in time where the <strong>trend shifts</strong> significantly. By default, Prophet will identify 25 potential changepoints within the first 80% of the training data. You can modify this behavior by adjusting the <code>n_changepoints</code> parameter or control how much historical data to use for changepoint detection via <code>changepoint_range</code>, which defaults to <code>0.8</code> (or 80%).</p>
+<p>You can inspect the detected changepoints using the model’s <code>changepoints</code> attribute. For example, the following code displays the first five changepoints:</p>
+<div class="C0-CodePACKT">
+<pre><code>model.changepoints.shape
+&gt;&gt;
+(25,)
+model.changepoints.head()
+&gt;&gt;
+5    1962-06-01
+10   1962-11-01
+14   1963-03-01
+19   1963-08-01
+24   1964-01-01
+Name: ds, dtype: datetime64[ns]</code></pre>
+</div>
+<p>These changepoints can also be visualized on a plot. The following code overlays the changepoints on the original time series data:</p>
+<div class="C0-CodePACKT">
+<pre><code>ax = milk.set_index('ds').plot(figsize=(12,5))
+milk.set_index('ds').loc[model.changepoints].plot(style='X', ax=ax)
+plt.legend(['original data', 'changepoints']);</code></pre>
+</div>
+<p>This should generate a plot with the original time series and the 25 potential changepoints, showing moments where Prophet identified shifts in the trend.</p>
+<figure>
+<img src="../media/file249.png" alt="Figure 11.8 – The 25 potential changepoints, as identified by Prophet" width="981" height="440"/><figcaption aria-hidden="true">Figure 11.8 – The 25 potential changepoints, as identified by Prophet</figcaption>
+</figure>
+<p>These potential changepoints were estimated from the first 80% of the training data.</p>
+<p>In the next section, you will explore changepoint detection in more detail.</p>
+</section>
+<section id="theres-more-39" class="level3" data-number="12.3.4">
+<h3 data-number="12.3.4">There's more…</h3>
+<p>To plot the <strong>significant</strong> changepoints that capture the impactful changes in trend, you can use the <code>add_changepoints_to_plot</code> function, as shown in the following code:</p>
+<div class="C0-CodePACKT">
+<pre><code>from prophet.plot import add_changepoints_to_plot
+fig = model.plot(forecast, ylabel='Milk Production in Pounds')
+add_changepoints_to_plot(fig.gca(), model, forecast);</code></pre>
+</div>
+<p>This should produce a plot similar to <em>Figure 11.8</em>, but with the additional changepoint lines and the trend line. There are ten (10) significant changepoints (the vertical lines in Figure 11.9) out of the 25. The linear trend line should be the same as the trend component shown in <em>Figure 11.6</em>:</p>
+<figure>
+<img src="../media/file250.png" alt="Figure 11.9 – Showing the ten significant change points and the trend line" width="1007" height="575"/><figcaption aria-hidden="true">Figure 11.9 – Showing the ten significant change points and the trend line</figcaption>
+</figure>
+<p>Notice how the trend line changes at the identified changepoints. This is how Prophet can detect changes in the trend. The line is not an exact straight line since <strong>piecewise regression</strong> was applied to build the trend model. When thinking about <em>piecewise linear models</em>, you can think of multiple linear regression lines between the significant changepoints (segments) that are then connected. This gives the model the flexibility to capture <strong>non-linear</strong> changes in trends and make future predictions.</p>
+<p>Prophet also includes <strong>cross-validation</strong> capabilities to better evaluate how well the model performs in forecasting future data. Cross-validation is used to ensure that the model generalizes well to unseen data and is not overfitting or underfitting. Additionally, cross-validation can help you determine how far into the future the forecasts remain reliable.</p>
+<p>Prophet provides the <code>cross_validation</code> and <code>performance_metrics</code> functions, which allow you to split the data into training and testing sets across multiple horizons. This method helps evaluate the model's accuracy by making predictions at different points in time and comparing them to the actual value.</p>
+<p>Here is how to implement cross-validation in Prophet.</p>
+<div class="C0-CodePACKT">
+<pre><code>from prophet.diagnostics import cross_validation, performance_metrics
+df_cv = cross_validation(model, initial='730 days', period='180 days', horizon='365 days')
+df_cv.head()
+&gt;&gt;
+         ds        yhat  yhat_lower  yhat_upper    y     cutoff
+0 1964-03-01  689.889300  685.612439  694.504671  688 1964-02-19
+1 1964-04-01  701.435214  697.157285  706.019257  705 1964-02-19
+2 1964-05-01  776.047139  771.707065  780.994528  770 1964-02-19
+3 1964-06-01  735.045494  730.374821  739.547374  736 1964-02-19
+4 1964-07-01  671.333097  666.625404  675.994830  678 1964-02-19</code></pre>
+</div>
+<p>In the preceding code, we specified the following parameters:</p>
+<p><code>initial</code>: The size of the initial training period. In our code, we specified 730 days, which is roughly 2 years, or 24-months for our Monthly Milk Production data.</p>
+<p><code>period</code>: The spacing between cutoff points for making forecasts. In this example, we specified 180 days (roughly 6 months). This means after the initial training, Prophet will step forward in increments of 6 months.</p>
+<p><code>horizon</code>: The forecast horizon (how far into the future you are predicting). In this example, we specified 365 days or 1-year. This means Prophet will forecast for the next 12 months (1 year) ahead of each cutoff point.</p>
+<p>After running the cross-validation, you can evaluate the model's performance using <code>performance_metrics</code> function.</p>
+<div class="C0-CodePACKT">
+<pre><code>df_p = performance_metrics(df_cv)
+print(df_p.iloc[: , 0:-1].head())
+&gt;&gt;
+horizon         mse       rmse        mae      mape     mdape     smape
+0 41 days  226.788248  15.059490  12.300991  0.016356  0.016894  0.016345
+1 42 days  220.336066  14.843721  11.849186  0.015699  0.015678  0.015694
+2 45 days  214.385008  14.641892  11.647620  0.015503  0.015678  0.015503
+3 46 days  207.646253  14.409936  11.380352  0.015170  0.014446  0.015164
+4 47 days  242.132208  15.560598  12.179413  0.015953  0.014446  0.015986</code></pre>
+</div>
+<p>The function computes several metrics such as <strong>Mean Absolute Error</strong> (MAE), <strong>Root Mean Squared Error</strong> (RMSE), among many others.</p>
+<p>You can visualize the performance of the cross-validated forecasts using the <code>plot_cross_validation_metric</code> function:</p>
+<div class="C0-CodePACKT">
+<pre><code>from prophet.plot import plot_cross_validation_metric
+fig = plot_cross_validation_metric(df_cv, metric='rmse');</code></pre>
+</div>
+<p>This should plot the RMSE over the different forecast horizons.</p>
+<figure>
+<img src="../media/file251.png" alt="Figure 11.10 – plot showing the model’s RMSE over different forecast horizon" width="847" height="521"/><figcaption aria-hidden="true">Figure 11.10 – plot showing the model’s RMSE over different forecast horizon</figcaption>
+</figure>
+<p>Interpreting the plot indicates that the models is better at short forecast horizons as RMSE is relatively low. As the forecast horizons increase, the RMSE seems to generally increase. Generally, we expect these models to perform better, with lower errors, at short-term forecasts (1-3 months).</p>
+</section>
+<section id="see-also-49" class="level3" data-number="12.3.5">
+<h3 data-number="12.3.5">See also</h3>
+<ul>
+<li>Prophet supports both Python and R. For more information on the Python API, please visit the following documentation: <a href="https://facebook.github.io/prophet/docs/quick_start.html#python-api">https://facebook.github.io/prophet/docs/quick_start.html#python-api</a>.</li>
+<li>If you are interested in reading the original paper behind the Prophet algorithm, which is publicly available, go to <a href="https://peerj.com/preprints/3190/">https://peerj.com/preprints/3190/</a>.</li>
+<li>Cross-validation can also be used for fine-tuning hyperparameters of the model. You can learn more about this here <a href="https://facebook.github.io/prophet/docs/diagnostics.html#hyperparameter-tuning">https://facebook.github.io/prophet/docs/diagnostics.html#hyperparameter-tuning</a></li>
+</ul>
+<p>So far, you have been working with univariate time series. The following recipe will teach you how to work with multivariate time series.</p>
+</section>
+</section>
+<section id="forecasting-multivariate-time-series-data-using-var" class="level2" data-number="12.4">
+<h2 data-number="12.4">Forecasting multivariate time series data using VAR</h2>
+<p>In this recipe, you will explore the <strong>Vector Autoregressive</strong> (<strong>VAR</strong>) model for working with multivariate time series. In <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods,</em> we discussed AR, MA, ARIMA, and SARIMA as examples of univariate one-directional models. VAR, on the other hand, is <strong>bi-directional</strong> and <strong>multivariate</strong>.</p>
+<blockquote>
+<p>VAR VERSUS AR MODELS</p>
+<blockquote>
+<p>You can think of a VAR of order p, or <strong>VAR(p)</strong>, as a generalization of the univariate AR(p) made for working with multiple time series. Multiple time series are represented as a vector, hence the name vector autoregression. A VAR of lag one (1) can be written as VAR(1) across two or more variables.</p>
+</blockquote>
+</blockquote>
+<p>There are other forms of multivariate time series models, including <strong>Vector Moving Average</strong> (<strong>VMA</strong>), <strong>Vector Autoregressive Moving Average</strong> (<strong>VARMA</strong>), and <strong>Vector Autoregressive Integrated Moving Average</strong> (<strong>VARIMA</strong>), that generalize other univariate models. In practice, you will find that VAR is used the most due to its simplicity. VAR models are very popular in economics, but you will find them used in other areas, such as social sciences, natural sciences, and engineering.</p>
+<p>The premise behind multivariate time series is that you can add more power to your forecast when leveraging multiple time series (or input variables) instead of a single time series (single variable). Simply put, VAR is used when you have two or more time series that have (or are assumed to have) an influence on each other's behavior. These are normally referred to as <strong>endogenous</strong> variables and the relationship is bi-directional. If the variables or time series are not directly related, or we do not know if there is a direct influence within the same system, we refer to them as <strong>exogenous</strong> variables.</p>
+<blockquote>
+<p>EXOGENOUS VERSUS ENDOGENOUS VARIABLES</p>
+<blockquote>
+<p>When you start researching more about VAR models, you will come across references to <strong>endogenous</strong> and <strong>exogenous</strong> variables. At a high level, the two are the opposite of each other and in <code>statsmodels</code>, you will see them referenced as <code>endog</code> and <code>exog</code>, respectively.</p>
+</blockquote>
+<blockquote>
+<p><strong>Endogenous</strong> variables are influenced by other variables within the system. In other words, we expect that a change in one's state affects the other. Sometimes, these can be referred to as dependent variables in machine learning literature. You can use the <strong>Granger causality tests</strong> to determine if there is such a relationship between multiple endogenous variables. For example, in <code>statsmodels</code>, you can use <code>grangercausalitytests</code>.</p>
+</blockquote>
+<blockquote>
+<p>On the other hand, <strong>exogenous</strong> variables are outside the system and do not have a direct influence on the variables. They are external influencers. Sometimes, these can be referred to as independent variables in machine learning literature.</p>
+</blockquote>
+</blockquote>
+<p>A VAR model, like an AR model, assumes the <strong>stationarity</strong> of the time series variables. This means that each endogenous variable (time series) needs to be stationary.</p>
+To illustrate how VAR works and the mathematical equation behind it, let's start with a simple VAR(1) with <strong>two</strong> (2) endogenous variables, referred to as (
+<figure>
+<img src="../media/file252.png" width="156" height="44"/>
+</figure>
+). Recall from <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods</em>, that an AR(1) model would take the following form:
+<figure>
+<img src="../media/file253.png" width="598" height="54"/>
+</figure>
+<p>Generally, an AR(p) model is a linear model of past values of itself and the (p) parameter tells us how far back we should go. Now, assume you have <strong>two</strong> AR(1) models for two different time series data. This will look as follows:</p>
+<figure>
+<img src="../media/file254.jpg" width="616" height="60"/>
+</figure>
+<p>However, these are two separate models that do not show any relationship or that influence each other. If we create a <strong>linear combination</strong> of the two models (the past values of itself and the past values of the other time series), we would get the following formula:</p>
+<figure>
+<img src="../media/file255.jpg" alt="Figure 11.11 – Formula for a VAR model with lag one or VAR(1)" width="1388" height="555"/><figcaption aria-hidden="true">Figure 11.11 – Formula for a VAR model with lag one or VAR(1)</figcaption>
+</figure>
+<p>The preceding equation may seem complex, but in the end, like an AR model, it is still simply a linear function of past lags. In other words, in a VAR(1) model, you will have a linear function of lag (1) for each variable. When fitting a VAR model, as you shall see in this recipe, the <strong>Ordinary Least Squares</strong> (<strong>OLS</strong>) method is used for each equation to estimate the VAR model.</p>
+<section id="getting-ready-36" class="level3" data-number="12.4.1">
+<h3 data-number="12.4.1">Getting ready</h3>
+<p>For this recipe, you will be using you will use the <code>pandas_datareader</code> library to download data from FRED (Federal Reserve Economic Data). The files are also available for you to download from the GitHub repo of this book.</p>
+<p>To install using <strong>conda</strong>:</p>
+<div class="C0-SHConPACKT">
+<pre><code>conda install -c anaconda pandas-datareader</code></pre>
+</div>
+<p>To install using <strong>pip</strong>:</p>
+<div class="C0-SHConPACKT">
+<pre><code>pip install pandas-datareader</code></pre>
+</div>
+</section>
+<section id="how-to-do-it-45" class="level3" data-number="12.4.2">
+<h3 data-number="12.4.2">How to do it…</h3>
+<p>In this recipe, you will use the <code>FredReader()</code> function from the <code>pandas_datareader</code> library to pull two different time series datasets. As mentioned on FRED's website, the first symbol, <code>FEDFUNDS</code>, is the <strong>Federal Funds Effective Rate</strong>, which <em>"is the interest rate at which depository institutions trade federal funds (balances held at Federal Reserve Banks) with each other overnight</em>." Simply put, the federal funds effective rate influences the cost of borrowing. It is <em>the target interest rate set by the Federal Open Market Committee (FOMC) for what banks can charge other institutions for lending excess cash from their reserve balances.</em> The second symbol is <code>unrate</code> for the <strong>Unemployment Rate</strong>, which is the percentage of the total labor force that is unemployed but actively seeking employment or willing to work.</p>
+<blockquote>
+<p>CITATIONS</p>
+<blockquote>
+<p><em>Board of Governors of the Federal Reserve System (US)</em>, <em>Federal Funds Effective Rate [FEDFUNDS]</em>, retrieved from FRED, Federal Reserve Bank of St. Louis; https://fred.stlouisfed.org/series/FEDFUNDS, October 6, 2024.</p>
+</blockquote>
+<blockquote>
+<p><em>U.S. Bureau of Labor Statistics</em>, <em>Unemployment Rate [UNRATE]</em>, retrieved from FRED, Federal Reserve Bank of St. Louis; https://fred.stlouisfed.org/series/UNRATE, October 6, 2024.</p>
+</blockquote>
+</blockquote>
+<p>Follow these steps:</p>
+<ol>
+<li>Start by loading the necessary libraries and pulling the data. Note that both <code>FEDFUNDS</code> and <code>unrate</code> are reported monthly:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>import pandas_datareader.data as web
+import pandas as pd
+from statsmodels.tsa.api import VAR,adfuller, kpss
+from statsmodels.tsa.stattools import grangercausalitytests</code></pre>
+</div>
+<ol>
+<li>Pull the data using <code>FredReader</code>, which wraps over the FRED API and returns a pandas DataFrame. For the <code>FEDFUNDS</code> and <code>unrate</code> symbols, you will pull close to 34 years' worth of data (417 months):</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>import pandas_datareader.data as web
+start = "01-01-1990"
+end = "01-09-2024"
+economic_df = web.FredReader(
+        symbols=["FEDFUNDS", "unrate"],
+        start=start,
+        end=end).read()
+file = '../../datasets/Ch11/economic_df.pickle'
+economic_df.to_pickle(file)</code></pre>
+</div>
+<p>Store the DataFrame as a <code>pickle</code> object, as shown in the last line of the preceding code. This way, you do not have make an API call to rerun the example. You can read the <code>economic_df.pickle </code>file using <code>economic_df = pd.read_pickle(file)</code>.</p>
+<ol>
+<li>Inspect the data and make sure there are no null values:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>economic_df.isna().sum()
+&gt;&gt;
+FEDFUNDS    0
+unrate      0
+dtype: int64</code></pre>
+</div>
+<ol>
+<li>Change the DataFrame's frequency to month start (<code>MS</code>) to reflect how the data is being stored:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>economic_df.index.freq = 'MS'</code></pre>
+</div>
+<ol>
+<li>Plot the datasets for visual inspection and understanding:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>economic_df.plot(subplots=True); plt.show()</code></pre>
+</div>
+<p>Since <code>subplots</code> is set to <code>True</code>, this will produce two subplots for each column:</p>
+<figure>
+<img src="../media/file256.png" alt="Figure 11.12 – Plotting both Federal Funds Effective Rate and Unemployment Rate" width="1296" height="445"/><figcaption aria-hidden="true">Figure 11.12 – Plotting both Federal Funds Effective Rate and Unemployment Rate</figcaption>
+</figure>
+<p>There is some sort of inverse relationship between <code>FEDFUND</code> and <code>unrate</code> – as <code>FEDFUNDS</code> increases, <code>unrate</code> decreases. There is interesting anomalous behavior starting in 2020 due to the COVID-19 pandemic. We can further check the correlation between the variables:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>correlation_matrix = economic_df.corr()
+correlation_matrix
+&gt;&gt;
+          FEDFUNDS    unrate
+FEDFUNDS  1.000000 -0.435171
+unrate   -0.435171  1.000000</code></pre>
+</div>
+<p>The correlation between <code>FEDFUNDS</code> and <code>unrate</code> is -0.435 indicating a moderate negative relationship (inverse correlation). This suggest that as federal funds rate increases, the unemployment rate tends to decrease, and vice versa.</p>
+<p>Further you can perform a <strong>Cross-Correlation Function</strong> (CCF) between <code>FEDFUNDS</code> and <code>unrate</code> to see the correlation at different lags. The CFF helps identity lagged relationships or temporal dependencies between the two time series. The outcome mainly tells us whether one series leads or lags the other. It does not a formal test of causality, which you will investigate later.</p>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.graphics.tsaplots import plot_ccf
+import numpy as np
+lags = np.arange(-12, 13)
+plot_ccf(economic_df['FEDFUNDS'], economic_df['unrate'], lags=lags)
+plt.grid(True)</code></pre>
+</div>
+<figure>
+<img src="../media/file257.png" alt="Figure 11.13 – Cross-Correlation Function plot for 12 months ahead and 12 months behind for better interpretability" width="1310" height="450"/><figcaption aria-hidden="true">Figure 11.13 – Cross-Correlation Function plot for 12 months ahead and 12 months behind for better interpretability</figcaption>
+</figure>
+<p>The plot shows spikes that extend beyond the shaded confidence interval which indicates significant negative correlation. This suggests that changes in <code>FEDFUNDS</code> might be associate with opposite changes in <code>unrate</code> within the same frame</p>
+<ol>
+<li>An important assumption in VAR is <strong>stationarity</strong>. Both variables (the two endogenous time series) need to be stationary. Create a <code>check_stationarity()</code> function, which returns the stationarity results from the <strong>Augmented Dickey-Fuller</strong> (<code>adfuller</code>) test:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.tsa.stattools import adfuller
+def check_stationarity(df):
+    adf_pv = adfuller(df)[1]
+    result = 'Stationary' if adf_pv &lt; 0.05 else "Non-Stationary"
+    return result</code></pre>
+</div>
+<p>Use the <code>check_stationarity</code> function to evaluate each endogenous variable (column):</p>
+<div class="C1-SHCodePACKT">
+<pre><code>for i in economic_df:
+    adf = check_stationarity(economic_df[i])
+    print(f'{i} adf: {adf}')
+&gt;&gt;
+FEDFUNDS adf: Stationary
+unrate adf: Stationary</code></pre>
+</div>
+<p>Overall, both time series are shown to be stationary.</p>
+<ol>
+<li>Plot both <strong>ACF</strong> and <strong>PACF</strong> plots to gain an intuition over each variable and which process they belong to – for example, an AR or MA process:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+for col in economic_df.columns:
+    fig, ax = plt.subplots(1,2, figsize=(18,4))
+    plot_acf(economic_df[col], zero=False,
+             lags=30, ax=ax[0], title=f'ACF - {col}')
+    plot_pacf(economic_df[col], zero=False,
+              lags=30, ax=ax[1], title=f'PACF - {col}');</code></pre>
+</div>
+<p>This should produce an ACF and PACF for <code>FEDFUNDS</code> and <code>unrate</code>:</p>
+<figure>
+<img src="../media/file258.png" alt="Figure 11.11 – ACF and PACF plots for FEDFUNDS and unrate" width="1466" height="746"/><figcaption aria-hidden="true">Figure 11.11 – ACF and PACF plots for FEDFUNDS and unrate</figcaption>
+</figure>
+<p>The ACF and PACF plots for <code>FEDFUNDS</code> and <code>unrate </code>indicate we are dealing with an <strong>autoregressive</strong> (<strong>AR</strong>) process. The ACF plots show a slow gradual decay, while the PACF plots show a sharp cutoff after lag 1. The PACF for <code>FEDFUNDS</code> shows slightly significant (above or below the shaded area) lags at 2 and 3, while the PACF for <code>unrate</code> shows some significance at lag 24. We can ignore those for now.</p>
+<ol>
+<li>Split the data into train and test sets:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>train = economic_df.loc[:'2022']
+test = economic_df.loc['2023':]
+print(f'Train: {len(train)}, Test: {len(test)}')
+&gt;&gt;
+Train: 396, Test: 21</code></pre>
+</div>
+<ol>
+<li><p>You can scale the data (<strong>standardization</strong>), even though it is not necessary for VAR, and the two time series are not far off in terms of scale. In this step, you will perform scaling for <em>illustrative purposes</em> to show how it can be done and how you inversely transform the results for interpretation later on.</p>
+<blockquote>
+<p>There is often a debate on whether the variables need to be scaled (standardized) when implementing VAR. However, the VAR algorithm does not inherently require the variables to be scaled, as it is <strong>scale-invariant</strong>. In practice, it is common to leave variables in their original units to <strong>preserver the interpretability</strong> of the coefficients and residuals in meaningful terms (e.g., percentage points). However, if the variables differ significantly in scale, then standardization can be applied to make the <strong>coefficients easier to compare</strong> and detect <strong>outliers</strong> more effectively.</p>
+<blockquote>
+<p>If you choose to standardize (for example, using <code>StandardScalar</code> from <strong>Scikit-Learn</strong>), it is important to note that the results will be in terms of <strong>standard deviations.</strong> You can use the <code>inverse_transform</code> method to revert the data back to its original units when interpreting the results. This is useful when you need to explain the findings in the context of the original variable scale.</p>
+</blockquote>
+</blockquote></li>
+<li>Scale the data using <code>StandardScalar</code> by fitting the train set using the <code>fit</code> method. Then, apply the scaling transformation to both the <strong>train</strong> and <strong>test</strong> sets using the <code>transform</code> method. The transformation will return a NumPy <code>ndarray</code>, which you will then return as pandas DataFrames. This will make it easier for you to plot and examine the DataFrames further:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from sklearn.preprocessing import StandardScaler
+scale = StandardScaler()
+scale.fit(train)
+train_sc = pd.DataFrame(scale.transform(train),
+                        index=train.index,
+                        columns=train.columns)
+test_sc = pd.DataFrame(scale.transform(test),
+                       index=test.index,
+                       columns=test.columns)</code></pre>
+</div>
+<ol>
+<li>But how can you determine the optimal <strong>lag order</strong> <strong>p</strong> for your VAR model? Luckily, the VAR implementation in <code>statsmodels</code> will pick the best VAR order. You only need to define the maximum number of lags (threshold); the model will determine the best <code>p </code>values that minimize each of the four information criteria scores: <strong>AIC</strong>, <strong>BIC</strong>, <strong>FPE</strong>, and <strong>HQIC</strong>. The <code>select_order</code> method will compute the scores at each lag order, while the <code>summary</code> method will display the scores for each lag. The results will help when you train (<code>fit</code>) the model to specify which information criteria the algorithm should use:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>model = VAR(endog=train_sc)
+res = model.select_order(maxlags=10)
+res.summary()</code></pre>
+</div>
+<p>This should show the results for all <code>10</code> lags. The lowest scores are marked with an <code>*</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>VAR Order Selection (* highlights the minimums) 
+==================================================
+       AIC         BIC         FPE         HQIC  
+--------------------------------------------------
+0      -0.2862     -0.2657      0.7511     -0.2780
+1       -7.345      -7.283   0.0006461      -7.320
+2       -7.874      -7.772   0.0003805      -7.833
+3       -7.960     -7.817*   0.0003491     -7.903*
+4       -7.960      -7.775   0.0003492      -7.887
+5       -7.951      -7.726   0.0003523      -7.862
+6       -7.967      -7.701   0.0003467      -7.861
+7      -7.974*      -7.667  0.0003443*      -7.852
+8       -7.957      -7.609   0.0003502      -7.819
+9       -7.947      -7.557   0.0003539      -7.792
+10      -7.931      -7.501   0.0003593      -7.761
+--------------------------------------------------</code></pre>
+</div>
+<p>The <code>res</code> object is an instance of the <code>LagOrderResults</code> class. You can print the selected lag number for each information criterion using the <code>selected_orders</code> attribute, which return a dictionary of the <strong>optimal lag orders</strong> for <strong>AIC</strong>, <strong>BIC</strong>, <strong>FPE</strong>, and <strong>HQIC</strong>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>print(res.selected_orders)
+&gt;&gt;
+{'aic': 7, 'bic': 3, 'hqic': 3, 'fpe': 7}</code></pre>
+</div>
+<p>At lag 7, both <em>AIC</em> and <em>FPE</em> scores were the lowest. On the other hand, both <em>BIC</em> and <em>HQ</em> scores were the lowest at lag 3, suggesting a more parsimonious model with fewer lags.</p>
+<p>Generally, <em>BIC</em> and <em>HQIC</em> tend to favor more <strong>parsimonious</strong> models (i.e., models with fewer lags) because they impose higher penalty on model complexity. In contrats, <em>AIC</em> and <em>FPE</em> tend to be more lenient and may suggest higher lag orders since they are less strict in penalizing for complexity.</p>
+<p>In this case, <strong>lag 3</strong> seems like a safer choice, helping to aim for simplicity and avoiding overfitting. However, choosing <strong>lag 7</strong> would result in a more complex model that might capture more dynamics in the data, but it comes with a higher risk of overfitting.</p>
+<ol>
+<li>To train the model, you must use the <em>BIC</em> score (or another criterion of your choice). You experiment with a different information criterion by updating the <code>ic</code> parameter. The <code>maxlags</code> parameter is optional –if you leave it blank, the model will automatically determine the optimal lag order based on the selected information criterion, which in this case is <code>'bic'</code>.</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>results = model.fit(ic='bic')</code></pre>
+</div>
+<p>This will automatically select the lag order that minimizes the BIC score (i.e. lag 3). You can experiment with other criteria, such as AIC, by setting <code>ic='aic'</code>. If you prefer to manually specify the maximum number of lags, you can use the <code>maxlags</code> parameter. Keep in mind if both <code>maxlags</code> and <code>ic</code> are used then <code>ic</code> will take precedence.</p>
+<ol>
+<li>Running <code>results.summary()</code> will print a detailed summary, including the regression results for each autoregressive process.</li>
+</ol>
+<p>The summary includes information on the <strong>number of equations</strong> (corresponding to the number of variables), the <strong>information criteria</strong> (AIC, BIC, HQIC, and FPE), and other details like <strong>log likelihood</strong>. These metrics help assess the overall fit and complexity of the model.</p>
+<div class="C1-SHCodePACKT">
+<pre><code>  Summary of Regression Results  
+==================================
+Model:                         VAR
+Method:                        OLS
+Date:           Mon, 07, Oct, 2024
+Time:                     14:49:51
+--------------------------------------------------------------------
+No. of Equations:         2.00000    BIC:                   -7.83732
+Nobs:                     393.000    HQIC:                  -7.92278
+Log likelihood:           466.565    FPE:                0.000342624
+AIC:                     -7.97888    Det(Omega_mle):     0.000330737
+--------------------------------------------------------------------</code></pre>
+</div>
+<p>At the end of the summary, there is <strong>correlation matrix</strong> of residuals. The matrix show the correlations between the residuals (Errors) from each equation in the VAR model. Ideally, you want these off-diagonal values to be as close to <strong>zero</strong> as possible. A low correlation suggests that the model has captured most of the relationship between the variables, and there is little leftover correlation in the residuals.</p>
+<div class="C1-SHCodePACKT">
+<pre><code>Correlation matrix of residuals
+            FEDFUNDS    unrate
+FEDFUNDS    1.000000 -0.115904
+unrate     -0.115904  1.000000</code></pre>
+</div>
+<p>The correlation between the residuals for <code>FEDFUNDS</code> and <code>unrate</code> is <code>-0.1159</code>, which is relatively small, indicating that the model has done a good job capturing the relationship between the two variables.</p>
+<ol>
+<li>Store the VAR lag order using the <code>k_ar</code> attribute so that we can use it later when we use the forecast method:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>lag_order = results.k_ar
+lag_order
+&gt;&gt; 3</code></pre>
+</div>
+<p>This shows that the optimal lag order selected was 3.</p>
+<p>Finally, you can forecast using either the <code>forecast</code> or <code>forecast_interval</code> method. The latter will return the forecast, as well as the <strong>upper</strong> and <strong>lower confidence intervals</strong>. Both methods will require past values and the number of steps ahead to forecast. The prior values (<code>past_y</code>) will be used as the initial values for the forecast:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>past_y = train_sc[-lag_order:].values
+n = test_sc.shape[0]
+forecast, lower, upper = results.forecast_interval(past_y, steps=n)</code></pre>
+</div>
+<ol>
+<li>Since you applied <code>StandardScalar</code> on the dataset, the forecast values are scaled. You will need to apply <code>inverse_transform</code> to convert them back to the original scale of the data. You can also convert the forecasts and confidence interval into pandas DataFrames for convenience:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>forecast_df = pd.DataFrame(scale.inverse_transform(forecast),
+                           index=test_sc.index,
+                           columns=test_sc.columns)
+lower_df = pd.DataFrame(scale.inverse_transform(lower),
+                        index=test_sc.index,
+                        columns=test_sc.columns)
+upper_df = pd.DataFrame(scale.inverse_transform(upper),
+                        index=test_sc.index,
+                        columns=test_sc.columns)</code></pre>
+</div>
+<ol>
+<li>Plot the actual versus forecasted <code>unrate</code> with the confidence intervals:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>idx = test.index
+plt.figure(figsize=(10, 6))
+plt.plot(idx, test['unrate'], label='Actual unrate')
+plt.plot(idx, forecast_df['unrate'], label='Forecasted unrate', linestyle='dashed')
+plt.fill_between(idx, lower_df['unrate'], upper_df['unrate'], alpha=0.2, label='Confidence Interval')
+plt.title('Actual vs Forecasted unrate with Confidence Intervals')
+plt.legend()
+plt.show()</code></pre>
+</div>
+<p>This should plot the actual test data, the forecast (middle dashed line) for <code>unrate</code>, along with the upper and lower confidence intervals:</p>
+<figure>
+<img src="../media/file259.png" alt="Figure 11.12 – Plotting the forecast with confidence intervals for unrate" width="810" height="526"/><figcaption aria-hidden="true">Figure 11.12 – Plotting the forecast with confidence intervals for unrate</figcaption>
+</figure>
+<p>In a VAR model, all variables are forecasted simultaneously because the model assumes that past values of all variables in the system contribute to the future values of each variable. So, even though you may only be interested in predicting <code>unrate</code> from <code>FEDFUNDS</code>, the model forecasts the future values of <code>FEDFUNDS</code> based on <code>unrate</code>. You can visualize the forecast for <code>FEDFUNDS</code> in a similar way as you did for <code>unrate</code> as shown:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>idx = test.index
+plt.figure(figsize=(10, 6))
+plt.plot(idx, test['FEDFUNDS'], label='Actual FEDFUNDS')
+plt.plot(idx, forecast_df['FEDFUNDS'], label='Forecasted FEDFUNDS', linestyle='dashed')
+plt.fill_between(idx, lower_df['FEDFUNDS'], upper_df['FEDFUNDS'], alpha=0.2, label='Confidence Interval')
+plt.title('Actual vs Forecasted FEDFUNDS with Confidence Intervals')
+plt.legend()
+plt.show()</code></pre>
+</div>
+<figure>
+<img src="../media/file260.png" alt="Figure 11.13 – Plotting the forecast with confidence intervals for FEDFUNDS" width="813" height="529"/><figcaption aria-hidden="true">Figure 11.13 – Plotting the forecast with confidence intervals for FEDFUNDS</figcaption>
+</figure>
+<blockquote>
+<p>Recall that the training data was set up until the end of 2022, which includes the significant economic disruption caused by COVID-19 in 2020. Thus, the model’s predictions may not perform as well as expected due to the large and sudden shifts in the data.</p>
+<blockquote>
+<p>You may need to adjust the train-test split to accommodate this fact and perform different experiments with the model. When dealing with major anomalies like COVID-19, it is essential to assess whether the event is a <strong>one-time anomaly</strong> whose effects will fade or whether it represents a lasting change that requires special handling in your model.</p>
+</blockquote>
+<blockquote>
+<p>This is where <strong>domain knowledge</strong> becomes crucial: understanding the economic context will help you decide whether to model such events or treat them as outliers that shouldn’t influence future predictions.</p>
+</blockquote>
+</blockquote>
+</section>
+<section id="how-it-works-44" class="level3" data-number="12.4.3">
+<h3 data-number="12.4.3">How it works…</h3>
+<p>Vector autoregressive models (VAR) are very useful, especially in <strong>econometrics</strong>. When evaluating the performance of a VAR model, it is common to report to report results from several important analysis, such as <strong>Granger causality tests</strong>, residual (or error) analysis, and <strong>impulse response analysis</strong>. These are critical for understanding the interactions between variables. You will explore these in the next recipe, <em>Evaluating vector autoregressive (VAR) models</em>.</p>
+<p>In <em>Figure 11.11</em>, a VAR(1) model for two variables results in two equations. Each equation models the current value of one variables as a function of its own lagged values and the lagged values of the other variable. The matrix notation shows <strong>four coefficients</strong> and <strong>two constants</strong>. Each equation has two <strong>coefficients</strong> for the lagged values of both variables (e.g. and for and and for ). The <strong>constants</strong> and represent the intercepts for each equation.</p>
+<p>In this recipe, the model selected was a VAR(3) model for two variables. The key difference between a VAR(1) and a VAR(3) is the increased complexity due to additional lagged terms. In VAR(3) model, you will have <strong>twelve coefficients</strong> (three lags per variable) and <strong>two constants</strong> to solve for. Each equation is estimated using <strong>OLS</strong>, as shown in the <code>results.summary()</code> output.</p>
+<p>The two functions represented in <em>Figure 11.11</em> for VAR(1) show how each variables is influence not only by its own past values but also the past values of the second (endogenous) variable. This is a key difference between a VAR model and an AR model (which only considers a variable’s own lags). A VAR model captures the dynamic interaction between multiple variables over time.</p>
+<p>In the next recipe, now that the model is fitted, you will spend time plotting VAR-specific outputs – for example, the <strong>impulse responses (IRs)</strong> and the <strong>forecast error variance decomposition (FEVD)</strong> – to better understand these interactions and how the variables influence each other.</p>
+<p>In this recipe we focused on using the model for <strong>forecasting</strong>; next, we will focus on understanding the <strong>causal relationships</strong>, using tools like Granger causality tests, and evaluating the overall performance of the model through additional diagnostics.</p>
+<blockquote>
+<p>VARIMA (Vector ARIMA) models extend VAR to handle non-stationary data by incorporating <strong>differencing</strong>. We didn't use it here because both time series were stationary, so differencing wasn’t needed. Consider VARIMA when dealing with multiple non-stationary variables that require differencing to achieve stationarity.</p>
+</blockquote>
+</section>
+<section id="theres-more-40" class="level3" data-number="12.4.4">
+<h3 data-number="12.4.4">There's more…</h3>
+<p>Since we are focusing on comparing forecasting results, it would be interesting to see if our VAR(3) model, with two endogenous variables, performs better than a univariate AR(3) model. Comparing multivariate VAR(3) model to a simpler AR(3) (or ARIMA(3,0,0)) model will help assess whether the inclusion of the second variables (<code>FEDFUNDS</code>) improves the forecast for <code>unrate</code>.</p>
+<p>You can try fitting an AR(3) or ARIMA(3,0,0) model to the <strong>unrate</strong> time series, using the same lag values for consistency. Since that the <code>unrate</code> series is stationary, there is no need for differencing. Recall, from the previous activity that <code>lag_order</code> is equal to 3.</p>
+<div class="C0-CodePACKT">
+<pre><code>from statsmodels.tsa.arima.model import ARIMA
+model = ARIMA(train['unrate'],
+              order=(lag_order,0,0)).fit()</code></pre>
+</div>
+<p>You can review the ARIMA model's summary using <code>model.summary()</code>. After fitting the model, you can evaluate the residuals by plotting diagnostic charts to check for any issues with the model’s fit:</p>
+<div class="C0-CodePACKT">
+<pre><code>fig = model.plot_diagnostics(figsize=(12,6));
+fig.tight_layout()
+plt.show()</code></pre>
+</div>
+<p>This should produce four diagnostic subplots:</p>
+<figure>
+<img src="../media/file261.png" alt="Figure 11.14 –Output of AR(3) or ARIMA(3, 0, 0) model diagnostic plots" width="1188" height="589"/><figcaption aria-hidden="true">Figure 11.14 –Output of AR(3) or ARIMA(3, 0, 0) model diagnostic plots</figcaption>
+</figure>
+<p>The Standardized residual plot shows a significant spike around 2020, likely due to the economic impact of COVID-19. There are also some deviations from normality based on the Q-Q plots suggesting the model may not full capture the tail behavior of the data. Overall, the AR model captured the necessary information based on the autocorrelation plot.</p>
+<p>Now, forecast future streps using the AR(3) model and compare it to the VAR(3) model, which we already fitted and applied <code>inverse_transform</code> to:</p>
+<div class="C0-CodePACKT">
+<pre><code># Forecast from AR(3) model
+ar_forecast = pd.Series(model.forecast(n), index=test.index)
+# Plot the forecast for AR(3) against the actual data
+idx = test.index
+plt.figure(figsize=(10, 4))
+plt.plot(idx, test['unrate'], label='Actual unrate')
+plt.plot(idx, ar_forecast, label='Forecasted unrate', linestyle='dashed')
+plt.title('AR(3) model - Actual vs Forecasted unrate')
+plt.legend()
+plt.show()</code></pre>
+</div>
+<p>This should produce the following plot:</p>
+<figure>
+<img src="../media/file262.png" alt="Figure 11.15 – AR(3) forecast versus actual comparison against test" width="821" height="368"/><figcaption aria-hidden="true">Figure 11.15 – AR(3) forecast versus actual comparison against test</figcaption>
+</figure>
+<p>The same plot can be done for the VAR(3) model, which includes the impact of <code>FEDFUNDS</code> on <code>unrate</code>:</p>
+<div class="C0-CodePACKT">
+<pre><code># plotting VAR(3) same code as before but without confidence intervals
+idx = test.index
+plt.figure(figsize=(10, 4))
+plt.plot(idx, test['unrate'], label='Actual unrate')
+plt.plot(idx, forecast_df['unrate'], label='Forecasted unrate', linestyle='dashed')
+plt.title('VAR(3) model - Actual vs Forecasted unrate')
+plt.legend()
+plt.show()</code></pre>
+</div>
+<p>This should produce the following plot:</p>
+<figure>
+<img src="../media/file263.png" alt="Figure 11.16 – VAR(3) forecast versus actual comparison against test" width="824" height="368"/><figcaption aria-hidden="true">Figure 11.16 – VAR(3) forecast versus actual comparison against test</figcaption>
+</figure>
+<p>Finally, let’s calculate the <strong>root-mean-square error</strong> (<strong>RMSE</strong>) scores for both models (VAR and AR) to see which one performs better on the test data:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.tools.eval_measures import rmse
+rmse_var = rmse(test['FEDFUNDS'], forecast_df['unrate'])
+print('VAR(3) RMSE = ', rmse_var)
+rmse_ar = rmse(test['FEDFUNDS'], ar_forecast)
+print('AR(3) RMSE = ', rmse_ar)
+&gt;&gt;
+VAR(3) RMSE =  0.9729655920788434
+AR(3) RMSE =  0.7693416723850359</code></pre>
+</div>
+<p>The AR(3) model has a lower RMSE compared to the VAR(3) model, indicating that the simpler AR(3) model, which only considers the past values of <code>unrate</code>, actually performs better in this case. The VAR(3) model, which incorporates both <code>unrate</code> and <code>FEDFUNDS</code>, doesn’t significantly improve the forecast for <code>unrate</code>.</p>
+<p>Given the results, an AR(3) model might be preferred due to its lower complexity and better forecasting accuracy. However, when there are stronger interactions between the variables, a VAR model can provide <strong>additional insights</strong> and more accurate forecasts.</p>
+</section>
+<section id="see-also..." class="level3" data-number="12.4.5">
+<h3 data-number="12.4.5">See also...</h3>
+<p>To learn more about the VAR class in statsmodels, please visit the official documentation at <a href="https://www.statsmodels.org/dev/generated/statsmodels.tsa.vector_ar.var_model.VAR.html">https://www.statsmodels.org/dev/generated/statsmodels.tsa.vector_ar.var_model.VAR.html</a>.</p>
+</section>
+</section>
+<section id="evaluating-vector-autoregressive-var-models" class="level2" data-number="12.5">
+<h2 data-number="12.5">Evaluating vector autoregressive (VAR) models</h2>
+<p>After fitting a VAR model, the next step is to evaluate how well the model captures the interactions and dynamic relationships between the different endogenous variables (multiple time series). Understanding these relationships can help you asses causality, how one variable influences another, and how shocks to one variable propagate through the system.</p>
+<p>In this recipe, you will continue where you left off from the previous recipe, <em>Forecasting multivariate time series data</em> using <em>VAR</em>, and explore various diagnostic tools to deepen your understanding of the VAR model. Specifically, test for granger causality, analyze <strong>Residual Autocorrelation Function</strong> (<strong>ACF</strong>) plots, use the <strong>Impulse Response Function</strong> (<strong>IRF</strong>), and perform <strong>Forecast Error Variance Decomposition</strong> (<strong>FEVD</strong>).</p>
+<p>These evaluation steps will help you understand both the <strong>causal relationships</strong> and the <strong>interdependencies</strong> between the variables in your system, ensuring that your model captures the underlying dynamics correctly.</p>
+<section id="how-to-do-it...-5" class="level3" data-number="12.5.1">
+<h3 data-number="12.5.1">How to do it...</h3>
+<p>The following steps continue from the previous recipe. If you have not performed those steps, you can run the code from the accompanying <strong>Jupyter Notebook</strong> to follow along. You will focus on diagnosing the VAR(3) model that was created in the earlier recipe:</p>
+<ol>
+<li>First, perform a Granger causality test to determine if one time series can be used to predict another. In this case, you want to find out if <code>FEDFUNDS</code> can be used to predict <code>unrate</code>.</li>
+</ol>
+<p>Based on the previous recipe, you have already selected <strong>3 lags</strong> using the <strong>BIC</strong> criterion. However, you can adjust the lag order and test for higher lags if needed, depending on the nature of your data or specific research question.</p>
+<ol>
+<li><strong>Granger causality tests</strong> are implemented in <code>statsmodels</code> with the <code>grangercausalitytests()</code> function, which performs <strong>four tests</strong> across each past lag. You can control this using the <code>maxlag</code> parameter. Granger causality tests are used to determine if past values from one variable influence the other variable.</li>
+</ol>
+<p>The <strong>null hypothesis</strong> in the Granger causality test is that the second variable (in this case <code>FEDFUNDS</code>) does not granger cause the first variable (in this case, <code>unrate</code>). In other words, it assumes there is no <strong>statistical significance</strong> <em>in terms of influence or effect</em>. To test if <code>FEDFUNDS</code> influences <code>unrate</code>, you will need to switch the order of the columns before applying the test:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>granger = grangercausalitytests(
+            x=economic_df[['unrate', 'FEDFUNDS']],
+            maxlag=3)</code></pre>
+</div>
+<p>The test is set for a maximum of 3 lags, based on the BIC criterion selected earlier. The output will show the <em>test statistics</em>, <em>p-values</em>, <em>and degrees of freedom</em> for each lag. Focus on the <strong>p-value</strong> to decide whether to reject or accept the null hypothesis.</p>
+<div class="C1-SHCodePACKT">
+<pre><code>Granger Causality
+number of lags (no zero) 1
+ssr based F test:         F=0.5680  , p=0.4515  , df_denom=413, df_num=1
+ssr based chi2 test:   chi2=0.5721  , p=0.4494  , df=1
+likelihood ratio test: chi2=0.5717  , p=0.4496  , df=1
+parameter F test:         F=0.5680  , p=0.4515  , df_denom=413, df_num=1
+Granger Causality
+number of lags (no zero) 2
+ssr based F test:         F=21.9344 , p=0.0000  , df_denom=410, df_num=2
+ssr based chi2 test:   chi2=44.4039 , p=0.0000  , df=2
+likelihood ratio test: chi2=42.1852 , p=0.0000  , df=2
+parameter F test:         F=21.9344 , p=0.0000  , df_denom=410, df_num=2
+Granger Causality
+number of lags (no zero) 3
+ssr based F test:         F=21.6694 , p=0.0000  , df_denom=407, df_num=3
+ssr based chi2 test:   chi2=66.1262 , p=0.0000  , df=3
+likelihood ratio test: chi2=61.3477 , p=0.0000  , df=3
+parameter F test:         F=21.6694 , p=0.0000  , df_denom=407, df_num=3</code></pre>
+</div>
+<p>Since the p-values for lags 2 and 3 are less than 0.05, this suggests that <code>FEDFUNDS</code> does <strong>Granger-cause</strong> <code>unrate</code>. In other words, past values of <code>FEDFUNDS</code> provide significant predictive power for <code>unrate</code> when considering a lag of 2 or 3 months.</p>
+<ol>
+<li>Next, you will explore the residual plots. The <code>results</code> object from the previous recipe <code>results = model.fit(ic='bic')</code>, is of the <code>VARResultsWrapper</code> type, which is the same as the <code>VARResults</code> class and has access to the same methods and attributes. Start with the <strong>ACF</strong> plot of the residuals using the <code>plot_acorr</code> method:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>results.plot_acorr(resid=True)
+plt.show();</code></pre>
+</div>
+<p>This should produce four plots (2x2 plots – two for each variable) for <strong>autocorrelation</strong> and <strong>cross-correlation</strong> between the residuals. Recall from <em>Figure 11.11</em> that for two variables, you will have two functions, and this translates into 2x2 residual subplots. If you had three variables, you would have a 3x3 subplot:</p>
+<figure>
+<img src="../media/file264.png" alt="Figure 11.17 – Residual autocorrelation and cross-correlation plots" width="771" height="774"/><figcaption aria-hidden="true">Figure 11.17 – Residual autocorrelation and cross-correlation plots</figcaption>
+</figure>
+<p>Unfortunately, the plots in <em>Figure 11.17</em> do not have proper labels. The first row of plots corresponds to the first variable in the DataFrame (<code>FEDFUNDS</code>), and the second row corresponds to the second variable in the DataFrame (<code>unrate</code>).</p>
+<p>You are looking for no significant autocorrelation in the residuals which is the case in <em>Figure 11.17</em>. This would confirm that the VAR(3) model has effectively captured the dynamic relationships between the variables (<code>FEDFUNDS</code> and <code>unrate</code>), with no leftover patterns in the residual that the model failed to capture and account for.</p>
+<ol>
+<li>If you want a mode tailed look at the residuals for each variable separately, you can do so by extracting the residuals using the <code>resid</code> attribute. This would return a DataFrame of the residuals for each variable. You can use the standard <code>plot_acf</code> function to create your ACF plots:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>for col in results.resid.columns:
+    fig, ax = plt.subplots(1,1, figsize=(10,2))
+    plot_acf(results.resid[col], zero=False,
+             lags=10, ax=ax, title=f'ACF - {col}')</code></pre>
+</div>
+<p>This should produce two ACF plots – one for <code>FEDFUNDS</code> and another for <code>unrate</code>. This will confirm the same finding – that there is no significant autocorrelation in the residuals.</p>
+<ol>
+<li>Next, you will move to the <strong>Impulse Response Function (IRF)</strong> analysis. The IRF helps you visualize and understand how shocks to one variable affect another variable (or itself) over time, which is crucial for assessing the dynamic interactions between the variables in a VAR model.</li>
+</ol>
+<p>You will analyze the impulse response to shocks in the system using the <code>irf</code> method:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>irf_output = results.irf()
+irf_output.plot()
+plt.show()</code></pre>
+</div>
+<p>The <code>irf_output</code> object is of the <code>IRAnalysis</code> type and has access to a <code>plot()</code> function:</p>
+<figure>
+<img src="../media/file265.png" alt="Figure 11.18 – Impulse response showing the effect of one unit change in one variable against another" width="770" height="770"/><figcaption aria-hidden="true">Figure 11.18 – Impulse response showing the effect of one unit change in one variable against another</figcaption>
+</figure>
+<p>The <strong>Impulse Response Function (IRF)</strong> analysis computes the dynamic impulse responses and the approximated standard errors, and displays the effect of a shock (or impulse) in one variable and the response in the other variables over time (lags). In a <strong>VAR model</strong>, all the variables influence each other, and the IRF traces the effect of a change in one variable and its influence on the other variables over time.</p>
+<p>For example, the plot <strong>FEDFUNDS → unrate</strong> (bottom left in <em>Figure 11.18</em>) shows</p>
+<p>how <code>unrate</code> responds to a one-unit increase in <code>FEDFUNDS</code> across the 10 lags. Immediately, there is noticeable <strong>sharp negative response</strong> in <code>unrate</code>, indicating that an increase in federal funds rate lowers the unemployment rate. The effect persists but gradually diminishes over time, which is consistent with how monetary policy impacts employment in the economy. We see this effect from <em>lag 2</em> to <em>lag 3</em>, where these is a period of <strong>stabilization</strong>. The response levels off a bit, this is where the <strong>delayed effect</strong> becomes visible; as the initial drop occurs quickly, the total adjustment takes longer as <code>unrate</code> remains below the starting point. After <em>lag 3</em>, we see a slight upward movement in <code>unrate</code> and this gradual adjustment suggests that the <code>unrate</code> starts to recover slowly but does not yet fully return to its pre-shock level for several periods.</p>
+<p>On the other hand, the <strong>unrate → FEDFUNDS</strong> (top right in <em>Figure 11.18</em>) shows a relatively small and slightly positive response. This suggests that an increase in unemployment (<code>unrate</code>) leads to a slight rise in <code>FEDFUNDS</code>, but the effect diminishes over time.</p>
+<p>If you only want to see the response of one variable to another (instead of all subplots), you can specify the <code>impulse</code> and a <code>response</code> variables:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>fig = irf_output.plot(impulse='FEDFUNDS', response='unrate', figsize=(5, 7))
+fig.tight_layout()
+plt.show()</code></pre>
+</div>
+<ol>
+<li>Plot the cumulative response effect:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>irf.plot_cum_effects()
+plt.show()</code></pre>
+</div>
+<figure>
+<img src="../media/file266.png" alt="Figure 11.19 – Plot of the Cumulative Impulse Responses Function" width="763" height="776"/><figcaption aria-hidden="true">Figure 11.19 – Plot of the Cumulative Impulse Responses Function</figcaption>
+</figure>
+<p>The cumulative response plot shows how the effect of a shock builds up over time. For example, <strong>FEDFUNDS → unrate</strong> plot (bottom left in <em>Figure 11.19</em>), you can see that the commutative effect of a one-unit increase in FEDFUNDS leads to a sustained decrease in <code>unrate</code> overtime. The cumulative response helps you assess the long-term impact of these shocks.</p>
+<ol>
+<li>Next, you will move to <strong>Forecast Error Variance Decomposition (FEVD</strong>) to quantity how much of the <strong>forecast error variance</strong> of each variable in the system is attributed to shocks in itself and shocks in the other variables. In other words, you want to understand the contribution of shocks from each variable.</li>
+</ol>
+<p>You can compute the FEVD using the using the <code>fevd()</code> method:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>fv = results.fevd()</code></pre>
+</div>
+<p>You can explore the FEVD results using either <code>fv.summay()</code> and <code>fv.plot()</code> methods. Both of which provide similar information:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>fv.plot()
+plt.show()</code></pre>
+</div>
+<p>This will produce two FEVD plot (Figure 11.20) one for each variable.</p>
+<figure>
+<img src="../media/file267.png" alt="Figure 11.20 – FEVD plot for the FEDFUNDS and unrate variables" width="797" height="784"/><figcaption aria-hidden="true">Figure 11.20 – FEVD plot for the FEDFUNDS and unrate variables</figcaption>
+</figure>
+<p>The x-axis represents the number of periods (lags) from 0 to 9, and the y-axis represents the percentage (0 to 100%) that each shock contributed to the forecast error variance Visually, the contribution of each shock is represented as a portion of the total bar for every period.</p>
+<p>The <strong>FEDFUNDS plot</strong> (top) shows that the entire forecast error variance in <code>FEDFUNDS</code> is explained by its own shocks. This means that shocks to <code>unrate</code> have no impact on the forecast error variance of <code>FEDFUNDS</code>.</p>
+<p>On the other hand, the <strong>unrate plot</strong> (bottom) starts off by showing that the forecast error variance of <code>unrate</code> is mostly explained by its own shocks. However, starting from <em>lag 4</em>, the contribution from <code>FEDFUNDS</code> begins to grow. By <em>lag 9</em>, roughly around 30% of the variance in <code>unrate</code> can be said to be driven by shocks from <code>FEDFUNDS</code>. This suggest that, over longer time horizons, <code>FEDFUNDS</code> becomes a more significant driver to<code> unrate’s</code> forecast error variance.</p>
+</section>
+<section id="how-it-works...-6" class="level3" data-number="12.5.2">
+<h3 data-number="12.5.2">How it works...</h3>
+<p>The VAR implementation from statsmodels offers several tools to help you understand the dynamic relationships between the different time series (or endogenous variables). This includes methods like Granger causality tests, Impulse Response Functions (IRFs), and Forecast Error Variance Decomposition (FEVD). Each of these tools gives you a different perspective on how variables in the system interact over time, whether through causal links or how shocks to one variable influence others.</p>
+<p>In addition to understanding relationships, diagnostic tools (such as residual analysis and autocorrelation plots) are provided to help you assess model fit and determine whether any adjustments (like model order, differencing, or additional variables) are necessary.</p>
+</section>
+<section id="theres-more...-10" class="level3" data-number="12.5.3">
+<h3 data-number="12.5.3">There's more...</h3>
+<p>Earlier, in the <em>Forecasting multivariate time series data using VAR</em> recipe, you manually created a forecast plot. However, the <code>results</code> object (an instance of the <code>VARResults</code> class) offers a convenient way for you to plot your forecasts quickly using the <code>plot_forecast</code> method. This function automatically generates a forecast along with confidence intervals.</p>
+<div class="C0-CodePACKT">
+<pre><code>n = len(test)
+results.plot_forecast(steps=n, plot_stderr=True);</code></pre>
+</div>
+<p>Here, <code>n</code> is the number of future steps. This should produce two subplots, with one forecast for each variable, as shown in the following diagram:</p>
+<figure>
+<img src="../media/file268.png" alt="Figure 11.21 – Forecast plots for FEDFUNDS and unrate" width="734" height="741"/><figcaption aria-hidden="true">Figure 11.21 – Forecast plots for FEDFUNDS and unrate</figcaption>
+</figure>
+</section>
+<section id="see-also-50" class="level3" data-number="12.5.4">
+<h3 data-number="12.5.4">See also…</h3>
+<p>To learn more about the <code>VARResults</code> class and all the available methods and attributes, visit the official documentation at <a href="https://www.statsmodels.org/dev/generated/statsmodels.tsa.vector_ar.var_model.VARResults.html">https://www.statsmodels.org/dev/generated/statsmodels.tsa.vector_ar.var_model.VARResults.html</a>.</p>
+</section>
+</section>
+<section id="forecasting-volatility-in-financial-time-series-data-with-garch" class="level2" data-number="12.6">
+<h2 data-number="12.6">Forecasting volatility in financial time series data with GARCH</h2>
+<p>When working with financial time series data, a common task is measuring <strong>volatility</strong>, which represents uncertainty in future returns. Generally, volatility measures the spread of the probability distribution of returns over a specific period, often calculated as the <strong>variance</strong> or <strong>standard deviation</strong> (which is the square root of variance). It is used as a proxy for quantifying <strong>risk</strong> or <strong>uncertainty</strong>. In other words, it measures the dispersion of financial asset returns around an expected value. Higher volatility indicates higher risks. This helps investors understand the level of return they can expect and how often their returns will differ from the expected value.</p>
+<p>Most of the models we discussed previously (e.g., ARIMA, SARIMA, and Prophet) focused on forecasting an observed variable based on its past values. However, these models assume a constant variance (<strong>homoskedasticity</strong>) and do not account for changes in variance over time (<strong>heteroskedasticity</strong>).</p>
+<p>In this recipe, you will work with a different kind of forecasting: forecasting and modeling changes in variance over time. This is known as volatility. In general, volatility is an important measure of risk when there is uncertainty and it is an important concept when working with financial data.</p>
+<p>To achieve this, you will be introduced to a new family of algorithms related to <strong>Autoregressive Conditional Heteroskedasticity (ARCH)</strong>. The ARCH model captures change in variance over time, modeled as a function of squared error terms (<em>innovations</em>) from past time points. An extension of ARCH is the <strong>GARCH</strong> model, which stands for <strong>Generalized Autoregressive Conditional Heteroskedasticity</strong>. It extends ARCH by adding a moving average component to account for past variances, providing a more flexible and persistent volatility structure.</p>
+<p>GARCH is popular in econometrics and is widely used by financial institutes for assessing investments and market risks. Predicting turbulence and volatility is just as important as forecasting future prices, and many trading strategies -such as <strong>mean reversion</strong>- utilize volatility as a key factor.</p>
+<p>Before moving forward, let's break down the components of a general ARCH model:</p>
+<ul>
+<li><strong>Autoregressive</strong>- a concept we explored in <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods</em>, means that the current value of a variable is influenced by its past values. In ARCH models this means that current volatility (<em>variance</em>) is influence by past values of the squared error terms (<em>innovations</em>).</li>
+<li><strong>Heteroskedasticity-</strong> means that the model may have different magnitudes or variability at different time points (variance changes over time).</li>
+<li><strong>Conditional</strong>- since the variance (volatility) is not fixed, it depends on past information. In other words, the variance at a given time point is conditionally dependent on past values from the series, meaning that volatility is updated as new information becomes available.</li>
+</ul>
+<p>In this recipe, you will create a <strong>GARCH model</strong> of order (<strong>p, q</strong>), where <strong>p</strong> represents the number of lagged <strong>variances</strong> (the <strong>GARCH term</strong>), and <strong>q</strong> represents the number of lagged <strong>squared residuals</strong> (the <strong>ARCH term</strong>).</p>
+<p>Using the <code>arch</code> Python library, you will implement this with the <code>arch_model</code> function. The parameters in this function can be broken down into three main components based on the GARCH model's assumptions:</p>
+<ul>
+<li><code>dist</code> : Controls the distribution assumption for the innovations (residuals) and defaults to <code>'normal'</code></li>
+<li><code>mean</code> : Controls the model for the conditional mean and defaults to <code>'Constant'</code>, which<code> </code>assumes a constant mean</li>
+<li><code>vol</code> : Controls the volatility model (conditional variance) and defaults to <code>'GARCH'</code></li>
+</ul>
+<blockquote>
+<p>In most literature, <strong>q</strong> typically represents the <strong>ARCH order</strong> (the number of lagged squared residuals or innovations), while <strong>p</strong> represents the <strong>GARCH order</strong> (the number of lagged variances). However, in the <code>arch</code> <strong></strong> Python library, the roles of <strong>p</strong> and <strong>q</strong> are <strong>reversed</strong>.</p>
+<blockquote>
+<p>In the <code>arch</code> package, <strong>p</strong> refers to the lag order of the <strong>squared residuals</strong> (the <strong>ARCH</strong> component), and <strong>q</strong> refers to the lag order of the <strong>lagged variances</strong> (the <strong>GARCH</strong> component).</p>
+</blockquote>
+<blockquote>
+<p>This distinction is important to keep in mind when specifying and interpreting GARCH models using the <code>arch</code> library, as it differs from the conventional notation used in the academic literature.</p>
+</blockquote>
+<blockquote>
+<p>For example, specifying <code>p=2</code> and <code>q=1</code> in <code>arch_model</code> would actually fit a <strong>GARCH(1, 2)</strong> model according to the conventional notation (with 1 lagged variance and 2 lagged residuals)</p>
+</blockquote>
+</blockquote>
+<section id="getting-ready-37" class="level3" data-number="12.6.1">
+<h3 data-number="12.6.1">Getting ready</h3>
+<p>In this recipe, you will be using the <code>arch</code> library, which contains several volatility models, as well as financial econometrics tools. The library produces similar output to those from the statsmodels library. At the time of writing, the latest version is <code>7.1.0</code>.</p>
+<p>To install <code>arch</code> using <strong>pip</strong>, use the following command:</p>
+<div class="C0-SHConPACKT">
+<pre><code>pip install arch</code></pre>
+</div>
+<p>To install <code>arch</code> using <strong>conda</strong>, use the following command:</p>
+<div class="C0-SHConPACKT">
+<pre><code>conda install -c conda-forge arch-py</code></pre>
+</div>
+</section>
+<section id="how-to-do-it-46" class="level3" data-number="12.6.2">
+<h3 data-number="12.6.2">How to do it…</h3>
+<p>When using the <code>arch_model</code> function from the <code>arch</code> library to build the <strong>GARCH</strong> model, there are a few key parameters: the default <strong>distribution</strong> is <em>normal</em> (<code>dist='normal'</code>), the <strong>mean</strong> model is constant (<code>mean='Constant'</code>), and the <strong>volatility model</strong> is GARCH (<code>vol='GARCH'</code> by default). Other mean models, such as autoregressive models (<code>'AR'</code>) can also be specified depending on the context. Similarly, other volatility models can be selected such <code>'GARCH'</code>, <code>'ARCH'</code>, <code>'EGARCH'</code>, <code>'FIGARCH'</code>, and <code>'APARCH'</code>. You can also select different distributions such as '<code>gaussian'</code>, <code>'t'</code>, <code>'studentst'</code>, <code>'skewstudent'.</code></p>
+<p>You will be using the <strong>Microsoft</strong> daily closing price dataset for this recipe. Follow these steps:</p>
+<ol>
+<li>Start by loading the necessary libraries for this recipe:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from arch import arch_model
+import pandas as pd</code></pre>
+</div>
+<ol>
+<li>Load the <code>MSFT.csv</code> dataset:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>msft = pd.read_csv('../../datasets/Ch11/MSFT.csv',
+                   index_col='date',
+                    usecols=['date', 'close'],
+                   parse_dates=True)</code></pre>
+</div>
+<ol>
+<li>You will need to convert the daily stock price into a <strong>daily stock return.</strong> This can be calculated as where is the price at time and is the price from the previous day. This can be done easily in pandas using the <code>DataFrame.pct_change()</code> function, followed by multiplying by 100<code> </code>to express returns as <strong>percentages</strong>.</li>
+</ol>
+<p>The <code>pct_change()</code> function takes a <code>periods</code> parameter that defaults to <code>1</code>. If you want to calculate a 30-day return, then you will need change that value to <code>pct_change(periods=30)</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>msft['returns'] = 100 * msft.pct_change()
+msft.dropna(inplace=True, how='any')</code></pre>
+</div>
+<p>The <code>dropna</code> step is necessary because calculating <code>returns</code> will produce <code>NaN </code>for the first row.</p>
+<ol>
+<li>You can plot both the daily stock price and daily return:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>title = 'Microsoft Daily Closing Price and Daily Returns'
+msft.plot(subplots=True,
+          title=title);</code></pre>
+</div>
+<p>This will produce the following plot:</p>
+<figure>
+<img src="../media/file269.png" alt="Figure 11.22 – Microsoft daily closing price and daily returns" width="1296" height="466"/><figcaption aria-hidden="true">Figure 11.22 – Microsoft daily closing price and daily returns</figcaption>
+</figure>
+<ol>
+<li>Split the data into train and test. For short-term volatility forecasting you will examin how well the model predicts the next few day’s volatility. When splitting the data, you will leave the last 5 days for testing.</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>train = msft.returns[:-5] 
+test = msft.returns[-5:]  
+print(f'Train: {train.shape}')
+print(f'Test: {test.shape}')
+print(f'Train: {train.shape}')
+print(f'Test: {test.shape}')
+&gt;&gt;
+Train: (1253,)
+Test: (5,)</code></pre>
+</div>
+<ol>
+<li>Fit a <strong>GARCH(p, q)</strong> model. Start with the simple GARCH(1,1) model with all the default options – that is, <code>mean='Constant'</code>, distribution as <code>dist='normal'</code>, volatility as <code>vol='GARCH'</code>, <code>p=1</code>, and <code>q=1</code>. A GARCH(1,1) is the most commonly used model, and a good starting point, for volatility forecasting due to its simplicity and effectiveness in capturing volatility clusters.</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>model = arch_model(train,
+                   p=1, q=1,
+                   mean='Constant',
+                   vol='GARCH',
+                   dist='normal')
+results = model.fit(update_freq=5)
+&gt;&gt;
+Iteration:      3,   Func. Count:     22,   Neg. LLF: 2419.4197011866704
+Iteration:      6,   Func. Count:     41,   Neg. LLF: 2409.599553434422
+Iteration:      9,   Func. Count:     55,   Neg. LLF: 2409.592672855605
+Optimization terminated successfully    (Exit mode 0)
+            Current function value: 2409.59267285418
+            Iterations: 9
+            Function evaluations: 55
+            Gradient evaluations: 9</code></pre>
+</div>
+<p>The fitting process was completed in nine (9) iterations. Using <code>update_freq=3</code> affects the frequency of printing the progress during the fitting process. The default is one (1) which means it will print out an output on each iteration. By setting it to three (3) we get an output every three iterations. To print the summary, use the <code>summary()</code> method:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>Print(results.summary())</code></pre>
+</div>
+<p>This will produce the following output:</p>
+<figure>
+<img src="../media/file270.png" alt="Figure 11.22 – Summary of the GARCH(1,1) model" width="631" height="427"/><figcaption aria-hidden="true">Figure 11.22 – Summary of the GARCH(1,1) model</figcaption>
+</figure>
+<p>The <em>omega</em>, <em>alpha</em>, and <em>beta</em> parameters (the symbols) of the GARCH(1,1) model are estimated using the <strong>Maximum Likelihood</strong> method. The <code>p-value</code> for the coefficients indicates they are <em>statistically</em> <em>significant</em>.</p>
+<p>You can access several of the components that you see in the summary table by calling the appropriate attribute from the <code>results</code> object – for example, <code>results.pvalues</code>, <code>results.tvalues</code>, <code>results.std_err</code>, or <code>results.params</code>.</p>
+<div class="C1-SHCodePACKT">
+<pre><code>print(results.params)
+&gt;&gt;
+mu          0.144878
+omega       0.055152
+alpha[1]    0.095416
+beta[1]     0.891086
+Name: params, dtype: float64</code></pre>
+</div>
+<ol>
+<li>Next, you need to evaluate the model's performance. Start by plotting the standardized residuals and conditional volatility using the <code>plot</code> method:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>results.plot();</code></pre>
+</div>
+<p>This should produce the following plot:</p>
+<figure>
+<img src="../media/file271.png" alt="Figure 11.23 – Model diagnostics for the GARCH(1,1) model" width="1288" height="445"/><figcaption aria-hidden="true">Figure 11.23 – Model diagnostics for the GARCH(1,1) model</figcaption>
+</figure>
+<p>If the model is well-fitted, then the <strong>Standardized Residuals</strong> plot should look like white noise, indicating no patterns remain in the residuals. The plot seems to show randomness without obvious patterns indicating a good fit. The <strong>Conditional Volatility</strong> plot shows the time-varying volatility that the model has estimated, reflecting how volatility changes over time. You can see periods of high and low volatility reflecting market conditions.</p>
+<p>Plot a histogram for the standardized residuals. You can obtain this using the <code>std_resid</code> attribute:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>results.std_resid.hist(bins=20)
+plt.title('Standardized Residuals')</code></pre>
+</div>
+<figure>
+<img src="../media/file272.png" alt="Figure 11.24 – Histogram plot for the standardized residuals of the GARCH model" width="1293" height="449"/><figcaption aria-hidden="true">Figure 11.24 – Histogram plot for the standardized residuals of the GARCH model</figcaption>
+</figure>
+<p>The histogram suggests that the standardized residuals are roughly normal, though you can use additional statistical tests, like the <strong>Jarque-Bera</strong> test, for a more formal assessment of normality</p>
+<ol>
+<li>You can further evaluate the model by testing for <strong>autocorrelation</strong> using the <strong>Ljung-Box test</strong>, which tests the null hypothesis of no autocorrelation. For the first 10 lags, use <code>acorr_ljungbox</code>. A p-value greater than 0.05 indicates that the null hypothesis cannot be rejected, suggesting no significant autocorrelation at that lag.</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.stats.diagnostic import acorr_ljungbox
+acorr_ljungbox(results.std_resid,
+               lags=10,
+               return_df=True)['lb_pvalue']
+&gt;&gt;
+1     0.050203
+2     0.038038
+3     0.077375
+4     0.136003
+5     0.195838
+6     0.157237
+7     0.201474
+8     0.248204
+9     0.153473
+10    0.210838
+Name: lb_pvalue, dtype: float64</code></pre>
+</div>
+<p>The p-values from the Ljung-Box test suggest that there is no significant autocorrelation in the standardized residuals at most lags. Since most p-values are above 0.05, we fail to reject the null hypothesis of no autocorrelation, indicating a good model fit.</p>
+<ol>
+<li>To make a prediction, use the <code>forecast()</code> method. The default is to produce a one (1) step ahead forecast. To get <code>n</code> number of steps ahead, you will need to update the <code>horizon</code> parameter:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>msft_forecast = results.forecast(horizon=test.shape[0])</code></pre>
+</div>
+<ol>
+<li>To access the predicted future variance (or volatility), use the <code>variance</code> property from the <code>msft_forecast</code> object:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>forecast = msft_forecast.variance
+print(forecast)
+&gt;&gt;
+                 h.1       h.2       h.3       h.4       h.5
+date                                                       
+2024-08-27  1.623692  1.656928  1.689714  1.722059  1.753967</code></pre>
+</div>
+<p>You can also evaluate the predicted mean. Recall that when you fit the model, you specified that the mean as <code>Constant</code>. This is further validated if you examine the mean:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>print(msft_forecast.mean)
+&gt;&gt;
+                 h.1       h.2       h.3       h.4       h.5
+date                                                       
+2024-08-27  0.144878  0.144878  0.144878  0.144878  0.144878</code></pre>
+</div>
+<p>This will print out a constant value of <code>0.144878</code> across all horizons.</p>
+</section>
+<section id="how-it-works-45" class="level3" data-number="12.6.3">
+<h3 data-number="12.6.3">How it works…</h3>
+<p><code>GARCH(p,q)</code> can be written as follows:</p>
+<figure>
+<img src="../media/file273.jpg" width="623" height="160"/>
+</figure>
+Omega, alpha, and beta (
+<figure>
+<img src="../media/file274.png" width="135" height="50"/>
+</figure>
+) are parameters here. The <code>p</code> order is commonly referred to as the GARCH order, while <code>q</code> is referred to as the ARCH order.
+<p>The parameters for the GARCH model represent the following:</p>
+<ul>
+<li><strong>Omega</strong> : the constant or baseline variance</li>
+<li><strong>Alpha</strong>: The coefficient for the lagged squared residuals (<em>ARCH term</em>), which measures the impact of recent shocks on volatility.</li>
+<li><strong>Beta</strong>: The coefficient for the lagged variances (<em>GARCH term</em>), representing the persistence of volatility over time.</li>
+</ul>
+<blockquote>
+<p>In the <code>arch</code> Python package, the roles of <strong>p</strong> and <strong>q</strong> are swapped, with <strong>p</strong> representing the ARCH component (lagged squared residuals) and <strong>q</strong> representing the GARCH component (lagged variances).</p>
+</blockquote>
+<p>The GARCH(1,1) that you implemented can be written as follows:</p>
+<figure>
+<img src="../media/file275.png" width="483" height="60"/>
+</figure>
+<blockquote>
+<p>INNOVATIONS VERSUS ERRORS IN TIME SERIES</p>
+<blockquote>
+<p>In time series literature, you will come across the term <strong>innovations</strong>, which refers to unexpected and unpredictable new information, shocks, or errors that cannot be forecasted using past information. Put simply, you can think of <strong>innovations</strong> as forecast errors or surprises at each time step. While in machine learning, we often refer to these as prediction errors, in time series models like ARCH/GARCH, we use the term <strong>innovations</strong> to describe the new, unanticipated information affecting the model.</p>
+</blockquote>
+</blockquote>
+</section>
+<section id="theres-more...-11" class="level3" data-number="12.6.4">
+<h3 data-number="12.6.4">There's more...</h3>
+<p>Previously, when implementing the GARCH model, you set the mean to <code>'Constant'</code>. Now, let's explore the impact of changing the mean to <code>'Zero'</code>, which effectively removes the mean model from the equation.</p>
+<p>Let’s start by setting <code>mean='Zero':</code></p>
+<div class="C0-CodePACKT">
+<pre><code>model = arch_model(train,
+                   p=1, q=1,
+                   mean='Zero',
+                   vol='GARCH',
+                   dist='normal')
+results = model.fit(disp=False)</code></pre>
+</div>
+<p>This should produce the GARCH summary in a tabular format:</p>
+<figure>
+<img src="../media/file276.png" alt="Figure 11.25 – GARCH(1, 1) with a zero mean" width="1258" height="690"/><figcaption aria-hidden="true">Figure 11.25 – GARCH(1, 1) with a zero mean</figcaption>
+</figure>
+<p>Notice that in Figure 11.25, there is no mean model like the one shown in Figure 11.21. Using a <strong>Zero Mean</strong> is common when you want to separate the modeling of <strong>volatility</strong> from the <strong>mean</strong>. This approach can be helpful in situations where you are primarily interested in modeling volatility and don’t need a mean model for the underlying returns.</p>
+</section>
+<section id="see-also-51" class="level3" data-number="12.6.5">
+<h3 data-number="12.6.5">See also</h3>
+<p>To learn more about the <code>arch</code> library, please visit the official documentation at <a href="https://arch.readthedocs.io/en/latest/univariate/introduction.html">https://arch.readthedocs.io/en/latest/univariate/introduction.html</a>.</p>
+</section>
+</section>
+</section>
+</div>
+</div>
+</body>
+</html>

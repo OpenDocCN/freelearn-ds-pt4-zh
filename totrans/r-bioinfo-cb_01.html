@@ -1,0 +1,1419 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Performing Quantitative RNAseq</h1>
+                </header>
+            
+            <article>
+                
+<p>The technology of RNAseq has revolutionized the study of transcript abundances, bringing high-sensitivity detection and high-throughput analysis. Bioinformatic analysis pipelines using RNAseq data typically start with a read quality control step followed by either alignment to a reference or the assembly of sequence reads into longer transcripts<span> </span><em>de novo</em>. After that, transcript abundances are estimated with read counting and statistical models and differential expression between samples is assessed. Naturally, there are many technologies available for all steps of this pipeline. The quality control and read alignment steps will usually take place outside of R, so analysis in R will begin with a file of transcript or gene annotations (such as GFF and BED files) and a file of aligned reads (such as BAM files). </p>
+<p>The tools in R for performing analysis are powerful and flexible. Many of them are part of the Bioconductor suite and, as such, integrate together very nicely. The key question researchers wish to answer with RNAseq is usually: <em>Which transcripts are differentially expressed</em>? In this chapter, we'll look at some recipes for that in standard cases where we already know the genomic positions of genes we're interested in, and in cases where we need to find unannotated transcripts. We'll also look at other important recipes that help answer the questions <em>How many replicates are enough</em>? and <em>Which allele is expressed more</em>?</p>
+<p>In this chapter, we will cover the following recipes:</p>
+<ul>
+<li>Estimating differential expression with edgeR</li>
+<li>Estimating differential expression with DESeq2</li>
+<li>Power analysis with powsimR</li>
+<li>Finding unannotated transcribed regions with GRanges objects</li>
+<li>Finding regions showing high expression ab initio with bumphunter</li>
+<li>Differential peak analysis</li>
+<li>Estimating batch effects using SVA</li>
+<li>Finding allele-specific expression with AllelicImbalance</li>
+<li>Plotting and presenting RNAseq data</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>The sample data you'll need is available from this book's GitHub repository: <a href="https://github.com/PacktPublishing/R-Bioinformatics_Cookbook">https://github.com/PacktPublishing/R-Bioinformatics_Cookbook</a><a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">.</a> If you want to use the code examples as they are written, then you will need to make sure that this data is in a sub-directory of whatever your working directory is.</p>
+<p>Here are the R packages that you'll need. Most of these will install with <kbd>install.packages()</kbd><em>; </em>others are a little more complicated:</p>
+<ul>
+<li><kbd>Bioconductor</kbd>
+<ul>
+<li><kbd>AllelicImbalance</kbd></li>
+<li><kbd>bumphunter</kbd> </li>
+<li><kbd>csaw</kbd></li>
+<li><kbd>DESeq</kbd></li>
+<li><kbd>edgeR</kbd></li>
+<li><kbd><span>IRanges</span></kbd></li>
+<li><kbd>Rsamtools</kbd></li>
+<li><kbd>rtracklayer</kbd></li>
+<li><kbd>sva</kbd></li>
+<li><kbd>SummarizedExperiment</kbd></li>
+<li><kbd>VariantAnnotation</kbd></li>
+</ul>
+</li>
+<li><kbd>dplyr</kbd></li>
+<li><kbd>extRemes</kbd></li>
+<li><kbd>forcats</kbd></li>
+<li><kbd>magrittr</kbd></li>
+<li><kbd>powsimR</kbd></li>
+<li><kbd>readr</kbd> </li>
+</ul>
+<p><kbd>Bioconductor</kbd> is huge and has its own installation manager. You can install it with the following code:<a href="https://www.bioconductor.org/install/"/></p>
+<pre>if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install()</pre>
+<div class="packt_infobox"><span> </span><span>Further information is available at</span> <span><a href="https://www.bioconductor.org/install/">https://www.bioconductor.org/install/</a>.</span></div>
+<p>Normally, in R, a user will load a library and use the functions directly by name. This is great in interactive sessions but it can cause confusion when many packages are loaded. To clarify which package and function I'm using at a given moment, I will occasionally use the <kbd>packageName::functionName()</kbd> convention. </p>
+<div class="packt_infobox"><span><span>Sometimes, in the middle of a recipe, I'll interrupt the code so you can see some intermediate output or the structure of an object it's important to understand. Whenever that happens, you'll see a code block where each line begins with <kbd>##</kbd> (double hash symbols). Consider the following command:<br/></span></span> <span><span><br/></span></span>
+<p><kbd>letters[1:5]</kbd></p>
+<p>This will give us output as follows:</p>
+<p><kbd>## a b c d e</kbd></p>
+<p><span>Note that the output lines are prefixed with </span><kbd>##</kbd>.</p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Estimating differential expression with edgeR</h1>
+                </header>
+            
+            <article>
+                
+<p><span>edgeR is a widely used and powerful package that implements </span>negative binomial models suitable for sparse count data such as RNAseq data in a general linear model<span> framework, which are powerful for describing and understanding count relationships and exact tests for multi-group experiments. It uses a weighted style normalization called TMM, which is the weighted mean of log ratio between sample and control, after removal of genes with high counts and outlying log ratios. The TMM value should be close to one, but can be used as a correction factor to be applied to overall library sizes</span></p>
+<p>In this recipe, we'll look at some options from preparing read counts for annotated regions in some object to identifying the differentially expressed features in a genome. Usually, there is an upstream step requiring us to take high-throughput sequence reads, align them to a reference and produce files describing those alignments, such as <kbd>.bam</kbd> files. With those files prepared, we'd fire up R and start to analyze. So that we can concentrate on the differential expression analysis part of the process, we'll use a prepared dataset for which all of the data is ready. <a href="ee575089-d20d-4c7f-bbde-be145ac47ab1.xhtml">Chapter 8</a>, <em>Working with Databases and Remote Data Sources,</em> shows you how to go from raw data to this stage if you're looking for how to do that step.</p>
+<p>As there are many different tools and methods for getting those alignments of reads, we will look at starting the process with two common input object types. We'll use a count table, like that we would have if we were loading from a text file and we'll use an ExpressionSet (<kbd>eset</kbd>) object, which is an object type common in Bioconductor.</p>
+<p class="mce-root">Our prepared dataset will be the<span> </span><kbd>modencodefly</kbd><span> </span>data from the NHGRI encyclopedia of DNA elements project for the model organism,<span> </span><em>Drosophila melanogaster</em>. You can read about this project at<span> </span><a href="http://www.modencode.org/">www.modencode.org</a>. The dataset contains 147 different samples for<span> </span><em>D. melanogaster</em>, a fruit <span><span>fly</span></span> with an approximately 110 Mbp genome, annotated with about 15,000 gene features.<span> </span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">The data is provided as both a count matrix and an ExpressionSet object and you can see the <em>Appendix</em> at the end of this book for further information on these object types. <span>The data is in this book's code and data repository at <a href="https://github.com/PacktPublishing/R_Bioinformatics_Cookbook">https://github.com/PacktPublishing/R_Bioinformatics_Cookbook</a></span><span> </span><span>under</span><span> </span><kbd>datasets/ch1/modencodefly_eset.RData</kbd>, <span><kbd>datasets/ch1/modencodefly_count_table.txt</kbd>, and <kbd>datasets/ch1/modencodelfy_phenodata.txt</kbd> . </span><span>We'll also use the</span> <kbd>edgeR</kbd><span> (from Bioconductor), <kbd>readr</kbd>, and <kbd>magrittr</kbd> libraries.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">We will see two ways of estimating differential expressions with edgeR.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using edgeR from a count table</h1>
+                </header>
+            
+            <article>
+                
+<p>For estimating differential expressions with edgeR from a count table (for example, in a text file), we will use the following steps:</p>
+<ol>
+<li>Load the count data:</li>
+</ol>
+<pre style="padding-left: 60px">count_dataframe &lt;- readr::read_tsv(file.path(getwd(), "datasets", "ch1", "modencodefly_count_table.txt" ))<br/>genes &lt;- count_dataframe[['gene']]<br/>count_dataframe[['gene']] &lt;- NULL<br/>count_matrix &lt;- as.matrix(count_dataframe)<br/>rownames(count_matrix) &lt;- genes<br/>pheno_data &lt;- readr::read_table2(file.path(getwd(), "datasets", "ch1", "modencodefly_phenodata.txt"))</pre>
+<ol start="2">
+<li>Specify experiments of interest:</li>
+</ol>
+<pre style="padding-left: 60px">experiments_of_interest &lt;- c("L1Larvae", "L2Larvae")<br/>columns_of_interest &lt;- which( pheno_data[['stage']] %in% experiments_of_interest ) </pre>
+<ol start="3">
+<li>Form the grouping factor:</li>
+</ol>
+<pre style="padding-left: 60px">library(magrittr)<br/>grouping &lt;- pheno_data[['stage']][columns_of_interest] %&gt;% <br/>forcats::as_factor()</pre>
+<ol start="4">
+<li>Form the subset of count data:</li>
+</ol>
+<pre>counts_of_interest &lt;-  count_matrix[,columns_of_interest]</pre>
+<ol start="5">
+<li>Create the DGE object:</li>
+</ol>
+<pre style="padding-left: 60px">library(edgeR)<br/>count_dge &lt;- edgeR::DGEList(counts = counts_of_interest, group = grouping)</pre>
+<ol start="6">
+<li>Perform differential expression analysis:</li>
+</ol>
+<pre style="padding-left: 60px">design &lt;- model.matrix(~ grouping)<br/>eset_dge &lt;- edgeR::estimateDisp(eset_dge, design)<br/>fit &lt;- edgeR::glmQLFit(eset_dge, design)<br/>result &lt;- edgeR::glmQLFTest(fit, coef=2)<br/>topTags(result)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using edgeR from an ExpressionSet object</h1>
+                </header>
+            
+            <article>
+                
+<p>Estimating <span>using edgeR from our prepared <kbd>eset</kbd> object can be done using the following steps:</span></p>
+<ol start="1">
+<li>Load the <kbd>eset</kbd> data:</li>
+</ol>
+<pre style="padding-left: 60px">load(file.path(getwd(), "datasets/ch1/modencodefly_eset.RData"))</pre>
+<ol start="2">
+<li>Specify experiments of interest:</li>
+</ol>
+<pre style="padding-left: 60px">experiments_of_interest &lt;- c("L1Larvae", "L2Larvae")<br/>columns_of_interest &lt;- which( phenoData(modencodefly.eset)[['stage']] %in% experiments_of_interest )</pre>
+<ol start="3">
+<li>Form the grouping factor:</li>
+</ol>
+<pre style="padding-left: 60px">grouping &lt;- droplevels(phenoData(modencodefly.eset)[['stage']][columns_of_interest] )</pre>
+<ol start="4">
+<li>Form the subset of count data:</li>
+</ol>
+<pre style="padding-left: 60px">counts_of_interest &lt;- exprs(modencodefly.eset)[, columns_of_interest]</pre>
+<ol start="5">
+<li>Create the DGE object:</li>
+</ol>
+<pre style="padding-left: 60px">eset_dge &lt;- edgeR::DGEList(<br/> counts = counts_of_interest,<br/> group = grouping <br/> )</pre>
+<ol start="6">
+<li>Perform differential expression analysis:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">design &lt;- model.matrix(~ grouping)<br/>eset_dge &lt;- edgeR::estimateDisp(eset_dge, design)<br/><br/>fit &lt;- edgeR::glmQLFit(eset_dge, design)<br/>result &lt;- edgeR::glmQLFTest(fit, coef=2)<br/>topTags(result)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">We saw two ways of estimating differential expression with edgeR. <span>In the first half of this recipe, we used edgeR starting with our data in a text file.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using edgeR from a count table</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>step 1</em>, we use the <kbd>read_tsv()</kbd> function in the <kbd>readr</kbd> package to load the tab delimited text file of counts into a dataframe called <kbd>count_dataframe</kbd>. Then, from that, we extract the <kbd>'gene'</kbd> column to a new variable, <kbd>genes</kbd>, and erase it from <kbd>count_dataframe</kbd>, by assigning <kbd>NULL</kbd>. This is all done so we can easily convert into the <kbd>count_matrix</kbd> <span>matrix </span>with the base <kbd>as.matrix()</kbd> function and add the gene information back as <kbd>rownames</kbd>. Finally, we load the phenotype data we'll need from file using the <kbd>readr read_table2()</kbd> function. </p>
+<p><em>Step 2</em> is concerned with working out which columns in <kbd>count_matrix</kbd> we want to use. We define a variable, <kbd>experiments_of_interest</kbd>, which holds the column names we want and then use the <kbd>%in%</kbd> operator and <kbd>which()</kbd> functions to create a binary vector that matches the number of columns. If, say, the third column of the <kbd>columns_of_interest</kbd> vector is <kbd>TRUE</kbd> it indicates the name was in the <kbd>experiments_of interest</kbd> variable. </p>
+<p><em>Step 3</em> begins with loading the <kbd>magrittr</kbd> package to get the <kbd>%&gt;%</kbd> operator, which will allow piping. We then use R indexing with the binary <kbd>columns_of_interest</kbd> factor to select the names of columns we want and send it to the <kbd>forcats as_factor()</kbd> function to get a factor object for our grouping variable. Sample grouping information is basically a factor that tells us which samples are replications of the same thing and it's important for the experimental design description. We need to create a grouping vector, each index of which refers to a column in the counts table. So, in the following example, the first three columns in the data would be replicates of one sample, the second three columns in the counts table would be replicates of a different replicate, and so on.<span> </span>We can use any symbols in the grouping vector to represent the groups. The more complicated the grouping vector, the more complicated the experiment design can be. In the recipe here, we'll use a simple test/control design:</p>
+<pre class="mce-root">numeric_groups &lt;- c(1,1,1,2,2,2)<br/>letter_groups &lt;- c("A","A","A", "B","B","B")</pre>
+<p class="mce-root">A simple vector like this will do, but you can also use a<span> </span>factor object. The factor is R's categorical data type and is implemented as a vector of integers that have associated name labels, called levels. When a factor is displayed, the name labels are taken instead of the integers. The factor object has a memory of sorts, and even when a subset of levels is used, all of the levels that could have been used are retained so that when, for example, the levels are used as categories, empty levels can still be displayed.</p>
+<p>In <em>Step 4</em>, we use indexing to extract the columns of data we want to actually analyze.</p>
+<p>By <em>Step 5</em>, our preparatory work is done and we can build the <kbd>DGEList</kbd> object we need to do differential analysis. To start, we load the <kbd>edgeR</kbd> library and use the <kbd>DGEList()</kbd> function on <kbd>counts_of_interest</kbd> and our grouping object.</p>
+<p>In <em>Step 6</em>, with <kbd>DGEList</kbd>, we can go through the <kbd>edgeR</kbd> process. First, we create the experimental design descriptor design object with the base <kbd>model.matrix()</kbd> function. <span>A model design is required to tell the functions how to compare samples; this is a common thing in R and so has a base function. W</span><span>e use the <kbd>grouping</kbd> variable we created</span><span>. We must estimate the dispersions of each gene with the <kbd>estimateDisp()</kbd> function, then we can use that measure of variability in tests. Finally, a generalized linear model is fit and the quasi-likelihood F-test is applied with the two uses of <kbd>glmQLFTest()</kbd>, first with the dispersal estimates, <kbd>eset_dge</kbd>, then with the resulting <kbd>fit</kbd> object.</span></p>
+<p>We can use the <kbd>topTags()</kbd> function to see the details of differentially expressed genes. We get the following output:</p>
+<pre class="mce-root"> ## Coefficient: groupingL2Larvae<br/> ## logFC logCPM F PValue FDR<br/> ## FBgn0027527 6.318665 11.14876 42854.72 1.132951e-41 1.684584e-37<br/> ## [ reached 'max' / getOption("max.print") -- omitted 9 rows ]</pre>
+<p>The columns show the gene name, the <kbd>logFC</kbd> value of the gene, the F value, the P value and the <strong>False Detection Rate</strong> (<strong>FDR</strong>). Usually, the column we want to make statistical conclusions from is FDR.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using edgeR from an ExpressionSet object</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we are looking at using <kbd>edgeR</kbd> from our prepared eset object. We first load that in, using the base R function as it is stored in a standard Rdata format file.</p>
+<p>In <em>Step 2</em>, we prepare the vector of experiments of interest. This works as in <em>step 2</em>, except that we don't need to look at the <kbd>pheno_data</kbd> object we created from a file; instead, we can use the <kbd>eset</kbd> function, <kbd>phenoData()</kbd>, to extract the phenotype data straight from the <kbd>eset</kbd> object (note that this is one of the major differences between <kbd>eset</kbd> and the count matrix—see this book's <em>Appendix</em> for further information).</p>
+<p>In <em>Step 3</em>, we create the grouping factor. Again, this can be done by using the <kbd>phenoData()</kbd> extraction function, but, as it returns a factor, we need to drop the levels that aren't selected using the <kbd>droplevels()</kbd> function (see the <em>How it works...</em> section in the <em>Estimating differential expression with edgeR</em> recipe, <em>step 3</em> from the previous method, for a brief discussion of factor objects).</p>
+<p>In <em>step 4</em>, we extract the data for the columns we are interested in into a standard matrix object. Again, we have a dedicated function, <kbd>exprs()</kbd>, for extracting the expression values from <kbd>eset</kbd>, and we can subset that using column indexing with <kbd>column_names</kbd>.</p>
+<p>In <em>Step 5</em>, we use the <kbd>DGEList()</kbd> constructor function to build the data structure for edgeR and in <em>step 6</em>, carry out the analysis. This step is identical to <em>Step 6</em> of the first method.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Estimating differential expression with DESeq2</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">The <kbd>DESeq2</kbd> package is a method for differential analysis of count data, so it is ideal for RNAseq (and other count-style data such as <kbd>ChIPSeq</kbd>). It uses dispersion estimates and relative expression changes to strengthen estimates and modeling with an emphasis on improving gene ranking in results tables. <kbd>DESeq2</kbd> differs from <kbd>edgeR</kbd> in that it uses a geometric style normalization in which the per lane scaling factor is computed as the median of the ratios of the gene count over its geometric mean ratio, whereas edgeR uses the weighted one. The two normalization strategies are not mutually exclusive and both make different assumptions about the data. As with any <kbd>RNAseq</kbd> or large scale experiment, there is never an "out-of-the-box" best answer. You'll end up testing these methods and maybe others and closely examining results from control genes and cross-validation experiments to see which performs best. The performance will depend greatly on the particular dataset at hand, so the flexible approach we learn here will give you a good idea of how to test the different solutions for yourself.</p>
+<p class="mce-root">The process we'll look at in this recipe is somewhat similar to that for edgeR in the preceding <em>Recipe 1</em>. We can use both ExpressionSets and count tables as input to DESeq2 and, when we've prepared them, we have a different set of functions to use to get our data into a DESeqDataSet, not the DGEList as with edgeR.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root"><span>As in <em>Recipe 1</em>, the data is provided as both a count matrix and an <kbd>ExpressionSet</kbd> object and you can see the <em>Appendix</em> at the end of this book for further information on these object types. The data is in this book's code and data repository at <a href="https://github.com/PacktPublishing/R_Bioinformatics_Cookbook">https://github.com/PacktPublishing/R_Bioinformatics_Cookbook</a> under <kbd>datasets/ch1/modencodefly_eset.RData</kbd> , <kbd>datasets/ch1/modencodefly_count_table.txt</kbd>, and <kbd>datasets/ch1/modencodelfy_phenodata.txt</kbd>. Again, we'll use <kbd>readr</kbd> and <kbd>magrittr</kbd> and, from Bioconductor, <kbd>SummarizedExperiement,</kbd> and DESeq2.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">Estimating differential expressions with DESeq2 can be done in two ways, as shown in the following section.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using DESeq2 from a count matrix</h1>
+                </header>
+            
+            <article>
+                
+<p>Estimating differential expressions with DESeq2 from a count table (for example, in a text file), we will use the following steps:</p>
+<ol>
+<li>Load count data:</li>
+</ol>
+<pre style="padding-left: 60px">count_dataframe &lt;- readr::read_tsv(file.path(getwd(), "datasets", "ch1", "modencodefly_count_table.txt" ))<br/>genes &lt;- count_dataframe[['gene']]<br/>count_dataframe[['gene']] &lt;- NULL<br/>count_matrix &lt;- as.matrix(count_dataframe)<br/>rownames(count_matrix) &lt;- genes<br/>pheno_data &lt;- readr::read_table2(file.path(getwd(), "datasets", "ch1", "modencodefly_phenodata.txt"))</pre>
+<ol start="2">
+<li>Specify experiments of interest:</li>
+</ol>
+<pre style="padding-left: 60px">experiments_of_interest &lt;- c("L1Larvae", "L2Larvae")<br/>columns_of_interest &lt;- which( pheno_data[['stage']] %in% experiments_of_interest ) </pre>
+<ol start="3">
+<li>Form the grouping factor:</li>
+</ol>
+<pre style="padding-left: 60px">library(magrittr)<br/>grouping &lt;- pheno_data[['stage']][columns_of_interest] %&gt;% <br/> forcats::as_factor()</pre>
+<ol start="4">
+<li>Form the subset of count data:</li>
+</ol>
+<pre style="padding-left: 60px">counts_of_interest &lt;- count_matrix[,columns_of_interest]</pre>
+<ol start="5">
+<li class="mce-root">Build the DESeq object:</li>
+</ol>
+<pre style="padding-left: 60px">library("DESeq2")<br/>dds &lt;- DESeqDataSetFromMatrix(countData = counts_of_interest,<br/> colData = grouping,<br/> design = ~ stage)</pre>
+<ol start="6">
+<li>Carry out the analysis:</li>
+</ol>
+<pre style="padding-left: 60px">dds &lt;- DESeq(dds)</pre>
+<ol start="7">
+<li>Extract the results:</li>
+</ol>
+<pre style="padding-left: 60px">res &lt;- results(dds, contrast=c("stage","L2Larvae","L1Larvae"))</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using DESeq2 from an ExpressionSet object</h1>
+                </header>
+            
+            <article>
+                
+<p><span>To estimate differential expressions with DESeq2 from an ExpressionSet object, we will use the following steps:</span></p>
+<ol start="1">
+<li>Load the <kbd>eset</kbd> data and convert into <kbd>DESeqDataSet()</kbd>:</li>
+</ol>
+<pre>library(SummarizedExperiment)<br/>load(file.path(getwd(), "datasets/ch1/modencodefly_eset.RData"))<br/>summ_exp &lt;- makeSummarizedExperimentFromExpressionSet(modencodefly.eset)<br/>ddsSE &lt;- DESeqDataSet(summ_exp, design= ~ stage)</pre>
+<ol start="2">
+<li>Carry out analysis and extract results:</li>
+</ol>
+<pre class="mce-root">ddsSE &lt;- DESeq(ddsSE)<br/>resSE &lt;- results(ddsSE, contrast=c("stage","L2Larvae","L1Larvae"))</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the first section of this recipe, we used DESeq1 starting with our data in a text file; as you'll notice <em>steps 1</em> to <em>4</em> are identical to those in the previous section.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using DESeq2 from a count matrix</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we use the<span> </span><kbd>readr</kbd><span> </span>package's <kbd>read_tsv()</kbd><span> </span>function to load the tab-delimited text file of counts into a dataframe called<span> </span><kbd>count_dataframe</kbd>. Then, from that, we extract the<span> </span><kbd>'gene'</kbd><span> </span>column to a new variable,<span> </span><kbd>genes</kbd><span>, </span>and erase it from<span> </span><kbd>count_dataframe</kbd>, by assigning<span> </span><kbd>NULL</kbd>. This is all done so we can easily convert into the <kbd>count_matrix</kbd><span> matrix </span>with the base<span> </span><kbd>as.matrix()</kbd><span> </span>function and add the gene information back as<span> </span><kbd>rownames</kbd>. Finally, we load the phenotype data we'll need from the file using the <kbd>readr</kbd><span> </span><kbd>read_table2()</kbd><span> </span>function. </p>
+<p><em>Step 2</em> is concerned with working out which columns in <kbd>count_matrix</kbd> we want to use. We define a variable,<span> </span><kbd>experiments_of_interest</kbd><span>, </span>that holds the column names we want and then use the<span> </span><kbd>%in%</kbd><span> </span>operator and<span> </span><kbd>which()</kbd><span> </span>functions to create a binary vector that matches the number of columns. If, say the third column of the<span> </span><kbd>columns_of_interest</kbd><span> </span>vector is <kbd>'TRUE'</kbd>, it indicates the name was in the<span> </span><kbd>experiments_of interest</kbd><span> </span>variable. </p>
+<p><em>Step 3</em> begins with loading the<span> </span><kbd>magrittr</kbd><span> </span>package to get the<span> </span><kbd>%&gt;%</kbd><span> </span>operator, which will allow piping. We then use R indexing with the binary<span> </span><kbd>columns_of_interest</kbd><span> </span>factor to select the names of columns we want and send it to the<span> </span><kbd>forcats</kbd><span> </span><kbd>as_factor()</kbd><span> </span>function to get a factor object for our grouping variable. Sample grouping information is basically a factor that tells us which samples are replications of the same thing and it's important for the experimental design description. You can see an expanded description of these grouping/factor objects in <em>step 3</em> in <em>Recipe 1</em>.</p>
+<p>In <em>Step 4</em>, we use indexing to extract the columns of data we want to actually analyze.</p>
+<p>By <em>Step 5</em>, we are into the actual analysis section. First, we convert our matrix of counts into a <kbd>DESeqDataSet</kbd> object; this can be done with the conversion function, <kbd>DESeqDataSetFromMatrix()</kbd>, passing in the counts, the groups, and a design. The design is in the form of an R formula, hence, the <kbd>~ stage</kbd> annotation.</p>
+<p>In <em>Step 6</em>, we perform the actual analysis using the <kbd>DESeq()</kbd> function on the <kbd>dds DESeqDataSet</kbd> object and in <em>Step 7</em>, we get the results into the <kbd>res</kbd> variable using the <kbd>results()</kbd> function. The output has the following six columns:</p>
+<pre class="mce-root">baseMean log2FoldChange lfcSE stat pvalue padj</pre>
+<p>This shows the mean counts, the <kbd>log2</kbd> fold change between samples for a gene, the standard error of the <kbd>log2</kbd> fold change, the Wald statistic, and the raw and adjusted P value. The <kbd>padj</kbd> column for adjusted P values is the one most commonly used for concluding about significance.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Using DESeq2 from an ExpressionSet object</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Steps 1</em> and 2 show how to do the same procedure starting from the <kbd>eset</kbd> object. It only takes two short steps because DESeq2 is set up to work a lot more nicely with Bioconductor objects than edgeR is. In <em>step 8</em>, we load the <kbd>eset</kbd> data with the <kbd>load()</kbd> function. Then we use the <kbd>makeSummarizedExperimentFromExpressionSet()</kbd><em> </em>function from the <kbd>SummarizedExperiment</kbd> Bioconductor package to convert <kbd>eset</kbd> into <kbd>SummarizedExperiment</kbd>, which can be used directly in the <kbd>DESeq()</kbd> function in <em>step 9</em>. This step works exactly as <em>steps 6</em> and <em>7</em>. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Power analysis with powsimR</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">An important preliminary to any experiment is assessing the power of the experimental design to optimize statistical sensitivity. In essence, a power analysis can tell us the number of replicates required to determine an effect size of a given magnitude for a given amount of experimental variability.</p>
+<p class="mce-root">We'll use the <kbd>powsimR</kbd> package, which is not part of Bioconductor, to perform two types of power analysis. Both of these will be with a small real dataset, but first, we'll do it with two treatments—a test and control—then, we'll do it with just one. With each, we'll estimate the number of replicates we need to spot differences in gene expression of a particular magnitude—if they're present. <kbd>powsimR</kbd> takes a simulation-based approach, effectively generating many datasets and evaluating the detection power in each to create a distribution of detection power. The first step, then, is to estimate some parameters for these simulations—for this, we'll need some sample or preliminary data. After that, we can run simulations and assess power.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>The dataset for this recipe will be a test or control RNAseq experiment from <em>Arabidopsis</em> with three replicates each. These are available as a prepared count matrix in <kbd>datasets/ch1/arabidopsis.RDS</kbd> in this book's data repository. <span>In this section, we'll use a set of counts in a simple test or control experiment from </span><em>Arabidopsis thaliana</em><span>. The matrix has six columns (three </span><kbd>mock</kbd><span> treatments and three </span><kbd>hrcc</kbd><span> treatments) and 26,222 rows, each a gene feature. We'll need the <kbd>dplyr</kbd>, <kbd>extRemes</kbd>, and <kbd>powsimR</kbd> packages for this code.</span></p>
+<p>Our package of interest, <kbd>powsimR</kbd>, isn't on CRAN; it's hosted as a source on GitHub at<span> </span><a href="https://github.com/bvieth/powsimR">https://github.com/bvieth/powsimR</a><span>. </span>You'll need to use<span> </span><kbd>devtools</kbd><span> </span>to install it, which can be done using the following code:</p>
+<pre class="mce-root">install.packages("devtools")<br/>devtools::install_github("bvieth/powsimR")<br/><br/></pre>
+<p>If you do this, there is a chance that this package will still fail to install. <span>It has a lot of dependencies and you might need to install those manually; there is further information on the package GitHub repository and you should check that for the latest information. At the time of writing, you'll need to do the following two big steps. First, create the <kbd>ipak</kbd> function outlined here, then run the three different package installation steps with the <kbd>ipak</kbd> function:</span></p>
+<div>
+<pre><span class="pl-en">ipak</span> <span class="pl-k">&lt;-</span> <span class="pl-k">function</span>(<span class="pl-smi">pkg</span>, <span class="pl-v">repository</span> <span class="pl-k">=</span> c(<span class="pl-s"><span class="pl-pds">"</span>CRAN<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Bioconductor<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>github<span class="pl-pds">"</span></span>)) {
+    <span class="pl-smi">new.pkg</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pkg</span>[<span class="pl-k">!</span>(<span class="pl-smi">pkg</span> <span class="pl-k">%in%</span> installed.packages()[, <span class="pl-s"><span class="pl-pds">"</span>Package<span class="pl-pds">"</span></span>])]
+    <span class="pl-c"># new.pkg &lt;- pkg</span>
+    <span class="pl-k">if</span> (length(<span class="pl-smi">new.pkg</span>)) {
+        <span class="pl-k">if</span> (<span class="pl-smi">repository</span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>CRAN<span class="pl-pds">"</span></span>) {
+            install.packages(<span class="pl-smi">new.pkg</span>, <span class="pl-v">dependencies</span> <span class="pl-k">=</span> <span class="pl-c1">TRUE</span>)
+        }
+        <span class="pl-k">if</span> (<span class="pl-smi">repository</span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>Bioconductor<span class="pl-pds">"</span></span>) {
+            <span class="pl-k">if</span> (strsplit(<span class="pl-smi">version</span>[[<span class="pl-s"><span class="pl-pds">"</span>version.string<span class="pl-pds">"</span></span>]], <span class="pl-s"><span class="pl-pds">"</span> <span class="pl-pds">"</span></span>)[[<span class="pl-c1">1</span>]][<span class="pl-c1">3</span>] <span class="pl-k">&gt;</span> <span class="pl-s"><span class="pl-pds">"</span>3.5.0<span class="pl-pds">"</span></span>) {
+                <span class="pl-k">if</span> (<span class="pl-k">!</span>requireNamespace(<span class="pl-s"><span class="pl-pds">"</span>BiocManager<span class="pl-pds">"</span></span>)) {
+                  install.packages(<span class="pl-s"><span class="pl-pds">"</span>BiocManager<span class="pl-pds">"</span></span>)
+                }
+                <span class="pl-e">BiocManager</span><span class="pl-k">::</span>install(<span class="pl-smi">new.pkg</span>, <span class="pl-v">dependencies</span> <span class="pl-k">=</span> <span class="pl-c1">TRUE</span>, <span class="pl-v">ask</span> <span class="pl-k">=</span> <span class="pl-c1">FALSE</span>)
+            }
+            <span class="pl-k">if</span> (strsplit(<span class="pl-smi">version</span>[[<span class="pl-s"><span class="pl-pds">"</span>version.string<span class="pl-pds">"</span></span>]], <span class="pl-s"><span class="pl-pds">"</span> <span class="pl-pds">"</span></span>)[[<span class="pl-c1">1</span>]][<span class="pl-c1">3</span>] <span class="pl-k">&lt;</span> <span class="pl-s"><span class="pl-pds">"</span>3.5.0<span class="pl-pds">"</span></span>) {
+                source(<span class="pl-s"><span class="pl-pds">"</span>https://bioconductor.org/biocLite.R<span class="pl-pds">"</span></span>)
+                biocLite(<span class="pl-smi">new.pkg</span>, <span class="pl-v">dependencies</span> <span class="pl-k">=</span> <span class="pl-c1">TRUE</span>, <span class="pl-v">ask</span> <span class="pl-k">=</span> <span class="pl-c1">FALSE</span>)
+            }
+        }
+        <span class="pl-k">if</span> (<span class="pl-smi">repository</span> <span class="pl-k">==</span> <span class="pl-s"><span class="pl-pds">"</span>github<span class="pl-pds">"</span></span>) {
+            <span class="pl-e">devtools</span><span class="pl-k">::</span>install_github(<span class="pl-smi">new.pkg</span>, <span class="pl-v">build_vignettes</span> <span class="pl-k">=</span> <span class="pl-c1">FALSE</span>, <span class="pl-v">force</span> <span class="pl-k">=</span> <span class="pl-c1">FALSE</span>, 
+                <span class="pl-v">dependencies</span> <span class="pl-k">=</span> <span class="pl-c1">TRUE</span>)
+        }
+    }
+}
+<br/><span class="pl-c"># CRAN PACKAGES</span>
+<span class="pl-smi">cranpackages</span> <span class="pl-k">&lt;-</span> c(<span class="pl-s"><span class="pl-pds">"</span>broom<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>cobs<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>cowplot<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>data.table<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>devtools<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>doParallel<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>dplyr<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>drc<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>DrImpute<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>fastICA<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>fitdistrplus<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>foreach<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>gamlss.dist<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>ggExtra<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>ggplot2<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>ggthemes<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>grDevices<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>glmnet<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>grid<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>gtools<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>Hmisc<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>kernlab<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>MASS<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>MBESS<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>matrixStats<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>mclust<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>methods<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>minpack.lm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>moments<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>msir<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>NBPSeq<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>nonnest2<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>parallel<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>penalized<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>plyr<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>pscl<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>reshape2<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Rmagic<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>rsvd<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Rtsne<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scales<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Seurat<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>snow<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>stats<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>tibble<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>tidyr<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>VGAM<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>ZIM<span class="pl-pds">"</span></span>)
+<br/>ipak(<span class="pl-smi">cranpackages</span>, <span class="pl-v">repository</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>CRAN<span class="pl-pds">"</span></span>)
+
+<span class="pl-c"># BIOCONDUCTOR</span>
+<span class="pl-smi">biocpackages</span> <span class="pl-k">&lt;-</span> c(<span class="pl-s"><span class="pl-pds">"</span>AnnotationDbi<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>bayNorm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>baySeq<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Biobase<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>BiocGenerics<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>BiocParallel<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>DEDS<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>DESeq2<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>EBSeq<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>edgeR<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>IHW<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>iCOBRA<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>limma<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>Linnorm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>MAST<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>monocle<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>NOISeq<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>qvalue<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>ROTS<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>RUVSeq<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>S4Vectors<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>scater<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scDD<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scde<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scone<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scran<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>SCnorm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>SingleCellExperiment<span class="pl-pds">"</span></span>, 
+    <span class="pl-s"><span class="pl-pds">"</span>SummarizedExperiment<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>zinbwave<span class="pl-pds">"</span></span>)
+ipak(<span class="pl-smi">biocpackages</span>, <span class="pl-v">repository</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>Bioconductor<span class="pl-pds">"</span></span>)
+
+<span class="pl-c"># GITHUB</span>
+<span class="pl-smi">githubpackages</span> <span class="pl-k">&lt;-</span> c(<span class="pl-s"><span class="pl-pds">"</span>nghiavtr/BPSC<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>cz-ye/DECENT<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>mohuangx/SAVER<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>statOmics/zingeR<span class="pl-pds">"</span></span>)
+ipak(<span class="pl-smi">githubpackages</span>, <span class="pl-v">repository</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>github<span class="pl-pds">"</span></span>)</pre></div>
+<p>When this is done, you should be able to install the package we're after with this code:</p>
+<div>
+<pre><span class="pl-e">devtools</span><span class="pl-k">::</span>install_github(<span class="pl-s"><span class="pl-pds">"</span>bvieth/powsimR<span class="pl-pds">"</span></span>, <span class="pl-v">build_vignettes</span> <span class="pl-k">=</span> <span class="pl-c1">TRUE</span>, <span class="pl-v">dependencies</span> <span class="pl-k">=</span> <span class="pl-c1">FALSE</span>)
+library(<span class="pl-s"><span class="pl-pds">"</span>powsimR<span class="pl-pds">"</span></span>)</pre></div>
+<div class="packt_infobox"><span>At the moment, for this to work, you also need to manually load </span><kbd>dplyr</kbd><span>. </span></div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>We will do the power analysis using the following steps:</p>
+<ol>
+<li>Estimate simulation parameter values:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">arab_data &lt;- readRDS(file.path(getwd(), "datasets", "ch1", "arabidopsis.RDS" ))<br/>means_mock &lt;- rowMeans(arab_data[, c("mock1", "mock2", "mock3")])<br/>means_hrcc &lt;- rowMeans(arab_data[, c("hrcc1", "hrcc2", "hrcc3")])<br/>log2fc &lt;- log2(means_hrcc / means_mock)<br/>prop_de &lt;- sum(abs(log2fc) &gt; 2) / length(log2fc) </pre>
+<ol start="2">
+<li><span>Examine the distribution of the <kbd>log2</kbd> fold change ratios:</span></li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">finite_log2fc &lt;-log2fc[is.finite(log2fc)]<br/>plot(density(finite_log2fc))<br/>extRemes::qqnorm(finite_log2fc )</pre>
+<ol start="3">
+<li>Set up parameter values for the simulation run:</li>
+</ol>
+<pre style="padding-left: 60px">library(powsimR)<br/> library(dplyr)<br/> <br/> params &lt;- estimateParam(<br/> countData = arab_data,<br/> Distribution = "NB",<br/> RNAseq = "bulk",<br/> normalization = "TMM" # edgeR method, can be others<br/> )<br/> <br/> de_opts &lt;- DESetup(ngenes=1000,<br/> nsims=25,<br/> p.DE = prop_de,<br/> pLFC= finite_log2fc,<br/> sim.seed = 58673<br/> )<br/> <br/> sim_opts &lt;- SimSetup(<br/> desetup = de_opts,<br/> params = params<br/> )<br/> <br/> num_replicates &lt;- c(2, 3, 5, 8, 12,15)</pre>
+<ol start="4">
+<li>Run the simulation:</li>
+</ol>
+<pre style="padding-left: 60px"> simDE &lt;- simulateDE(n1 = num_replicates,<br/> n2 = num_replicates,<br/> sim.settings = sim_opts,<br/> DEmethod = "edgeR-LRT",<br/> normalization = "TMM",<br/> verbose = FALSE)</pre>
+<ol start="5">
+<li>Run the evaluation of the simulation:</li>
+</ol>
+<pre style="padding-left: 60px"> evalDE &lt;- evaluateDE(simRes = simDE,<br/> alpha.type = 'adjusted',<br/> MTC = 'BH',<br/> alpha.nominal = 0.1,<br/> stratify.by = 'mean',<br/> filter.by = 'none',<br/> strata.filtered = 1,<br/> target.by = 'lfc',<br/> delta = 0)</pre>
+<ol start="6">
+<li>Plot the evaluation:</li>
+</ol>
+<pre style="padding-left: 60px"> plotEvalDE(evalRes = evalDE,<br/> rate='marginal',<br/> quick=FALSE, annot=TRUE)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Power analysis in <kbd>powsimR</kbd> <span>requires us to do some pre-analysis so that we have estimates for some important parameters. To perform a simulation-based power analysis, we need to estimate the distribution of log fold changes between treatments and the proportion of features that are differentially expressed.</span></p>
+<p class="mce-root">In <em>step 1</em>, we'll get the mean counts for each feature in the two treatments. After loading the expression data using the <kbd>readRDS()</kbd> function, we use the <kbd>rowMeans()</kbd> function on certain columns to get the mean expression counts of each gene in both the <kbd>mock</kbd> and <kbd>hrcc1</kbd> treatments. We can then get the log2 ratio of those (by simply dividing the two vectors and, in the last line, use standard arithmetical operators to work out those that have a log2 fold change greater than 2). Inspecting the final <kbd>prop_de</kbd> variable gives the following output:</p>
+<pre class="mce-root">prop_de<br/>## [1] 0.2001754</pre>
+<p class="mce-root">So, a proportion of about 0.2 of the features have counts changing by log2 twofold.</p>
+<p><em>Step 2</em> looks at the distribution of the gene expression ratios. We first remove the non-finite ratios from the <kbd>log2fc</kbd> variable. <span><span>We must do this because, when</span></span><span> calculating ratios, we generate</span><span> </span><kbd><span>Inf</span></kbd><span> </span><span>values in R; this occurs when the denominator (the mock sample) has zero mean counts. We can remove them using indexing on the vector with the binary vector that comes from <kbd>is.finite()</kbd> function. With the <kbd>Inf</kbd> values removed, we can plot. First, we do a normal density plot using the <kbd>density()</kbd> function, which shows the distribution of ratios. Then, we use the <kbd>qqnorm()</kbd> function in the <kbd>extRemes</kbd> package, which plots the data against data sampled from an idealized normal distribution with the same mean. A strong, linear correlation indicates a normal distribution in the original data. We can see </span>the output in the following screenshot:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-556 image-border" src="Images/8fc16071-7ac9-4d0e-bb10-6a4ea8f656d4.png" style="width:72.00em;height:74.58em;" width="864" height="895"/></div>
+<p>They look pretty log-normally distributed, so we can assume a log-normal distribution. </p>
+<p>The longest step here, <em>step 3,</em> is actually only four lines. We are basically setting up the parameters for the simulation, which requires us to specify a lot of values. The first set, <kbd>params</kbd>, which we create with the <kbd>estimateParam()</kbd> function needs the data source (<kbd>countData</kbd>), the distribution to use (we set <kbd>Distribution = "NB"</kbd>, which selects the negative binomial); the type of RNAseq experiment—ours is a bulk RNAseq experiment (<kbd>RNAseq = "bulk"</kbd>), and normalization strategy—we use the edgeR style TMM (<kbd>normalization = "TMM"</kbd>). The second set, <kbd>desetup</kbd>, is created with the <kbd>DESetup()</kbd> function; in this, we choose the parameters relating to the number of genes for which to simulate differential expression. We set up 1,000 total gene simulations (<kbd>ngenes</kbd>) and 25 simulation runs (<kbd>nsims</kbd>). We set the proportion to be differentially expressed to that estimated in <em>step 1</em> in <kbd>prop_de</kbd>. We use the vector of fold changes, <kbd>finite_log2fc</kbd>, as input for the <kbd>pLFC</kbd> parameter. Setting <kbd>sim.seed</kbd> is not necessary but will ensure reproducibility between runs. The third line uses the <kbd>SimSetup()</kbd> function to combine <kbd>params</kbd> and <kbd>desetup</kbd> into a single object, <kbd>sim_opts</kbd>. Finally, we create a <kbd>num_replicates</kbd> <span>vector </span>specifying the number of biological replicates (RNA samples) to simulate.</p>
+<p><em>Step 4</em> is relatively straightforward: we run the differential expression simulation using the <kbd>sim_opts</kbd> parameters created in the previous steps, choosing <kbd>"edgeR-LRT"</kbd> as the differential expression method and <kbd>"TMM"</kbd> as the normalization. The simulation data is stored in the <kbd>simDE</kbd> variable. </p>
+<p>In <em>Step 5</em>, we create an evaluation of the simulation—this analyzes and extracts various statistics. We pass the <kbd>simDE</kbd> simulation data to the <kbd>evaluateDE()</kbd> function along with values for things pertaining to grouping, filtering, and significance.</p>
+<p>Finally, in <em>Step 6</em>, we can plot the <kbd>evalDE</kbd> object from <em>Step 5</em> and see the results of the simulation. We get the following plot in which we can see the different powers at different replicate numbers. Note the <em>x</em>-axis indicates the number of replicate RNA samples used, and the metrics include FDR, <strong><span>False Negative/Positive Rate </span>(<span>FNR/FPR</span>)</strong>, and <strong>TNR/TPR (True Negative/Positive Rate)</strong>:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="Images/955220a7-3b79-4ec0-a826-efee2464fa1c.png" width="864" height="864"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>When we have only one sample (or maybe even just one replicate), we have a hard time estimating the log2 fold change distribution and the number of differentially expressed genes. In place of estimates, we can use a callback function to generate numbers as needed. The body of the function just needs to return numbers from a specified distribution with parameters you decide. Here, we'll build a function that returns numbers with a normal distribution of mean 0 and standard deviation 2. This reflects that we think the log fold change distribution is normal with these parameters. When we've built the function, it gets used in the <kbd>DESetup()</kbd> function in place of the vector of log2 fold changes. For the proportion of genes differentially expressed, we just have to guess or take an estimate from something we already know about the experimental system:</p>
+<pre class="mce-root">log2fc_func &lt;- function(x){ rnorm(x, 0, 2)} <br/>prop_de = 0.1<br/>de_opts &lt;- DESetup(ngenes=1000,<br/> nsims=25,<br/> p.DE = prop_de,<br/> pLFC= log2fc_func,<br/> sim.seed = 58673<br/> )</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Finding unannotated transcribed regions</h1>
+                </header>
+            
+            <article>
+                
+<p>A common challenge is to find and count reads that have aligned outside of annotated regions. In an RNAseq experiment, these reads can represent non-annotated genes and novel transcripts. Essentially, we have some genes we know about and can see that they are transcribed as they have aligned read coverage, but other transcribed regions do not fall in any annotations and we want to know the locations of the alignments of the reads representing them. In this recipe, we'll look at a deceptively straightforward technique for finding such regions.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Our dataset will be a synthetic one that has a small 6,000 bp genome region and two gene features with reads and a third unannotated region with aligning reads, as shown in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="Images/6829527b-32fa-443c-9c5d-55dd67cf662a.png" style="width:41.42em;height:35.33em;" width="995" height="849"/></p>
+<p><span>We'll need the Bioconductor </span><kbd>csaw</kbd>, <kbd>IRanges</kbd>, <kbd>SummarizedExperiment</kbd>,<strong> </strong>and <kbd>rtracklayer</kbd> <span>libraries and some functions from other packages that are part of base Bioconductor. The data is in this book's data repository under </span><kbd>datasets/ch1/windows.bam</kbd><span> and <kbd>datasets/ch1/genes.gff</kbd></span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Power analysis with <kbd>powsimR</kbd> can be done in the following steps:</p>
+<ol>
+<li>Set up a loading function:</li>
+</ol>
+<pre style="padding-left: 60px">get_annotated_regions_from_gff &lt;- function(file_name) { <br/>    gff &lt;- rtracklayer::import.gff(file_name) <br/>    as(gff, "GRanges") <br/>}</pre>
+<ol start="2">
+<li>Get counts in windows across the whole genome:</li>
+</ol>
+<pre style="padding-left: 60px">whole_genome &lt;- csaw::windowCounts( 
+    file.path(getwd(), "datasets", "ch1", "windows.bam"),
+    bin = TRUE,
+    filter = 0,
+    width = 500,
+    param = csaw::readParam(
+        minq = 20,
+        dedup = TRUE,
+        pe = "both"
+    )
+)
+colnames(whole_genome) &lt;- c("small_data")
+
+annotated_regions &lt;- get_annotated_regions_from_gff(file.path(getwd(), "datasets", "ch1", "genes.gff"))</pre>
+<ol start="3">
+<li>Find overlaps between annotations and our windows, and subset the windows:</li>
+</ol>
+<pre style="padding-left: 60px">library(IRanges)<br/>library(SummarizedExperiment)<br/>windows_in_genes &lt;-IRanges::overlapsAny( SummarizedExperiment::rowRanges(whole_genome), annotated_regions ) </pre>
+<ol start="4">
+<li>Subset the windows into those in annotated and non-annotated regions:</li>
+</ol>
+<pre style="padding-left: 60px">annotated_window_counts &lt;- whole_genome[windows_in_genes,] <br/>non_annotated_window_counts &lt;- whole_genome[ ! windows_in_genes,] </pre>
+<ol start="5">
+<li><span>Get the data out to a count matrix:</span></li>
+</ol>
+<pre style="padding-left: 60px">assay(non_annotated_window_counts)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>step 1,</em> we create a function that will load gene region information in a GFF file (see this book's <em>Appendix</em> for a description of GFF) and convert it into a Bioconductor <kbd>GRanges</kbd> object using the <kbd>rtracklayer</kbd> package. <span>This recipe works because </span><kbd>GRanges</kbd><span> objects can be subset, just like a regular R matrix or dataframe. They're an object that is "matrix-like" in that respect and although </span><kbd>GRanges</kbd><span> is much more complicated than a matrix, it behaves much the same. This allows for some easy manipulations and extractions. We use <kbd>GRanges</kbd><strong> </strong>extensively throughout this recipe, along with the related class, <kbd>RangedSummarizedExperiment</kbd>.</span></p>
+<p>In <em>step 2,</em> we use the <kbd>csaw windowCounts()</kbd> function to get counts across the whole genome in 500 bp windows. The <kbd>width</kbd> parameter defines the window size, and the <kbd>param</kbd> parameter determines what constitutes a passing read; here, we set minimum read quality (<kbd>minq</kbd>) to a PHRED score of 20, remove PCR duplicates (<kbd>dedup = TRUE</kbd>), and require that both of the pairs of a read are aligned (<kbd>pe="both"</kbd>). The returned <kbd>whole_genome</kbd> object is <kbd>RangedSummarizedExperiment</kbd>. We set the name of the single data column in <kbd>whole_genome</kbd> to <kbd>small_data</kbd>. Finally, we use the custom function, <kbd>get_annotated_regions_from_gff()</kbd>, to make a <kbd>GRanges</kbd> object, <kbd>annotated_regions</kbd>, of the genes represented in our GFF file.</p>
+<p>With <em>Step 3</em>, we use the <kbd>IRanges overlapsAny()</kbd> function to check whether the window locations overlap at all with the gene regions. This function requires <kbd>GRanges</kbd> objects, so we extract that from the <kbd>whole_genome</kbd> variable using the <kbd>SummarizedExperiment</kbd> <kbd>rowRanges()</kbd> function and pass that along with the existing <kbd>GRanges</kbd> object's <kbd>annotated_regions</kbd> to <kbd>overlapsAny()</kbd>. This returns a binary vector that we can use to do subsetting.</p>
+<p>In <em>step 4,</em> we simply use the binary vector, <kbd>windows_in_genes</kbd>, to subset the <kbd>whole_genome</kbd> object, thereby extracting the annotated windows (into <kbd>annotated_window_counts</kbd>) as a <kbd>GRanges</kbd> object. Then, we can get the non-annotated windows with the same code but by logically inverting the binary vector using the <kbd>!</kbd> operator. This gives us <kbd>non_annotated_window_counts</kbd>.</p>
+<p>Finally, in <em>step 5</em>, we can extract the actual counts from the <kbd>GRanges</kbd> object using the <kbd>assay()</kbd> function.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>We may need to get annotated regions from other file formats than GFF. <kbd>rtracklayer</kbd> supports various formats—here's a function for working with BED files:</p>
+<pre>get_annotated_regions_from_bed &lt;- function(file_name){ <br/>    bed &lt;- rtracklayer::import.bed(file_name) <br/>    as(bed, "GRanges") <br/>}</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Finding regions showing high expression ab initio with bumphunter</h1>
+                </header>
+            
+            <article>
+                
+<p>Finding regions of read alignments that all come from the same, potentially unannotated, genomic feature is a common task. The aim here is to group read alignments together in such a way that we will be able to mark regions that have significant coverage and then go on to compare samples for differences in expression levels. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready...</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll use the same <kbd>windows</kbd> dataset that had one experiment with three peaks into the function that we used in <em>Recipe 4—</em>so we know we're looking for three bumps. T<span>he data is in this book's data repository under </span><kbd>datasets/ch1/windows.bam</kbd>. We'll need the <kbd>Rsamtools </kbd>and <kbd>bumphunter</kbd> libraries.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Load data and get per-position coverage:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">library(Rsamtools) <br/>library(bumphunter) <br/>pileup_df &lt;- Rsamtools::pileup(file.path(getwd(), "datasets", "ch1", "windows.bam"))</pre>
+<ol start="2">
+<li class="r">Find preliminary clusters:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">clusters &lt;- bumphunter::clusterMaker(pileup_df$seqnames, pileup_df$pos, maxGap = 100) </pre>
+<ol start="3">
+<li>Find the bumps with a minimum cutoff:</li>
+</ol>
+<pre style="padding-left: 60px">bumphunter::regionFinder(pileup_df$count, pileup_df$seqnames, pileup_df$pos, clusters, cutoff=1)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>step 1,</em> we use Rsamtools <kbd>pileup()</kbd> function with default settings to get a per-base coverage dataframe. Each row represents a single nucleotide in the reference and the count column gives the depth of coverage at that point. The result is stored in the <kbd>pileup_df</kbd> dataframe.</p>
+<p>In <em>step 2</em>, we use the bumphunter <kbd>clusterMaker()</kbd> function on <kbd>pileup_df</kbd>, which simply groups reads within a certain distance of each other into clusters. We give it the sequence names, positions, and a maximum distance parameter (<kbd>maxGap</kbd>). The function returns a vector of cluster numbers of equal length to the dataframe, indicating the cluster membership of each row in the dataframe. If we tabulate with table, we can see the cluster sizes (number of rows) in each cluster:</p>
+<pre>table(clusters)<br/>## clusters
+##    1    2    3 
+## 1486 1552 1520</pre>
+<p>In <em>step 3</em>, we refine our approach; we use <kbd>regionFinder()</kbd>, which applies a read depth cutoff to ensure a minimum read depth for the clusters. We pass it similar data as in <em>step 2</em>, adding the cluster membership vector clusters and a minimum read cutoff—here, we set to 1 for use with this very small dataset. The result of <em>step 3</em> is the regions that are clustered together, but in a useful table:</p>
+<pre>##    chr start  end     value  area cluster indexStart indexEnd    L
+## 3 Chr1  4503 5500 10.401974 15811       3       3039     4558 1520
+## 1 Chr1   502 1500  9.985868 14839       1          1     1486 1486
+## 2 Chr1  2501 3500  8.657216 13436       2       1487     3038 1552</pre>
+<p>In these region predictions, we can clearly see the three regions containing reads that are in that data, give or take a nucleotide or two.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>If you have multiple experiments to analyze, try the <kbd>bumphunter()</kbd> function. This will operate over multiple data columns in a matrix and perform linear modeling to assess uncertainty about the position and existence from the replicates; it is very similar to <kbd>regionFinder()</kbd> in operation.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Differential peak analysis</h1>
+                </header>
+            
+            <article>
+                
+<p>When you've discovered unannotated transcripts you may want to see whether they are differentially expressed between experiments. We've already looked at how we might do that with <strong>edgeR</strong> and <strong>DESeq</strong>, but one problem is going from an object such as a <kbd>RangedSummarizedExperiment</kbd>, comprised of the data and a <kbd>GRanges</kbd> object that describes the peak regions, to the internal <strong>DESeq</strong> object. In this recipe, we'll look at how we can summarise the data in those objects and get them into the correct format.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, you'll need the <kbd>RangedSummarizedExperiment</kbd> version of the <em>Arabidopsis thaliana</em> RNAseq in <kbd>datasets/ch1/arabidopsis_rse.RDS</kbd> in this book's repository. We'll use the <strong>DESeq</strong> and <kbd>SummarizedExperiment</kbd> Bioconductor packages we used earlier too.<em> </em></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Load data and set up a function that creates region tags:</li>
+</ol>
+<pre style="padding-left: 60px">library(SummarizedExperiment) <br/>arab_rse &lt;- readRDS(file.path(getwd(), "datasets", "ch1", "arabidopsis_rse.RDS") ) <br/><br/> make_tag &lt;- function(grange_obj){<br/>     paste0( <br/>        grange_obj@seqnames, <br/>        ":", <br/>        grange_obj@ranges@start, <br/>        "-", <br/>        (grange_obj@ranges@start + grange_obj@ranges@width) <br/>    ) <br/>}</pre>
+<ol start="2">
+<li>Extract data and annotate rows:</li>
+</ol>
+<pre style="padding-left: 60px">counts &lt;- assay(arab_rse)
+
+if ( ! is.null(names(rowRanges(arab_rse))) ){
+  rownames(counts) &lt;- names(rowRanges(arab_rse))
+} else {
+  rownames(counts) &lt;- make_tag(rowRanges(arab_rse))
+}</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> starts by<span> loading in our pre-prepared <kbd>RangedSummarized</kbd> experiment; note that the </span><kbd>names</kbd><span> slot of the <kbd>GRanges</kbd> object in there is </span><em>not</em><span> populated. We next create a custom function, <kbd>make_tag()</kbd>, which works by pasting together <kbd>seqnames</kbd>, <kbd>starts</kbd> and the computed end (<kbd>start</kbd> + <kbd>width</kbd>) from a passed <kbd>GRanges</kbd></span> <span>object. Note the <kbd>@</kbd> sign syntax: this is used because <kbd>GRange</kbd> is an S4 object and the slots are accessed with <kbd>@</kbd> rather than the more familiar <kbd>$</kbd>. </span></p>
+<p>In s<em>tep 2,</em> the code pulls out the actual data from <kbd>RangedSummarizedExperiment</kbd> using the <kbd>assay()</kbd> function. The matrix returned has no row names, which is unuseful, so we use the <kbd>if</kbd> clause to check the names slot—we use that as row names if it's available; if it, isn't we make a row name tag using the position information in the <kbd>GRanges</kbd> object in the <kbd>make_tag()</kbd> function we have created. This will give the following output<span>—</span>a count matrix that has the location tag as the row name<span> that can be used in DESeq and edgeR as described in <em>Recipes 1</em> and <em>2</em> in this chapter:</span></p>
+<pre>head(counts)<br/>##                  mock1 mock2 mock3 hrcc1 hrcc2 hrcc3
+## Chr1:3631-5900      35    77    40    46    64    60
+## Chr1:5928-8738      43    45    32    43    39    49
+## Chr1:11649-13715    16    24    26    27    35    20
+## Chr1:23146-31228    72    43    64    66    25    90
+## Chr1:31170-33154    49    78    90    67    45    60
+## Chr1:33379-37872     0    15     2     0    21     8</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Estimating batch effects using SVA</h1>
+                </header>
+            
+            <article>
+                
+<p>High throughput data such as RNAseq is often complicated by technical errors that are not explicitly modeled in the experimental design and can confound the detection of differential expression. Differences in counts from samples run on different days or different locations or on different machines are an example of a technical error that is very often present and which we should try to model in our experimental design. An approach to this is to build a <em>surrogate variable</em> into our experimental design that explains the batch effect and take it into account in the modeling and differential expression analysis stages. We'll use the <strong>SVA </strong>package to do this.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll need the SVA package from Bioconductor and our <em>Arabidopsis</em> count data in <kbd>datasets/ch1/arabidopsis.RDS</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>For estimating batch effects using SVA, perform the following steps:</p>
+<ol>
+<li>Load the libraries and data:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">library(sva)<br/>arab &lt;- readRDS(file.path(getwd(), "datasets", "ch1", "arabidopsis.RDS"))</pre>
+<ol start="2">
+<li>Filter out rows with too few counts in some experiments:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">keep &lt;- apply(arab, 1, function(x) { length(x[x&gt;3])&gt;=2 } )<br/>arab_filtered &lt;- arab[keep,]</pre>
+<ol start="3">
+<li class="mce-root">Create the initial design:</li>
+</ol>
+<pre class="mce-root">groups &lt;- as.factor(rep(c("mock", "hrcc"), each=3))</pre>
+<ol start="4">
+<li class="mce-root">Set up the test and null models and run SVA:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">test_model &lt;- model.matrix(~groups)<br/>null_model &lt;- test_model[,1]<br/>svar &lt;- svaseq(arab_filtered, test_model, null_model, n.sv=1)</pre>
+<ol start="5">
+<li>Extract the surrogate variables to a new design for downstream use:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">design &lt;- cbind(test_model, svar$sv)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>step 1,</em> the script begins by loading in a count matrix of the <em>Arabidopsis</em> RNAseq data, which you will recall is a simple experiment with three replicates of <kbd>mock</kbd> and three of <kbd>hrcc</kbd> treatment.</p>
+<p>In <em>step 2,</em> we create a vector of row indices that we wish to retain, which we do by testing whether the row has at least two columns with a count of over 3<span>—</span>this is done by using <kbd>apply()</kbd> and an anonymous function over the rows of the count matrix.</p>
+<p>With <em>step 3,</em> we create a <kbd>groups</kbd> factor describing the experiment sample types. </p>
+<p><em>Step 4</em> is the one that does the work; we use the <kbd>groups</kbd> factor in <kbd>model.matrix()</kbd> to create the model design we want to use. We also need a null model, which, in this experimental design, is equivalent to the first column, so we extract that from the <kbd>test_model</kbd> design object. We can then use the key <kbd>svaseq()</kbd> function to estimate the surrogate variable to add to our design. We add in <kbd>test_model</kbd> and <kbd>null_model</kbd> and select the number of surrogate variables to use with <kbd>n.sv</kbd>, which should be one for a simple design like this.</p>
+<p>The final bit, <em>step 5</em>, is to add the surrogate variable to the design model, which we do by binding <kbd>test_model</kbd> and the <kbd>sv</kbd> column of <kbd>svar</kbd> (<kbd>svsar$sv</kbd>) together. The final design object can then be used in packages such as <strong>edgeR</strong> and <strong>DESeq2</strong> as any other and those methods will use the surrogate variable to deal with batch effects.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Finding allele-specific expressions with AllelicImbalance</h1>
+                </header>
+            
+            <article>
+                
+<p>An allele-specific expression is a situation that occurs when there is a differential abundance of different allelic variants of a transcript. RNAseq can help to provide quantitative estimates of allele-specific expression for genes with transcribed polymorphisms<span>—</span>that is, variants in the transcript that may result in different proteins. In this recipe, we'll take a look at a method for determining which of the variants of a transcript may have preferential expressions in different samples. The reads will come from different <kbd>.bam</kbd> files and the variants must already be known. This implies that you have already carried out a read alignment and a variant call step and have per sample <kbd>.bam</kbd><strong> </strong>and <kbd>.vcf</kbd> files. We'll use the <kbd>AllelicImbalance</kbd> and <kbd>VariantAnnotation</kbd> packages for this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You'll need <kbd>AllelicImbalance</kbd> and <kbd>VariantAnnotation</kbd> from Bioconductor. The <kbd>AllelicImbalance</kbd> package provides a small but informative dataset of three SNPs on Chromosome 17 of the hg19 build of the human genome. The files have been extracted into this book's data repository in <kbd>datasets/ch1/allele_expression </kbd>. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Load libraries and set up an import folder:</li>
+</ol>
+<pre style="padding-left: 60px">library(AllelicImbalance)
+library(VariantAnnotation)
+
+region_of_interest &lt;- GRanges(seqnames = c("17"), ranges = IRanges(79478301, 79478361)) <br/>bam_folder &lt;- file.path(getwd(), "datasets", "ch1", "allele_expression") </pre>
+<ol start="2">
+<li>Load reads and variants in regions of interest:</li>
+</ol>
+<pre style="padding-left: 60px">reads &lt;- impBamGAL(bam_folder, region_of_interest, verbose = FALSE)
+
+vcf_file &lt;-file.path( getwd(), "datasets", "ch1", "allele_expression","ERP000101.vcf" )
+variant_positions &lt;- granges(VariantAnnotation::readVcf(vcf_file), "hg19" )
+
+allele_counts &lt;- getAlleleCounts(reads, variant_positions, verbose=FALSE)</pre>
+<ol start="3">
+<li>Build the ASEset object:</li>
+</ol>
+<pre>ase.vcf &lt;- ASEsetFromCountList(rowRanges = variant_positions, allele_counts)
+
+reference_sequence &lt;- file.path(getwd(), "datasets", "ch1", "allele_expression", "hg19.chr17.subset.fa")
+
+ref(ase.vcf) &lt;- refAllele(ase.vcf,fasta=reference_sequence)
+alt(ase.vcf) &lt;- inferAltAllele(ase.vcf)</pre>
+<ol start="3">
+<li>Run the test on all variants:</li>
+</ol>
+<pre style="padding-left: 60px">binom.test(ase.vcf, n="*")</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>step 1</em>, the script begins by creating the familar <kbd>GRanges</kbd> object describing our region of interest and the folder holding the <kbd>.bam</kbd> files of reads.</p>
+<p>In <em>step 2</em>, the <kbd>impBamGAL()</kbd> function loads in reads in the region of interest. The variant information is loaded into <kbd><span>variant_positions</span></kbd>—another <kbd>GRanges</kbd> object and the reads and variants are used to make allele counts with <kbd>getAlleleCounts()</kbd><em>. </em></p>
+<p>With this done, in <em>step 3</em>, we can build the <strong>ASESet</strong> object, <kbd>ase.vcf</kbd> (a class that inherits from <kbd>RangedSummarizedExperiment</kbd>), using the constructor function, <kbd>ASEsetFromCountList()</kbd>; we then use the setter functions, <kbd>ref()</kbd> and <kbd>alt()</kbd>, to apply the reference and alternative base identities.</p>
+<p>Finally, in <em>step 4</em>, we can apply tests. <kbd>binom.test()</kbd> carries out binomial per position per sample (<kbd>.bam</kbd> file) tests for deviations from equality in counts in reference and alternative alleles. <span>The parameter <em>n</em> tells the test which strand to consider—in this example, we haven't set up per-strand information, so we use </span><kbd>"*"</kbd><span> to ignore strandedness. </span></p>
+<p>This will give the following output:</p>
+<pre>##               chr17_79478287 chr17_79478331 chr17_79478334
+## ERR009113.bam          0.500   1.000000e+00   1.000000e+00
+## ERR009115.bam         0.125   6.103516e-05   3.051758e-05</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>The preceding analysis can be extended to carry out per strand and per phenotype tests if required. The script would need amending to introduce strand information in the <kbd>ASESet</kbd> object construction step. Doing so usually requires that the RNAseq experiment and alignment steps were performed with strandedness in mind and the bioinformatics pipeline up to here configured accordingly. Phenotype information can be added in the construction step using the <kbd>colData</kbd> parameter and a vector of phenotype or sample types for columns in the <kbd>ASESet</kbd> object.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Plotting and presenting RNAseq data</h1>
+                </header>
+            
+            <article>
+                
+<p>Plotting the RNAseq data <em>en masse</em> or for individual genes or features is an important step in QC and understanding. In this recipe, we'll see how to make gene count plots in samples of interest, how to create an MA plot that plots counts against fold change and allows us to spot expression-related sample bias, and how to create a volcano plot that plots significance against fold change and allows us to spot the most meaningful changes easily.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll use the <kbd>DESeq2</kbd> package, the <kbd>ggplot2</kbd> package, <kbd>magrittr</kbd>, and <kbd>dplyr</kbd>. We'll use the <kbd>DESeqDataSet</kbd> object we created for the <kbd>modencodefly</kbd> data in <em>Recipe 2<span>—</span></em>a saved version is in the <kbd>datasets/ch1/modencode_dds.RDS</kbd> file in this book's data repository.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Load libraries and create a dataframe of RNAseq results:</li>
+</ol>
+<pre style="padding-left: 60px">library(DESeq2)
+library(magrittr)
+library(ggplot2)
+
+dds &lt;- readRDS("~/Desktop/r_book/datasets/ch1/modencode_dds.RDS")</pre>
+<ol start="2">
+<li>Create a boxplot of counts for a single gene, conditioned on "<kbd>stage"</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">plotCounts(dds, gene="FBgn0000014", intgroup = "stage", returnData = TRUE) %&gt;%
+  ggplot() + aes(stage, count) + geom_boxplot(aes(fill=stage)) + scale_y_log10() + theme_bw()</pre>
+<ol start="3">
+<li>Create an MA plot with coloring conditioned on significance:</li>
+</ol>
+<pre style="padding-left: 60px">result_df &lt;- results(dds, contrast=c("stage","L2Larvae","L1Larvae"), tidy= TRUE) %&gt;%
+  dplyr::mutate(is_significant=padj&lt;0.05)
+
+ggplot(result_df) + aes(baseMean, log2FoldChange) + geom_point(aes(colour=is_significant)) + scale_x_log10() + theme_bw()</pre>
+<ol start="4">
+<li>Create a volcano plot with coloring conditioned on significance:</li>
+</ol>
+<pre style="padding-left: 60px">ggplot(result_df) + aes(log2FoldChange, -1 * log10(pvalue))  + geom_point(aes(colour=is_significant)) + theme_bw()</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> is brief and loads the dataset and libraries we'll need.</p>
+<p>In <em>Step 2,</em> we take advantage of a couple of useful parameters in the <kbd>plotCounts()</kbd> and <kbd>results()</kbd> functions from <strong>DESeq2</strong>. The <kbd>returnData</kbd> flag in <kbd>plotCounts()</kbd> will optionally return a tidy dataframe of count information for a given gene in a given condition, hence allowing us to send the data through <kbd>ggplot()</kbd> to make a boxplot for an individual gene. The <strong>magrittr</strong> <kbd>%&gt;%</kbd> operator allows us to send the return value of <kbd>plotCounts()</kbd> straight to the first positional argument of <kbd>ggplot()</kbd> without saving in an intermediate variable.</p>
+<p>In <em>Step 3,</em> we use the <kbd>results()</kbd> function from DESeq2 to get the <kbd>results</kbd> dataframe, which we pipe to <strong>dplyr</strong> <kbd>mutate()</kbd> in order to add a new column called <kbd>is_significant</kbd> containing <kbd>TRUE</kbd> if the value of the <kbd>padj</kbd> column is lower than 0.05. We then use the returned <kbd>result_df</kbd> dataframe in a <kbd>ggplot()</kbd> command to make a scatter plot of <kbd>baseMean</kbd> (count) against log2 fold change, with points colored by the <kbd>is_significant</kbd> variable, effectively colored by whether the P value is lower than 0.05 or not.</p>
+<p>In <em>Step 4,</em> we use the same <kbd>result_df</kbd> dataframe to plot log2fold change against the negative log10 of the <kbd>'pvalue'</kbd> to give a <kbd>'volcano'</kbd> plot of the relationship between P and differential expression level:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="Images/8dd09475-89dd-4013-a6e4-ce5a7dbc27b0.png" style="width:18.92em;height:51.58em;" width="1320" height="3600"/></p>
+<p><span>The preceding three plots are the combined resultant output of these three </span><kbd>ggplot</kbd><span><kbd>()</kbd> commands.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  </body></html>

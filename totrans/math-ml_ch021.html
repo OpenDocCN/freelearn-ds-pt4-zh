@@ -1,0 +1,765 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en-US" xml:lang="en-US">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="generator" content="pandoc"/>
+  <title>ch021.xhtml</title>
+  <style>
+  </style>
+  <link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/>
+</head>
+<body epub:type="bodymatter">
+<section id="optimization" class="level2 chapterHead">
+<h1 class="chapterHead"><span class="titlemark"><span class="cmss-10x-x-109">13</span></span><br/>
+<span id="x1-21100015"></span><span class="cmss-10x-x-109">Optimization</span></h1>
+<p><span class="cmss-10x-x-109">If someone gave you a function defined by some tractable formula, how would you find its minima and maxima? Take a moment and conjure up some ideas before moving on.</span></p>
+<p><span class="cmss-10x-x-109">The first idea that comes to mind for most people is to evaluate the function for all possible values and simply find the optimum. This method immediately breaks down due to multiple reasons. We can only perform finite evaluations, so this would be impossible. Even if we cleverly define a discrete search grid and evaluate only there, this method takes an unreasonable amount of time.</span></p>
+<p><span class="cmss-10x-x-109">Another idea is to use some kind of inequality to provide an ad hoc upper or lower bound, then see if this bound can be attained. Sadly, this is nearly impossible for more complicated functions, like losses for neural networks.</span></p>
+<p><span class="cmss-10x-x-109">However, derivatives provide an extremely useful way to optimize functions. In this chapter, we will study the relationship between derivatives and optimal points, and algorithms on how to find them. Let’s go!</span></p>
+<section id="minima-maxima-and-derivatives" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_186"><span class="titlemark"><span class="cmss-10x-x-109">13.1 </span></span> <span id="x1-21200015.1"></span><span class="cmss-10x-x-109">Minima, maxima, and derivatives</span></h2>
+<p><span class="cmss-10x-x-109">Intuitively, the notion of</span> <span id="dx1-212001"></span><span class="cmss-10x-x-109">minima and</span> <span id="dx1-212002"></span><span class="cmss-10x-x-109">maxima is simple. Take a look at </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.1</span></a> <span class="cmss-10x-x-109">below.</span></p>
+<div class="minipage">
+<p><img src="../media/file1245.png" width="456" alt="PIC"/> <span id="x1-212003r1"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.1: Local and global optima</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Peaks of hills are the maxima, and the bottoms of valleys are the minima. Minima and maxima are collectively called extremal or optimal points. As our example demonstrates, we have to distinguish between local and global optima. The graph has two valleys, and although both have a bottom, one of them is lower than the other.</span></p>
+<p><span class="cmss-10x-x-109">The really interesting part is finding these, as we’ll see next. Let’s consider our</span> <span id="dx1-212004"></span><span class="cmss-10x-x-109">example above to demonstrate how derivatives are</span> <span id="dx1-212005"></span><span class="cmss-10x-x-109">connected to local minima and maxima.</span></p>
+<p><span class="cmss-10x-x-109">If we use our geometric intuition, we see that the tangents are horizontal at the peaks of the hills and the bottoms of the valleys. Intuitively, if the tangent line is not horizontal, then there’s an elevation or decline in the graph. This is illustrated by </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.2</span></a><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file1246.png" width="427" alt="PIC"/> <span id="x1-212006r2"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.2: Tangents at local and global optima</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">In terms of</span> <span id="dx1-212007"></span><span class="cmss-10x-x-109">derivatives, since they describe the slope of the tangent, it means that the derivative should be </span>0 <span class="cmss-10x-x-109">there.</span></p>
+<p><span class="cmss-10x-x-109">If we think about the function as the description of a motion along the real line, derivatives say that the motion stops there and changes direction. It slows down first, stops, then immediately starts in the opposite direction. For instance, in the local maxima case, the function increases up until that point, where it starts decreasing.</span></p>
+<div class="minipage">
+<p><img src="../media/file1247.png" width="484" alt="PIC"/> <span id="x1-212008r3"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.3: The flow of the function</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Again, we can describe this monotonicity behavior in terms of derivatives. Notice that when the function increases, the derivative is</span><span id="dx1-212009"></span> <span class="cmss-10x-x-109">positive (the object in motion has a positive speed). On the other hand, decreasing parts have a negative derivative.</span></p>
+<div class="minipage">
+<p><img src="../media/file1248.png" width="484" alt="PIC"/> <span id="x1-212010r4"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.4: The sign of the derivatives</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">We can go ahead and put these intuitions into a mathematical form. First, we’ll start</span> <span id="dx1-212011"></span><span class="cmss-10x-x-109">with the definitions’ monotonicity, and their relation to the derivative. Then, we’ll connect all the dots and see how this comes together to characterize the optima.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-212012r56"></span> <span class="cmbx-10x-x-109">Definition 56.</span> </span><span class="cmbx-10x-x-109">(Locally increasing and decreasing functions)</span></p>
+<p>Let <span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span>be an arbitrary function and let <span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span>. We say that</p>
+<p><span class="cmti-10x-x-109">(a) </span><span class="cmmi-10x-x-109">f </span>is locally increasing at <span class="cmmi-10x-x-109">a </span>if there is a neighborhood (<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>) such that</p>
+<div class="math-display">
+<img src="../media/file1249.png" class="math-display" alt=" (| ||| ≥ f(x), if x ∈ (a− δ,a), { f(a)|| ≤ f(x), if x ∈ (a,a+ δ), ||( "/>
+</div>
+<p><span class="cmti-10x-x-109">(b) </span>and <span class="cmmi-10x-x-109">f </span>is strictly locally increasing at <span class="cmmi-10x-x-109">a </span>if there is a neighborhood (<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>) such that</p>
+<div class="math-display">
+<img src="../media/file1250.png" class="math-display" alt=" (| ||| &gt; f(x), if x ∈ (a− δ,a), { f(a)|| &lt; f(x), if x ∈ (a,a+ δ). ||( "/>
+</div>
+<p>The locally decreasing and strictly locally decreasing properties are defined similarly, with the inequalities reversed.</p>
+</div>
+<p><span class="cmss-10x-x-109">For differentiable functions, the behavior of the derivative describes</span><span id="dx1-212013"></span> <span class="cmss-10x-x-109">their local behavior in terms of monotonicity.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-212014r84"></span> <span class="cmbx-10x-x-109">Theorem 84.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be an arbitrary function that is differentiable at some </span><span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(a) If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) <span class="cmsy-10x-x-109">≥ </span>0<span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is locally increasing at </span><span class="cmmi-10x-x-109">a</span><span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(b) If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is strictly locally increasing at </span><span class="cmmi-10x-x-109">a</span><span class="cmti-10x-x-109">.</span> </span></p>
+<p><span class="cmti-10x-x-109">(c) If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) <span class="cmsy-10x-x-109">≤ </span>0<span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is locally decreasing at </span><span class="cmmi-10x-x-109">a</span><span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(d) If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is strictly locally decreasing at </span><span class="cmmi-10x-x-109">a</span><span class="cmti-10x-x-109">.</span> </span></p>
+</div>
+<div id="tcolobox-258" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">We will only show </span><span class="cmssi-10x-x-109">(a)</span><span class="cmss-10x-x-109">, since the rest of the proofs go the same way. Due to how limits are defined (</span><span class="cmssi-10x-x-109">Definition </span><a href="ch019.xhtml#x1-190002r51"><span class="cmssi-10x-x-109">51</span></a><span class="cmss-10x-x-109">),</span></p>
+<div class="math-display">
+<img src="../media/file1251.png" class="math-display" alt=" f(x)-−-f(a) ′ lxi→ma x − a = f (a) ≥ 0 "/>
+</div>
+<p><span class="cmss-10x-x-109">means that once </span><span class="cmmi-10x-x-109">x </span><span class="cmss-10x-x-109">gets close enough to </span><span class="cmmi-10x-x-109">a</span><span class="cmss-10x-x-109">, that is, </span><span class="cmmi-10x-x-109">x </span><span class="cmss-10x-x-109">is from a small neighborhood </span>(<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>)<span class="cmss-10x-x-109">,</span></p>
+<div class="math-display">
+<img src="../media/file1252.png" class="math-display" alt="f(x)−-f-(a)-≥ 0, x ∈ (a− δ,a + δ) x− a "/>
+</div>
+<p><span class="cmss-10x-x-109">holds. If </span><span class="cmmi-10x-x-109">x &gt;a</span><span class="cmss-10x-x-109">, then because the differential quotient is nonnegative, </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmsy-10x-x-109">≥</span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>) <span class="cmss-10x-x-109">must hold. Similarly, for </span><span class="cmmi-10x-x-109">x &lt;a</span><span class="cmss-10x-x-109">, the nonnegativity of the differential quotient implies that </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmsy-10x-x-109">≤</span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>)<span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">The proofs for </span><span class="cmssi-10x-x-109">(b)</span><span class="cmss-10x-x-109">, </span><span class="cmssi-10x-x-109">(c)</span><span class="cmss-10x-x-109">, and </span><span class="cmssi-10x-x-109">(d) </span><span class="cmss-10x-x-109">are almost identical, with the obvious changes in the inequalities.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">The propositions related to </span><span class="cmssi-10x-x-109">not strict </span><span class="cmss-10x-x-109">monotonicity are true the other way around as well.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-212015r85"></span> <span class="cmbx-10x-x-109">Theorem 85.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be an arbitrary function that is differentiable at some </span><span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(a) If </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is locally increasing at </span><span class="cmmi-10x-x-109">a</span><span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) <span class="cmsy-10x-x-109">≥ </span>0<span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(b) If </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is locally decreasing at </span><span class="cmmi-10x-x-109">a</span><span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) <span class="cmsy-10x-x-109">≤ </span>0<span class="cmti-10x-x-109">.</span></p>
+</div>
+<div id="tcolobox-259" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">Similar to before, we will only show the proof of </span><span class="cmssi-10x-x-109">(a)</span><span class="cmss-10x-x-109">, since </span><span class="cmssi-10x-x-109">(b) </span><span class="cmss-10x-x-109">can be done in the same way. If </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is locally increasing at </span><span class="cmmi-10x-x-109">a</span><span class="cmss-10x-x-109">, then the differential quotient is positive:</span></p>
+<div class="math-display">
+<img src="../media/file1253.png" class="math-display" alt="f(x)− f(a) -----------≥ 0. x− a "/>
+</div>
+<p><span class="cmss-10x-x-109">Using the transfer principle of limits (</span><span class="cmssi-10x-x-109">Theorem </span><a href="ch019.xhtml#x1-191005r73"><span class="cmssi-10x-x-109">73</span></a><span class="cmss-10x-x-109">), we obtain</span></p>
+<div class="math-display">
+<img src="../media/file1254.png" class="math-display" alt=" ′ f(x)-−-f(a) f (a ) = lxi→ma x − a ≥ 0, "/>
+</div>
+<p><span class="cmss-10x-x-109">which is what we had to prove.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">After all this setup, we are ready to study local optima. What can the</span><span id="dx1-212016"></span> <span class="cmss-10x-x-109">derivative tell us about them? Let’s see!</span></p>
+<section id="local-minima-and-maxima" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_187"><span class="titlemark"><span class="cmss-10x-x-109">13.1.1 </span></span> <span id="x1-21300015.1.1"></span><span class="cmss-10x-x-109">Local minima and maxima</span></h3>
+<p><span class="cmss-10x-x-109">As we have seen in the introduction, the tangent at the extremal points</span><span id="dx1-213001"></span> <span class="cmss-10x-x-109">is horizontal. Now it is time to put this introduction into a mathematically correct form.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-213002r57"></span> <span class="cmbx-10x-x-109">Definition 57.</span> </span><span class="cmbx-10x-x-109">(Local minima and maxima)</span></p>
+<p>Let <span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span>be an arbitrary function and let <span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span>.</p>
+<p><span class="cmti-10x-x-109">(a) </span><span class="cmmi-10x-x-109">a </span>is a <span class="cmti-10x-x-109">local minimum</span>, if there is a neighborhood (<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>) such that for every <span class="cmmi-10x-x-109">x </span><span class="cmsy-10x-x-109">∈ </span>(<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>), <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>) <span class="cmsy-10x-x-109">≤</span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) holds.</p>
+<p><span class="cmti-10x-x-109">(b) </span><span class="cmmi-10x-x-109">a </span>is a <span class="cmti-10x-x-109">strict local minimum</span>, if there is a neighborhood (<span class="cmmi-10x-x-109">a</span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a</span>+<span class="cmmi-10x-x-109">δ</span>) such that for every <span class="cmmi-10x-x-109">x </span><span class="cmsy-10x-x-109">∈ </span>(<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>), <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;<span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) holds. </span></p>
+<p><span class="cmti-10x-x-109">(c) </span><span class="cmmi-10x-x-109">a </span>is a <span class="cmti-10x-x-109">local maximum</span>, if there is a neighborhood (<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>) such that for every <span class="cmmi-10x-x-109">x </span><span class="cmsy-10x-x-109">∈ </span>(<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>), <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmsy-10x-x-109">≤</span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>) holds.</p>
+<p><span class="cmti-10x-x-109">(d) </span><span class="cmmi-10x-x-109">a </span>is a <span class="cmti-10x-x-109">strict local maximum</span>, if there is a neighborhood (<span class="cmmi-10x-x-109">a</span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a</span>+<span class="cmmi-10x-x-109">δ</span>) such that for every <span class="cmmi-10x-x-109">x </span><span class="cmsy-10x-x-109">∈ </span>(<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a </span>+ <span class="cmmi-10x-x-109">δ</span>), <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>)<span class="cmmi-10x-x-109">/span&gt;<span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>) holds. </span></p>
+</div>
+<p><span class="cmss-10x-x-109">Extremal points have their global versions as well. The sad truth is, even though we always want global optima, we only have the tools to find</span><span id="dx1-213003"></span> <span class="cmss-10x-x-109">local ones.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-213004r58"></span> <span class="cmbx-10x-x-109">Definition 58.</span> </span><span class="cmbx-10x-x-109">(Global minima and maxima)</span></p>
+<p>Let <span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span>be an arbitrary function and let <span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span>.</p>
+<p><span class="cmti-10x-x-109">(a) </span><span class="cmmi-10x-x-109">a </span>is a <span class="cmti-10x-x-109">global minimum </span>if <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>) <span class="cmsy-10x-x-109">≤</span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) holds for every <span class="cmmi-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span>.</p>
+<p><span class="cmti-10x-x-109">(b) </span><span class="cmmi-10x-x-109">a </span>is a <span class="cmti-10x-x-109">global maximum </span>if <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmsy-10x-x-109">≤</span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>) holds for every <span class="cmmi-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span>.</p>
+</div>
+<p><span class="cmss-10x-x-109">Note that a global optimum is also a local optimum, but not the other way around.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-213005r86"></span> <span class="cmbx-10x-x-109">Theorem 86.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be an arbitrary function that is differentiable at some </span><span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><span class="cmti-10x-x-109">. If </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">has a local minima or maxima at </span><span class="cmmi-10x-x-109">a</span><span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0<span class="cmti-10x-x-109">.</span></p>
+</div>
+<div id="tcolobox-260" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">According</span> <span id="dx1-213006"></span><span class="cmss-10x-x-109">to </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-212014r84"><span class="cmssi-10x-x-109">84</span></a><span class="cmss-10x-x-109">, if </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">≠</span>0<span class="cmss-10x-x-109">, then it is either strictly increasing or decreasing locally. Since this contradicts our assumption that </span><span class="cmmi-10x-x-109">a </span><span class="cmss-10x-x-109">is a local optimum, the theorem is proven.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">(In case you are interested, this was the principle of contraposition (</span><span class="cmssi-10x-x-109">Theorem </span><a href="ch036.xhtml#x1-371003r150"><span class="cmssi-10x-x-109">150</span></a><span class="cmss-10x-x-109">) in action. From the negation of the conclusion, we have shown the negation of the premises.)</span></p>
+<p><span class="cmss-10x-x-109">It is very important to emphasize that the theorem is not true the other way around. For instance, the function </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">3</span></sup> <span class="cmss-10x-x-109">is strictly increasing everywhere, yet </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(0) = 0<span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">In general, we</span> <span id="dx1-213007"></span><span class="cmss-10x-x-109">call this behavior </span><span class="cmssi-10x-x-109">inflection</span><span class="cmss-10x-x-109">. So, </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">3</span></sup> <span class="cmss-10x-x-109">is said to have an inflection point at </span>0<span class="cmss-10x-x-109">. Inflection means a change in behavior, which reflects the switch in its derivative from decreasing to increasing in this case. (The multidimensional analogue of inflection is called a “saddle,” as we shall see later.)</span></p>
+<p><span class="cmss-10x-x-109">So, we are not at our end goal yet, as the other half of the promised characterization is missing.</span></p>
+<p><span class="cmss-10x-x-109">The derivative is zero at the local extremal points, but can we come up with a criterion that implies the existence of minima or maxima?</span></p>
+<div class="minipage">
+<p><img src="../media/file1255.png" width="484" alt="PIC"/> <span id="x1-213008r5"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.5: Graph of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">3</span></sup> <span class="cmss-10x-x-109">as a counterexample to show that </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(0) = 0 <span class="cmss-10x-x-109">doesn’t imply local optimum</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">With the utilization of second derivatives, this is possible.</span></p>
+</section>
+<section id="characterization-of-optima-with-higher-order-derivatives" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_188"><span class="titlemark"><span class="cmss-10x-x-109">13.1.2 </span></span> <span id="x1-21400015.1.2"></span><span class="cmss-10x-x-109">Characterization of optima with higher order derivatives</span></h3>
+<p><span class="cmss-10x-x-109">Let’s take a second look at our example, considering the local behavior</span><span id="dx1-214001"></span> <span class="cmss-10x-x-109">of </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup> <span class="cmss-10x-x-109">this time, not just its sign. In </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.6</span></a><span class="cmss-10x-x-109">, the derivative is plotted along with our function.</span></p>
+<div class="minipage">
+<p><img src="../media/file1456.png" width="284" alt="PIC"/> <span id="x1-214002r6"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.6: The function and its derivative</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">The pattern seems simple: an increasing derivative implies a local minimum, a decreasing one means a local maximum. This aligns with our intuition about derivative as speed: local maximum means that the object is going in a positive direction, then stops and starts reversing.</span></p>
+<p><span class="cmss-10x-x-109">We can</span> <span id="dx1-214003"></span><span class="cmss-10x-x-109">make this mathematically precise with the following theorem.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-214004r87"></span> <span class="cmbx-10x-x-109">Theorem 87.</span> </span><span class="cmbxti-10x-x-109">(The second derivative test)</span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be an arbitrary function that is twice differentiable at some </span><span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(a) If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmti-10x-x-109">and </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">a </span><span class="cmti-10x-x-109">is a local minimum.</span> </span></p>
+<p><span class="cmti-10x-x-109">(b) If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmti-10x-x-109">and </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">a </span><span class="cmti-10x-x-109">is a local maximum.</span> </span></p>
+</div>
+<div id="tcolobox-261" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">Once again, we will only prove </span><span class="cmssi-10x-x-109">(a)</span><span class="cmss-10x-x-109">, since the proof of </span><span class="cmssi-10x-x-109">(b) </span><span class="cmss-10x-x-109">is almost identical.</span></p>
+<p><span class="cmss-10x-x-109">First, as we saw when discussing the relation between derivatives and monotonicity (</span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-212014r84"><span class="cmssi-10x-x-109">84</span></a><span class="cmss-10x-x-109">), </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">a</span>) <span class="cmmi-10x-x-109"></span>0 <span class="cmss-10x-x-109">implies that </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup> <span class="cmss-10x-x-109">is strictly locally increasing at </span><span class="cmmi-10x-x-109">a</span><span class="cmss-10x-x-109">. Since </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0<span class="cmss-10x-x-109">, this means that</span></p>
+<div class="math-display">
+<img src="../media/file1257.png" class="math-display" alt=" ( ′ |{ ≤ 0 if x ∈ (a− δ,a] f (x)| ( ≥ 0 if x ∈ [a,a + δ) "/>
+</div>
+<p><span class="cmss-10x-x-109">for some </span><span class="cmmi-10x-x-109">δ &gt;</span>0<span class="cmss-10x-x-109">. Because of </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-212014r84"><span class="cmssi-10x-x-109">84</span></a><span class="cmss-10x-x-109">, </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is locally decreasing in</span> (<span class="cmmi-10x-x-109">a </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">δ,a</span>] <span class="cmss-10x-x-109">and locally increasing in </span>[<span class="cmmi-10x-x-109">a,a </span>+ <span class="cmmi-10x-x-109">δ</span>)<span class="cmss-10x-x-109">. This can only happen if </span><span class="cmmi-10x-x-109">a </span><span class="cmss-10x-x-109">is a local minimum.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">In summary, the method of finding the extrema of a function </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is the following.</span></p>
+<ol>
+<li><span id="x1-214006x1"><span class="cmss-10x-x-109">Solve </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>) = 0<span class="cmss-10x-x-109">. Its solutions </span><span class="cmsy-10x-x-109">{</span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,x</span><sub><span class="cmmi-8">n</span></sub><span class="cmsy-10x-x-109">} </span><span class="cmss-10x-x-109">— called </span><span class="cmssi-10x-x-109">critical points </span><span class="cmss-10x-x-109">— are the candidates that </span><span class="cmssi-10x-x-109">can be </span><span class="cmss-10x-x-109">extremal points. (But not necessarily all of them are.)</span></span></li>
+<li><span id="x1-214008x2"><span class="cmss-10x-x-109">Check the sign of </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub>) <span class="cmss-10x-x-109">for all solutions </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub><span class="cmss-10x-x-109">. If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">, it is a local minimum. If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">, it is a local maximum.</span></span></span></span></li>
+</ol>
+<p><span class="cmss-10x-x-109">If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">i</span></sub>) = 0<span class="cmss-10x-x-109">, we still can’t draw any conclusions. The functions </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">4</span></sup><span class="cmss-10x-x-109">, </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">, and </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">3</span></sup> <span class="cmss-10x-x-109">show that critical points with zero second derivatives can be local minima, maxima, or neither.</span></p>
+<p><span class="cmss-10x-x-109">Even though we have a “recipe,” this is still far from enough for practical purposes. Not counting that our functions of interest are multivariable, calculating the derivative and solving </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>) = 0 <span class="cmss-10x-x-109">is not tractable. For loss functions of neural networks, we don’t even bother writing out a formula because, for a composition of hundreds of functions, it can be unreasonably complex.</span></p>
+</section>
+<section id="mean-value-theorems" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_189"><span class="titlemark"><span class="cmss-10x-x-109">13.1.3 </span></span> <span id="x1-21500015.1.3"></span><span class="cmss-10x-x-109">Mean value theorems</span></h3>
+<p><span class="cmss-10x-x-109">In some cases, we can extract a lot of information about the derivatives</span><span id="dx1-215001"></span> <span class="cmss-10x-x-109">without explicitly calculating them. These results are extremely useful in cases where we don’t have an explicit formula for the function or the formula might be too huge. (Like in the case of neural networks.) In the following, we’ll get to meet the famous </span><span class="cmssi-10x-x-109">mean value theorems</span><span class="cmss-10x-x-109">, connecting the function’s behavior at the endpoints and inside an interval.</span></p>
+<p><span class="cmss-10x-x-109">First, we start</span> <span id="dx1-215002"></span><span class="cmss-10x-x-109">with a</span> <span id="dx1-215003"></span><span class="cmss-10x-x-109">special case that states that the function attains the same value at the end of some interval</span> [<span class="cmmi-10x-x-109">a,b</span>]<span class="cmss-10x-x-109">, then its derivative is zero somewhere inside the interval.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-215004r88"></span> <span class="cmbx-10x-x-109">Theorem 88.</span> </span><span class="cmbxti-10x-x-109">(Rolle’s mean value theorem)</span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be a differentiable function and suppose that </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>) = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">b</span>) <span class="cmti-10x-x-109">for some </span><span class="cmmi-10x-x-109">a≠b</span><span class="cmti-10x-x-109">. Then there exists a </span><span class="cmmi-10x-x-109">ξ </span><span class="cmsy-10x-x-109">∈ </span>(<span class="cmmi-10x-x-109">a,b</span>) <span class="cmti-10x-x-109">such that </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">ξ</span>) = 0<span class="cmti-10x-x-109">.</span></p>
+</div>
+<div id="tcolobox-262" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">If you are a visual person, take a look at </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.7</span></a><span class="cmss-10x-x-109">. This is what we need to show.</span></p>
+<div class="minipage">
+<p><img src="../media/file1258.png" width="499" alt="PIC"/> <span id="x1-215005r7"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.7: Rolle’s theorem</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">To be mathematically precise, there are two cases. First, if </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is constant on</span> [<span class="cmmi-10x-x-109">a,b</span>]<span class="cmss-10x-x-109">, then its derivative is zero on the entire interval.</span></p>
+<p><span class="cmss-10x-x-109">If </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is not constant, then it attains some value </span><span class="cmmi-10x-x-109">c </span><span class="cmss-10x-x-109">inside </span>(<span class="cmmi-10x-x-109">a,b</span>) <span class="cmss-10x-x-109">that is not equal to </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">a</span>) = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">b</span>)<span class="cmss-10x-x-109">. For simplicity, suppose that </span><span class="cmmi-10x-x-109">c &gt;f</span>(<span class="cmmi-10x-x-109">a</span>)<span class="cmss-10x-x-109">. (The argument that follows goes through in the </span><span class="cmmi-10x-x-109">c &lt;f</span>(<span class="cmmi-10x-x-109">a</span>) <span class="cmss-10x-x-109">case with some obvious changes.) Since </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is continuous, it attains its maximum there at a point </span><span class="cmmi-10x-x-109">ξ </span><span class="cmsy-10x-x-109">∈ </span>[<span class="cmmi-10x-x-109">a,b</span>]<span class="cmss-10x-x-109">. (See </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch019.xhtml#x1-193003r76"><span class="cmssi-10x-x-109">76</span></a><span class="cmss-10x-x-109">.) According to what we have just seen regarding the relation of local maxima and the derivative (</span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-213005r86"><span class="cmssi-10x-x-109">86</span></a><span class="cmss-10x-x-109">), </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">ξ</span>) = 0<span class="cmss-10x-x-109">, which is what we had to show.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Rolle’s</span> <span id="dx1-215006"></span><span class="cmss-10x-x-109">theorem</span> <span id="dx1-215007"></span><span class="cmss-10x-x-109">is an important stepping stone towards Lagrange’s mean value theorem, which</span><span id="dx1-215008"></span> <span class="cmss-10x-x-109">we</span> <span id="dx1-215009"></span><span class="cmss-10x-x-109">will show in the following.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-215010r89"></span> <span class="cmbx-10x-x-109">Theorem 89.</span> </span><span class="cmbxti-10x-x-109">(Lagrange’s mean value theorem)</span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→ </span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be a differentiable function and</span> [<span class="cmmi-10x-x-109">a,b</span>] <span class="cmti-10x-x-109">an interval for some </span><span class="cmmi-10x-x-109">a≠b</span><span class="cmti-10x-x-109">. Then there exists a </span><span class="cmmi-10x-x-109">ξ </span><span class="cmsy-10x-x-109">∈ </span>(<span class="cmmi-10x-x-109">a,b</span>) <span class="cmti-10x-x-109">such that</span></p>
+<div class="math-display">
+<img src="../media/file1259.png" class="math-display" alt=" ′ f(b)− f(a) f (ξ) = --b-−-a---- "/>
+</div>
+<p><span class="cmti-10x-x-109">holds.</span></p>
+</div>
+<div id="tcolobox-263" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">Again, let’s start with a visualization to get a grip on the theorem. </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.8</span></a> <span class="cmss-10x-x-109">shows what we need to show.</span></p>
+<div class="minipage">
+<p><img src="../media/file1260.png" width="399" alt="PIC"/> <span id="x1-215011r8"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.8: Lagrange’s mean value theorem</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Recall that</span> <img src="../media/file1261.png" class="frac" data-align="middle" alt="f(b)−f(a)- b−a"/> <span class="cmss-10x-x-109">is the slope of the line going through </span>(<span class="cmmi-10x-x-109">a,f</span>(<span class="cmmi-10x-x-109">a</span>)) <span class="cmss-10x-x-109">and</span> (<span class="cmmi-10x-x-109">b,f</span>(<span class="cmmi-10x-x-109">b</span>))<span class="cmss-10x-x-109">. This line is described by the function</span></p>
+<div class="math-display">
+<img src="../media/file1262.png" class="math-display" alt="f(b)− f(a) -----------(x− a) + f(a), b− a "/>
+</div>
+<p><span class="cmss-10x-x-109">as given by the point-slope equation of a line. Using this, we introduce the function</span></p>
+<div class="math-display">
+<img src="../media/file1263.png" class="math-display" alt=" f(b)− f (a) g(x) := f (x)− (-----------(x − a) + f(a)). b− a "/>
+</div>
+<p><span class="cmss-10x-x-109">We can apply Rolle’s theorem to </span><span class="cmmi-10x-x-109">g</span>(<span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">, since </span><span class="cmmi-10x-x-109">g</span>(<span class="cmmi-10x-x-109">a</span>) = <span class="cmmi-10x-x-109">g</span>(<span class="cmmi-10x-x-109">b</span>) = 0<span class="cmss-10x-x-109">. Thus, for some </span><span class="cmmi-10x-x-109">ξ </span><span class="cmsy-10x-x-109">∈ </span>(<span class="cmmi-10x-x-109">a,b</span>)<span class="cmss-10x-x-109">, we have</span></p>
+<div class="math-display">
+<img src="../media/file1264.png" class="math-display" alt="g′(ξ) = 0 = f ′(ξ)− f(b)−-f(a), b − a "/>
+</div>
+<p><span class="cmss-10x-x-109">implying </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">ξ</span>) = <img src="../media/file1265.png" class="frac" data-align="middle" alt="f(b)b−−fa(a)-"/><span class="cmss-10x-x-109">, which is what we had to show.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Why are</span> <span id="dx1-215012"></span><span class="cmss-10x-x-109">mean</span> <span id="dx1-215013"></span><span class="cmss-10x-x-109">value theorems so important? In mathematics, they serve as a cornerstone in several results. To give you one example, think about integration. (Perhaps you are familiar with this concept already. Don’t worry if not, we are going to study it in detail later.) Integration is essentially the inverse of differentiation: if </span><span class="cmmi-10x-x-109">F</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">, then</span></p>
+<div class="math-display">
+<img src="../media/file1266.png" class="math-display" alt="∫ b a f (x )dx = F (b)− F (a), "/>
+</div>
+<p><span class="cmss-10x-x-109">which will be a simple consequence of Lagrange’s mean value theorem.</span></p>
+</section>
+</section>
+<section id="the-basics-of-gradient-descent" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_190"><span class="titlemark"><span class="cmss-10x-x-109">13.2 </span></span> <span id="x1-21600015.2"></span><span class="cmss-10x-x-109">The basics of gradient descent</span></h2>
+<p><span class="cmss-10x-x-109">We need to solve</span> <span id="dx1-216001"></span><span class="cmss-10x-x-109">two computational problems to train neural networks:</span></p>
+<ul>
+<li><span class="cmss-10x-x-109">computing the derivative of the loss </span><span class="cmmi-10x-x-109">L</span>(<span class="cmmi-10x-x-109">w</span>)<span class="cmss-10x-x-109">,</span></li>
+<li><span class="cmss-10x-x-109">and finding its minima using the derivative.</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">Finding the minima by solving</span> <img src="../media/file1267.png" width="15" data-align="middle" alt="ddw--"/><span class="cmmi-10x-x-109">L</span>(<span class="cmmi-10x-x-109">w</span>) = 0 <span class="cmss-10x-x-109">is not going to work in practice. There are several problems. First, as we have seen, not all solutions are minimal points: there are maximal and inflection points as well. Second, solving this equation is not feasible except in the simplest cases, like for linear regression with the mean squared error. Training a neural network is </span><span class="cmssi-10x-x-109">not </span><span class="cmss-10x-x-109">a simple case.</span></p>
+<p><span class="cmss-10x-x-109">Fortunately for us, machine learning practitioners, there is a solution: gradient descent! The famous gradient descent provides a way to tackle the complexity of finding the exact solution, enabling us to do machine learning on a large scale. Let’s see how it’s done!</span></p>
+<section id="derivatives-revisited" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_191"><span class="titlemark"><span class="cmss-10x-x-109">13.2.1 </span></span> <span id="x1-21700015.2.1"></span><span class="cmss-10x-x-109">Derivatives, revisited</span></h3>
+<p><span class="cmss-10x-x-109">When we first explored the concept of the derivative in </span><span class="cmssi-10x-x-109">Chapter </span><a href="ch020.xhtml#differentiation"><span class="cmssi-10x-x-109">12</span></a><span class="cmss-10x-x-109">, we saw its many faces. We have learned that the derivative can be thought of as</span></p>
+<ul>
+<li><span class="cmss-10x-x-109">speed (when the function describes a time-distance graph of a moving object),</span></li>
+<li><span class="cmss-10x-x-109">the slope of the tangent line of a function,</span></li>
+<li><span class="cmss-10x-x-109">and the best linear approximator at a given point.</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">To understand how</span> <span id="dx1-217001"></span><span class="cmss-10x-x-109">gradient descent works, we’ll see yet another interpretation: derivatives as </span><span class="cmssi-10x-x-109">vectors</span><span class="cmss-10x-x-109">. For any differentiable function </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">, the derivative </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">can be thought of as a one-dimensional vector. If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">is positive, it points to the right. If it is negative, it points to the left. We can visualize this by drawing a horizontal vector to every point of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">-s graph, where the length represents </span><span class="cmmi-10x-x-109">jf</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>)<span class="cmmi-10x-x-109">j </span><span class="cmss-10x-x-109">and the direction represents the sign. This is illustrated by </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.9</span></a><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file1268.png" width="399" alt="PIC"/> <span id="x1-217002r9"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.9: The derivative as a vector</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Do you recall how monotonicity is characterized by the sign of the derivative? (As </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-212014r84"><span class="cmssi-10x-x-109">84</span></a> <span class="cmss-10x-x-109">states.) Negative derivative means a decreasing function, and positive means an increasing function. In other words, this implies that the derivative, as a vector, </span><span class="cmssi-10x-x-109">points towards the direction of the increase</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">Imagine yourself as a hiker on the </span><span class="cmssi-10x-x-109">x-y </span><span class="cmss-10x-x-109">plane, where </span><span class="cmssi-10x-x-109">y </span><span class="cmss-10x-x-109">signifies the height. How would you climb a mountain ahead of you? By taking a step towards the direction of increase; that is, following the derivative. If you are not there yet, you can still take another (perhaps smaller) step in the right direction, over and over again until you arrive. If you are right at the top, the derivative is zero, so you won’t move anywhere.</span></p>
+<p><span class="cmss-10x-x-109">This</span> <span id="dx1-217003"></span><span class="cmss-10x-x-109">process is illustrated by </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.10</span></a><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file1269.png" width="399" alt="PIC"/> <span id="x1-217004r10"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.10: Climbing a mountain, one step at a time</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">What you have seen here is gradient </span><span class="cmssi-10x-x-109">ascent </span><span class="cmss-10x-x-109">in action. Now that we understand the main idea, we are ready to tackle the mathematical details.</span></p>
+</section>
+<section id="the-gradient-descent-algorithm" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_192"><span class="titlemark"><span class="cmss-10x-x-109">13.2.2 </span></span> <span id="x1-21800015.2.2"></span><span class="cmss-10x-x-109">The gradient descent algorithm</span></h3>
+<p><span class="cmss-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">be a differentiable</span><span id="dx1-218001"></span> <span class="cmss-10x-x-109">function which we want to </span><span class="cmssi-10x-x-109">maximize</span><span class="cmss-10x-x-109">, that is, find</span></p>
+<div class="math-display">
+<img src="../media/file1270.png" class="math-display" alt="xmax = argmaxx ∈ℝf(x). "/>
+</div>
+<p><span class="cmss-10x-x-109">Based on our intuition, the process is quite simple. First, we conjure up an arbitrary starting point </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub><span class="cmss-10x-x-109">, then define the sequence</span></p>
+<div class="math-display">
+  <span>
+    x<sub>n+1</sub> := x<sub>n</sub> + h f′(x<sub>n</sub>),
+  </span>
+  <span class="math-label" style="float: right; margin-left: 1em;">(13.1)</span>
+</div>
+
+<p><span class="cmss-10x-x-109">where </span><span class="cmmi-10x-x-109">h </span><span class="cmsy-10x-x-109">∈ </span>(0<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">∞</span>) <span class="cmss-10x-x-109">is a parameter of our gradient descent algorithm, called the </span><span class="cmssi-10x-x-109">learning rate</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">In English, the formula </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">n</span></sub> + <span class="cmmi-10x-x-109">hf</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">n</span></sub>) <span class="cmss-10x-x-109">describes taking a small step from </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">n</span></sub> <span class="cmss-10x-x-109">towards the</span> <span id="dx1-218002"></span><span class="cmss-10x-x-109">direction of the increase, with step size </span><span class="cmmi-10x-x-109">hf</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">n</span></sub>)<span class="cmss-10x-x-109">. (Recall that the sign of the derivative shows the direction of the increase.)</span></p>
+<p><span class="cmss-10x-x-109">If things go our way, the sequence </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">n</span></sub> <span class="cmss-10x-x-109">converges to a local maximum of </span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">. However, things do not always go our way. We’ll discuss this when talking about the issues of gradient descent.</span></p>
+<p><span class="cmss-10x-x-109">But what about finding </span><span class="cmssi-10x-x-109">minima</span><span class="cmss-10x-x-109">? In machine learning, we are trying to minimize loss functions. There is a simple trick: the minima of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">is the maxima of </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">. So, since </span><span class="big">(</span> <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">f</span><span class="big">)</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup><span class="cmss-10x-x-109">, the definition of the approximating sequence </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">n</span></sub> <span class="cmss-10x-x-109">changes to</span></p>
+<div class="math-display">
+<img src="../media/file1273.png" class="math-display" alt="x := x − hf′(x ). n+1 n n "/>
+</div>
+<p><span class="cmss-10x-x-109">This is gradient descent in a nutshell.</span></p>
+</section>
+<section id="implementing-gradient-descent" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_193"><span class="titlemark"><span class="cmss-10x-x-109">13.2.3 </span></span> <span id="x1-21900015.2.3"></span><span class="cmss-10x-x-109">Implementing gradient descent</span></h3>
+<p><span class="cmss-10x-x-109">At this point, we</span> <span id="dx1-219001"></span><span class="cmss-10x-x-109">have all the knowledge to implement the gradient descent algorithm. We’ll use the previously introduced </span><span class="cmtt-10x-x-109">Function </span><span class="cmss-10x-x-109">base class; here it is again so you don’t have to look up the class definition.</span></p>
+<div id="tcolobox-264" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>class Function: 
+    def __init__(self): 
+        pass 
+ 
+    def __call__(self, *args, **kwargs): 
+        pass 
+ 
+    def prime(self): 
+        pass 
+ 
+    def parameters(self): 
+        return dict()</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">As usual, I encourage you to try implementing your version of gradient descent before looking at mine. Coding is one of the most effective ways to learn, even in the age of AI – </span><span class="cmssi-10x-x-109">especially </span><span class="cmss-10x-x-109">in the age of AI.</span></p>
+<div id="tcolobox-265" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def gradient_descent( 
+    f: Function, 
+    x_init: float,                  # the initial guess 
+    learning_rate: float = 0.1,     # the learning rate 
+    n_iter: int = 1000,             # number of steps 
+    return_all: bool = False        # if true, returns all intermediate values 
+): 
+    xs = [x_init]    # we store the intermediate results for visualization 
+ 
+    for n in range(n_iter): 
+        x = xs[-1] 
+        grad = f.prime(x) 
+        x_next = x - learning_rate*grad 
+        xs.append(x_next) 
+ 
+    if return_all: 
+        return xs 
+    else: 
+        return x</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Let’s test the</span> <span id="dx1-219033"></span><span class="cmss-10x-x-109">gradient descent out on a simple example, say </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">! If all goes according to plan, the algorithm should find the minimum </span><span class="cmmi-10x-x-109">x </span>= 0 <span class="cmss-10x-x-109">in no time.</span></p>
+<div id="tcolobox-266" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>class Square(Function): 
+    def __call__(self, x): 
+        return x**2 
+ 
+    def prime(self, x): 
+        return 2*x 
+ 
+f = Square() 
+ 
+gradient_descent(f, x_init=5.0)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>7.688949513507002e-97</code></pre>
+<p><span class="cmss-10x-x-109">The result is as expected: our </span><span class="cmtt-10x-x-109">gradient_descent </span><span class="cmss-10x-x-109">function successfully finds the minimum.</span></p>
+<p><span class="cmss-10x-x-109">To visualize what happens, we can plot the process in its entirety. As we’ll reuse the same plot, here’s a general function that does this job.</span></p>
+<div id="tcolobox-267" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>import numpy as np 
+import matplotlib.pyplot as plt 
+ 
+ 
+def plot_gradient_descent(f, xs: list, x_min: float, x_max: float, label: str = /span&gt;f(x): 
+    ys = [f(x) for x in xs] 
+ 
+    grid = np.linspace(x_min, x_max, 1000) 
+    fs = [f(x) for x in grid] 
+ 
+    with plt.style.context("/span&gt;seaborn-v0_8-whitegrid: 
+        plt.figure(figsize=(8, 8)) 
+        plt.plot(grid, fs, label=label, c="/span&gt;b lw=2.0) 
+        plt.plot(xs, ys, label="/span&gt;gradient descent c="/span&gt;r lw=4.0) 
+        plt.scatter(xs, ys, c="/span&gt;r s=100.0) 
+        plt.legend() 
+        plt.show() 
+ 
+xs = gradient_descent(f, x_init=5.0, n_iter=25, learning_rate=0.2, return_all=True) 
+plot_gradient_descent(f, xs, x_min=-5, x_max=5, label="/span&gt;x^2"</code></pre>
+</div>
+</div>
+<div class="minipage">
+<p><img src="../media/file1274.png" width="456" alt="PIC"/> <span id="x1-219065r11"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.11: Finding the minima of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup> <span class="cmss-10x-x-109">by gradient descent</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">So, is it</span> <span id="dx1-219066"></span><span class="cmss-10x-x-109">all happiness and sunshine? No, but that’s fine. Let’s see what can go wrong, and how we can fix it.</span></p>
+</section>
+<section id="drawbacks-and-caveats" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_194"><span class="titlemark"><span class="cmss-10x-x-109">13.2.4 </span></span> <span id="x1-22000015.2.4"></span><span class="cmss-10x-x-109">Drawbacks and caveats</span></h3>
+<p><span class="cmss-10x-x-109">Even though</span> <span id="dx1-220001"></span><span class="cmss-10x-x-109">the idea behind gradient descent is sound, there are several issues. During our journey in machine learning, we’ll see most of these issues fixed by variants of the algorithm, but it is worth looking at the potential problems of the base version at this point.</span></p>
+<p><span class="cmss-10x-x-109">First, the base gradient descent can get infinitely stuck at a local minima.</span></p>
+<p><span class="cmss-10x-x-109">To illustrate this, let’s take a look at the </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = cos(<span class="cmmi-10x-x-109">x</span>) + <img src="../media/file1275.png" width="8" data-align="middle" alt="1 2"/><span class="cmmi-10x-x-109">x </span><span class="cmss-10x-x-109">function, which has no global minima, only local ones.</span></p>
+<div id="tcolobox-268" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>class CosPlusSquare(Function): 
+    def __call__(self, x): 
+        return np.sin(x) + 0.5*x 
+ 
+    def prime(self, x): 
+        return np.cos(x) + 0.5 
+ 
+f = CosPlusSquare() 
+xs = gradient_descent(f, x_init=7.5, n_iter=20, learning_rate=0.2, return_all=True) 
+plot_gradient_descent(f, xs, -10, 10, label="/span&gt;sin(x) + 0.5x</code></pre>
+</div>
+</div>
+<div class="minipage">
+<p><img src="../media/file1276.png" width="456" alt="PIC"/> <span id="x1-220012r12"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.12: Running the gradient descent on </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = sin(<span class="cmmi-10x-x-109">x</span>) + 1/2<span class="cmmi-10x-x-109">x</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Note that if the initial point </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">is selected poorly, the algorithm is much less effective. In other words, sensitivity to the initial conditions is another weakness. It might not seem that much of an issue in the simple one-variable case that we have just seen. However, it is a significant headache in the million-dimensional parameter spaces that we encounter when training neural networks.</span></p>
+<p><span class="cmss-10x-x-109">The starting</span> <span id="dx1-220013"></span><span class="cmss-10x-x-109">point is not the only parameter of the algorithm; it depends on the learning rate </span><span class="cmmi-10x-x-109">h </span><span class="cmss-10x-x-109">as well. There are several potential mistakes here: a too large learning rate results in the algorithm bouncing all around the space, never finding an optimum. On the other hand, a too small one results in an extremely slow convergence.</span></p>
+<p><span class="cmss-10x-x-109">In the case of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">, starting the gradient descent from </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> = 1<span class="cmmi-10x-x-109">.</span>0 <span class="cmss-10x-x-109">with a learning rate of </span><span class="cmmi-10x-x-109">h </span>= 1<span class="cmmi-10x-x-109">.</span>05<span class="cmss-10x-x-109">, the algorithm diverges, with </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">n</span></sub> <span class="cmss-10x-x-109">oscillating at a larger and larger amplitude.</span></p>
+<div id="tcolobox-269" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>f = Square() 
+ 
+xs = gradient_descent(f, x_init=1.0, n_iter=20, learning_rate=1.05, return_all=True) 
+plot_gradient_descent(f, xs, -8, 8, label="/span&gt;x^2"</code></pre>
+</div>
+</div>
+<div class="minipage">
+<p><img src="../media/file1278.png" width="284" alt="PIC"/> <span id="x1-220018r13"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.13: Gradient descent, as it overshoots the optimum because of the large learning rate</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Can you come up with some solution ideas to these problems? No need to work anything out, just take a few minutes to brainstorm and make a mental note about what comes to mind. In the later chapters, we’ll see</span><span id="dx1-220019"></span> <span class="cmss-10x-x-109">several proposed solutions for all of these problems, but putting some time into this is a very useful exercise.</span></p>
+<p><span class="cmss-10x-x-109">However, if you have an eye for detail, you might ask: does gradient descent always converge to a local optimum? Why does it work so well in practice? Let’s take a look.</span></p>
+</section>
+</section>
+<section id="why-does-gradient-descent-work" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_195"><span class="titlemark"><span class="cmss-10x-x-109">13.3 </span></span> <span id="x1-22100015.3"></span><span class="cmss-10x-x-109">Why does gradient descent work?</span></h2>
+<blockquote class="packt_quote">
+<p><span class="cmssi-10x-x-109">Young man, in mathematics you don’t understand things. You just get used to them. </span><span class="cmss-10x-x-109">— John von Neumann</span></p>
+</blockquote>
+<p><span class="cmss-10x-x-109">In the practice of machine learning, we use gradient descent so much that we get used to it. We hardly ever question </span><span class="cmssi-10x-x-109">why </span><span class="cmss-10x-x-109">it works.</span></p>
+<p><span class="cmss-10x-x-109">What’s usually told is the mountain-climbing analogue: to find the peak (or the bottom) of a bumpy terrain, one has to look at the direction of the steepest ascent (or descent), and take a step in that direction. This direction is desribed by the gradient, and the iterative process of finding local extrema by following the gradient is called gradient ascent/descent. (Ascent for finding peaks, descent for finding valleys.)</span></p>
+<p><span class="cmss-10x-x-109">However, this is not a mathematically precise explanation. There are several questions left unanswered, and based on our mountain-climbing intuition, it’s not even clear if the algorithm works.</span></p>
+<p><span class="cmss-10x-x-109">Without a precise understanding of gradient descent, we are practically flying blind. In this section, our goal is to look behind gradient descent and reveal the magic behind it.</span></p>
+<p><span class="cmss-10x-x-109">Understanding the “whys” of gradient descent starts with one of the most beautiful areas of mathematics: differential equations.</span></p>
+<section id="differential-equations-" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_196"><span class="titlemark"><span class="cmss-10x-x-109">13.3.1 </span></span> <span id="x1-22200015.3.1"></span><span class="cmss-10x-x-109">Differential equations 101</span></h3>
+<p><span class="cmss-10x-x-109">What is a differential equation? Equations play an essential role in</span><span id="dx1-222001"></span> <span class="cmss-10x-x-109">mathematics; this is common wisdom, but there is a deep truth behind it. Quite often, equations arise from modeling systems such as interactions in a biochemical network, economic processes, and thousands more. For instance, modelling the metabolic processes in organisms yields linear equations of the form</span></p>
+<div class="math-display">
+<img src="../media/file1279.png" class="math-display" alt="Ax = b, A ∈ ℝn×n, x,b ∈ ℝn "/>
+</div>
+<p><span class="cmss-10x-x-109">where the vectors </span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">and </span><span class="cmbx-10x-x-109">b </span><span class="cmss-10x-x-109">represent the concentration of molecules (where </span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">is the unknown), and the matrix </span><span class="cmmi-10x-x-109">A </span><span class="cmss-10x-x-109">represents the interactions between them. Linear equations are easy to solve, and we understand quite a lot about them.</span></p>
+<p><span class="cmss-10x-x-109">However, the equations we have seen so far are unfit to model dynamical systems, as they lack a time component. To describe, for example, the trajectory of a space station orbiting around Earth, we have to describe our models in terms of </span><span class="cmssi-10x-x-109">functions and their derivatives</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">For instance, the trajectory of a swinging pendulum can be described by the equation</span></p>
+<div class="math-display">
+  <span>
+    x″(t) + (g/L) sin x(t) = 0,
+  </span>
+  <span class="math-label" style="float: right; margin-left: 1em;">(13.2)</span>
+</div>
+
+<p><span class="cmss-10x-x-109">where</span></p>
+<ul>
+<li><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">describes the angle of the pendulum from the vertical,</span></li>
+<li><span class="cmmi-10x-x-109">L </span><span class="cmss-10x-x-109">is the length of the (massless) rod that our object of mass </span><span class="cmmi-10x-x-109">m </span><span class="cmss-10x-x-109">hangs on,</span></li>
+<li><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">g </span><span class="cmss-10x-x-109">is the gravitational acceleration constant </span><span class="cmsy-10x-x-109">≈ </span>9<span class="cmmi-10x-x-109">.</span>81<span class="cmmi-10x-x-109">m∕s</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">.</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">According to</span><span id="dx1-222002"></span> <span class="cmss-10x-x-109">the original interpretation of differentiation, if </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">describes the movement of the pendulum at time </span><span class="cmmi-10x-x-109">t</span><span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">describe the velocity and the acceleration of it, where the differentiation is taken with respect to the time </span><span class="cmmi-10x-x-109">t</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">(In fact, the differential equation (</span><a href="ch021.xhtml#differential-equations-"><span class="cmss-10x-x-109">13.2</span></a><span class="cmss-10x-x-109">) is a direct consequence of Newton’s second law of motion.)</span></p>
+<div class="minipage">
+<p><img src="../media/file1281.png" width="85" alt="PIC"/> <span id="x1-222003r14"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.14: A swinging pendulum</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Equations involving functions and their derivatives, such as (</span><a href="ch021.xhtml#differential-equations-"><span class="cmss-10x-x-109">13.2</span></a><span class="cmss-10x-x-109">), are called </span><span class="cmssi-10x-x-109">ordinary differential equations</span><span class="cmss-10x-x-109">, or ODEs for short. Without any overexaggeration, their study has been the main motivating force of mathematics since the 17th century. Trust me when I say this: differential equations are one of the most beautiful objects in mathematics. As we are about to see, the gradient descent algorithm is, in fact, an approximate solution of differential equations.</span></p>
+<p><span class="cmss-10x-x-109">The first part</span> <span id="dx1-222004"></span><span class="cmss-10x-x-109">of this section will serve as a quickstart to differential equations. I am mostly going to follow the fantastic </span><span class="cmssi-10x-x-109">Nonlinear Dynamics and Chaos </span><span class="cmss-10x-x-109">book by Steven Strogatz. If you ever feel the desire to dig deep into dynamical systems, I wholeheartedly recommend this book to you. (This is one of my favorite math books ever – it reads like a novel. The quality and clarity of its exposition serves as a continuous inspiration for my writing.)</span></p>
+</section>
+<section id="the-slightly-more-general-form-of-odes" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_197"><span class="titlemark"><span class="cmss-10x-x-109">13.3.2 </span></span> <span id="x1-22300015.3.2"></span><span class="cmss-10x-x-109">The (slightly more) general form of ODEs</span></h3>
+<p><span class="cmss-10x-x-109">Let’s dive straight into the deep waters and start with an example to</span><span id="dx1-223001"></span> <span class="cmss-10x-x-109">get a grip on differential equations. Quite possibly, the simplest example is the equation</span></p>
+<div class="math-dislay">
+<img src="../media/file1282.png" width="75" class="math-display" alt=" ′ x(t) = x (t), "/>
+</div>
+<p><span class="cmss-10x-x-109">where the differentiation is taken with respect to the time variable </span><span class="cmmi-10x-x-109">t</span><span class="cmss-10x-x-109">. If, for example, </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">is the size of a bacterial colony, the equation </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">describes its population dynamics if the growth is unlimited. Think about </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">as the rate at which the population grows: if there are no limitations in space and nutrients, every bacterial cell can freely replicate whenever possible. Thus, since every cell can freely divide, the speed of growth matches the colony’s size.</span></p>
+<p><span class="cmss-10x-x-109">In plain English, the solutions of the equation </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">are functions whose derivatives are themselves. After a bit of thinking, we can come up with a family of solutions: </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">ce</span><sup><span class="cmmi-8">t</span></sup><span class="cmss-10x-x-109">, where </span><span class="cmmi-10x-x-109">c </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">is an arbitrary constant. (Recall that </span><span class="cmmi-10x-x-109">e</span><sup><span class="cmmi-8">t</span></sup> <span class="cmss-10x-x-109">is an elementary function, and we have seen that its derivative is itself in </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch020.xhtml#x1-203003r82"><span class="cmssi-10x-x-109">82</span></a><span class="cmss-10x-x-109">.)</span></p>
+<p><span class="cmss-10x-x-109">If you are a visual person, some of the solutions are plotted on </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.15</span></a><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">There are two key takeaways here: differential equations describe dynamical processes that change in time, and they can have multiple solutions. Each solution is determined by two factors: the equation </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>)<span class="cmss-10x-x-109">, and an initial condition </span><span class="cmmi-10x-x-109">x</span>(0) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">. If we specify </span><span class="cmmi-10x-x-109">x</span>(0) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">, then the value of </span><span class="cmmi-10x-x-109">c </span><span class="cmss-10x-x-109">is given by</span></p>
+<div class="math-display">
+<img src="../media/file1283.png" class="math-display" alt="x(0) = ce0 = c = x∗. "/>
+</div>
+<p><span class="cmss-10x-x-109">Thus, ODEs have a bundle of solutions, each one determined by the initial condition.</span></p>
+<p><span class="cmss-10x-x-109">So, it’s time to discuss differential equations in more general terms!</span></p>
+<div class="minipage">
+<p><img src="../media/file1284.png" width="456" alt="PIC"/> <span id="x1-223002r15"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.15: Some solutions of the exponential growth equation</span> </span>
+</div>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-223003r59"></span> <span class="cmbx-10x-x-109">Definition 59.</span> </span><span class="cmbx-10x-x-109">(Ordinary differential equations in one dimension)</span></p>
+<p>Let <span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span>be a differentiable function. The equation</p>
+<div class="math-display">
+  <span>
+    x′(t) = f(x(t))
+  </span>
+  <span class="math-label" style="float: right; margin-left: 1em;">(13.3)</span>
+</div>
+
+<p>is called a <span class="cmti-10x-x-109">first-order homogeneous ordinary differential equation</span>.</p>
+</div>
+<p><span class="cmss-10x-x-109">When it is clear, the dependence on </span><span class="cmmi-10x-x-109">t </span><span class="cmss-10x-x-109">is often omitted, so we only</span><span id="dx1-223004"></span> <span class="cmss-10x-x-109">write </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">. (Some resources denote the time derivative by </span><span class="cmmi-10x-x-109">ẋ</span><span class="cmss-10x-x-109">, a notation that can be originated from Newton. We will not use this, though it is good to know.)</span></p>
+<p><span class="cmss-10x-x-109">The term “first-order homogeneous ordinary differential equation” doesn’t exactly roll off the tongue, and it is overloaded with heavy terminology. So, let’s unpack what is going on here.</span></p>
+<p><span class="cmss-10x-x-109">The </span><span class="cmssi-10x-x-109">differential equation </span><span class="cmss-10x-x-109">part is clear: it is a functional equation that involves derivatives. Since the time </span><span class="cmmi-10x-x-109">t </span><span class="cmss-10x-x-109">is the only variable, the differential equation is </span><span class="cmssi-10x-x-109">ordinary</span><span class="cmss-10x-x-109">. (As opposed to differential equations involving multivariable functions and partial derivatives, but more on those later.) As only the first derivative is present, the equation becomes </span><span class="cmssi-10x-x-109">first-order</span><span class="cmss-10x-x-109">. Second-order would involve second derivatives, and so on. Finally, since the right-hand side </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">doesn’t explicitly depend on the time variable </span><span class="cmmi-10x-x-109">t</span><span class="cmss-10x-x-109">, the equation is </span><span class="cmssi-10x-x-109">homogeneous in time</span><span class="cmss-10x-x-109">. Homogeneity means that the rules governing our dynamical system don’t change over time.</span></p>
+<p><span class="cmss-10x-x-109">Don’t let the </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>)) <span class="cmss-10x-x-109">part scare you! For instance, in our example </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>)<span class="cmss-10x-x-109">, the role of </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is cast to the identity function </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><span class="cmss-10x-x-109">. In general, </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">establishes a relation between the quantity </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">(which can be position, density, etc) and its derivative, that is, its rate of change.</span></p>
+<p><span class="cmss-10x-x-109">As we have seen, we think in terms of differential equations and initial conditions that pinpoint solutions among a bundle of functions. Let’s put this into a proper mathematical definition!</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-223005r60"></span> <span class="cmbx-10x-x-109">Definition 60.</span> </span><span class="cmbx-10x-x-109">(Initial value problems)</span></p>
+<p>Let <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) be a first-order homogeneous ordinary differential equation and let <span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ </span>be an arbitrary value. The system</p>
+<div class="math-diplay">
+<img src="../media/file1285.png" width="150" class="math-display" alt="( |{ ′ x = f (x ) |( x(t0) = x0 "/>
+</div>
+<p>is called an <span class="cmti-10x-x-109">initial value problem</span>. If a function <span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) satisfies both conditions, it is said to be a <span class="cmti-10x-x-109">solution </span>to the initial value problem.</p>
+</div>
+<p><span class="cmss-10x-x-109">Most often, we select </span><span class="cmmi-10x-x-109">t</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">to be </span>0<span class="cmss-10x-x-109">. After all, we have the freedom to select the origin of the time as we want.</span></p>
+<p><span class="cmss-10x-x-109">Unfortunately, things are not as simple as they seem. In general, differential equations</span> <span id="dx1-223006"></span><span class="cmss-10x-x-109">and initial value problems are tough to solve. Except for a few simple ones, we cannot find exact solutions. (And when I say we, I include every person on the planet.) In these cases, there are two things that we can do: either we construct approximate solutions via numeric methods or turn to qualitative methods that study the behavior of the solutions without actually finding them.</span></p>
+<p><span class="cmss-10x-x-109">We’ll talk about both, but let’s turn to the qualitative methods first. As we’ll see, looking from a geometric perspective gives us a deep insight into how differential equations work.</span></p>
+</section>
+<section id="a-geometric-interpretation-of-differential-equations" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_198"><span class="titlemark"><span class="cmss-10x-x-109">13.3.3 </span></span> <span id="x1-22400015.3.3"></span><span class="cmss-10x-x-109">A geometric interpretation of differential equations</span></h3>
+<p><span class="cmss-10x-x-109">When finding analytic solutions is not feasible, we look for a </span><span class="cmssi-10x-x-109">qualitative </span><span class="cmss-10x-x-109">understanding of the solutions, focusing on the local</span><span id="dx1-224001"></span> <span class="cmss-10x-x-109">and long-term behavior instead of formulas.</span></p>
+<p><span class="cmss-10x-x-109">Imagine that, given a differential equation</span></p>
+<div class="math-dispay">
+<img src="../media/file1286.png" width="150" class="math-display" alt="x′(t) = f(x(t)), "/>
+</div>
+<p><span class="cmss-10x-x-109">you are interested in a particular solution that assumes the value </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> <span class="cmss-10x-x-109">at time </span><span class="cmmi-10x-x-109">t</span><sub><span class="cmr-8">0</span></sub><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">For instance, you could be studying the dynamics of a bacterial colony and want to provide a predictive model to fit your latest measurement </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span><sub><span class="cmr-8">0</span></sub>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">. In the short term, where will your solutions go?</span></p>
+<p><span class="cmss-10x-x-109">We can immediately notice that if </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span><sub><span class="cmr-8">0</span></sub>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = 0<span class="cmss-10x-x-109">, then the constant function </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x </span><span class="cmss-10x-x-109">is a solution! These are called </span><span class="cmssi-10x-x-109">equilibrium solutions</span><span class="cmss-10x-x-109">, and they are extremely important. So, let’s make a formal definition!</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-224002r61"></span> <span class="cmbx-10x-x-109">Definition 61.</span> </span><span class="cmbx-10x-x-109">(Equilibrium solutions)</span></p>
+<p>Let</p>
+<div class="math-display">
+  <span>
+    x′(t) = f(x(t))
+  </span>
+  <span class="math-label" style="float: right; margin-left: 1em;">(13.4)</span>
+</div>
+
+<p>be a first-order homogeneous ODE, and let <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ </span>be an arbitrary point. If <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup>) = 0, then <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> is called an <span class="cmti-10x-x-109">equilibrium point </span>of the equation <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>).</p>
+<p>For equilibrium points, the constant function <span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> is a solution of (<a href="ch021.xhtml#x1-224002r61">13.4</a>). This is called an <span class="cmti-10x-x-109">equilibrium solution</span>.</p>
+</div>
+<p><span class="cmss-10x-x-109">Think</span> <span id="dx1-224003"></span><span class="cmss-10x-x-109">about our recurring example, the simplest ODE </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>)<span class="cmss-10x-x-109">. As mentioned, we can interpret this equation as a model of unrestricted population growth under ideal conditions. In that case, </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><span class="cmss-10x-x-109">, and this is zero only for </span><span class="cmmi-10x-x-109">x </span>= 0<span class="cmss-10x-x-109">. Therefore, the constant </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) = 0 <span class="cmss-10x-x-109">function is a solution. This makes perfect sense: if a population has zero individuals, no change is going to happen in its size. In other words, the system is in equilibrium.</span></p>
+<p><span class="cmss-10x-x-109">This is like a pendulum that stopped moving and reached its resting point at the bottom. However, pendulums have two equilibria: one at the top and one at the bottom. (Let’s suppose that the mass is held by a massless rod. Otherwise, it would collapse.) At the bottom, you can push the hanging mass all you want and it’ll return to rest. However, at the top, any small push would disrupt the equilibrium state, to which it would never return.</span></p>
+<p><span class="cmss-10x-x-109">To shed light on this phenomenon, let’s look at another example: the famous </span><span class="cmssi-10x-x-109">logistic equation</span></p>
+<div class="math-display">
+  <span>
+    x′(t) = x(t)(1 − x(t)).
+  </span>
+  <span class="math-label" style="float: right; margin-left: 1em;">(13.5)</span>
+</div>
+
+<p><span class="cmss-10x-x-109">From a population dynamics perspective, if our favorite equation </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">describes the unrestricted growth of a bacterial colony, the logistic equation models the population growth under a resource constraint. If we assume that </span>1 <span class="cmss-10x-x-109">is the total capacity of our population, the growth becomes more difficult as the size approaches this limit. Thus, the population’s rate of change </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">can be modelled as </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>)(1 <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>))<span class="cmss-10x-x-109">, where the term </span>1 <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">slows down the process as the colony nears the sustain capacity.</span></p>
+<p><span class="cmss-10x-x-109">We can write the logistic equation in the general form (</span><a href="ch021.xhtml#x1-223003r59"><span class="cmss-10x-x-109">13.3</span></a><span class="cmss-10x-x-109">) by casting the role </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span>(1 <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">. Do you recall </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-212014r84"><span class="cmssi-10x-x-109">84</span></a> <span class="cmss-10x-x-109">about the relation of derivatives and monotonicity? Translated to the differential equation </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">, this reveals the </span><span class="cmssi-10x-x-109">flow </span><span class="cmss-10x-x-109">of our solutions! To be specific,</span></p>
+<div class="math-display">
+<img src="../media/file1287.png" class="math-display" alt=" (| |||{ increasing if f (x) &gt;0, x(t) is || decreasing if f (x) &lt;0, ||( constant if f (x) = 0. "/>
+</div>
+<p><span class="cmss-10x-x-109">We can visualize this in the so-called </span><span class="cmssi-10x-x-109">phase portrait</span><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file1288.png" width="484" alt="PIC"/> <span id="x1-224004r16"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.16: The flow of solutions for </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">x</span>(1 <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">, visualized on the phase portrait. (The arrows represent the direction where the solutions for given initial values are headed.)</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Thus, the monotonicity describes long-term behavior:</span></p>
+<div style="display: flex; justify-content: space-between; align-items: center; max-width: 600px;" class="equation math-display">
+  <div class="math-display">
+    <img src="../media/equation_(19).png" alt="L(U,V ) = {f : U → V | f is linear}" width="150"/>
+  </div>
+  <div style="padding-left: 1em; ">
+    <!-- Label goes here, e.g. (4.2) -->(13.6)
+  </div>
+</div>
+<p><span class="cmss-10x-x-109">With a little bit of calculation (whose details are not essential for</span><span id="dx1-224005"></span> <span class="cmss-10x-x-109">us), we can obtain that we can write the solutions as noindent</span></p>
+<div class="math-dislay">
+<img src="../media/file1290.png" width="150" class="math-display" alt="x(t) = ---1----, 1 + ce−t "/>
+</div>
+<p><span class="cmss-10x-x-109">where </span><span class="cmmi-10x-x-109">c </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">is an arbitrary constant. For </span><span class="cmmi-10x-x-109">c </span>= 1<span class="cmss-10x-x-109">, this is the famous sigmoid function.</span></p>
+<p><span class="cmss-10x-x-109">You can check by hand that these are indeed solutions. We can even plot them, as shown in </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.17</span></a> <span class="cmss-10x-x-109">below.</span></p>
+<div class="minipage">
+<p><img src="../media/file1291.png" width="484" alt="PIC"/> <span id="x1-224006r17"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.17: Solutions of the logistic differential equation </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">x</span>(1 <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span>) </span>
+</div>
+<p><span class="cmss-10x-x-109">As we can see in </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.17</span></a><span class="cmss-10x-x-109">, the monotonicity of the solutions are as we predicted in (</span><a href="#"><span class="cmss-10x-x-109">13.6</span></a><span class="cmss-10x-x-109">).</span></p>
+<p><span class="cmss-10x-x-109">We can</span> <span id="dx1-224007"></span><span class="cmss-10x-x-109">characterize the equilibria based on the long-term behavior of nearby solutions. (In the case of our logistic equation, the equilibria are </span>0 <span class="cmss-10x-x-109">and </span>1<span class="cmss-10x-x-109">.) This can be connected to the </span><span class="cmssi-10x-x-109">local </span><span class="cmss-10x-x-109">behavior of </span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">: if it decreases around the equilibrium </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">, it attracts the nearby solutions. On the other hand, if </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">increases around </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">, then the nearby solutions are repelled.</span></p>
+<p><span class="cmss-10x-x-109">This gives rise to the concept of </span><span class="cmssi-10x-x-109">stable </span><span class="cmss-10x-x-109">and </span><span class="cmssi-10x-x-109">unstable </span><span class="cmss-10x-x-109">equilibria.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-224008r62"></span> <span class="cmbx-10x-x-109">Definition 62.</span> </span><span class="cmbx-10x-x-109">(Stable and unstable equilibria)</span></p>
+<p>Let <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) be a first-order homogeneous ordinary differential equation, and suppose that <span class="cmmi-10x-x-109">f </span>is differentiable. Moreover, let <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> be an equilibrium of the equation.</p>
+<p><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> is called a <span class="cmti-10x-x-109">stable </span>equilibrium if there is a neighborhood (<span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">𝜀,x</span><sup><span class="cmsy-8">∗</span></sup> + <span class="cmmi-10x-x-109">𝜀</span>) around <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> such that for all <span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmsy-10x-x-109">∈ </span>(<span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">𝜀,x</span><sup><span class="cmsy-8">∗</span></sup> + <span class="cmmi-10x-x-109">𝜀</span>), the solution of the initial value problem</p>
+<div class="math-displa">
+<img src="../media/file1292.png" width="150" class="math-display" alt="( |{ x′ = f(x) |( x(0) = x0 "/>
+</div>
+<p>converges towards <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup>. (That is, lim<sub><span class="cmmi-8">t</span><span class="cmsy-8">→∞</span></sub><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> holds.)</p>
+<p>If <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> is not stable, it is called <span class="cmti-10x-x-109">unstable</span>.</p>
+</div>
+<p><span class="cmss-10x-x-109">In the case of the logistic ODE </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">x</span>(1 <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">, </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> = 1 <span class="cmss-10x-x-109">is a stable and </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> = 0 <span class="cmss-10x-x-109">is an unstable equilibrium. This makes sense given its population dynamics interpretation: the equilibrium </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> = 1 <span class="cmss-10x-x-109">means that the population is at maximum capacity. If the size is slightly above or below the capacity </span>1<span class="cmss-10x-x-109">, some specimens die due to starvation, or the colony reaches its constraints. On</span> <span id="dx1-224009"></span><span class="cmss-10x-x-109">the other hand, no matter how small the population is, it won’t ever go extinct in this ideal model.</span></p>
+<p><span class="cmss-10x-x-109">Recall how the derivatives characterize the monotonicity of differentiable functions by </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-212014r84"><span class="cmssi-10x-x-109">84</span></a><span class="cmss-10x-x-109">? With this, we have a simple tool that can help us decide whether a given equilibrium is stable or not.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-224010r90"></span> <span class="cmbx-10x-x-109">Theorem 90.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmti-10x-x-109">be a first-order homogeneous ordinary differential equation, and suppose that </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is differentiable. Moreover, let </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> <span class="cmti-10x-x-109">be an equilibrium point of the equation.</span></p>
+<p><span class="cmti-10x-x-109">If </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmti-10x-x-109">, then </span><span class="cmmi-10x-x-109">x </span><span class="cmti-10x-x-109">is a stable equilibrium.</span> </span></p>
+</div>
+<p><span class="cmss-10x-x-109">The concept of stable equilibrium is fundamental, even in the most general cases. At this point, it’s time to take a few steps backward and remind ourselves why we are here: to understand gradient descent. If stable equilibria remind you of a local minimum which a gradient descent process converges towards, it is not an accident. We are ready to see what’s behind the scenes.</span></p>
+</section>
+<section id="a-continuous-version-of-gradient-ascent" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_199"><span class="titlemark"><span class="cmss-10x-x-109">13.3.4 </span></span> <span id="x1-22500015.3.4"></span><span class="cmss-10x-x-109">A continuous version of gradient ascent</span></h3>
+<p><span class="cmss-10x-x-109">Now, let’s talk</span> <span id="dx1-225001"></span><span class="cmss-10x-x-109">about </span><span class="cmssi-10x-x-109">maximizing </span><span class="cmss-10x-x-109">a function </span><span class="cmmi-10x-x-109">F </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ</span><span class="cmss-10x-x-109">. Suppose that </span><span class="cmmi-10x-x-109">F </span><span class="cmss-10x-x-109">is twice differentiable, and we denote its derivative by </span><span class="cmmi-10x-x-109">F</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">. Luckily, the local maxima of </span><span class="cmmi-10x-x-109">F </span><span class="cmss-10x-x-109">can be found with the help of its second derivative (</span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-214004r87"><span class="cmssi-10x-x-109">87</span></a><span class="cmss-10x-x-109">) by looking for </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> <span class="cmss-10x-x-109">where </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = 0 <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">.</span> </span></p>
+<p><span class="cmss-10x-x-109">Does this look familiar? If </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = 0 <span class="cmss-10x-x-109">indeed holds, then </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x </span><span class="cmss-10x-x-109">is an equilibrium solution; and since </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">, it attracts the nearby solutions as well. This means that if </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">is drawn from the basin of attraction and </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">is the solution of the initial value problem</span> </span></p>
+
+<div style="display: flex; justify-content: space-between; align-items: center; max-width: 600px;" class="equation math-display">
+  <div class="math-display">
+    <img src="../media/file1293.png" alt="L(U,V ) = {f : U → V | f is linear}" width="150"/>
+  </div>
+  <div style="padding-left: 1em; ">
+    <!-- Label goes here, e.g. (4.2) -->(13.7)
+  </div>
+</div>
+<p><span class="cmss-10x-x-109">then</span> lim<sub><span class="cmmi-8">t</span><span class="cmsy-8">→∞</span></sub><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">. In other words, the solution converges towards </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">, a local maxima of </span><span class="cmmi-10x-x-109">F</span><span class="cmss-10x-x-109">! This is gradient ascent in a continuous version.</span></p>
+<p><span class="cmss-10x-x-109">We are happy, but there is an issue. We’ve talked about how hard solving differential equations are. For a general </span><span class="cmmi-10x-x-109">F</span><span class="cmss-10x-x-109">, we have no prospects to actually find the solutions. Fortunately, we can </span><span class="cmssi-10x-x-109">approximate </span><span class="cmss-10x-x-109">them.</span></p>
+</section>
+<section id="gradient-ascent-as-a-discretized-differential-equation" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_200"><span class="titlemark"><span class="cmss-10x-x-109">13.3.5 </span></span> <span id="x1-22600015.3.5"></span><span class="cmss-10x-x-109">Gradient ascent as a discretized differential equation</span></h3>
+<p><span class="cmss-10x-x-109">When studying differentiation in practice, we have seen that derivatives</span><span id="dx1-226001"></span> <span class="cmss-10x-x-109">can be approximated numerically by the forward difference</span></p>
+<div class="math-display">
+<img src="../media/file1294.png" class="math-display" alt="x ′(t) ≈ x(t+-h)−-x-(t), h "/>
+</div>
+<p><span class="cmss-10x-x-109">where </span><span class="cmmi-10x-x-109">h/span&gt;0 <span class="cmss-10x-x-109">is a small step size. If </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">is indeed the solution for the initial value problem (</span><a href="ch021.xhtml#a-continuous-version-of-gradient-ascent"><span class="cmss-10x-x-109">13.7</span></a><span class="cmss-10x-x-109">), we are in luck! Using forward differences, we can take a small step from </span>0 <span class="cmss-10x-x-109">and approximate </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">h</span>) <span class="cmss-10x-x-109">by substituting the forward difference into the differential equation. To be precise, we have</span> </span></p>
+<div class="math-display">
+<img src="../media/file1295.png" class="math-display" alt="x(h)−-x-(0)- h ≈ f (x (0)), "/>
+</div>
+<p><span class="cmss-10x-x-109">from which</span></p>
+<div class="math-display">
+<img src="../media/file1296.png" class="math-display" alt="x(h) ≈ x (0) + hf(x(0)) "/>
+</div>
+<p><span class="cmss-10x-x-109">follows. By defining </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub> <span class="cmss-10x-x-109">by</span></p>
+<div class="math-display">
+<img src="../media/file1297.png" class="math-display" alt="x0 := x(0), x := x + hf(x ), 1 0 0 "/>
+</div>
+<p><span class="cmss-10x-x-109">we have </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub> <span class="cmsy-10x-x-109">≈</span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">h</span>)<span class="cmss-10x-x-109">. If this looks like the first step of the gradient ascent (</span><a href="ch021.xhtml#the-gradient-descent-algorithm"><span class="cmss-10x-x-109">13.1</span></a><span class="cmss-10x-x-109">) to you, you are on the right track. Using the forward difference once again, this time from the point </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">h</span>)<span class="cmss-10x-x-109">, we obtain</span></p>
+<div class="math-display">
+<img src="../media/file1298.png" class="math-display" alt="x(2h) ≈ x(h)+ hf (x(h)) ≈ x1 + hf (x1), "/>
+</div>
+<p><span class="cmss-10x-x-109">thus by defining </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">2</span></sub> := <span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">hf</span>(<span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub>)<span class="cmss-10x-x-109">, we have </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">2</span></sub> <span class="cmsy-10x-x-109">≈</span><span class="cmmi-10x-x-109">x</span>(2<span class="cmmi-10x-x-109">h</span>)<span class="cmss-10x-x-109">. Notice that in </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">2</span></sub><span class="cmss-10x-x-109">, two kinds of approximation errors are accumulated: first the forward difference, then the approximation error of the previous step.</span></p>
+<p><span class="cmss-10x-x-109">This motivates us to define the recursive sequence</span></p>
+<div style="display: flex; justify-content: space-between; align-items: center; max-width: 600px;" class="equation math-display">
+  <div class="math-display">
+    <img src="../media/file1299.png" alt="L(U,V ) = {f : U → V | f is linear}" width="150"/>
+  </div>
+  <div style="padding-left: 1em; ">
+    <!-- Label goes here, e.g. (4.2) -->(13.8)
+  </div>
+</div>
+
+<p><span class="cmss-10x-x-109">which approximates </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">nh</span>) <span class="cmss-10x-x-109">with </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmmi-8">n</span></sub><span class="cmss-10x-x-109">, as this is implied by the very definition. This recursive sequence is the gradient ascent itself, and the small step </span><span class="cmmi-10x-x-109">h </span><span class="cmss-10x-x-109">is the learning rate!</span></p>
+<p><span class="cmss-10x-x-109">Check (</span><a href="ch021.xhtml#the-gradient-descent-algorithm"><span class="cmss-10x-x-109">13.1</span></a><span class="cmss-10x-x-109">) if you don’t believe me. (</span><a href="ch021.xhtml#gradient-ascent-as-a-discretized-differential-equation"><span class="cmss-10x-x-109">13.8</span></a><span class="cmss-10x-x-109">) is called the Euler method.</span></p>
+<p><span class="cmss-10x-x-109">Without going into the details, if </span><span class="cmmi-10x-x-109">h </span><span class="cmss-10x-x-109">is small enough and </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">“behaves properly,” the Euler method will converge to the equilibrium solution </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">. (Whatever proper behavior might mean.)</span></p>
+<p><span class="cmss-10x-x-109">We only have one more step: to turn everything into gradient </span><span class="cmssi-10x-x-109">descent </span><span class="cmss-10x-x-109">instead of ascent. This is extremely simple, as gradient</span><span id="dx1-226002"></span> <span class="cmss-10x-x-109">descent is just applying gradient ascent to </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">. Think about it: minimizing a function </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is the same as maximizing its negative </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">. And with that, we are done! The famous gradient descent is a consequence of dynamical systems converging towards their stable equilibria, and this is beautiful.</span></p>
+</section>
+<section id="gradient-ascent-in-action" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_201"><span class="titlemark"><span class="cmss-10x-x-109">13.3.6 </span></span> <span id="x1-22700015.3.6"></span><span class="cmss-10x-x-109">Gradient ascent in action</span></h3>
+<p><span class="cmss-10x-x-109">To see</span> <span id="dx1-227001"></span><span class="cmss-10x-x-109">gradient ascent (that is, the Euler method) in action, we should go back to our good old example: the logistic equation (</span><a href="#"><span class="cmss-10x-x-109">13.5</span></a><span class="cmss-10x-x-109">). So, suppose that we want to find the local maxima of the function</span></p>
+<div class="math-display">
+<img src="../media/file1300.png" class="math-display" alt=" 1 1 F (x) = -x2 − -x3, 2 3 "/>
+</div>
+<p><span class="cmss-10x-x-109">plotted in </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.18</span></a><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file1301.png" width="456" alt="PIC"/> <span id="x1-227002r18"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.18: The graph of </span><span class="cmmi-10x-x-109">F</span>(<span class="cmmi-10x-x-109">x</span>) = <img src="../media/file1302.png" width="8" data-align="middle" alt="12"/><span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup> <span class="cmsy-10x-x-109">−</span><img src="../media/file1303.png" width="8" data-align="middle" alt="13"/><span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">3</span></sup> </span>
+</div>
+<p><span class="cmss-10x-x-109">First, we can use what we learned and find the maxima using the derivative </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">F</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span>(1 <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span>)<span class="cmss-10x-x-109">, concluding that there is a local maximum at </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> = 1<span class="cmss-10x-x-109">. (Don’t just take my word for it, check out </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-214004r87"><span class="cmssi-10x-x-109">87</span></a> <span class="cmss-10x-x-109">and work it out!)</span></p>
+<p><span class="cmss-10x-x-109">Since </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">F</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>) = 0 <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">, the point </span><span class="cmmi-10x-x-109">x </span><span class="cmss-10x-x-109">is a stable equilibrium of the logistic equation</span> </span></p>
+<div class="math-display">
+<img src="../media/file1304.png" class="math-display" alt="x′ = x(1 − x). "/>
+</div>
+<p><span class="cmss-10x-x-109">Thus, if the initial value </span><span class="cmmi-10x-x-109">x</span>(0) = <span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">is sufficiently close to </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup> = 1<span class="cmss-10x-x-109">, the solution </span><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) <span class="cmss-10x-x-109">of the initial value problem</span></p>
+<div class="math-display">
+<img src="../media/file1305.png" class="math-display" alt="( ||| x′ = x(1− x), |{ x(0) = x0, |||| ( "/>
+</div>
+<p><span class="cmss-10x-x-109">then</span> lim<sub><span class="cmmi-8">t</span><span class="cmsy-8">→∞</span></sub><span class="cmmi-10x-x-109">x</span>(<span class="cmmi-10x-x-109">t</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">∗</span></sup><span class="cmss-10x-x-109">. (In fact, we can select any initial value </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">from the infinite interval </span>(0<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">∞</span>)<span class="cmss-10x-x-109">, and the</span> <span id="dx1-227003"></span><span class="cmss-10x-x-109">convergence will hold). Upon discretization via the Euler method, we obtain the recursive sequence</span></p>
+<div class="math-display">
+<img src="../media/file1306.png" class="math-display" alt=" x0 = x (0), xn+1 = xn + hxn (1− xn). "/>
+</div>
+<p><span class="cmss-10x-x-109">This process is visualized by </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.19</span></a><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file1307.png" width="369" alt="PIC"/> <span id="x1-227004r19"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.19: Solving </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">x</span>(1 <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">via the Euler method. (For visualization purposes, the initial value was set at </span><span class="cmmi-10x-x-109">t</span><sub><span class="cmr-8">0</span></sub> = <span class="cmsy-10x-x-109">−</span>5<span class="cmss-10x-x-109">.)</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">We can even take the discrete solution provided by the Euler method, and plot it on the </span><span class="cmmi-10x-x-109">x </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">F</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">plane.</span></p>
+<div class="minipage">
+<p><img src="../media/file1308.png" width="484" alt="PIC"/> <span id="x1-227005r20"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 13.20: Mapping the Euler method on the </span><span class="cmmi-10x-x-109">x</span><span class="cmss-10x-x-109">, </span><span class="cmmi-10x-x-109">F</span>(<span class="cmmi-10x-x-109">x</span>) <span class="cmss-10x-x-109">plane</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">If you check </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">13.20</span></a> <span class="cmss-10x-x-109">out, you can see</span> <span id="dx1-227006"></span><span class="cmss-10x-x-109">that this is the gradient ascent for </span><span class="cmmi-10x-x-109">F</span><span class="cmss-10x-x-109">! If you consider that </span><span class="cmmi-10x-x-109">F</span><sup><span class="cmsy-8">′</span></sup> = <span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">and consider that the solution given by the Euler method is</span></p>
+
+<div style="display: flex; justify-content: space-between; align-items: center; max-width: 600px;" class="equation math-display">
+  <div class="math-display">
+    <img src="../media/file1309.png" alt="L(U,V ) = {f : U → V | f is linear}" width="150"/>
+  </div>
+  <div style="padding-left: 1em; ">
+    <!-- Label goes here, e.g. (4.2) -->(13.9)
+  </div>
+</div>
+<p><span class="cmss-10x-x-109">you can notice that (</span><a href="ch021.xhtml"><span class="cmss-10x-x-109">13.9</span></a><span class="cmss-10x-x-109">) is exactly how we defined gradient ascent.</span></p>
+</section>
+</section>
+<section id="summary12" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_202"><span class="titlemark"><span class="cmss-10x-x-109">13.4 </span></span> <span id="x1-22800015.4"></span><span class="cmss-10x-x-109">Summary</span></h2>
+<p><span class="cmss-10x-x-109">Finally, we’ve done it. Until this chapter, we haven’t been that close to machine learning, but now, we are right at the heart of it. Gradient descent is the number one algorithm to train neural networks. Yes, even state-of-the-art ones.</span></p>
+<p><span class="cmss-10x-x-109">It all starts with calculus. To reach the heights of gradient descent, we studied the relations between monotonicity, local extrema, and the derivative. The pattern is simple: if </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is </span><span class="cmssi-10x-x-109">increasing</span><span class="cmss-10x-x-109">, but if </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is </span><span class="cmssi-10x-x-109">decreasing </span><span class="cmss-10x-x-109">around </span><span class="cmmi-10x-x-109">a</span><span class="cmss-10x-x-109">. Speaking in terms of physics, if the speed is positive, the object is moving away, but if the speed is negative, the object is coming closer.</span> </span></span></p>
+<p><span class="cmss-10x-x-109">Based on this observation, we can deduce necessary and sufficient conditions to find local minima and maxima: if </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0</p>
+<ul>
+<li><span class="cmss-10x-x-109">and if </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">a </span><span class="cmss-10x-x-109">is a </span><span class="cmssi-10x-x-109">local minimum</span><span class="cmss-10x-x-109">,</span> </span></li>
+<li><span class="cmss-10x-x-109">but if </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">a </span><span class="cmss-10x-x-109">is a </span><span class="cmssi-10x-x-109">local maximum</span><span class="cmss-10x-x-109">.</span></span></li>
+</ul>
+<p><span class="cmss-10x-x-109">So, finding the local extrema should be as simple as solving </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0<span class="cmss-10x-x-109">, right? In theory, no, because the case </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmss-10x-x-109">is undetermined. In practice, still no, because even finding </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup> <span class="cmss-10x-x-109">is hard for complex </span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">-s, let alone solving </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">x</span>) = 0<span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">However, there’s a way. We can take an iterative approach with gradient descent: if the learning rate </span><span class="cmmi-10x-x-109">h </span><span class="cmss-10x-x-109">and starting point </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">are selected appropriately, the recursive sequence defined by</span></p>
+<div class="math-display">
+<img src="../media/file1310.png" class="math-display" alt="xn+1 = xn − hf′(xn ) "/>
+</div>
+<p><span class="cmss-10x-x-109">converges to a local minimum.</span></p>
+<p><span class="cmss-10x-x-109">As always, when one problem is solved, a dozen others are created. For example, the gradient descent can fail to converge or get stuck in the local minimum instead of finding the global one. But that’s the least of our problems. The real issue is that we have to optimize functions of multiple variables in practice, often in the range of billions of parameters.</span></p>
+<p><span class="cmss-10x-x-109">Before we move on to the study of multivariable calculus, there’s one more topic to go. I’ve hinted at </span><span class="cmssi-10x-x-109">integration</span><span class="cmss-10x-x-109">, the mysterious “inverse differentiation” a couple of times. It’s time to see what it is and why it is indispensable to study advanced mathematics.</span></p>
+</section>
+<section id="problems12" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_203"><span class="titlemark"><span class="cmss-10x-x-109">13.5 </span></span> <span id="x1-22900015.5"></span><span class="cmss-10x-x-109">Problems</span></h2>
+<p><span class="cmssbx-10x-x-109">Problem 1. </span><span class="cmss-10x-x-109">Find the local minima and maxima of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = sin<span class="cmmi-10x-x-109">x</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 2. </span><span class="cmss-10x-x-109">Use the second derivative test to find the local minima and maxima of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = 2<span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">3</span></sup> + 5<span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup> + 4<span class="cmmi-10x-x-109">x </span>+ 6<span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 3. </span><span class="cmss-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">be a differentiable function. The recursive sequence defined by</span></p>
+<div class="math-display">
+<img src="../media/file1311.png" class="math-display" alt="δn+1 = αδn − hf′(xn), xn+1 = xn + δn, "/>
+</div>
+<p><span class="cmss-10x-x-109">where </span><span class="cmmi-10x-x-109">δ</span><sub><span class="cmr-8">0</span></sub> = 0 <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">is arbitrary, is called </span><span class="cmssi-10x-x-109">gradient descent with momentum</span><span class="cmss-10x-x-109">. Implement it!</span></p>
+</section>
+<section id="join-our-community-on-discord13" class="level3 likesectionHead">
+<h2 class="likesectionHead sigil_not_in_toc" id="sigil_toc_id_204"><span id="x1-230000"></span><span class="cmss-10x-x-109">Join our community on Discord</span></h2>
+<p><span class="cmss-10x-x-109">Read this book alongside other users, Machine Learning experts, and the author himself. Ask questions, provide solutions to other readers, chat with the author via Ask Me Anything sessions, and much more. Scan the QR code or visit the link to join the community.</span> <a href="https://packt.link/math" class="url"><span class="cmtt-10x-x-109">https://packt.link/math</span></a></p>
+<p><img src="../media/file1.png" width="85" alt="PIC"/></p>
+</section>
+</section>
+</body>
+</html>

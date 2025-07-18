@@ -1,0 +1,426 @@
+<html><head></head><body>
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer108">
+			<h1 id="_idParaDest-108" class="chapter-number"><a id="_idTextAnchor108"/>7</h1>
+			<h1 id="_idParaDest-109"><a id="_idTextAnchor109"/>Model Deployment Approaches</h1>
+			<p>In the previous chapter, we looked at how we can utilize Databricks MLflow Model Registry to manage our ML model versioning and life cycle. We also learned how we could use the integrated access control to manage access to the models registered in Model Registry. We also understood how we could use the available webhook support with Model Registry to trigger automatic Slack notifications or jobs to validate the registered model in <span class="No-Break">the registry.</span></p>
+			<p>In this chapter, we will take the registered models from Model Registry and understand how to deploy them using the various model deployment options available <span class="No-Break">in Databricks.</span></p>
+			<p>We will cover the <span class="No-Break">following topics:</span></p>
+			<ul>
+				<li>Understanding ML deployments <span class="No-Break">and paradigms</span></li>
+				<li>Deploying ML models for batch and <span class="No-Break">streaming inference</span></li>
+				<li>Deploying ML models for <span class="No-Break">real-time inference</span></li>
+				<li>Incorporating custom Python libraries into MLflow models for <span class="No-Break">Databricks deployment</span></li>
+				<li>Deploying custom models with MLflow and <span class="No-Break">Model Serving</span></li>
+				<li>Packaging dependencies with <span class="No-Break">MLflow models</span></li>
+			</ul>
+			<p>Let’s go through the technical requirements for <span class="No-Break">this chapter.</span></p>
+			<h1 id="_idParaDest-110"><a id="_idTextAnchor110"/>Technical requirements</h1>
+			<p>We’ll need the following before diving into <span class="No-Break">this chapter:</span></p>
+			<ul>
+				<li>Access to a <span class="No-Break">Databricks workspace</span></li>
+				<li>A running cluster with <strong class="bold">Databricks Runtime for Machine Learning</strong> (<strong class="bold">Databricks Runtime ML</strong>) with a version of 13 <span class="No-Break">or above</span></li>
+				<li>All the previous notebooks, executed <span class="No-Break">as described</span></li>
+				<li>A basic knowledge of Apache Spark, including DataFrames <span class="No-Break">and SparkUDF</span></li>
+			</ul>
+			<p>Let’s take a look at what exactly ML <span class="No-Break">deployment is.</span></p>
+			<h1 id="_idParaDest-111"><a id="_idTextAnchor111"/>Understanding ML deployments and paradigms</h1>
+			<p><strong class="bold">Data science</strong> is not the same as <strong class="bold">data engineering</strong>. Data science is more geared toward<a id="_idIndexMarker428"/> taking a business problem<a id="_idIndexMarker429"/> that we convert into data problems<a id="_idIndexMarker430"/> using scientific methods. We develop mathematical models and then optimize their performance. Data engineers are mainly concerned with the reliability of the data in the data lake. They are more focused on the tools to make the data pipelines<a id="_idIndexMarker431"/> scalable and maintainable while meeting the <strong class="bold">service-level </strong><span class="No-Break"><strong class="bold">agreements</strong></span><span class="No-Break"> (</span><span class="No-Break"><strong class="bold">SLAs</strong></span><span class="No-Break">).</span></p>
+			<p>When we talk about ML deployments, we want to bridge the gap between data science and <span class="No-Break">data engineering.</span></p>
+			<p>The following figure visualizes the entire process<a id="_idIndexMarker432"/> of <span class="No-Break">ML deployment:</span></p>
+			<div>
+				<div id="_idContainer093" class="IMG---Figure">
+					<img src="image/B17875_07_01.jpg" alt="Figure 7.1 – Displaying the ML deployment process" width="989" height="598"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.1 – Displaying the ML deployment process</p>
+			<p>On the right-hand side, we have the process<a id="_idIndexMarker433"/> of data science, which is very interactive and iterative. We understand the business problem and discover the datasets that can add value to our analysis. Then, we build data pipelines to wrangle the data and analyze it. We develop our models, and the <span class="No-Break">chain continues.</span></p>
+			<p>The left-hand side of this diagram showcases the integration of the best practices from the software development world into the data science world. It’s mostly automated. Once our candidate model is ready, we do <span class="No-Break">the following:</span></p>
+			<ol>
+				<li>First, we register it with the <span class="No-Break">Model Registry.</span></li>
+				<li>Next, we integrate the model with <span class="No-Break">our applications.</span></li>
+				<li>Then, we test the integrated model with <span class="No-Break">our application.</span></li>
+				<li>Finally, we deploy it to production, where we monitor the model’s performance and <span class="No-Break">improve it.</span></li>
+			</ol>
+			<p>Some of these processes<a id="_idIndexMarker434"/> may look very similar to DevOps, but there are some critical differences between <strong class="bold">DevOps</strong> <span class="No-Break">and </span><span class="No-Break"><strong class="bold">ModelOps</strong></span><span class="No-Break">.</span></p>
+			<p>DevOps, in essence, combines<a id="_idIndexMarker435"/> software development<a id="_idIndexMarker436"/> and IT operations such as <strong class="bold">continuous integration</strong> (<strong class="bold">CI</strong>), <strong class="bold">continuous deployment</strong> (<strong class="bold">CD</strong>), updating or rolling back<a id="_idIndexMarker437"/> features, and pushing <span class="No-Break">a patch.</span></p>
+			<p>ModelOps combines the principles<a id="_idIndexMarker438"/> of DevOps, such as CI/CD, with specific requirements tailored to the world of ML. It introduces the need for continuous training and monitoring of <span class="No-Break">ML models.</span></p>
+			<p>Continuous training is a vital aspect of ModelOps. Unlike traditional software, where once a module is deployed, it rarely changes, ML models require ongoing updates. With the influx of new data, models must be periodically retrained to ensure their accuracy and relevance. This means that even if the core model code remains unchanged, the model itself evolves to adapt to the changing <span class="No-Break">data landscape.</span></p>
+			<p>Continuous monitoring in ModelOps encompasses two key areas: model performance monitoring and infrastructure monitoring. Model performance monitoring involves tracking how well the model is performing in real-world scenarios. This includes metrics such as accuracy, precision, and recall, among others. Infrastructure monitoring, on the other hand, focuses on the health and performance of the computing infrastructure supporting the model. This dual monitoring approach ensures that both the model and the underlying systems are <span class="No-Break">operating optimally.</span></p>
+			<p>This approach differs from traditional software engineering, where once a software module is tested and deployed to production, it typically remains stable without the need for continuous monitoring and adaptation. In ModelOps, the ever-evolving nature of data and the importance of maintaining model performance make continuous training and monitoring integral components of <span class="No-Break">the process.</span></p>
+			<p>In the initial days of MLOps, most companies used Java and custom-built in-house tools for managing ML deployments, continuous training, and monitoring. However, today, most of the tools and frameworks have become open source, and we have seen Python is the de facto standard when implementing the entire model development life cycle <span class="No-Break">in production.</span></p>
+			<p>Let’s take a look at the most<a id="_idIndexMarker439"/> common ML deployment paradigms. Most ML use cases can be categorized into <span class="No-Break">four buckets:</span></p>
+			<ul>
+				<li><strong class="bold">Batch deployments</strong> (run ad hoc or at a <span class="No-Break">scheduled time):</span><ul><li>These are the most<a id="_idIndexMarker440"/> common deployments and are relatively easy to implement and are most efficient in terms of cost and <span class="No-Break">productionization effort.</span></li><li>Models make predictions that are stored in fast-access data repositories such as DynamoDB, Cassandra, Cosmos DB, or Delta tables within data lakehouses. These storage solutions are chosen for their efficiency in serving predictions. However, it’s important to note that these choices are tailored to use cases with low-latency retrieval requirements, and batch use cases with less stringent retrieval time constraints may have different considerations. Additionally, Databricks SQL offers a serverless, high-performance data warehousing solution that seamlessly integrates with data lakehouses, simplifying data management and analytics for enhanced productivity and reliability in leveraging predictive models. It’s worth mentioning that Delta tables also incorporate write optimizations, ensuring efficient data storage <span class="No-Break">and processing.</span></li></ul></li>
+				<li><strong class="bold">Streaming deployments</strong> (run continuously on <span class="No-Break">the data):</span><ul><li>These deployments become essential<a id="_idIndexMarker441"/> when you don’t have access to your entire dataset before the inference starts, and you need to process new data relatively quickly as soon as <span class="No-Break">it arrives.</span></li><li>Spark Structured Streaming is excellent for processing streaming data. It also has an inbuilt queuing mechanism, making it very useful when processing extensive <span class="No-Break">image data.</span></li></ul></li>
+				<li><strong class="bold">Real time</strong> (<span class="No-Break">REST endpoint):</span><ul><li>These deployments<a id="_idIndexMarker442"/> become important when the use cases require near real-time requests and responses from a model deployed as part of <span class="No-Break">an application.</span></li><li>At the time of writing this book, Databricks boasts a production-grade model serving offering that’s seamlessly integrated into its platform. This offering harnesses the power of serverless computing for optimal performance. Although delving into exhaustive details about the multitude of deployment architectures is not within the purview of this book, you can access comprehensive information<a id="_idIndexMarker443"/> on this subject in the Databricks documentation (<a href="https://docs.databricks.com/en/serverless-compute/index.html">https://docs.databricks.com/en/serverless-compute/index.html</a>). Alternatively, you can seamlessly deploy your ML models as REST endpoints following their development and testing phases on Databricks with various cloud services such as Azure ML (leveraging Azure Kubernetes Service), AWS Sagemaker, and Google Vertex AI. The ML model is packaged into a container image and subsequently registered with the managed services offered by the respective <span class="No-Break">cloud providers.</span></li><li>You can also use your own Kubernetes clusters for model deployments using the <span class="No-Break">same paradigm.</span></li></ul></li>
+				<li><span class="No-Break"><strong class="bold">On-device</strong></span><span class="No-Break"> (edge):</span><ul><li>These are very specific<a id="_idIndexMarker444"/> use cases in which we want to deploy models on devices such as Raspberry Pis or other IoT use cases. We will not be covering these in <span class="No-Break">this chapter.</span></li></ul></li>
+			</ul>
+			<p>As a best practice, it’s advisable to initially consider batch deployment as your go-to ML deployment paradigm. Transition to alternative paradigms only after thoroughly validating that batch deployment is inadequate for your specific use case. Keep in mind that the long-term maintenance costs associated with a real-time ML deployment system are generally higher than those for a <span class="No-Break">batch system.</span></p>
+			<p>It’s also crucial to factor in response latency requirements when selecting the most appropriate<a id="_idIndexMarker445"/> ML <span class="No-Break">deployment paradigm:</span></p>
+			<ul>
+				<li><strong class="bold">Batch deployment</strong>: Ideally suited for scenarios where the expected response time for inference ranges<a id="_idIndexMarker446"/> from hours <span class="No-Break">to days:</span><ul><li><strong class="bold">Use case recommendation</strong>: This is particularly useful for data analytics and reporting tasks that are not time-sensitive, such as generating monthly sales forecasts or <span class="No-Break">risk assessments.</span></li></ul></li>
+				<li><strong class="bold">Structured streaming deployment</strong>: Optimal for use cases requiring inference on new data <a id="_idIndexMarker447"/>within a time frame of a few minutes up to <span class="No-Break">an hour:</span><ul><li><strong class="bold">Use case recommendation</strong>: Real-time analytics or fraud detection systems often benefit from this deployment type, where the data stream needs to be analyzed continuously but an instant response is <span class="No-Break">not critical.</span></li></ul></li>
+				<li><strong class="bold">Near real-time or REST endpoint deployments</strong>: These are suitable when the expected latency lies between hundreds of milliseconds to <span class="No-Break">a minute:</span><ul><li><strong class="bold">Use case recommendation</strong>: This deployment paradigm is best suited for applications such as real-time<a id="_idIndexMarker448"/> recommendation systems or automated customer service bots, which require fairly quick responses but not <span class="No-Break">immediate action.</span></li></ul></li>
+				<li><strong class="bold">Edge deployments</strong>: These are geared toward scenarios<a id="_idIndexMarker449"/> demanding sub-100 <span class="No-Break">ms SLAs:</span><ul><li><strong class="bold">Use case recommendation</strong>: This is crucial for <strong class="bold">Internet of Things</strong> (<strong class="bold">IoT</strong>) applications, autonomous vehicles, or any use case that requires lightning-fast <span class="No-Break">decision-making capabilities.</span></li></ul></li>
+			</ul>
+			<p>There are just<a id="_idIndexMarker450"/> broad guidelines. The following figure summarizes all the points we <span class="No-Break">discussed here:</span></p>
+			<div>
+				<div id="_idContainer094" class="IMG---Figure">
+					<img src="image/B17875_07_02.jpg" alt="Figure 7.2 – The response latency requirements for various ML deployments" width="794" height="171"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.2 – The response latency requirements for various ML deployments</p>
+			<p>Now, let’s look at the various deployment options when using Databricks. Apart from the deployment approaches discussed here, some open source projects may interest you for serving models as REST. The links to these can be found in the <em class="italic">Further reading</em> section at the end of <span class="No-Break">this chapter.</span></p>
+			<h1 id="_idParaDest-112"><a id="_idTextAnchor112"/>Deploying ML models for batch and streaming inference</h1>
+			<p>This section will cover examples<a id="_idIndexMarker451"/> of deploying ML models in a batch<a id="_idIndexMarker452"/> and streaming manner <span class="No-Break">using Databricks.</span></p>
+			<p>In both <strong class="bold">batch</strong> and <strong class="bold">streaming</strong> inference deployments, we use the model to make the predictions and then store<a id="_idIndexMarker453"/> them at a location for later use. The final storage<a id="_idIndexMarker454"/> area for the prediction results can be a database with low latency read access, cloud storage such as S3 to be exported to another system, or even a Delta table that can easily be queried by <span class="No-Break">business analysts.</span></p>
+			<p>When working with large amounts of data, Spark offers an efficient framework for processing and analyzing it, making it an ideal candidate to leverage our trained machine <span class="No-Break">learning models.</span></p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">One important note to remember is that we can use any non-distributed ML library to train our models. So long as it uses the MLflow model abstractions, you can utilize all the benefits of MLflow’s Model Registry and the code presented in <span class="No-Break">this chapter.</span></p>
+			<p>We should always consider the access pattern of the results generated by the model. Depending on where we store our prediction results, we can perform the <span class="No-Break">following optimizations:</span></p>
+			<ul>
+				<li>Partitioning, which can speed up data reads if your data is stored as static files or in a <span class="No-Break">data warehouse</span></li>
+				<li>Building indexes in databases on the relevant query, which generally <span class="No-Break">improves performance</span></li>
+			</ul>
+			<p>Let’s look<a id="_idIndexMarker455"/> at an example<a id="_idIndexMarker456"/> of how to perform<a id="_idIndexMarker457"/> batch and stream<a id="_idIndexMarker458"/> inference deployment using the <span class="No-Break">Databricks environment.</span></p>
+			<h2 id="_idParaDest-113"><a id="_idTextAnchor113"/>Batch inference on Databricks</h2>
+			<p>Batch inference is the most <a id="_idIndexMarker459"/>common type of model deployment<a id="_idIndexMarker460"/> paradigm. Running inference in batch infers running predictions using a model and storing them for <span class="No-Break">later use.</span></p>
+			<p>For this, we will use the model available to us in MLflow’s Model Registry. We must ensure that we have at least one model version in staging for the notebook provided as part of this chapter to <span class="No-Break">execute it:</span></p>
+			<ol>
+				<li>Go into the <strong class="bold">Models</strong> tab and select the <strong class="bold">Churn Prediction Bank</strong> registered model. There should be a model version that is in the <span class="No-Break"><strong class="bold">Staging</strong></span><span class="No-Break"> state:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer095" class="IMG---Figure">
+					<img src="image/B17875_07_003.jpg" alt="Figure 7.3 – The registered model in the Staging stage of Model Registry" width="627" height="459"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.3 – The registered model in the Staging stage of Model Registry</p>
+			<ol>
+				<li value="2">Open the notebook<a id="_idIndexMarker461"/> associated with <strong class="source-inline">Chapter-07</strong> named <em class="italic">Batch and Streaming</em>. We will simply load the model<a id="_idIndexMarker462"/> from the registry as a Python function, as shown in the following <span class="No-Break">code block:</span><pre class="source-code">
+import mlflow# the name of the model in the registryregistry_model_name = "Churn Prediction Bank"# get the latest version of the model in staging and load it as a spark_udf.# MLflow easily produces a Spark user defined function (UDF).  This bridges the gap between Python environments and applying models at scale using Spark.model = mlflow.pyfunc.spark_udf(spark, model_uri = f"models:/{registry_model_name}/staging")</pre></li>				<li>The rest of the notebook reads the same <strong class="source-inline">raw_data</strong> that we used to train our model in a Spark DataFrame and then after selecting the columns that we used to train our classification model <span class="No-Break">using AutoML:</span><pre class="source-code">
+spark_df = spark.table("bank_churn_analysis.raw_Data")display(spark_df)exclude_colums = {'RowNumber', "CustomerId", "Surname", "Exited"}input_columns = [col for col in spark_df.columns if col not in exclude_colums]input_columns# passing non label columns to the model as inputprediction_df = spark_df.withColumn("prediction", model(*input_columns))display(prediction_df)</pre></li>			</ol>
+			<p>Let’s take a look at how we can utilize the same model loaded as a Spark UDF in a streaming <span class="No-Break">inference deployment.</span></p>
+			<p>We won’t get into the details about how Structured Streaming in Spark works in this chapter as it is a large topic in itself. <em class="italic">Spark: The Definitive Guide: Big Data Processing Made Simple</em> is a great book for learning in-depth about Apache Spark and Structured Streaming. A streaming DataFrame can be conceptualized as an unbounded table that continuously updates<a id="_idIndexMarker463"/> as new data arrives. Links have been provided<a id="_idIndexMarker464"/> in the <em class="italic">Further reading</em> section to different resources for you to learn more about <span class="No-Break">Structured Streaming.</span></p>
+			<h2 id="_idParaDest-114"><a id="_idTextAnchor114"/>Streaming inference on Databricks</h2>
+			<p>Let’s look at the sample code<a id="_idIndexMarker465"/> to demonstrate how you can deploy<a id="_idIndexMarker466"/> the model we used in the previous section to perform <span class="No-Break">streaming inference:</span></p>
+			<ol>
+				<li>In <strong class="source-inline">Cmd 15</strong>, we must define <strong class="source-inline">raw_data</strong> from the Delta table to be read as a stream instead of <span class="No-Break">a batch:</span><pre class="source-code">
+# right now we are just defining a streaming data source but this statement will not execute until we call an Spark action. Another way to exclude the columns that are not needed is by dropping them from the DataFrame.raw_streaming_df = spark.readStream.format("delta").option("ignoreChanges", "true").table("bank_churn_analysis.raw_Data").drop(*("RowNumber", "CustomerId", "Surname", "Exited"))</pre><p class="list-inset">The rest of the flow will look similar to <span class="No-Break">batch inference.</span></p></li>				<li>Once we have defined our streaming Dataframe, we call upon the same model that we loaded from the model registry that is available in the <span class="No-Break">staging environment:</span><pre class="source-code">
+predictions_df = raw_streaming_df.withColumn("prediction", model(*raw_streaming_df.columns))display(predictions_df, streamName=stream_name)</pre><p class="list-inset">Once we have predictions ready, we can write the data out as a Delta table or format that is efficient for our <span class="No-Break">use case.</span></p></li>			</ol>
+			<p>Now, let’s take<a id="_idIndexMarker467"/> a look at how easy it is to use the same model<a id="_idIndexMarker468"/> if we want to perform <span class="No-Break">real-time inference.</span></p>
+			<h1 id="_idParaDest-115"><a id="_idTextAnchor115"/>Deploying ML models for real-time inference</h1>
+			<p>Real-time inferences include generating<a id="_idIndexMarker469"/> predictions on a small number<a id="_idIndexMarker470"/> of records using a model deployed as a REST endpoint. The expectation is to receive the predictions in a <span class="No-Break">few milliseconds.</span></p>
+			<p>Real-time deployments are needed in use cases when the features are only available when serving the model and cannot be pre-computed. These deployments are more complex to manage than batch or <span class="No-Break">streaming deployments.</span></p>
+			<p>Databricks offers integrated model serving endpoints, enabling you to prototype, develop, and deploy real-time inference models on production-grade, fully managed infrastructure within the Databricks environment. At the time of writing this book, there are two additional methods you can utilize to deploy your models for <span class="No-Break">real-time inference:</span></p>
+			<ul>
+				<li>Managed solutions provided by the following <span class="No-Break">cloud providers:</span><ul><li><span class="No-Break"><strong class="bold">Azure ML</strong></span></li><li><span class="No-Break"><strong class="bold">AWS SageMaker</strong></span></li><li><span class="No-Break"><strong class="bold">GCP VertexAI</strong></span></li></ul></li>
+				<li>Custom solutions<a id="_idIndexMarker471"/> that use Docker and Kubernetes<a id="_idIndexMarker472"/> or a similar set <span class="No-Break">of technologies</span></li>
+			</ul>
+			<p>If you’re considering a robust solution for deploying and managing ML models in a production setting, Databricks Model Serving offers<a id="_idIndexMarker473"/> a host of <span class="No-Break">compelling features:</span></p>
+			<ul>
+				<li><strong class="bold">Effortless endpoint creation</strong>: With just a click, Databricks takes care of setting up a fully equipped environment suitable for your model, complete with options for <span class="No-Break">serverless computing.</span></li>
+				<li><strong class="bold">Adaptive scalability and reliability</strong>: Built for the rigors of production, Databricks Model Serving is engineered to manage a high throughput of over 25,000 queries every second. The service dynamically scales to meet fluctuating demand and even allows the accommodation of multiple models on a single <span class="No-Break">access point.</span></li>
+				<li><strong class="bold">Robust security measures</strong>: Every deployed model operates within a secure digital perimeter and is allocated dedicated computing resources that are decommissioned once the model is no longer <span class="No-Break">in use.</span></li>
+				<li><strong class="bold">Smooth integration with MLflow</strong>: The platform easily hooks into MLflow’s Model Registry, streamlining the deployment process of your <span class="No-Break">ML models.</span></li>
+				<li><strong class="bold">Comprehensive monitoring and debugging</strong>: Databricks captures all request and response interactions in a specialized Delta table, facilitating real-time monitoring. Metrics such as query speed, latency, and error metrics are updated dynamically and are exportable to your choice of <span class="No-Break">monitoring solution.</span></li>
+				<li><strong class="bold">Real-time feature incorporation</strong>: If you’ve trained your model using Databricks’ Feature Store, those features are seamlessly bundled with the model. Furthermore, these<a id="_idIndexMarker474"/> can be updated in real time if you’ve configured your online <span class="No-Break">feature store.</span></li>
+			</ul>
+			<p>Let’s understand<a id="_idIndexMarker475"/> some of the important technical details<a id="_idIndexMarker476"/> around the model serving endpoint feature grouped into <span class="No-Break">various categories.</span></p>
+			<h2 id="_idParaDest-116"><a id="_idTextAnchor116"/>In-depth analysis of the constraints and capabilities of Databricks Model Serving</h2>
+			<p>In this section, we will provide<a id="_idIndexMarker477"/> a comprehensive overview of the key technical aspects surrounding the use of Databricks Model Serving. From the payload size and query throughput limitations to latency and concurrency metrics, this section aims to equip you with essential insights that will guide your utilization of Databricks Model Serving effectively. Additionally, we will delve into system resource allocation details and discuss compliance and regional limitations that may impact your operations. Finally, we will touch upon miscellaneous factors and operational insights that could influence your decision-making when deploying ML models on <span class="No-Break">this platform.</span></p>
+			<ul>
+				<li><strong class="bold">Payload constraints and </strong><span class="No-Break"><strong class="bold">query throughput</strong></span><span class="No-Break">:</span><ul><li><strong class="bold">Payload size</strong>: It’s worth noting that the payload size for each request is capped at 16 MB. For most standard use cases, this is sufficient, but for more complex models, optimizations may <span class="No-Break">be required.</span></li><li><strong class="bold">Queries per second</strong> (<strong class="bold">QPS</strong>): The system comes with a default limit of 200 QPS per workspace. Although adequate for experimentation and low-traffic services, this can be scaled up to 25,000 QPS for high-demand scenarios by consulting <span class="No-Break">Databricks support.</span></li></ul></li>
+				<li><strong class="bold">Latency and </strong><span class="No-Break"><strong class="bold">concurrency metrics</strong></span><span class="No-Break">:</span><ul><li><strong class="bold">Evaluation latency</strong>: Those of us who work with computationally intensive models need to be mindful that Databricks imposes a 120-second upper limit for <span class="No-Break">evaluation latency.</span></li><li><strong class="bold">Concurrent requests</strong>: Concurrency is capped at 200 queries per second across all serving endpoints in a workspace.. While this is often more than adequate, custom adjustments can be made through Databricks support for <span class="No-Break">higher-demand services.</span></li></ul></li>
+				<li><strong class="bold">System resources </strong><span class="No-Break"><strong class="bold">and overhead</strong></span><span class="No-Break">:</span><ul><li><strong class="bold">Memory</strong>: The environment allocates a default of 4 GB per model. This is generally sufficient for most traditional ML models, but deep learning models may require an extension of up to <span class="No-Break">16 GB.</span></li><li><strong class="bold">Latency overhead</strong>: The architecture aims for a sub-50 ms additional latency, which is a best-effort approximation rather than <span class="No-Break">a guarantee.</span></li></ul></li>
+				<li><strong class="bold">Compliance and </strong><span class="No-Break"><strong class="bold">regional restrictions</strong></span><span class="No-Break">:</span><ul><li><strong class="bold">HIPAA compliance</strong>: For those in the healthcare domain, it’s critical to note that Databricks Model Serving<a id="_idIndexMarker478"/> isn’t currently <span class="No-Break">HIPAA compliant.</span></li><li><strong class="bold">Regional limitations</strong>: There are instances where workspace location can disrupt Model Serving capabilities. This is an essential factor to consider during the planning<a id="_idIndexMarker479"/> stage. For a list of supported regions, go <span class="No-Break">to </span><a href="https://docs.databricks.com/en/resources/supported-regions.html"><span class="No-Break">https://docs.databricks.com/en/resources/supported-regions.html</span></a><span class="No-Break">.</span></li></ul></li>
+				<li><span class="No-Break"><strong class="bold">Miscellaneous factors</strong></span><span class="No-Break">:</span><ul><li><strong class="bold">Initialization scripts</strong>: Databricks Model Serving currently does not support initialization scripts, which may affect the deployability of certain <span class="No-Break">specialized models.</span></li><li><strong class="bold">Model dependencies</strong>: When serving AutoML-trained models, they may face dependency issues. An error like "<em class="italic">No module named</em> '<strong class="source-inline">pandas.core.indexes.numeric</strong>'" can occur due to incompatible pandas versions. To <span class="No-Break">fix it:</span><ol><li class="lower-roman">Run '<strong class="source-inline">add-pandas-dependency.py</strong>' (<a href="https://learn.microsoft.com/en-us/azure/databricks/_extras/documents/add-pandas-dependency.py">https://learn.microsoft.com/en-us/azure/databricks/_extras/documents/add-pandas-dependency.py</a>) script with the <span class="No-Break">MLflow </span><span class="No-Break"><strong class="source-inline">run_id</strong></span><span class="No-Break">.</span></li><li class="lower-roman">Re-register the model in the MLflow <span class="No-Break">model registry.</span></li><li class="lower-roman">Serve the updated <span class="No-Break">MLflow model.</span></li></ol></li></ul></li>
+				<li><span class="No-Break"><strong class="bold">Operational insights</strong></span><span class="No-Break">:</span><ul><li><strong class="bold">Endpoint creation time</strong>: The time it takes to provision a new model endpoint is around <span class="No-Break">10 minutes.</span></li><li><strong class="bold">Zero-downtime updates</strong>: The system is designed to perform endpoint updates with zero downtime, minimizing <span class="No-Break">operational risk.</span></li><li><strong class="bold">Dynamic scaling</strong>: Databricks Model Serving employs intelligent scaling algorithms that adapt to fluctuating traffic patterns and provisioned concurrency, ensuring optimal <span class="No-Break">resource allocation.</span></li></ul></li>
+			</ul>
+			<p>Let’s take a look at an example<a id="_idIndexMarker480"/> of how you can use Databricks’ inbuilt Model Serving endpoints to develop, prototype, and deploy models to generate <span class="No-Break">real-time inference:</span></p>
+			<ol>
+				<li>Go to the <strong class="bold">Models</strong> section in your workspace and select the <strong class="bold">Churn Prediction </strong><span class="No-Break"><strong class="bold">Bank</strong></span><span class="No-Break"> model:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer096" class="IMG---Figure">
+					<img src="image/B17875_07_004.jpg" alt="Figure 7.4 – The registered model in the Staging stage of Model Registry" width="1397" height="910"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.4 – The registered model in the Staging stage of Model Registry</p>
+			<ol>
+				<li value="2">Click on the <strong class="bold">Use model for </strong><span class="No-Break"><strong class="bold">inference</strong></span><span class="No-Break"> button:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer097" class="IMG---Figure">
+					<img src="image/B17875_07_05.jpg" alt="Figure 7.5 – The Use model for inference button, which gives you the option to either use the model for batch/streaming inference or as a real-time REST endpoint" width="829" height="200"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.5 – The Use model for inference button, which gives you the option to either use the model for batch/streaming inference or as a real-time REST endpoint</p>
+			<ol>
+				<li value="3">Select <strong class="bold">Real-time</strong> and click on <strong class="bold">Enable Serving</strong>. Here, we can select what model version we want<a id="_idIndexMarker481"/> to serve and also the name of the serving endpoint. There are also options to automatically generate code for batch and streaming inference from <span class="No-Break">the UI:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer098" class="IMG---Figure">
+					<img src="image/B17875_07_06.jpg" alt="Figure 7.6 – How to enable real-time serving from the UI" width="481" height="592"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.6 – How to enable real-time serving from the UI</p>
+			<ol>
+				<li value="4">You can also specify<a id="_idIndexMarker482"/> the type of compute resources you’d like to allocate for your model deployment. This is determined by the volume of concurrent requests that your endpoint is expected to handle. For our example, we will <span class="No-Break">select </span><span class="No-Break"><strong class="bold">Small</strong></span><span class="No-Break">:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer099" class="IMG---Figure">
+					<img src="image/B17875_07_07.jpg" alt="Figure 7.7 – The various compute options" width="755" height="161"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.7 – The various compute options</p>
+			<ol>
+				<li value="5">Lastly, you can also select the <strong class="bold">Scale to zero</strong> option to make sure that your endpoint is not costing you when there is no load on it. Now, click <span class="No-Break"><strong class="bold">Create Endpoint</strong></span><span class="No-Break">.</span></li>
+				<li>You will be redirected<a id="_idIndexMarker483"/> to the <strong class="bold">Status</strong> page, where you can see the current state of your model deployment, including what versions of the models are <span class="No-Break">being deployed:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer100" class="IMG---Figure">
+					<img src="image/B17875_07_008.jpg" alt="Figure 7.8 – The status page of the deployed Model Serving endpoint" width="987" height="516"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.8 – The status page of the deployed Model Serving endpoint</p>
+			<ol>
+				<li value="7">You can also check the events associated with the <span class="No-Break">model deployments:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer101" class="IMG---Figure">
+					<img src="image/B17875_07_009.jpg" alt="Figure 7.9 – The Status page of the deployed Model Serving endpoint" width="1066" height="471"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.9 – The Status page of the deployed Model Serving endpoint</p>
+			<p class="list-inset">You can do the same for the metrics<a id="_idIndexMarker484"/> associated with <span class="No-Break">the endpoint:</span></p>
+			<div>
+				<div id="_idContainer102" class="IMG---Figure">
+					<img src="image/B17875_07_010.jpg" alt="Figure 7.10 – The metrics associated with the Model Serving endpoint" width="1282" height="851"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.10 – The metrics associated with the Model Serving endpoint</p>
+			<p class="list-inset">Another important thing to note here is that access to the REST endpoint is inherited from the permissions you set in <span class="No-Break">Model Registry:</span></p>
+			<div>
+				<div id="_idContainer103" class="IMG---Figure">
+					<img src="image/B17875_07_11.jpg" alt="Figure 7.11 – The permissions inherited by the Model Serving endpoint" width="867" height="265"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.11 – The permissions inherited by the Model Serving endpoint</p>
+			<ol>
+				<li value="8">Now, let’s take a look at how you can query your model. In the UI, once you see your model endpoint in the <strong class="bold">Ready</strong> state, you can click the <strong class="bold">Query endpoint</strong> button at the top-right corner of the serving endpoint <span class="No-Break">status page:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer104" class="IMG---Figure">
+					<img src="image/B17875_07_12.jpg" alt="Figure 7.12 – The Query endpoint button" width="592" height="42"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.12 – The Query endpoint button</p>
+			<p>There are code snippets<a id="_idIndexMarker485"/> that explain how to query a particular version of your deployed model either in Python, cURL, or SQL. There is another option to mimic a browser request and the following steps describe how you can <span class="No-Break">utilize it:</span></p>
+			<ol>
+				<li> Click on the <strong class="bold">Show Example</strong> button. This will only work when we have input examples logged in MLflow alongside <span class="No-Break">the model:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer105" class="IMG---Figure">
+					<img src="image/B17875_07_13.jpg" alt="Figure 7.13 – The automatically logged sample input records from AutoML" width="278" height="509"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.13 – The automatically logged sample input records from AutoML</p>
+			<ol>
+				<li value="2">To send the JSON request<a id="_idIndexMarker486"/> to our model for real-time inference, simply click <span class="No-Break"><strong class="bold">Send request</strong></span><span class="No-Break">:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer106" class="IMG---Figure">
+					<img src="image/B17875_07_14.jpg" alt="Figure 7.14 – The response that was received from the deployed model" width="601" height="66"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.14 – The response that was received from the deployed model</p>
+			<p>When we trained our Churn prediction model, AutoML logged example inputs that our model expects when deployed as a REST endpoint. If you are not using AutoML and training the model yourself, the MLflow API can be used to log sample inputs to your model at the time of a <span class="No-Break">model run.</span></p>
+			<p>Let’s look at how we can use Python<a id="_idIndexMarker487"/> to query the model endpoints with the help of the <span class="No-Break">example notebook:</span></p>
+			<ol>
+				<li>Open the <strong class="source-inline">Real-Time</strong> notebook in the <span class="No-Break"><strong class="source-inline">Chapter-07</strong></span><span class="No-Break"> folder.</span></li>
+				<li>To query the model<a id="_idIndexMarker488"/> endpoint, we need each REST call to be accompanied by a Databricks <strong class="bold">Personal Access Token</strong> (<strong class="bold">PAT</strong>). In <strong class="source-inline">Cmd 4</strong>, we must extract the PAT token from our notebook instance and programmatically extract our workspace domain name. This helps keep our <span class="No-Break">code workspace-agnostic:</span><pre class="source-code">
+# get token from notebooktoken = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().getOrElse(None)#create authorization header for REST callsheaders = {    "Authorization": f"Bearer {token}",    "Content-Type": "application/json"  }# Next we need an enpoint at which to execute our request which we can get from the Notebook's tags collectionjava_tags = dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags()# This object comes from the Java CMtags = sc._jvm.scala.collection.JavaConversions.mapAsJavaMap(java_tags)# extract the databricks instance (domain name) from the dictionaryinstance = tags["browserHostName"]</pre></li>				<li><strong class="source-inline">Cmd 6</strong> contains a method<a id="_idIndexMarker489"/> score that takes as input sample records for inference as a Python dictionary, converts it into JSON, and sends a request to the deployed model. The model then responds with the predictions that are returned in <span class="No-Break">JSON format:</span><pre class="source-code">
+ # Import the requests library for HTTP communicationimport requests#change the model_serving endpoint name to the one you have given.model_serving_endpoint_name = "churn_prediction"# Define the function 'score_model' which takes a dictionary as an inputdef score_model(data_json: dict):    # Construct the URL for the model serving endpoint    url = f"https://{instance}/serving-endpoints/{model_serving_endpoint_name}/invocations"    # Make an HTTP POST request to score the model    response = requests.request(method="POST", headers=headers, url=url, json=data_json)    # Check if the request was successful (HTTP status code 200)    if response.status_code != 200:        # If not, raise an exception detailing the failure        raise Exception(f"Request failed with status {response.status_code}, {response.text}")    # Return the JSON response from the model scoring endpoint    return response.json()</pre></li>				<li>To engage with the serving<a id="_idIndexMarker490"/> endpoint APIs effectively, you should assemble your JSON request payload according to one of the recognized formats. Each format offers distinct advantages and limitations. In our specific scenario, our ML model anticipates input in the form of a pandas DataFrame. Therefore, we have two optimal orientation options to structure our API query to <span class="No-Break">the endpoint:</span><ol><li class="upper-roman"><strong class="bold">DataFrame in split orientation</strong>: For pandas DataFrames, you can use the <strong class="source-inline">dataframe_split</strong> method, serialized<a id="_idIndexMarker491"/> in JSON in a split orientation. This format is more bandwidth-efficient compared to records orientation but is a bit harder <span class="No-Break">to read:</span></li></ol><pre class="source-code">
+payload = {  "dataframe_split": {    "index": [1, 2],    "columns": ["CreditScore", "Geography", "Gender", "Age", "Tenure", "Balance", "NumOfProducts", "HasCrCard", "IsActiveMember", "EstimatedSalary"],    "data": [[619, "France", "Female", 42, 2, 0.0, 1, 1, 1, 101348.88], [608, "Spain", "Female", 41, 1, 83807.86, 1, 0, 1, 112542.58]]  }}</pre><ol><li class="upper-roman" value="2"><strong class="bold">DataFrame in records orientation</strong>: The <strong class="source-inline">records</strong> layout is another available choice<a id="_idIndexMarker492"/> for representing DataFrame data. It comes as a JSON object with each entry presenting <a id="_idIndexMarker493"/>a row in the DataFrame. This record is easy to read and is human-friendly, but it consumes more bandwidth as the column names are repeated for <span class="No-Break">each record:</span></li></ol><pre class="source-code">payload = {  "record_dataframe": [    {      "CreditScore": 619,      "Geography": "France",      "Gender": "Female",      "Age": 42,      "Tenure": 2,      "Balance": 0.0,      "NumOfProducts": 1,      "HasCrCard": 1,      "IsActiveMember": 1,      "EstimatedSalary": 101348.88    },    {      "CreditScore": 608,      "Geography": "Spain",      "Gender": "Female",      "Age": 41,      "Tenure": 1,      "Balance": 83807.86,      "NumOfProducts": 1,      "HasCrCard": 0,      "IsActiveMember": 1,      "EstimatedSalary": 112542.58    }  ]}</pre></li>				<li>Lastly, you can simply call inference on <span class="No-Break">these records:</span><pre class="source-code">
+score_model(payload){'predictions': [0, 0]}</pre></li>			</ol>
+			<p>When dealing with ML models such as those built in TensorFlow or PyTorch, which expect tensor inputs, you generally have two primary formatting options to consider for API requests: instances and input. Both the instances and input formats offer unique advantages and limitations that can significantly impact the design and performance of your ML solution. </p>
+			<p>Let’s delve<a id="_idIndexMarker494"/> into each format’s specifics to better understand how they can be <span class="No-Break">optimally utilized:</span></p>
+			<ul>
+				<li><strong class="bold">Instances format for tensors</strong>: The <strong class="bold">instances</strong> format is tailored for tensor data, accommodating<a id="_idIndexMarker495"/> tensors in a row-wise manner. This is an ideal choice when all input tensors share the same dimension at index 0. Essentially, each tensor in an instances list can be conceptually combined with other tensors with the same name across the list to form the complete input tensor for the model. This merging is only seamless if all tensors conform to the same <span class="No-Break">0-th dimension:</span><ul><li><span class="No-Break">Single tensor:</span><pre class="source-code">
+{"instances": [8, 9, 10]}</pre></li><li>Multiple <span class="No-Break">named tensors:</span><pre class="source-code">{ "instances": [ { "t1": "a", "t2": [1, 2, 3, 4, 5], "t3": [[1, 2], [3, 4], [5, 6]] }, { "t1": "b", "t2": [6, 7, 8, 9, 10], "t3": [[7, 8], [9, 10], [11, 12]] } ] }</pre></li></ul></li>				<li><strong class="bold">Input format for tensors</strong>: The <strong class="bold">input</strong> format is another option that structures tensor data in a column-oriented<a id="_idIndexMarker496"/> manner. This format differs from instances in a crucial way: it allows for varying tensor instances across different tensor types. This is in contrast to the instances format, which requires a consistent number of tensor instances for <span class="No-Break">each type.</span></li>
+			</ul>
+			<p>Databricks’ serving functionality<a id="_idIndexMarker497"/> provides the flexibility to deploy multiple models behind a single endpoint, a feature that’s particularly useful for conducting A/B tests. Furthermore, you can allocate a specific percentage of total traffic among the various models housed behind the same endpoint. For more details on this, you can consult the official <span class="No-Break">documentation (</span><a href="https://dpe-azure.docs.databricks.com/machine-learning/model-serving/serve-multiple-models-to-serving-endpoint.html#serve-multiple-models-to-a-model-serving-endpoint"><span class="No-Break">https://dpe-azure.docs.databricks.com/machine-learning/model-serving/serve-multiple-models-to-serving-endpoint.html#serve-multiple-models-to-a-model-serving-endpoint</span></a><span class="No-Break">).</span></p>
+			<p>Adding another model to an existing endpoint is a straightforward process via the user interface. Simply navigate to the <strong class="bold">Edit Configuration</strong> section and select the <strong class="bold">Add served model</strong> option. From there, you’ll be able to choose which model from the registry to deploy, specify its version, define the compute resources, and set the desired <span class="No-Break">traffic allocation:</span></p>
+			<div>
+				<div id="_idContainer107" class="IMG---Figure">
+					<img src="image/B17875_07_15.jpg" alt="Figure 7.15 – How to add multiple models behind the same endpoint" width="1313" height="263"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.15 – How to add multiple models behind the same endpoint</p>
+			<p>There is a notebook in the <strong class="source-inline">Chapter-07</strong> folder called <strong class="source-inline">real-time-additional</strong> that contains code that demonstrates how we can set these endpoints using the API using Python programmatically. You can go through it at your <span class="No-Break">own pace.</span></p>
+			<p>Now, let’s delve into other prevalent<a id="_idIndexMarker498"/> scenarios related to model deployment. First on the list is incorporating custom user-defined functions and libraries when deploying models <span class="No-Break">with MLflow.</span></p>
+			<h1 id="_idParaDest-117"><a id="_idTextAnchor117"/>Incorporating custom Python libraries into MLflow models for Databricks deployment</h1>
+			<p>If your projects necessitate<a id="_idIndexMarker499"/> the integration<a id="_idIndexMarker500"/> of bespoke Python libraries or packages hosted on a secure private repository, MLflow provides a useful utility function, <strong class="source-inline">add_libraries_to_model</strong>. This feature allows you to seamlessly incorporate these custom dependencies into your models during the logging process, before deploying them via Databricks Model Serving. While the subsequent code examples demonstrate this functionality using scikit-learn models, the same methodology can be applied to any model type supported <span class="No-Break">by MLflow:</span></p>
+			<ol>
+				<li><strong class="bold">Upload dependencies and install them in the notebook</strong>: The recommended<a id="_idIndexMarker501"/> location for uploading dependency files is <strong class="bold">Databricks File</strong> <span class="No-Break"><strong class="bold">System</strong></span><span class="No-Break"> (</span><span class="No-Break"><strong class="bold">DBFS</strong></span><span class="No-Break">):</span><pre class="source-code">
+dbutils.fs.cp("local_path/to/your_dependency.whl", "dbfs:/path/to/your_dependency.whl")# Installing custom library using %pip%pip install /dbfs/path/to/your_dependency.whl</pre></li>				<li><strong class="bold">Model logging with custom libraries</strong>: After installing the required library and uploading its Python wheel file, you can log the model using <strong class="source-inline">mlflow.sklearn.log_model()</strong> with the <strong class="source-inline">pip_requirements</strong> or <strong class="source-inline">conda_env</strong> parameters to specify <span class="No-Break">your dependencies:</span><pre class="source-code">
+# Logging the modelimport mlflow.sklearncustom_requirements = ["scikit-learn", "numpy", "/dbfs/path/to/your_dependency.whl"]mlflow.sklearn.log_model(model, "sklearn-model", pip_requirements=custom_requirements)</pre></li>				<li><strong class="bold">Add libraries to the model</strong>: MLflow provides the <strong class="source-inline">add_libraries_to_model()</strong> function for embedding custom libraries alongside the model to ensure <span class="No-Break">consistent environments:</span><pre class="source-code">
+import mlflow.models.utilsmodel_uri = "models:/&lt;model-name&gt;/&lt;model-version&gt;"mlflow.models.utils.add_libraries_to_model(model_uri)</pre></li>				<li><strong class="bold">Model deployment</strong>: Once the new model version, including the custom libraries, has been registered, you can proceed to deploy it with Databricks <span class="No-Break">Model Serving.</span></li>
+			</ol>
+			<p>You can read more about this on the MLflow <span class="No-Break">website (</span><a href="https://www.mlflow.org/docs/latest/python_api/mlflow.models.html?highlight=add_libraries#mlflow.models.add_libraries_to_model"><span class="No-Break">https://www.mlflow.org/docs/latest/python_api/mlflow.models.html?highlight=add_libraries#mlflow.models.add_libraries_to_model</span></a><span class="No-Break">).</span></p>
+			<p>Here is another<a id="_idIndexMarker502"/> end-to-end example. You can<a id="_idIndexMarker503"/> find the entire code in the <strong class="source-inline">custom-python-libraries</strong> notebook in the <span class="No-Break"><strong class="source-inline">Chapter-07</strong></span><span class="No-Break"> folder:</span></p>
+			<pre class="source-code">
+# Model URI for accessing the registered modelaccess_model_uri = "models:/enhanced_model_with_libraries/1"
+# Add libraries to the original model run
+add_libraries_to_model(access_model_uri)
+# Example to add libraries to an existing run
+prev_run_id = "some_existing_run_id"
+add_libraries_to_model(access_model_uri, run_id=prev_run_id)
+# Example to add libraries to a new run
+with mlflow.start_run():
+    add_libraries_to_model(access_model_uri)
+# Example to add libraries and register under a new model name
+with mlflow.start_run():
+    add_libraries_to_model(access_model_uri, registered_model_name="new_enhanced_model")</pre>
+			<p>Moving on, in the following section, we’ll delve into the intricacies of custom model development, exploring <a id="_idIndexMarker504"/>how specialized algorithms, unique data processing techniques, and enterprise-specific<a id="_idIndexMarker505"/> requirements can be seamlessly integrated into your MLflow deployments for enhanced performance <span class="No-Break">and compliance.</span></p>
+			<h2 id="_idParaDest-118"><a id="_idTextAnchor118"/>Deploying custom models with MLflow and Model Serving</h2>
+			<p>Deploying ML models often requires<a id="_idIndexMarker506"/> more than just making predictions. Many use cases<a id="_idIndexMarker507"/> demand additional<a id="_idIndexMarker508"/> capabilities, such as preprocessing<a id="_idIndexMarker509"/> inputs, post-processing outputs, or even executing custom logic for each request. Custom models in MLflow offer this level of flexibility, making it possible to integrate specialized logic directly alongside your models. This section will walk you through how to deploy such custom models with <span class="No-Break">Model Serving.</span></p>
+			<p>MLflow custom models are particularly beneficial in the <span class="No-Break">following scenarios:</span></p>
+			<ul>
+				<li><strong class="bold">Preprocessing needs</strong>: When your model requires specific preprocessing steps before inputs can be fed into the <span class="No-Break">prediction function.</span></li>
+				<li><strong class="bold">Post-processing requirements</strong>: When the raw outputs of your model need to be transformed or formatted for end <span class="No-Break">user consumption.</span></li>
+				<li><strong class="bold">Conditional logic</strong>: If the model itself has per-request branching logic, such as choosing between different models or algorithms based on <span class="No-Break">the input.</span></li>
+				<li><strong class="bold">Fully custom code</strong>: When you need to deploy an entirely custom code base alongside <span class="No-Break">your model.</span></li>
+			</ul>
+			<p>To create a custom model<a id="_idIndexMarker510"/> in MLflow, you need to write<a id="_idIndexMarker511"/> a <strong class="source-inline">PythonModel</strong> class that implements<a id="_idIndexMarker512"/> two <span class="No-Break">essential</span><span class="No-Break"><a id="_idIndexMarker513"/></span><span class="No-Break"> functions:</span></p>
+			<ul>
+				<li><strong class="source-inline">load_context</strong>: The <strong class="source-inline">load_context</strong> method is responsible for initializing components like model parameters or third-party modules that are crucial for the model but only need to be loaded once. This step enhances the performance during the model's <span class="No-Break">prediction phase.</span></li>
+				<li><strong class="source-inline">predict</strong>: This function contains all the logic that executes each time an input request <span class="No-Break">is made.</span></li>
+			</ul>
+			<p>Here is some example code that defines a custom MLflow model class called <strong class="source-inline">CustomModel</strong> that was built using the <strong class="source-inline">PythonModel</strong> <span class="No-Break">base class:</span></p>
+			<pre class="source-code">
+class CustomModel(mlflow.pyfunc.PythonModel):    def load_context(self, context):
+        self.model = torch.load(context.artifacts["model-weights"])
+        from preprocessing_utils.my_custom_tokenizer import CustomTokenizer
+        self.tokenizer = CustomTokenizer(context.artifacts["tokenizer_cache"])
+    def format_inputs(self, model_input):
+        # insert code that formats your inputs
+        pass
+    def format_outputs(self, outputs):
+        predictions = (torch.sigmoid(outputs)).data.numpy()
+        return predictions
+    def predict(self, context, model_input):
+        model_input = self.format_inputs(model_input)
+        outputs = self.model.predict(model_input)
+        return self.format_outputs(outputs)</pre>
+			<p>Let’s understand this code in more detail as it can easily be modified in the future for your <span class="No-Break">use cases.</span></p>
+			<ul>
+				<li><strong class="source-inline">load_context(self, context)</strong>: The load_context method initializes essential resources for our model to execute. The resources are loaded only once to optimize the inference phase. Let's understand the code inside this method in <span class="No-Break">more detail.</span><ul><li><strong class="source-inline">self.model = torch.load(context.artifacts["model-weights"])</strong>: This line loads<a id="_idIndexMarker514"/> a PyTorch model from<a id="_idIndexMarker515"/> the artifacts<a id="_idIndexMarker516"/> and assigns<a id="_idIndexMarker517"/> it to the <strong class="source-inline">self.model</strong> attribute. The model weights are expected to be part of the artifacts under the <span class="No-Break"><strong class="source-inline">model-weights</strong></span><span class="No-Break"> key.</span></li><li><strong class="source-inline">from preprocessing_utils.my_custom_tokenizer import CustomTokenizer</strong>: This line imports a custom <span class="No-Break">tokenizer class.</span></li><li><strong class="source-inline">self.tokenizer = CustomTokenizer(context.artifacts["tokenizer_cache"])</strong>: This line creates an instance of the imported <strong class="source-inline">CustomTokenizer</strong> class and initializes it using an artifact labeled <strong class="source-inline">tokenizer_cache</strong>. It is stored in the <span class="No-Break"><strong class="source-inline">self.tokenizer</strong></span><span class="No-Break"> attribute.</span></li></ul></li>
+				<li><strong class="source-inline">format_inputs(self, model_input)</strong>: This method is designed to handle the formatting or preprocessing of model inputs. As of now, this function's code has not been implemented and is indicated <span class="No-Break">by pass.</span><p class="list-inset">As of now, this function's code has not been implemented and is indicated <span class="No-Break">by pass.</span></p></li>
+				<li><strong class="source-inline">format_outputs(self, outputs)</strong>: This function is responsible for post-processing or formatting the raw outputs from <span class="No-Break">the model.</span><ul><li><strong class="source-inline">predictions = (torch.sigmoid(outputs)).data.numpy()</strong>: This line applies the sigmoid activation function to the raw outputs and then converts the resulting tensor into a <span class="No-Break">NumPy array</span></li><li>This function formats or post-processes the model’s <span class="No-Break">raw outputs</span></li></ul></li>
+				<li><strong class="source-inline">predict(self, context, model_input)</strong>: Finally, we have the predict method that performs the <span class="No-Break">following steps:</span><ul><li><strong class="source-inline">model_input = self.format_inputs(model_input)</strong>: This line calls the <strong class="source-inline">format_inputs</strong> function to format or preprocess <span class="No-Break">the inputs</span></li><li><strong class="source-inline">outputs = self.model.predict(model_input)</strong>: This line uses the pre-loaded PyTorch model to <span class="No-Break">generate predictions</span></li><li><strong class="source-inline">return self.format_outputs(outputs)</strong>: This line calls <strong class="source-inline">format_outputs</strong> to post-process the raw outputs before <span class="No-Break">returning them</span></li></ul></li>
+			</ul>
+			<p>MLflow allows you<a id="_idIndexMarker518"/> to log custom models, complete with shared<a id="_idIndexMarker519"/> code modules from your<a id="_idIndexMarker520"/> organization. For instance, you can use<a id="_idIndexMarker521"/> the <strong class="source-inline">code_path</strong> parameter to log entire code bases that the <span class="No-Break">model requires:</span></p>
+			<pre class="source-code">
+mlflow.pyfunc.log_model(CustomModel(), "model", code_path = ["preprocessing_utils/"])</pre>			<p>The <strong class="source-inline">mlflow.pyfunc.log_model(CustomModel(), "model", code_path = ["preprocessing_utils/"])</strong> line uses MLflow’s <strong class="source-inline">log_model</strong> method to log a custom Python model for later use, such as serving or sharing it with team members. Let’s break down the <span class="No-Break">function arguments:</span></p>
+			<ul>
+				<li><strong class="source-inline">CustomModel()</strong>: This is an instance of the custom Python model class you’ve defined (such as the <strong class="source-inline">CustomModel</strong> class we saw earlier). This model will be logged and can be later retrieved from MLflow’s <span class="No-Break">Model Registry.</span></li>
+				<li><strong class="source-inline">"model"</strong>: This is the name you are giving to the logged model. It serves as an identifier that can be used when you are referring to this model <span class="No-Break">in MLflow.</span></li>
+				<li><strong class="source-inline">code_path = ["preprocessing_utils/"]</strong>: This is a list of local file paths to Python files that the custom model depends on. In this case, it indicates that the code in the <strong class="source-inline">preprocessing_utils</strong> folder is necessary for the custom model to function correctly. This is especially useful when you want to include some preprocessing or utility code that is required to run the model. When you log the model, the code in this directory will be packaged alongside it. This ensures that you’ll have all the necessary code when you load the <span class="No-Break">model later.</span></li>
+			</ul>
+			<p>So, when this function<a id="_idIndexMarker522"/> is executed, it logs <a id="_idIndexMarker523"/>your <strong class="source-inline">CustomModel</strong> class instance as a model<a id="_idIndexMarker524"/> with the name “model” in MLflow. It also packages<a id="_idIndexMarker525"/> any dependent code located in the <strong class="source-inline">preprocessing_utils/</strong> directory along with it. The resulting artifact can then be loaded and executed anywhere MLflow is available, and it will include both the model and <span class="No-Break">its dependencies.</span></p>
+			<p>Once you log your custom model, it can be registered with MLflow Model Registry and then deployed to a Model Serving endpoint, just like any <span class="No-Break">other model.</span></p>
+			<p>Let’s look at an end-to-end example showcasing the use of custom models. The code uses the wine dataset, which is a classic and straightforward multi-class classification problem. Specifically, the dataset contains 178 wine samples from three different cultivars (types of grapes) in Italy. Each sample has 13 different features, such as Alcohol, Malic acid, and <span class="No-Break">so on.</span></p>
+			<p>The aim is to predict which cultivar a particular wine sample belongs to based on these 13 features. In other words, given a new wine sample, the model will predict whether it belongs to <strong class="source-inline">class_0</strong>, <strong class="source-inline">class_1</strong>, or <strong class="source-inline">class_2</strong>, each representing one of the three cultivars. It also provides the probabilities of the sample belonging to each of <span class="No-Break">these classes.</span></p>
+			<p>The code utilizes a decision tree classifier trained on a subset of the wine dataset (the training set). Once the model has been trained, it’s wrapped in a custom Python class (<strong class="source-inline">CustomModelWrapper</strong>) to facilitate logging <span class="No-Break">via MLflow.</span></p>
+			<p>Finally, the model is used to make predictions<a id="_idIndexMarker526"/> on new, unseen<a id="_idIndexMarker527"/> data (the test set). This code<a id="_idIndexMarker528"/> is available in the <strong class="source-inline">custom-model</strong> notebook<a id="_idIndexMarker529"/> in the <span class="No-Break"><strong class="source-inline">Chapter-07</strong></span><span class="No-Break"> folder:</span></p>
+			<pre class="source-code">
+# Custom model classclass CustomModelWrapper(mlflow.pyfunc.PythonModel):
+    # Initialize the classifier model in the constructor
+    def __init__(self, classifier_model):
+        self.classifier_model = classifier_model
+    # Prediction method
+    def predict(self, context, model_data):
+        # Compute the probabilities and the classes
+        probs = self.classifier_model.predict_proba(model_data)
+        preds = self.classifier_model.predict(model_data)
+        # Create a DataFrame to hold probabilities and predictions
+        labels = ["class_0", "class_1", "class_2"]
+        result_df = pd.DataFrame(probs, columns=[f'prob_{label}' for label in labels])
+        result_df['prediction'] = [labels[i] for i in preds]
+        return result_df</pre>
+			<p>The preceding code defines a <strong class="source-inline">CustomModelWrapper</strong> class that inherits from <strong class="source-inline">mlflow.pyfunc.PythonModel</strong>. This class serves as a wrapper for a given classifier model. The <strong class="source-inline">__init__</strong> method initializes<a id="_idIndexMarker530"/> the classifier, while the <strong class="source-inline">predict</strong> method computes probabilities and class<a id="_idIndexMarker531"/> predictions. These are then returned<a id="_idIndexMarker532"/> as a pandas DataFrame, which includes both the probability<a id="_idIndexMarker533"/> scores for each class and the final <span class="No-Break">predicted labels:</span></p>
+			<pre class="source-code">
+# Load the wine dataset and split it into training and test setswine_data = load_wine()
+X, y = wine_data.data, wine_data.target
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=7)
+# Initialize and fit the DecisionTreeClassifier
+dt_classifier = DecisionTreeClassifier(random_state=7)
+dt_classifier.fit(X_train, y_train)
+# Create an instance of the CustomModelWrapper
+custom_wrapper = CustomModelWrapper(dt_classifier)
+# Define the input and output schema
+input_cols = [ColSpec("double", feature) for feature in wine_data.feature_names]
+output_cols = [ColSpec("double", f'prob_{cls}') for cls in wine_data.target_names] + [ColSpec("string", 'prediction')]
+model_sign = ModelSignature(inputs=Schema(input_cols), outputs=Schema(output_cols))
+# Prepare an example input
+input_sample = pd.DataFrame(X_train[:1], columns=wine_data.feature_names)
+input_sample_dict = input_sample.to_dict(orient='list')
+# Log the model using MLflow
+with mlflow.start_run():
+    mlflow.pyfunc.log_model("wine_model",
+                            python_model=custom_wrapper, input_example=input_sample_dict, signature=model_sign)</pre>
+			<p>Continuing from the custom model wrapper, this code takes additional steps to prepare for model deployment. First, it loads the wine dataset and divides it into training and test sets. <strong class="source-inline">DecisionTreeClassifier</strong> is then initialized and trained on the training set. Subsequently, an instance of <strong class="source-inline">CustomModelWrapper</strong> is created to encompass the trained classifier, adding an extra layer for <span class="No-Break">output formatting.</span></p>
+			<p>The next phase involves defining the input and output schemas by specifying the data types and names of the features and target variables. These schemas serve as a blueprint for the model’s expected input and output, which is crucial for later deployment stages. An example input is also crafted using a single row from the training set to illustrate how the model will <span class="No-Break">receive data.</span></p>
+			<p>Finally, the model is logged into MLflow, incorporating not just the custom wrapper, but also the input example and the predefined schemas. This comprehensive logging ensures that the model is ready for future tracking and deployment with all its <span class="No-Break">nuances intact.</span></p>
+			<p>In an ML deployment pipeline, ensuring<a id="_idIndexMarker534"/> that all model dependencies<a id="_idIndexMarker535"/> are correctly packaged<a id="_idIndexMarker536"/> is critical for stable, scalable, and efficient<a id="_idIndexMarker537"/> operation. The following section elaborates on the best practices for packaging these dependencies alongside your model <span class="No-Break">using MLflow.</span></p>
+			<h1 id="_idParaDest-119"><a id="_idTextAnchor119"/>Packaging dependencies with MLflow models</h1>
+			<p>In a Databricks environment, files<a id="_idIndexMarker538"/> commonly reside in DBFS. However, for enhanced<a id="_idIndexMarker539"/> performance, it’s recommended to bundle these artifacts directly within the model artifact. This ensures that all dependencies are statically captured at <span class="No-Break">deployment time.</span></p>
+			<p>The <strong class="source-inline">log_model()</strong> method allows you to not only log the model but also its dependent files and artifacts. This function takes an <strong class="source-inline">artifacts</strong> parameter where you can specify paths to these <span class="No-Break">additional files:</span></p>
+			<pre class="source-code">
+Here is an example of how to log custom artifacts with your models: mlflow.pyfunc.log_model(    artifacts={'model-weights': "/dbfs/path/to/file", "tokenizer_cache": "./tokenizer_cache"}
+)</pre>
+			<p>In custom Python models logged with MLflow, you can access these dependencies within the model’s code using the <span class="No-Break"><strong class="source-inline">context.artifacts</strong></span><span class="No-Break"> attribute:</span></p>
+			<pre class="source-code">
+class CustomMLflowModel(mlflow.pyfunc.PythonModel):    def load_context(self, context):
+        self.model = torch.load(context.artifacts["model-weights"])
+        self.tokenizer = transformers.BertweetTokenizer.from_pretrained(
+            "model-base",
+            local_files_only=True,
+            cache_dir=context.artifacts["tokenizer_cache"]
+        )</pre>
+			<p>At the time of serving<a id="_idIndexMarker540"/> the custom models from model<a id="_idIndexMarker541"/> endpoints, all the artifacts are copied over to the deployment container. They can be accessed as shown in the example using the <span class="No-Break">context object.</span></p>
+			<p>MLflow allows you to specify a Conda environment for your model. You can provide a <strong class="source-inline">conda.yaml</strong> file that lists all the dependencies required by your model. When you serve the model, MLflow uses this Conda environment to ensure that all dependencies are correctly installed. This file is created automatically if you don’t specify it manually at the time of logging <span class="No-Break">the model.</span></p>
+			<p>Here’s an example of how to specify a Conda environment <span class="No-Break">in Python:</span></p>
+			<pre class="source-code">
+mlflow.pyfunc.log_model(    python_model=MyModel(),
+    artifact_path="my_model",
+    conda_env={
+        'name': 'my_custom_env',
+        'channels': ['defaults'],
+        'dependencies': [
+            'numpy==1.19.2',
+            'pandas==1.2.3',
+            'scikit-learn==0.24.1',
+        ],
+    }
+)</pre>
+			<p>This brings us to the end<a id="_idIndexMarker542"/> of this chapter. Let’s summarize<a id="_idIndexMarker543"/> what <span class="No-Break">we’ve learned.</span></p>
+			<h1 id="_idParaDest-120"><a id="_idTextAnchor120"/>Summary</h1>
+			<p>This chapter covered the various deployment options in Databricks for your ML models. We also learned about the multiple deployment paradigms and how you can implement them using the Databricks workspace. The book’s subsequent editions will detail the many new features that Databricks is working on to simplify the MLOps journey for <span class="No-Break">its users.</span></p>
+			<p>In the next chapter, we will dive deeper into Databricks Workflows to schedule and automate ML workflows. We will go over how to set up ML training using the Jobs API. We will also take a look at the Jobs API’s integration with webhooks to trigger automated testing for your models when a model is transitioned from one registry stage <span class="No-Break">to another.</span></p>
+			<h1 id="_idParaDest-121"><a id="_idTextAnchor121"/>Further reading</h1>
+			<p>Here are some more links for <span class="No-Break">further reading:</span></p>
+			<ul>
+				<li><span class="No-Break"><em class="italic">MLeap</em></span><span class="No-Break"> (</span><a href="https://combust.github.io/mleap-docs"><span class="No-Break">https://combust.github.io/mleap-docs)</span></a></li>
+				<li><em class="italic">Databricks</em>, <em class="italic">Introduction to DataFrames – </em><span class="No-Break"><em class="italic">Python</em></span><span class="No-Break"> (</span><a href="https://docs.databricks.com/spark/latest/dataframes-datasets/introduction-to-dataframes-python.html"><span class="No-Break">https://docs.databricks.com/spark/latest/dataframes-datasets/introduction-to-dataframes-python.html</span></a><span class="No-Break">)</span></li>
+				<li><em class="italic">Structured Streaming Programming </em><span class="No-Break"><em class="italic">Guide</em></span><span class="No-Break"> (</span><a href="https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html"><span class="No-Break">https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html</span></a><span class="No-Break">)</span></li>
+				<li><span class="No-Break">Docker (</span><a href="https://docs.docker.com/"><span class="No-Break">https://docs.docker.com/</span></a><span class="No-Break">)</span></li>
+				<li><span class="No-Break"><em class="italic">Kubernetes</em></span><span class="No-Break"> (</span><a href="https://kubernetes.io/docs/home/"><span class="No-Break">https://kubernetes.io/docs/home/</span></a><span class="No-Break">)</span></li>
+				<li><em class="italic">Pickle – Python object </em><span class="No-Break"><em class="italic">serialization </em></span><span class="No-Break">(</span><a href="https://docs.python.org/3/library/pickle.html"><span class="No-Break">https://docs.python.org/3/library/pickle.html</span></a><span class="No-Break">)</span></li>
+			</ul>
+		</div>
+	</div>
+</div>
+</body></html>

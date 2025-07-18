@@ -1,0 +1,650 @@
+<html><head></head><body>
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer079" class="IMG---Figure">
+			<h1 id="_idParaDest-128" class="chapter-number"><a id="_idTextAnchor179"/>5</h1>
+			<h1 id="_idParaDest-129"><a id="_idTextAnchor180"/>Even Easier Scraping!</h1>
+			<p>In the previous chapter, we covered the basics of web scraping, which is the act of harvesting data from the web for your uses and projects. In this chapter, we will explore even easier approaches to web scraping and will also introduce you to social media scraping. The previous chapter was very long, as we had a lot to cover, from defining scraping to explaining how the <strong class="bold">Natural Language Toolkit</strong> (<strong class="bold">NLTK</strong>), the <strong class="source-inline">Requests</strong> library, and <strong class="source-inline">BeautifulSoup</strong> can be used to collect web data. I will show simpler approaches to getting useful text data with less cleaning involved. Keep in mind that these easier ways do not necessarily replace what was explained in the previous chapter. When working with data or in software projects and things do not immediately work out, it is useful to have options. But for now, we’re going to push forward with a simpler approach to scraping web content, as well as giving an introduction to scraping social <span class="No-Break">media text.</span></p>
+			<p>First, we will cover the <strong class="source-inline">Newspaper3k</strong> Python library, as well as the <strong class="source-inline">Twitter V2</strong> <span class="No-Break">Python Library.</span></p>
+			<p>When I say that <strong class="source-inline">Newspaper3k</strong> is an easier approach to collecting web text data, that is because the authors of <strong class="source-inline">Newspaper3k</strong> did an amazing job of simplifying the process of collecting and enriching web data. They have done much of the work that you would normally need to do for yourself. For instance, if you wanted to gather metadata about a website, such as what language it uses, what keywords are in a story, or even the summary of a news story, <strong class="source-inline">Newspaper3k</strong> gives that to you. This would otherwise be a lot of work. It’s easier because, this way, you don’t have to do it <span class="No-Break">from scratch.</span></p>
+			<p>Second, you will learn how to use the <strong class="source-inline">Twitter V2</strong> Python Library, because this is a very easy way to harvest tweets from Twitter, and this will be useful for NLP as well as <span class="No-Break">network analysis.</span></p>
+			<p>We will be covering the following topics in <span class="No-Break">this chapter:</span></p>
+			<ul>
+				<li>Why cover Requests <span class="No-Break">and BeautifulSoup?</span></li>
+				<li>Getting started <span class="No-Break">with Newspaper3k</span></li>
+				<li>Introducing the Twitter <span class="No-Break">Python Library</span></li>
+			</ul>
+			<h1 id="_idParaDest-130"><a id="_idTextAnchor181"/>Technical requirements</h1>
+			<p>In this chapter, we will be using the NetworkX and pandas Python libraries. Both of these libraries should be installed by now, so they should be ready for your use. If they are not installed, you can install Python libraries with <span class="No-Break">the following:</span></p>
+			<pre class="source-code">
+pip install &lt;library name&gt;</pre>
+			<p>For instance, to install NetworkX, you would <span class="No-Break">do this:</span></p>
+			<pre class="source-code">
+pip install networkx</pre>
+			<p>We will also be discussing a few <span class="No-Break">other libraries:</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="source-inline">Requests</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">BeautifulSoup</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">Newspaper3k</strong></span></li>
+			</ul>
+			<p>Requests should already be included with Python and should not need to <span class="No-Break">be installed.</span></p>
+			<p><strong class="source-inline">BeautifulSoup</strong> can be installed with <span class="No-Break">the following:</span></p>
+			<pre class="source-code">
+pip install beautifulsoup4</pre>
+			<p><strong class="source-inline">Newspaper3k</strong> can be installed <span class="No-Break">with this:</span></p>
+			<pre class="source-code">
+pip install newspaper3k</pre>
+			<p>In <a href="B17105_04.xhtml#_idTextAnchor158"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, we also introduced a <strong class="source-inline">draw_graph()</strong> function that uses both NetworkX and scikit-network. You will need that code whenever we do network visualization. Keep <span class="No-Break">it handy!</span></p>
+			<p>You can find all the code for this chapter in this book’s GitHub <span class="No-Break">repository: </span><a href="https://github.com/PacktPublishing/Network-Science-with-Python"><span class="No-Break">https://github.com/PacktPublishing/Network-Science-with-Python</span></a><span class="No-Break">.</span></p>
+			<h1 id="_idParaDest-131"><a id="_idTextAnchor182"/>Why cover Requests and BeautifulSoup?</h1>
+			<p>We all like it when things are easy, but life is challenging, and things don’t always work out the way we want. In scraping, that’s laughably common. Initially, you can count on more things going wrong than going right, but if you are persistent and know your options, you will eventually get the data that <span class="No-Break">you want.</span></p>
+			<p>In the previous chapter, we covered the <strong class="source-inline">Requests</strong> Python library, because this gives you the ability to <a id="_idIndexMarker360"/>access and use any publicly available web data. You get a lot of freedom when working with <strong class="source-inline">Requests</strong>. This gives you the data, but making the data useful is difficult and time-consuming. We then used <strong class="source-inline">BeautifulSoup</strong>, because<a id="_idIndexMarker361"/> it is a rich library for dealing with HTML. With <strong class="source-inline">BeautifulSoup</strong>, you can be more specific about the kinds of data you extract and use from a web resource. For instance, we can easily harvest all of the external links from a website, or even the full text of a website, excluding <span class="No-Break">all HTML.</span></p>
+			<p>However, <strong class="source-inline">BeautifulSoup</strong> doesn’t give perfectly clean data by default, especially if you are scraping news stories from hundreds of websites, all of which have different headers and footers. The methods we explored in the previous chapter for using offsets to chop off headers and footers are useful when you are collecting text from only a few websites, and you can easily set up a few rules for dealing with each unique website, but then you have a scalability problem. The more websites you decide to scrape, the more randomness you need to be able to deal with. The headers are different, navigation is likely different, and the languages may be different. The difficulties faced during scraping are part of what makes it so interesting <span class="No-Break">to me.</span></p>
+			<h2 id="_idParaDest-132"><a id="_idTextAnchor183"/>Introducing Newspaper3k</h2>
+			<p>If you want<a id="_idIndexMarker362"/> to do NLP or transform text data into network data for use in Social Network Analysis and Network Science, you need clean data. <strong class="source-inline">Newspaper3k</strong> gives you the next step after <strong class="source-inline">BeautifulSoup</strong>, abstracting away even more of the cleanup, giving you clean text and useful metadata with less work. Much of the performance and data cleanup have been abstracted away. Also, since you now understand some approaches to cleaning data from the previous chapter, when you see the cleanliness of Newspaper3k’s data, you will probably have a better understanding of what is happening under the hood, and hopefully, you will also be quite impressed and thankful for the work they have done and the time they are saving <span class="No-Break">for you.</span></p>
+			<p>For now, we can consider <strong class="source-inline">Newspaper3k</strong> the “easy way” of collecting text off of the web, but it’s easy because it builds off of <span class="No-Break">previous foundations.</span></p>
+			<p>You will still likely need to use <strong class="source-inline">Requests</strong> and <strong class="source-inline">BeautifulSoup</strong> in your web scraping and content analysis projects. We needed to cover them first. When pursuing a web scraping project, rather than start with the most basic and reinventing every tool we need along the way, perhaps we should figure out where to start by asking ourselves a <span class="No-Break">few questions:</span></p>
+			<ul>
+				<li>Can I do this <span class="No-Break">with </span><span class="No-Break"><strong class="source-inline">Newspaper3k</strong></span><span class="No-Break">?</span></li>
+				<li>No? OK, can I do this with <strong class="source-inline">Requests</strong> <span class="No-Break">and </span><span class="No-Break"><strong class="source-inline">BeautifulSoup</strong></span><span class="No-Break">?</span></li>
+				<li>No? OK, can I at least get to some data <span class="No-Break">using </span><span class="No-Break"><strong class="source-inline">Requests</strong></span><span class="No-Break">?</span></li>
+			</ul>
+			<p>Wherever you get useful results is where you should start. If you can get everything you need from <strong class="source-inline">Newpaper3k</strong>, start there. If you can’t get what you need with <strong class="source-inline">Newspaper3k</strong>, but you can with <strong class="source-inline">BeautifulSoup</strong>, start there. If neither of these approaches works, then you’re going to need to use <strong class="source-inline">Requests</strong> to pull data, and then you’ll need to write text <span class="No-Break">cleanup code.</span></p>
+			<p>I usually recommend that people start at the basics and only add complexity as needed, but I do not recommend this approach for data collection or when it comes to text scraping. There is little use in reinventing HTML parsers. There is no glory in unnecessary headaches. Use whatever gets you useful data the quickest, so long as it meets your <span class="No-Break">project nee<a id="_idTextAnchor184"/>ds.</span></p>
+			<h2 id="_idParaDest-133"><a id="_idTextAnchor185"/>What is Newspaper3k?</h2>
+			<p><strong class="source-inline">Newspaper3k</strong> is a <a id="_idIndexMarker363"/>Python library that is useful for loading web text from news websites. However, unlike with <strong class="source-inline">BeautifulSoup</strong>, the objective is less about flexibility as it is about getting useful data <em class="italic">quickly</em>. I am most impressed with Newspaper3k’s ability to clean data, as the results are quite pure. I have compared my work using <strong class="source-inline">BeautifulSoup</strong> and <strong class="source-inline">Newspaper3k</strong>, and I am very impressed with <span class="No-Break">the latter.</span></p>
+			<p><strong class="source-inline">Newspaper3k</strong> is not a replacement for <strong class="source-inline">BeautifulSoup</strong>. It can do some things that <strong class="source-inline">BeautifulSoup</strong> can do, but not everything, and it wasn’t written with flexibility for dealing with HTML in mind, which is where <strong class="source-inline">BeautifulSoup</strong> is strong. You give it a website, and it gives you the text on that website. With <strong class="source-inline">BeautifulSoup</strong>, you have more flexibility, in that you can choose to look for only links, paragraphs, or headers. <strong class="source-inline">Newspaper3k</strong> gives you text, summaries, and keywords. <strong class="source-inline">BeautifulSoup</strong> is a step below that in abstraction. It is important to understand where different libraries sit in terms of tech <a id="_idIndexMarker364"/>stacks. <strong class="source-inline">BeautifulSoup</strong> is a high-level abstraction library, but it is lower level than <strong class="source-inline">Newspaper3k</strong>. Similarly, <strong class="source-inline">BeautifulSoup</strong> is a higher-level library than <strong class="source-inline">Requests</strong>. It’s like the movie <em class="italic">Inception</em> – there are layers and layers <span class="No-Break">and layers.</span></p>
+			<h2 id="_idParaDest-134"><a id="_idTextAnchor186"/>What are Newspaper3k’s uses?</h2>
+			<p><strong class="source-inline">Newspaper3k</strong> is useful<a id="_idIndexMarker365"/> for getting to the clean text that exists in a web news story. That means parsing the HTML, chopping out non-useful text, and returning the news story, headline, keywords, and even text summary. The fact that it can return keywords and text summaries means that it’s got some pretty interesting NLP capabilities in the background. You don’t need to create a machine learning model for text summarization. <strong class="source-inline">Newspaper3k</strong> will do the work for you transparently, and <span class="No-Break">surprisingly fast.</span></p>
+			<p><strong class="source-inline">Newspaper3k</strong> seems to have been inspired by the idea of parsing online news, but it is not limited to that. I have also used it for scraping blogs. If you have a website that you’d like to try scraping, give <strong class="source-inline">Newspaper3k</strong> a chance and see how it does. If that doesn’t work, <span class="No-Break">use </span><span class="No-Break"><strong class="source-inline">BeautifulSoup</strong></span><span class="No-Break">.</span></p>
+			<p>One weakness of <strong class="source-inline">Newspaper3k</strong> is that it is unable to parse websites that use JavaScript obfuscation to hide their content inside JavaScript rather than HTML. Web developers occasionally do this to discourage scraping, for various reasons. If you point <strong class="source-inline">Newspaper3k</strong> or <strong class="source-inline">BeautifulSoup</strong> at a website that is using JavaScript obfuscation, both of them will return very little or no useful results, as the data is hidden in JavaScript, which neither of these libraries is built to handle. The workaround is to use a library such as <strong class="source-inline">Selenium</strong> along with <strong class="source-inline">Requests</strong>, and that will often be enough to get to the data that you want. <strong class="source-inline">Selenium</strong> is outside the scope of this book, and often feels like more trouble than it is worth, so please explore the documentation if you get stuck behind JavaScript obfuscation, or just move on and scrape easier websites. Most websites are scrapable, and the ones that aren’t can often just be ignored as they may not be worth <span class="No-Break">the effort.</span></p>
+			<h1 id="_idParaDest-135"><a id="_idTextAnchor187"/>Getting started with Newspaper3k</h1>
+			<p>Before you <a id="_idIndexMarker366"/>can use <strong class="source-inline">Newspaper3k</strong>, you must install it. This is as simple as running the <span class="No-Break">following command:</span></p>
+			<pre class="console">
+pip install newspaper3k</pre>
+			<p>At one point in a previous installation, I received an error stating that an NLTK component was not downloaded. Keep an eye out for weird errors. The fix was as simple as running a command for an NLTK download. Other than that, the library has worked very well for me. Once the installation is complete, you will be able to import it into your Python code and make use of <span class="No-Break">it immediately.</span></p>
+			<p>In the previous chapter, I showed flexible but more manual approaches to scraping websites. A lot of junk text snuck through, and cleaning the data was quite involved and difficult to standardize. <strong class="source-inline">Newspaper3k</strong> takes scraping to another level, making it easier than I have ever seen anywhere else. I recommend that you use <strong class="source-inline">Newspaper3k</strong> for your news scraping whenever <span class="No-Break">yo<a id="_idTextAnchor188"/>u can.</span></p>
+			<h2 id="_idParaDest-136"><a id="_idTextAnchor189"/>Scraping all news URLs from a website</h2>
+			<p>Harvesting URLs<a id="_idIndexMarker367"/> from a domain using <strong class="source-inline">Newspaper3k</strong> is simple. This is all of the code required to load all the hyperlinks from a <span class="No-Break">web domain:</span></p>
+			<pre class="source-code">
+import newspaper
+domain = 'https://www.goodnewsnetwork.org'
+paper = newspaper.build(domain, memoize_articles=False)
+urls = paper.article_urls()</pre>
+			<p>However, there is one thing I want to point out: when you scrape all URLs this way, you will also find what I consider “junk URLs” that point to other areas of the website, not to articles. These can be useful, but in most cases, I just want the article URLs. This is what the URLs will look like if I don’t do anything to remove <span class="No-Break">the junk:</span></p>
+			<pre class="source-code">
+urls
+['https://www.goodnewsnetwork.org/2nd-annual-night-of-a-million-lights/',
+'https://www.goodnewsnetwork.org/cardboard-pods-for-animals-displaced-by-wildfires/',
+'https://www.goodnewsnetwork.org/category/news/',
+'https://www.goodnewsnetwork.org/category/news/animals/',
+'https://www.goodnewsnetwork.org/category/news/arts-leisure/',
+'https://www.goodnewsnetwork.org/category/news/at-home/',
+'https://www.goodnewsnetwork.org/category/news/business/',
+'https://www.goodnewsnetwork.org/category/news/celebrities/',
+'https://www.goodnewsnetwork.org/category/news/earth/',
+'https://www.goodnewsnetwork.org/category/news/founders-blog/']</pre>
+			<p>Please take <a id="_idIndexMarker368"/>note that if you crawl a website at a different time, you will likely get different results. New content may have been added, and old content may have <span class="No-Break">been removed.</span></p>
+			<p>Everything under those first two URLs is what I consider junk, in most of my scraping. I want the article URLs, and those are URLs to specific category pages. There are several ways that this problem can <span class="No-Break">be addressed:</span></p>
+			<ul>
+				<li>You could drop URLs that include the word “category.” In this case, that <span class="No-Break">looks perfect.</span></li>
+				<li>You could drop URLs where the length of the URL is greater than a <span class="No-Break">certain threshold.</span></li>
+				<li>You could combine the two options into a <span class="No-Break">single approach.</span></li>
+			</ul>
+			<p>For this example, I have decided to go with the third option. I will drop all URLs that include the word “category,” as well as any URLs that are less than 60 characters in length. You may want to experiment with various cutoff thresholds to see what works for you. The simple cleanup code looks <span class="No-Break">like this:</span></p>
+			<pre class="source-code">
+urls = sorted([u for u in urls if 'category' not in u and len(u)&gt;60])</pre>
+			<p>Our URL list<a id="_idIndexMarker369"/> now looks much cleaner, containing only article URLs. This is what <span class="No-Break">we need:</span></p>
+			<pre class="source-code">
+urls[0:10]
+…
+['https://www.goodnewsnetwork.org/2nd-annual-night-of-a-million-lights/',
+ 'https://www.goodnewsnetwork.org/cardboard-pods-for-animals-displaced-by-wildfires/',
+ 'https://www.goodnewsnetwork.org/couple-living-in-darkest-village-lights-sky-with-huge-christmas-tree/',
+ 'https://www.goodnewsnetwork.org/coya-therapies-develop-breakthrough-treatment-for-als-by-regulating-t-cells/',
+ 'https://www.goodnewsnetwork.org/enorme-en-anidacion-de-tortugasen-tailandia-y-florida/',
+ 'https://www.goodnewsnetwork.org/good-talks-sustainable-dish-podcast-with-shannon-hayes/',
+ 'https://www.goodnewsnetwork.org/gopatch-drug-free-patches-good-gifts/',
+ 'https://www.goodnewsnetwork.org/horoscope-from-rob-brezsnys-free-will-astrology-12-10-21/',
+ 'https://www.goodnewsnetwork.org/how-to-recognize-the-eight-forms-of-capital-in-our-lives/',
+ 'https://www.goodnewsnetwork.org/mapa-antiguo-de-la-tierra-te-deja-ver-su-evolucion/']</pre>
+			<p>We now have a clean URL list that we can iterate through, scrape each story, and load the text for <span class="No-Break">our use.</span></p>
+			<p>Before <a id="_idIndexMarker370"/>moving on, one thing that you should notice is that on this single web domain, the stories that they publish are multilingual. Most of the stories that they publish are in English, but some of them are not. If you were to point <strong class="source-inline">Newspaper3k</strong> at the domain (rather than at individual story URLs), it would likely be unable to correctly classify the language of the domain. It is best to do language lookups at the story level, not the domain level. I will show how to do this at the <span class="No-Break">st<a id="_idTextAnchor190"/>ory level.</span></p>
+			<h2 id="_idParaDest-137"><a id="_idTextAnchor191"/>Scraping a news story from a website</h2>
+			<p>We now have <a id="_idIndexMarker371"/>a list of story URLs that we want to scrape article text and metadata from. The next step is to use a chosen URL and harvest any data that we want. For this example, I will download and use the first story URL in our <span class="No-Break">URL list:</span></p>
+			<pre class="source-code">
+from newspaper import Article
+url = urls[0]
+article = Article(url)
+article.download()
+article.parse()
+article.nlp()</pre>
+			<p>There are a few confusing lines in this code snippet, so I will explain it line <span class="No-Break">by line:</span></p>
+			<ol>
+				<li>First, I load the <strong class="source-inline">Article</strong> function from the newspaper library, as that is used for downloading <span class="No-Break">article data.</span></li>
+				<li>Next, I point <strong class="source-inline">Article</strong> at the first URL from our URL list, which is <strong class="source-inline">urls[0]</strong>. It has not done anything at this point; it has just been pointed at the <span class="No-Break">source URL.</span></li>
+				<li>Then, I download and parse the text from the given URL. This is useful for grabbing full text and headlines, but it will not capture <span class="No-Break">article keywords.</span></li>
+				<li>Finally, I run the <strong class="source-inline">nlp</strong> component of <strong class="source-inline">Article</strong> to <span class="No-Break">extract keywords.</span></li>
+			</ol>
+			<p>With these <a id="_idIndexMarker372"/>four steps, I should now have all the data that I want for this article. Let’s dive in and see what <span class="No-Break">we have!</span></p>
+			<ul>
+				<li>What is the <span class="No-Break">article title?</span><pre class="source-code">
+title = article.title</pre><pre class="source-code">
+title</pre><pre class="source-code">
+…</pre><pre class="source-code">
+<strong class="bold">'After Raising $2.8M to Make Wishes Come True for Sick Kids, The 'Night of a Million Lights' Holiday Tour is Back'</strong></pre></li>
+				<li>Nice and clean. What about <span class="No-Break">the text?</span><pre class="source-code">
+text = article.text</pre><pre class="source-code">
+text[0:500]</pre><pre class="source-code">
+…</pre><pre class="source-code">
+<strong class="bold">'The Night of A Million Lights is back—the holiday spectacular that delights thousands of visitors and raises millions to give sick children and their weary families a vacation.\n\n'Give Kids The World Village' has launched their second annual holiday lights extravaganza, running until Jan. 2\n\nIlluminating the Central Florida skyline, the 52-night open house will once again provide the public with a rare glimpse inside Give Kids The World Village, an 89-acre, whimsical nonprofit resort that provide'</strong></pre></li>
+				<li>What is the <span class="No-Break">article summary?</span><pre class="source-code">
+summary = article.summary</pre><pre class="source-code">
+summary</pre><pre class="source-code">
+…</pre><pre class="source-code">
+<strong class="bold">'The Night of A Million Lights is back—the holiday spectacular that delights thousands of visitors and raises millions to give sick children and their weary families a vacation.\nWhat began as an inventive pandemic pivot for Give Kids The World has evolved into Central Florida's most beloved new holiday tradition.\n"Last year's event grossed $2.8 million to make wishes come true for children struggling with illness and their families," spokesperson Cindy Elliott told GNN.\nThe </strong></pre><pre class="source-code">
+<strong class="bold">display features 1.25M linear feet of lights, including 3.2 million lights that were donated by Walt Disney World.\nAll proceeds from Night of a Million Lights will support Give Kids The World, rated Four Stars by Charity Navigator 15 years in a row.'</strong></pre></li>
+				<li>What <a id="_idIndexMarker373"/>language was the article <span class="No-Break">written in?</span><pre class="source-code">
+language = article.meta_lang</pre><pre class="source-code">
+language</pre><pre class="source-code">
+…</pre><pre class="source-code">
+<strong class="bold">'en'</strong></pre></li>
+				<li>What keywords were found in <span class="No-Break">the article?</span><pre class="source-code">
+keywords = article.keywords</pre><pre class="source-code">
+keywords</pre><pre class="source-code">
+…</pre><pre class="source-code">
+<strong class="bold">['million',</strong></pre><pre class="source-code">
+<strong class="bold"> 'kids',</strong></pre><pre class="source-code">
+<strong class="bold"> 'children',</strong></pre><pre class="source-code">
+<strong class="bold"> 'lights',</strong></pre><pre class="source-code">
+<strong class="bold"> 'world',</strong></pre><pre class="source-code">
+<strong class="bold"> 'true',</strong></pre><pre class="source-code">
+<strong class="bold"> 'tour',</strong></pre><pre class="source-code">
+<strong class="bold"> 'wishes',</strong></pre><pre class="source-code">
+<strong class="bold"> 'sick',</strong></pre><pre class="source-code">
+<strong class="bold"> 'raising',</strong></pre><pre class="source-code">
+<strong class="bold"> 'night',</strong></pre><pre class="source-code">
+<strong class="bold"> 'village',</strong></pre><pre class="source-code">
+<strong class="bold"> 'guests',</strong></pre><pre class="source-code">
+<strong class="bold"> 'holiday',</strong></pre><pre class="source-code">
+<strong class="bold"> 'wish']</strong></pre></li>
+				<li>What <a id="_idIndexMarker374"/>image accompanies <span class="No-Break">this story?</span><pre class="source-code">
+image = article.meta_img</pre><pre class="source-code">
+image</pre><pre class="source-code">
+…</pre><pre class="source-code">
+<strong class="bold">'https://www.goodnewsnetwork.org/wp-content/uploads/2021/12/Christmas-disply-Night-of-a-Million-Lights-released.jpg'</strong></pre></li>
+			</ul>
+			<p>And there is even more that you can do with <strong class="source-inline">Newspaper3k</strong>. I encourage you to read the library’s documentation and see what else can be useful to your work. You can read more <span class="No-Break">at </span><a href="https://newspaper.readthedocs.io/en/latest/"><span class="No-Break">https://newspaper.readthedocs.<span id="_idTextAnchor192"/>io/en/latest/</span></a><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-138"><a id="_idTextAnchor193"/>Scraping nicely and blending in</h2>
+			<p>There are <a id="_idIndexMarker375"/>two things that I try to do when building <span class="No-Break">any scraper:</span></p>
+			<ul>
+				<li>Blend in with <span class="No-Break">the crowd</span></li>
+				<li>Don’t scrape <span class="No-Break">too aggressively</span></li>
+			</ul>
+			<p>There is some overlap between both of these. If I blend in with actual website visitors, my scrapers will be less noticeable, and less likely to get blocked. Second, if I don’t scrape too <a id="_idIndexMarker376"/>aggressively, my scrapers are not likely to be noticed, and thus also less likely to be blocked. However, the second one is important, as it is not friendly to hit web servers too aggressively. It is better to throw in a 0.5 or 1-second wait between <span class="No-Break">URL scrapes:</span></p>
+			<ol>
+				<li value="1">For the first idea, blending in with the crowd, you can spoof a browser user-agent. For instance, if you want your scraper to pretend to be the latest Mozilla browser running on macOS, this is how to <span class="No-Break">do so:</span><pre class="source-code">
+from newspaper import Config</pre><pre class="source-code">
+config = Config()</pre><pre class="source-code">
+config.browser_user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 12.0; rv:95.0) Gecko/20100101 Firefox/95.0'</pre><pre class="source-code">
+config.request_timeout = 3</pre></li>
+				<li>Next, to add a 1-second sleep between each URL scrape, you could use a <span class="No-Break"><strong class="source-inline">sleep</strong></span><span class="No-Break"> command:</span><pre class="source-code">
+import time</pre><pre class="source-code">
+time.sleep(1)</pre></li>
+			</ol>
+			<p>The <strong class="source-inline">user_agent</strong> configuration is often enough to get past simple bot detection, and the 1-second sleep is a friendly thing to do that also helps w<a id="_idTextAnchor194"/>ith <span class="No-Break">blending in.</span></p>
+			<h2 id="_idParaDest-139"><a id="_idTextAnchor195"/>Converting text into network data</h2>
+			<p>To <a id="_idIndexMarker377"/>convert our freshly scraped text into network data, we can reuse the function that was created in the previous chapter. As a reminder, this function was created to use an NLP technique called <strong class="bold">Named-Entity Recognition</strong> (<strong class="bold">NER</strong>) to <a id="_idIndexMarker378"/>extract the people, places, and organizations mentioned in <span class="No-Break">a document:</span></p>
+			<ol>
+				<li value="1">Here is the <a id="_idIndexMarker379"/>function that we <span class="No-Break">will use:</span><pre class="source-code">
+import spacy</pre><pre class="source-code">
+nlp = spacy.load("en_core_web_md")</pre><pre class="source-code">
+def extract_entities(text):</pre><pre class="source-code">
+    doc = nlp(text)</pre><pre class="source-code">
+    sentences = list(doc.sents)</pre><pre class="source-code">
+    entities = []</pre><pre class="source-code">
+    for sentence in sentences:</pre><pre class="source-code">
+        sentence_entities = []</pre><pre class="source-code">
+        sent_doc = nlp(sentence.text)</pre><pre class="source-code">
+        for ent in sent_doc.ents:</pre><pre class="source-code">
+            if ent.label_ in ['PERSON', 'ORG', 'GPE']:</pre><pre class="source-code">
+                entity = ent.text.strip()</pre><pre class="source-code">
+                if "'s" in entity:</pre><pre class="source-code">
+                    cutoff = entity.index("'s")</pre><pre class="source-code">
+                    entity = entity[:cutoff]</pre><pre class="source-code">
+                if entity != '':</pre><pre class="source-code">
+                    sentence_entities.append(entity)</pre><pre class="source-code">
+        sentence_entities = list(set(sentence_entities))</pre><pre class="source-code">
+        if len(sentence_entities) &gt; 1:</pre><pre class="source-code">
+            entities.append(sentence_entities)</pre><pre class="source-code">
+    return entities</pre></li>
+				<li>We can simply throw our scraped text into this function and it should return an <span class="No-Break">entity list:</span><pre class="source-code">
+entities = extract_entities(text)</pre><pre class="source-code">
+entities</pre><pre class="source-code">
+…</pre><pre class="source-code">
+<strong class="bold">[['Night', 'USA'],  ['Florida', 'Kissimmee'],  ['GNN', 'Cindy Elliott'],  </strong><strong class="bold">['the Centers for Disease Control and Prevention', 'CDC'],  ['Florida', 'Santa'],  ['Disney World', 'Central Florida']]</strong></pre></li>
+				<li>Perfect! Now, we <a id="_idIndexMarker380"/>can pass these entities to one additional function to get a <strong class="source-inline">pandas</strong> DataFrame of edge list data that we can use to construct <span class="No-Break">a network.</span></li>
+				<li>Next, we will use the <strong class="source-inline">get_network_data</strong> function, which is coded <span class="No-Break">as follows:</span><pre class="source-code">
+import pandas as pd</pre><pre class="source-code">
+def get_network_data(entities):</pre><pre class="source-code">
+    final_sources = []</pre><pre class="source-code">
+    final_targets = []</pre><pre class="source-code">
+    for row in entities:</pre><pre class="source-code">
+        source = row[0]</pre><pre class="source-code">
+        targets = row[1:]</pre><pre class="source-code">
+        for target in targets:</pre><pre class="source-code">
+            final_sources.append(source)</pre><pre class="source-code">
+            final_targets.append(target)</pre><pre class="source-code">
+    df = pd.DataFrame({'source':final_sources, 'target':final_targets})</pre><pre class="source-code">
+    return df</pre></li>
+				<li>We can use it by passing in an <span class="No-Break">entity list:</span><pre class="source-code">
+network_df = get_network_data(entities)</pre><pre class="source-code">
+network_df.head()</pre></li>
+			</ol>
+			<p>Upon inspection, this looks great. A network edge list must contain a source node and a target node, and we’ve now got both <span class="No-Break">in place:</span></p>
+			<div>
+				<div id="_idContainer064" class="IMG---Figure">
+					<img src="image/B17105_05_001.jpg" alt="Figure 5.1 – pandas DataFrame edge list of entities" width="724" height="319"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.1 – pandas DataFrame edge list of entities</p>
+			<p>That’s great. The<a id="_idIndexMarker381"/> fourth row is interesting, as NER successfully caught two different ways of representing the CDC, both spelled out and as an acronym. There seems to be a false positive in the first row, but I will explain how to clean network data in the next chapter. This<a id="_idTextAnchor196"/> is perfect <span class="No-Break">for now.</span></p>
+			<h2 id="_idParaDest-140"><a id="_idTextAnchor197"/>End-to-end Network3k scraping and network visualization</h2>
+			<p>We now have <a id="_idIndexMarker382"/>everything we need to demonstrate two things. I want to show how to scrape several URLs and combine the data into a single DataFrame for use and storage, and you will learn how to convert raw text into network data and <a id="_idIndexMarker383"/>visualize it. We did the latter in the previous chapter, but it will be useful to do it one more time so tha<a id="_idTextAnchor198"/>t the <span class="No-Break">learning sticks.</span></p>
+			<h3>Combining multiple URL scrapes into a DataFrame</h3>
+			<p>Between these two demonstrations, this is the most foundational and important part. We will use<a id="_idIndexMarker384"/> the results of this process in our next demonstration. In most real-world scraping projects, it is not useful to scrape a single URL repeatedly. Typically, you want to repeat these steps for any given domain that <span class="No-Break">you scrape:</span></p>
+			<ol>
+				<li value="1">Scrape <span class="No-Break">all URLs.</span></li>
+				<li>Drop the ones that you have already scraped <span class="No-Break">text for.</span></li>
+				<li>Scrape the text of the URLs <span class="No-Break">that remain.</span></li>
+			</ol>
+			<p>For this demonstration, we will only be doing <em class="italic">step 1</em> and <em class="italic">step 3</em>. For your projects, you will usually need to come up with a process to drop the URLs you have already scraped, and this is dependent on where you are writing the post-scraped data. Essentially, you need to take a look at what you have and disregard any URLs that you have already used. This prevents repeated work, unnecessary scraping noise, unnecessary scraping burden on web servers, and <span class="No-Break">duplicated data.</span></p>
+			<p>The following code scrapes all URLs for a given domain, scrapes text for each URL discovered, and creates a <strong class="source-inline">pandas</strong> DataFrame for use or writing output to a file or a database. I am throwing one additional Python library at this: <strong class="source-inline">tqdm</strong>. The <strong class="source-inline">tqdm</strong> library is useful when you want to understand how long a process will take. If you are using this in backend automation, you will likely not want the <strong class="source-inline">tqdm</strong> functionality, but it is useful now, as you <span class="No-Break">are learning.</span></p>
+			<p>You can install <strong class="source-inline">tqdm</strong> by running <strong class="source-inline">pip </strong><span class="No-Break"><strong class="source-inline">install tqdm</strong></span><span class="No-Break">:</span></p>
+			<div>
+				<div id="_idContainer065" class="IMG---Figure">
+					<img src="image/B17105_05_002.jpg" alt="Figure 5.2 – TQDM progress bar in action" width="1338" height="240"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.2 – TQDM progress bar in action</p>
+			<p>This is the end-to-end Python code that takes a domain name and returns a <strong class="source-inline">pandas</strong> DataFrame of <span class="No-Break">scraped stories:</span></p>
+			<pre class="source-code">
+import newspaper
+from newspaper import Article
+from tqdm import tqdm
+def get_story_df(domain):
+    paper = newspaper.build(domain, memoize_articles=False)
+    urls = paper.article_urls()
+    urls = sorted([u for u in urls if 'category' not in u and len(u)&gt;60])
+    titles = []
+    texts = []
+    languages = []
+    keywords = []
+    for url in tqdm(urls):
+        article = Article(url)
+        article.download()
+        article.parse()
+        article.nlp()
+        titles.append(article.title)
+        texts.append(article.text)
+        languages.append(article.meta_lang)
+        keywords.append(article.keywords)
+    df = pd.DataFrame({'urls':urls, 'title':titles, 'text':texts, 'lang':languages, 'keywords':keywords})
+    return df</pre>
+			<p>To use<a id="_idIndexMarker385"/> this function, you can run the following code, and point it at any news domain <span class="No-Break">of interest:</span></p>
+			<pre class="source-code">
+domain = 'https://www.goodnewsnetwork.org'
+df = get_story_df(domain)
+df.head()</pre>
+			<p>You should now have a clean DataFrame of news stories to work with. If you are running into 404 (Page Not Found) errors, you may need to place some try/except exception handling code into the function. I leave this and other edge cases in your hands. However, the<a id="_idIndexMarker386"/> closer the time is between URL scraping and article text scraping, the less likely you will run into <span class="No-Break">404 errors.</span></p>
+			<p>Let’s inspect <span class="No-Break">the results!</span></p>
+			<div>
+				<div id="_idContainer066" class="IMG---Figure">
+					<img src="image/B17105_05_003.jpg" alt="Figure 5.3 – pandas DataFrame of scraped URL data" width="1650" height="483"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.3 – pandas DataFrame of scraped URL data</p>
+			<p>Cool! The <strong class="source-inline">tqdm</strong> progress bar worked until completion, and we can also see that the final story’s language was set to Spanish. This is exactly what we want. If we had tried to detect the language of the overall domain, by scraping the landing page (home page), the language detection component might have given a false reading or even returned nothing. This website has both English and Spanish language stories, and we can see this at the <span class="No-Break">story level.</span></p>
+			<p>Capturing the language of a piece of text is very useful for NLP work. Often, machine learning classifiers that are trained in one language will have difficulty when used against another, and when using unsupervised machine learning (clustering) against text data, data written in various languages will clump together. My advice is to use the captured language data to split your data by language for any downstream NLP enrichment work. You will have better results this way, and your results will be much simpler to analyze <span class="No-Break">as well.</span></p>
+			<p>Next, let’s use these stories to create network d<a id="_idTextAnchor199"/>ata <span class="No-Break">and visualizations!</span></p>
+			<h3>Converting text data into a network for visualization</h3>
+			<p>Several <a id="_idIndexMarker387"/>times in this book, we have taken text, extracted entities, created network data, created a network, and then visualized the network. We will be doing the same thing here. The difference is that we now have a <strong class="source-inline">pandas</strong> DataFrame that consists of several news articles, and each of them can be converted into a network. For this example, I’ll only do it twice. From this point on, you should have no trouble converting text into networks, and you can reuse the code that has already <span class="No-Break">been written.</span></p>
+			<p>Our entity extraction is built upon an English language NLP model, so let’s only use English language stories. To keep things simple, we will do this demonstration with the second and fourth articles in the DataFrame, as these gave interesting and <span class="No-Break">clean results:</span></p>
+			<ol>
+				<li value="1">First, we will use the second article. You should see that I am loading <strong class="source-inline">df['text'][1]</strong>, where <strong class="source-inline">[1]</strong> is the second row as indexing starts <span class="No-Break">at </span><span class="No-Break"><strong class="source-inline">0</strong></span><span class="No-Break">:</span><pre class="source-code">
+text = df['text'][1]</pre><pre class="source-code">
+entities = extract_entities(text)</pre><pre class="source-code">
+network_df = get_network_data(entities)</pre><pre class="source-code">
+G = nx.from_pandas_edgelist(network_df)</pre><pre class="source-code">
+draw_graph(G, show_names=True, node_size=4, edge_width=1, font_size=12)</pre></li>
+			</ol>
+			<p>This is the <span class="No-Break">network visualization:</span></p>
+			<div>
+				<div id="_idContainer067" class="IMG---Figure">
+					<img src="image/B17105_05_004.jpg" alt="Figure 5.4 – Network visualization of article entity relationships (second article)" width="1006" height="794"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.4 – Network visualization of article entity relationships (second article)</p>
+			<p>This looks good but is very simple. A news article is typically about a few individuals<a id="_idIndexMarker388"/> and organizations, so this is not surprising. We can still see a relationship between a couple of wildlife groups, a relationship between a person and a university, and a relationship between <strong class="bold">Australia</strong> and <strong class="bold">Koalas</strong>. All of this <span class="No-Break">seems realistic.</span></p>
+			<ol>
+				<li value="2">Next, let’s try the <span class="No-Break">fourth article:</span><pre class="source-code">
+text = df['text'][3]</pre><pre class="source-code">
+entities = extract_entities(text)</pre><pre class="source-code">
+network_df = get_network_data(entities)</pre><pre class="source-code">
+G = nx.from_pandas_edgelist(network_df)</pre><pre class="source-code">
+draw_graph(G, show_names=True, node_size=4, edge_width=1, font_size=12)</pre></li>
+			</ol>
+			<p>This is the <a id="_idIndexMarker389"/>network visualization. This one is much more interesting <span class="No-Break">and involved:</span></p>
+			<div>
+				<div id="_idContainer068" class="IMG---Figure">
+					<img src="image/B17105_05_005.jpg" alt="Figure 5.5 – Network visualization of article entity relationships (fourth article)" width="1632" height="1060"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.5 – Network visualization of article entity relationships (fourth article)</p>
+			<p>This is a much richer set of entities than is commonly found in news stories, and in fact, this story has more entities and relationships than the book that we investigated in the previous chapter, <em class="italic">The Metamorphosis</em>. This looks great, and we can investigate the relationships that have <span class="No-Break">been uncovered.</span></p>
+			<p>From this point on in this book, I will primarily be using Twitter data to create networks. I wanted to explain how to do this to any text, as this gives freedom to uncover relationships in any text, not just social media text. However, you should understand this by now. The remainder of this book will focus more on analyzing networks than on creating network data. Once text data has been converted into a network, the rest of the network analysis information is equa<a id="_idTextAnchor200"/>lly relevant <span class="No-Break">and useful.</span></p>
+			<h1 id="_idParaDest-141"><a id="_idTextAnchor201"/>Introducing the Twitter Python Library</h1>
+			<p>Twitter is a <a id="_idIndexMarker390"/>goldmine for NLP projects. It is a very active social network with not too strict moderation, which means that users are pretty comfortable posting about a wide variety of topics. This means that Twitter can be useful for studying lighthearted topics, but it can also be used to study more serious topics. You have a lot <span class="No-Break">of flexibility.</span></p>
+			<p>Twitter also has a simple API to work with, compared to other social networks. It is relatively simple to get started with, and it can be used to capture data that can be used for a lifetime of NLP research. In my personal NLP research, learning to scrape Twitter supercharged and accelerated my NLP learning. Learning NLP is much more enjoyable when you have data that is interesting to you. I have used Twitter data to understand various networks, create original NLP techniques, and create machine learning training data. I don’t use Twitter much, but I have found it to be a gol<a id="_idTextAnchor202"/>dmine for all <span class="No-Break">things NLP.</span></p>
+			<h2 id="_idParaDest-142"><a id="_idTextAnchor203"/>What is the Twitter Python Library?</h2>
+			<p>For several years, Twitter<a id="_idIndexMarker391"/> has been exposing its API, to allow software developers and researchers to make use of their data. The API is a bit of a challenge to use as the documentation is a bit scattered and confusing, so a Python library was created to make working with the API much easier. I will explain how to use the Python library, but you will need to explore the Twitter API itself to learn more about the various limits that Twitter has set in place to prevent overuse of <span class="No-Break">the API.</span></p>
+			<p>You can read more about the<a id="_idIndexMarker392"/> Twitter API <span class="No-Break">at </span><a href="https://developer.twitter.com/en/docs"><span class="No-Break">https://deve<span id="_idTextAnchor204"/>loper.twitter.com/en/docs</span></a><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-143"><a id="_idTextAnchor205"/>What are the Twitter Library’s uses?</h2>
+			<p>Once <a id="_idIndexMarker393"/>you can use the Twitter library and API, you have total flexibility in what you use it for to research. You could use it to learn about the K-Pop music scene, or you could use it to keep an eye on the latest happenings in machine learning or <span class="No-Break">data science.</span></p>
+			<p>Another use of this is analyzing entire audiences. For instance, if an account has 50,000 followers, you can use the Twitter Library to load data about all 50,000 of the followers, including their usernames and descriptions. With these descriptions, you could use clustering <a id="_idIndexMarker394"/>techniques to identify the various subgroups that exist in a larger group. You could also use this kind of data to potentially identify bots and other forms of <span class="No-Break">artificial amplification.</span></p>
+			<p>I recommend that you find something that you are curious about, and then chase it and see where it leads. This curiosity is an excellent driver for building skills in NLP<a id="_idTextAnchor206"/> and Social <span class="No-Break">Network Analysis.</span></p>
+			<h2 id="_idParaDest-144"><a id="_idTextAnchor207"/>What data can be harvested from Twitter?</h2>
+			<p>Even<a id="_idIndexMarker395"/> compared to 2 years ago, it seems that Twitter has expanded its API offerings to allow for many different kinds of data science and NLP projects. However, in<a id="_idIndexMarker396"/> their <strong class="bold">version one</strong> (<strong class="bold">V1</strong>) API, Twitter would return a dictionary containing a great deal of the data that they have available. This has changed a bit in their V2 API, as they now require developers to specify which data they are requesting. This has made it more difficult to know all of the data that Twitter has made available. Anyone who will be working with the Twitter API is going to need to spend time reading through the documentation to see what <span class="No-Break">is available.</span></p>
+			<p>For my research, I am typically only interested in a <span class="No-Break">few things:</span></p>
+			<ul>
+				<li>Who is <span class="No-Break">posting something?</span></li>
+				<li>What have <span class="No-Break">they posted?</span></li>
+				<li>When was <span class="No-Break">it posted?</span></li>
+				<li>Who are <span class="No-Break">they mentioning?</span></li>
+				<li>What hashtags are <span class="No-Break">they using?</span></li>
+			</ul>
+			<p>All of this is easy to pull from the Twitter API, and I will show you how. But this is not the limit of Twitter’s offerings. I have recently been impressed by some of the more recently discovered data that the V2 API exposes, but I do not understand it well enough to write about it, yet. When you run into something that feels like it should be exposed by the API, check the documentation. In my experience working with the Twitter API, some things that should be exposed by default now take a bit of extra work than in V1. Try to figur<a id="_idTextAnchor208"/>e out how to get what <span class="No-Break">you need.</span></p>
+			<h2 id="_idParaDest-145"><a id="_idTextAnchor209"/>Getting Twitter API access</h2>
+			<p>Before you <a id="_idIndexMarker397"/>can do anything with the Twitter API, the first thing you need to do is <span class="No-Break">get access:</span></p>
+			<ol>
+				<li value="1">First, create a Twitter account. You don’t need to use it to post anything, but you do need to have <span class="No-Break">an account.</span></li>
+				<li>Next, go to the following URL to request API <span class="No-Break">access: </span><a href="https://developer.twitter.com/en/apply-for-access"><span class="No-Break">https://developer.twitter.com/en/apply-for-access</span></a><span class="No-Break">.</span></li>
+			</ol>
+			<p>Applying for access can vary in time from a few minutes to a few days. You will need to fill out a few forms specifying how you will be using the data and agreeing to abide by Twitter’s Terms of Service. In describing your use of Twitter data, you can specify that you are using this for learning NLP and Social <span class="No-Break">Network Analysis.</span></p>
+			<ol>
+				<li value="3">Once you have been granted access, you will have your own Developer Portal. Search around in the authentication section until you see something <span class="No-Break">like this:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer069" class="IMG---Figure">
+					<img src="image/B17105_05_006.jpg" alt="Figure 5.6 – Twitter Authentication Bearer Token" width="533" height="180"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.6 – Twitter Authentication Bearer Token</p>
+			<p>Specifically, you are looking for a <strong class="bold">Bearer Token</strong>. Generate one and keep it somewhere safe. You will use this to authenticate with the <span class="No-Break">Twitter API.</span></p>
+			<p>Once you have generated a Bearer Token, you should be all set to work with the Twitter API thro<a id="_idTextAnchor210"/>ugh the Twitter <span class="No-Break">Python library.</span></p>
+			<h2 id="_idParaDest-146"><a id="_idTextAnchor211"/>Authenticating with Twitter</h2>
+			<p>Before you<a id="_idIndexMarker398"/> can authenticate, you need to install the Twitter <span class="No-Break">Python library:</span></p>
+			<ol>
+				<li value="1">You can do so by running <span class="No-Break">the following:</span><pre class="source-code">
+pip install python-twitter-v2</pre></li>
+				<li>Next, in your notebook of choice, try importing <span class="No-Break">the library:</span><pre class="source-code">
+from pytwitter import Api</pre></li>
+				<li>Next, you will need to authenticate with Twitter using your Bearer Token. Replace the <strong class="source-inline">bearer_token</strong> text in the following code with your own Bearer Token and <span class="No-Break">try authenticating:</span><pre class="source-code">
+bearer_token = 'your_bearer_token'</pre><pre class="source-code">
+twitter_api = Api(bearer_token=bearer_token)</pre></li>
+			</ol>
+			<p>If this doesn’t fail, then you should be authenticated and ready to start scrapin<a id="_idTextAnchor212"/>g tweets, connections, <span class="No-Break">and more.</span></p>
+			<h2 id="_idParaDest-147"><a id="_idTextAnchor213"/>Scraping user tweets</h2>
+			<p>I’ve<a id="_idIndexMarker399"/> created two helper functions for loading user tweets into a <strong class="source-inline">pandas</strong> DataFrame. If you want more data than this function returns, you will need to extend <strong class="source-inline">tweet_fields</strong>, and possibly <span class="No-Break">add </span><span class="No-Break"><strong class="source-inline">user_fields</strong></span><span class="No-Break">:</span></p>
+			<ol>
+				<li value="1">Please see the <strong class="source-inline">search_tweets()</strong> function in the following code block to see how <strong class="source-inline">user_fields</strong> can be added to a Twitter call. This function does not use <strong class="source-inline">user_fields</strong>, as we are already passing in <span class="No-Break">a username:</span><pre class="source-code">
+def get_user_id(twitter_api, username):</pre><pre class="source-code">
+    user_data = twitter_api.get_users(usernames=username)</pre><pre class="source-code">
+    return user_data.data[0].id</pre></li>
+				<li>This first function takes a Twitter username and returns its <strong class="source-inline">user_id</strong>. This is important because some Twitter calls require a <strong class="source-inline">user_id</strong>, not a <strong class="source-inline">username</strong>. The<a id="_idIndexMarker400"/> following function uses <strong class="source-inline">user_id</strong> to look up a <span class="No-Break">user’s tweets:</span><pre class="source-code">
+def get_timeline(twitter_api, username):</pre><pre class="source-code">
+    tweet_fields = ['created_at', 'text', 'lang']</pre><pre class="source-code">
+    user_id = get_user_id(twitter_api, username)</pre><pre class="source-code">
+    timeline_data = twitter_api.get_timelines(user_id, return_json=True, max_results=100, tweet_fields=tweet_fields)</pre><pre class="source-code">
+    df = pd.DataFrame(timeline_data['data'])</pre><pre class="source-code">
+    df.drop('id', axis=1, inplace=True)</pre><pre class="source-code">
+    return df</pre></li>
+			</ol>
+			<p>In this function, the <strong class="source-inline">twitter_api.get_timelines()</strong> function is doing most of the work. I have specified <strong class="source-inline">tweet_fields</strong> that I want, I’ve passed in a user’s <strong class="source-inline">user_id</strong>, I’ve specified that I want the latest <strong class="source-inline">100</strong> tweets by that person, and I’ve specified that I want the data returned in JSON format, which is easy to convert into a <strong class="source-inline">pandas</strong> DataFrame. If I call this function, I should get <span class="No-Break">immediate results.</span></p>
+			<ol>
+				<li value="3">Let’s see what Santa Claus <span class="No-Break">talks about:</span><pre class="source-code">
+df = get_timeline(twitter_api, 'officialsanta')</pre><pre class="source-code">
+df.head()</pre></li>
+			</ol>
+			<p>We should now see a preview of five of <span class="No-Break">Santa’s tweets:</span></p>
+			<div>
+				<div id="_idContainer070" class="IMG---Figure">
+					<img src="image/B17105_05_007.jpg" alt="Figure 5.7 – pandas DataFrame of Santa Claus tweets" width="1160" height="348"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.7 – pandas DataFrame of Santa Claus tweets</p>
+			<p>Perfect. We now have the most recent <strong class="source-inline">100</strong> tweets made by <span class="No-Break">Santa Claus.</span></p>
+			<ol>
+				<li value="4">I have<a id="_idIndexMarker401"/> one additional helper function that I would like to give you. This one takes the <strong class="source-inline">text</strong> field and extracts entities and hashtags; we’ll be using these to draw <span class="No-Break">social networks:</span><pre class="source-code">
+def wrangle_and_enrich(df):</pre><pre class="source-code">
+    # give some space for splitting, sometimes things get smashed together</pre><pre class="source-code">
+    df['text'] = df['text'].str.replace('http', ' http')</pre><pre class="source-code">
+    df['text'] = df['text'].str.replace('@', ' @')</pre><pre class="source-code">
+    df['text'] = df['text'].str.replace('#', ' #')</pre><pre class="source-code">
+    # enrich dataframe with user mentions and hashtags</pre><pre class="source-code">
+    df['users'] = df['text'].apply(lambda tweet: [clean_user(token) for token in tweet.split() if token.startswith('@')])</pre><pre class="source-code">
+    df['tags'] = df['text'].apply(lambda tweet: [clean_hashtag(token) for token in tweet.split() if token.startswith('#')])</pre><pre class="source-code">
+    return df</pre></li>
+				<li>We can<a id="_idIndexMarker402"/> add this function as an <span class="No-Break">enrichment step:</span><pre class="source-code">
+df = get_timeline(twitter_api, 'officialsanta')</pre><pre class="source-code">
+df = wrangle_and_enrich(df)</pre><pre class="source-code">
+df.head()</pre></li>
+			</ol>
+			<p>This gives us additional <span class="No-Break">useful data:</span></p>
+			<div>
+				<div id="_idContainer071" class="IMG---Figure">
+					<img src="image/B17105_05_008.jpg" alt="Figure 5.8 – pandas DataFrame of enriched Santa Claus tweets" width="1650" height="393"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.8 – pandas DataFrame of enriched Santa Claus tweets</p>
+			<p>This is perfect for the rest of the work we will be doing in this chapter, but before we move on, we will a<a id="_idTextAnchor214"/>lso see how to <span class="No-Break">scrape connections.</span></p>
+			<h2 id="_idParaDest-148"><a id="_idTextAnchor215"/>Scraping user following</h2>
+			<p>We can easily scrape<a id="_idIndexMarker403"/> all accounts that an account follows. This can be done with the <span class="No-Break">following function:</span></p>
+			<pre class="source-code">
+def get_following(twitter_api, username):
+    user_fields = ['username', 'description']
+    user_id = get_user_id(twitter_api, username)
+    following = twitter_api.get_following(user_id=user_id, return_json=True, max_results=1000, user_fields=user_fields)
+    df = pd.DataFrame(following['data'])
+    return df[['name', 'username', 'description']]</pre>
+			<p>Here, I have<a id="_idIndexMarker404"/> specified <strong class="source-inline">max_results=1000</strong>. That is the maximum that Twitter will return at a time, but you can load much more than 1,000. You will need to pass in a <strong class="source-inline">'next_token'</strong> key to continue harvesting sets of <strong class="source-inline">1000</strong> followers. You can do something similar to load more than 100 tweets by a person. Ideally, you should use recursion in programming to do this, if you have the need. You can use the preceding function to load the first batch, and you should be able to extend it if you need to build <span class="No-Break">in recursion.</span></p>
+			<p>You can call the <span class="No-Break">following function:</span></p>
+			<pre class="source-code">
+df = get_following(twitter_api, 'officialsanta')
+df.head()</pre>
+			<p>This will give you results in <span class="No-Break">this format:</span></p>
+			<div>
+				<div id="_idContainer072" class="IMG---Figure">
+					<img src="image/B17105_05_009.jpg" alt="Figure 5.9 – pandas DataFrame of accounts Santa Claus follows on Twitter" width="1279" height="313"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.9 – pandas DataFrame of accounts Santa Claus follows on Twitter</p>
+			<p>For investigating subgroups that exist inside a group, it is useful to include the account description, as people are often descriptive about their interests and political affiliations. To capture the description, you need to include the d<a id="_idTextAnchor216"/>escription in the <span class="No-Break"><strong class="source-inline">user_fields</strong></span><span class="No-Break"> list.</span></p>
+			<h2 id="_idParaDest-149"><a id="_idTextAnchor217"/>Scraping user followers</h2>
+			<p>Scraping<a id="_idIndexMarker405"/> followers is nearly identical. Here is <span class="No-Break">the code:</span></p>
+			<pre class="source-code">
+def get_followers(twitter_api, username):
+    user_fields = ['username', 'description']
+    user_id = get_user_id(twitter_api, username)
+    followers = twitter_api.get_followers(user_id=user_id, return_json=True, max_results=1000, user_fields=user_fields)
+    df = pd.DataFrame(followers['data'])
+    return df[['name', 'username', 'description']]</pre>
+			<p>You can call <span class="No-Break">the function:</span></p>
+			<pre class="source-code">
+df = get_followers(twitter_api, 'officialsanta')
+df.head()</pre>
+			<p>This will give you results in the same format as was shown previously. Be sure<a id="_idTextAnchor218"/> to include the <span class="No-Break">account description.</span></p>
+			<h2 id="_idParaDest-150"><a id="_idTextAnchor219"/>Scraping using search terms</h2>
+			<p>Collecting tweets <a id="_idIndexMarker406"/>about a search term is also useful. You can use this to explore <em class="italic">who</em> participates in discussions about a search term, but also to collect the tweets themselves, for reading <span class="No-Break">and processing.</span></p>
+			<p>Here is the code that I have written for scraping by <span class="No-Break">search term:</span></p>
+			<pre class="source-code">
+def search_tweets(twitter_api, search_string):
+    tweet_fields = ['created_at', 'text', 'lang']
+    user_fields = ['username']
+    expansions = ['author_id']
+    search_data = twitter_api.search_tweets(search_string, return_json=True, expansions=expansions, tweet_fields=tweet_fields, user_fields=user_fields, max_results=100)
+    df = pd.DataFrame(search_data['data'])
+    user_df = pd.DataFrame(search_data['includes']['users'])
+    df = df.merge(user_df, left_on='author_id', right_on='id')
+    df['username'] = df['username'].str.lower()
+    return df[['username', 'text', 'created_at', 'lang']]</pre>
+			<p>This function<a id="_idIndexMarker407"/> is a bit more involved than the previous functions, as I have specified <strong class="source-inline">tweet_fields</strong> as well as <strong class="source-inline">user_fields</strong> that I am interested in. To capture the username, I needed to specify an expansion on <strong class="source-inline">author_id</strong>, and finally, I want 100 of the latest tweets. If you want to include additional data, you will need to explore the Twitter API to find out how to add the data field <span class="No-Break">of interest.</span></p>
+			<p>You can call the function <span class="No-Break">like so:</span></p>
+			<pre class="source-code">
+df = search_tweets(twitter_api, 'natural language processing')
+df = wrangle_and_enrich(df)
+df.head()</pre>
+			<p>I am also enriching the <strong class="source-inline">pandas</strong> DataFrame so that it includes user mentions and hashtags via the <strong class="source-inline">wrangle_and_enrich()</strong> function call. This results in the following <span class="No-Break"><strong class="source-inline">pandas</strong></span><span class="No-Break"> DataFrame:</span></p>
+			<div>
+				<div id="_idContainer073" class="IMG---Figure">
+					<img src="image/B17105_05_010.jpg" alt="Figure 5.10 – pandas DataFrame of Twitter search tweets" width="1650" height="317"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.10 – pandas DataFrame of Twitter search tweets</p>
+			<p>These search tweets will be perfect for creating social network visualizations as the tweets come from multiple accounts. In the top two rows of data, you may visually notice that there is a relationship between <strong class="bold">intempestades</strong>, <strong class="bold">pascal_bornet</strong>, and <strong class="bold">cogautocom</strong>. This would show as connected nodes <a id="_idTextAnchor220"/>if we were to visualize <span class="No-Break">this network.</span></p>
+			<h2 id="_idParaDest-151"><a id="_idTextAnchor221"/>Converting Twitter tweets into network data</h2>
+			<p>Converting <a id="_idIndexMarker408"/>social media data into network data is much easier than raw text. With Twitter, this is fortunate, as tweets tend to be quite short. This is because users frequently tag each other in their tweets for visibility and interaction, and they often associate their tweets with hashtags as well, and these associations can be used to <span class="No-Break">build networks.</span></p>
+			<p>Using user mentions and hashtags, there are several different kinds of networks that we <span class="No-Break">can create:</span></p>
+			<ul>
+				<li><em class="italic">Account to Mention Networks (@ -&gt; @)</em>: Useful for analyzing <span class="No-Break">social networks.</span></li>
+				<li><em class="italic">Account to Hashtag Networks (@ -&gt; #)</em>: Useful for finding communities that exist around a <span class="No-Break">theme (hashtag).</span></li>
+				<li><em class="italic">Mention to Hashtag Network (@ -&gt; #)</em>: Similar to the previous one, but linking to mentioned accounts, not the tweet account. This is also useful for <span class="No-Break">finding communities.</span></li>
+				<li><em class="italic">Hashtag to Hashtag Networks (# -&gt; #)</em>: Useful for finding related themes (hashtags) and emerging <span class="No-Break">trending topics.</span></li>
+			</ul>
+			<p>Additionally, you could use NER to extract additional entities from the text, but tweets are pretty short, so this may not give much <span class="No-Break">useful data.</span></p>
+			<p>In the next few sections, you will learn how to do t<a id="_idTextAnchor222"/>he first and third types <span class="No-Break">of networks.</span></p>
+			<h3>Account to Mention Network (@ -&gt; @)</h3>
+			<p>I have created <a id="_idIndexMarker409"/>a useful helper function to convert a <strong class="source-inline">pandas</strong> DataFrame into this <a id="_idIndexMarker410"/>Account to Mention <span class="No-Break">network data:</span></p>
+			<pre class="source-code">
+def extract_user_network_data(df):
+    user_network_df = df[['username', 'users', 'text']].copy()
+    user_network_df = user_network_df.explode('users').dropna()
+    user_network_df['users'] = user_network_df['users'].str.replace('\@', '', regex=True)
+    user_network_df.columns = ['source', 'target', 'count'] # text data will be counted
+    user_network_df = user_network_df.groupby(['source', 'target']).count()
+    user_network_df.reset_index(inplace=True)
+    user_network_df.sort_values(['source', 'target'], ascending=[True, True])
+    return user_network_df</pre>
+			<p>There’s quite a lot going on in <span class="No-Break">this function:</span></p>
+			<ol>
+				<li value="1">First, we take a copy of the username, users, and text fields from the <strong class="source-inline">df</strong> DataFrame and use them in the <strong class="source-inline">user_network_df</strong> DataFrame. Each row of the <strong class="source-inline">users</strong> field contains a list of users, so we then “explode” the <strong class="source-inline">users</strong> field, creating a separate row for each user in the DataFrame. We also drop rows that do not contain <span class="No-Break">any users.</span></li>
+				<li>Next, we remove all <strong class="source-inline">@</strong> characters so that the data and visualization will be <span class="No-Break">more readable.</span></li>
+				<li>Then, we rename all the columns in the DataFrame, in preparation for creating our graph. NetworkX’s graphs expect a source and target field, and the count field can also be passed in as <span class="No-Break">additional data.</span></li>
+				<li>Next, we do aggregation and count each source-target relationship in <span class="No-Break">the DataFrame.</span></li>
+				<li>Finally, we sort and return the DataFrame. We did not need to sort the DataFrame, but I tend to do this, as it can help with looking through the DataFrame <span class="No-Break">or troubleshooting.</span></li>
+			</ol>
+			<p>You can <a id="_idIndexMarker411"/>pass the <strong class="source-inline">search_tweets</strong> DataFrame to <span class="No-Break">this function:</span></p>
+			<pre class="source-code">
+user_network_df = extract_user_network_data(df)
+user_network_df.head()</pre>
+			<p>You will get an edge list DataFrame back of user relationships. We will use this to construct and visualize our network. Look closely and you should see that there is an additional <strong class="bold">count</strong> field. We will use this in later chapters as a threshold for choosing which edges and nodes to show in <span class="No-Break">a visualization:</span></p>
+			<div>
+				<div id="_idContainer074" class="IMG---Figure">
+					<img src="image/B17105_05_011.jpg" alt="Figure 5.11 – Account to Mention pandas DataFrame edge list" width="473" height="318"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.11 – Account to Mention pandas DataFrame edge list</p>
+			<p>Each row in this DataFrame shows a relationship between<a id="_idTextAnchor223"/> one user (<strong class="bold">source</strong>) and <span class="No-Break">another (</span><span class="No-Break"><strong class="bold">target</strong></span><span class="No-Break">).</span></p>
+			<h3>Mention to Hashtag Network (@ -&gt; #)</h3>
+			<p>I have <a id="_idIndexMarker412"/>created a useful helper function to convert a <strong class="source-inline">pandas</strong> DataFrame into <strong class="bold">Mention</strong> to Hashtag network data. This<a id="_idIndexMarker413"/> function is similar to the previous one, but we load users and hashtags and do not use the original account’s username <span class="No-Break">at all:</span></p>
+			<pre class="source-code">
+def extract_hashtag_network_data(df):
+    hashtag_network_df = df[['users', 'tags', 'text']].copy()
+    hashtag_network_df = hashtag_network_df.explode('users')
+    hashtag_network_df = hashtag_network_df.explode('tags')
+    hashtag_network_df.dropna(inplace=True)
+    hashtag_network_df['users'] = hashtag_network_df['users'].str.replace('\@', '', regex=True)
+    hashtag_network_df.columns = ['source', 'target', 'count'] # text data will be counted
+    hashtag_network_df = hashtag_network_df.groupby(['source', 'target']).count()
+    hashtag_network_df.reset_index(inplace=True)
+    hashtag_network_df.sort_values(['source', 'target'], ascending=[True, True])
+    # remove some junk that snuck in
+    hashtag_network_df = hashtag_network_df[hashtag_network_df['target'].apply(len)&gt;2]
+    return hashtag_network_df
+You can pass the search_tweets DataFrame to this function.
+hashtag_network_df = extract_hashtag_network_data(df)
+hashtag_network_df.head()</pre>
+			<p>You will get an edge list DataFrame back of user relationships. As shown previously, a <strong class="bold">count</strong> field<a id="_idIndexMarker414"/> is also returned, and <a id="_idIndexMarker415"/>we will use it in a later chapter as a threshold for choosing which nodes and edges <span class="No-Break">to show:</span></p>
+			<div>
+				<div id="_idContainer075" class="IMG---Figure">
+					<img src="image/B17105_05_012.jpg" alt="Figure 5.12 – Mention to Hashtag pandas DataFrame edge list" width="566" height="306"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.12 – Mention to Hashtag pandas DataFrame edge list</p>
+			<p>Each row in this DataFrame shows a relationship betwee<a id="_idTextAnchor224"/>n one user (source) and a <span class="No-Break">hashtag (target).</span></p>
+			<h2 id="_idParaDest-152"><a id="_idTextAnchor225"/>End-to-end Twitter scraping</h2>
+			<p>I hope <a id="_idIndexMarker416"/>that the preceding code and examples have shown how easy it is to use the Twitter API to scrape tweets, and I hope you can also see how easy it is to transform tweets into networks. For this chapter’s final demonstration, I want you to follow a <span class="No-Break">few steps:</span></p>
+			<ol>
+				<li value="1">Load a <strong class="source-inline">pandas</strong> DataFrame containing tweets related to <span class="No-Break">Network Science.</span></li>
+				<li>Enrich the DataFrame so that it includes user mentions and hashtags as <span class="No-Break">separate fields.</span></li>
+				<li>Create Account to Mention <span class="No-Break">network data.</span></li>
+				<li>Create Mention to Hashtag <span class="No-Break">network data.</span></li>
+				<li>Create an Account to <span class="No-Break">Mention network.</span></li>
+				<li>Create a Mention to <span class="No-Break">Hashtag network.</span></li>
+				<li>Visualize the Account to <span class="No-Break">Mention network.</span></li>
+				<li>Visualize the Mention to <span class="No-Break">Hashtag network.</span></li>
+			</ol>
+			<p>Let’s do this sequentially in code, reusing the Python functions we have been using throughout <span class="No-Break">this chapter.</span></p>
+			<p>Here is the code for the first <span class="No-Break">six steps:</span></p>
+			<pre class="source-code">
+df = search_tweets(twitter_api, 'network science')
+df = wrangle_and_enrich(df)
+user_network_df = extract_user_network_data(df)
+hashtag_network_df = extract_hashtag_network_data(df)
+G_user = nx.from_pandas_edgelist(user_network_df )
+G_hash = nx.from_pandas_edgelist(hashtag_network_df)</pre>
+			<p>It is really<a id="_idIndexMarker417"/> that simple. There are a lot of moving pieces under the hood, but the more that you practice with network data, the simpler it becomes to write this kind <span class="No-Break">of code.</span></p>
+			<p>Both of these networks are now ready <span class="No-Break">for visualization:</span></p>
+			<ol>
+				<li value="1">I’ll start with the Account to Mention network visualization. This is a social network. We can draw it <span class="No-Break">like so:</span><pre class="source-code">
+draw_graph(G_user, show_names=True, node_size=3, edge_width=0.5, font_size=12)</pre></li>
+			</ol>
+			<p>This should render a <span class="No-Break">network visualization:</span></p>
+			<div>
+				<div id="_idContainer076" class="IMG---Figure">
+					<img src="image/B17105_05_013.jpg" alt="Figure 5.13 – Account to Mention social network visualization" width="1560" height="1058"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.13 – Account to Mention social network visualization</p>
+			<p>This <a id="_idIndexMarker418"/>is a bit difficult to read since the account <span class="No-Break">names overlap.</span></p>
+			<ol>
+				<li value="2">Let’s see how the network looks <span class="No-Break">without labels:</span><pre class="source-code">
+draw_graph(G_user, show_names=False, node_size=3, edge_width=0.5, font_size=12)</pre></li>
+			</ol>
+			<p>This will give us a network visualization without node labels. This will allow us to see what the whole network <span class="No-Break">looks like:</span></p>
+			<div>
+				<div id="_idContainer077" class="IMG---Figure">
+					<img src="image/B17105_05_014.jpg" alt="Figure 5.14 – Account to Mention social network visualization (no labels)" width="1464" height="1050"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.14 – Account to Mention social network visualization (no labels)</p>
+			<p>Wow! To me, that’s<a id="_idIndexMarker419"/> beautiful and useful. I can see that there are several islands or clusters of users. If we look closer, we will be able to identify communities that exist in the data. We will do this in <a href="B17105_09.xhtml#_idTextAnchor364"><span class="No-Break"><em class="italic">Chapter 9</em></span></a>, which is all about <span class="No-Break">Community Detection.</span></p>
+			<ol>
+				<li value="3">Now, let’s look at the Mention to <span class="No-Break">Hashtag network:</span><pre class="source-code">
+draw_graph(G_hash, show_names=True, node_size=3, edge_width=0.5, font_size=12)</pre></li>
+			</ol>
+			<p>This should render a <span class="No-Break">network visualization:</span></p>
+			<div>
+				<div id="_idContainer078" class="IMG---Figure">
+					<img src="image/B17105_05_015.jpg" alt="Figure 5.15 – Mention to Hashtag network visualization" width="1572" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.15 – Mention to Hashtag network visualization</p>
+			<p>Unlike<a id="_idIndexMarker420"/> the Account to Mention network, this one is easily readable. We can see users that are associated with various hashtags. There’s no value in showing this without labels, as it is unreadable and unusable without t<a id="_idTextAnchor226"/>hem. This marks the end of <span class="No-Break">the demonstration.</span></p>
+			<h1 id="_idParaDest-153"><a id="_idTextAnchor227"/>Summary</h1>
+			<p>In this chapter, we covered two easier ways to scrape text data from the internet. <strong class="source-inline">Newspaper3k</strong> made short work of scraping news websites, returning clean text, headlines, keywords, and more. It allowed us to skip steps we’d done using <strong class="source-inline">BeautifulSoup</strong> and get to clean data much quicker. We used this clean text and NER to create and visualize networks. Finally, we used the Twitter Python library and V2 API to scrape tweets and connections, and we also used tweets to create and visualize networks. Between what you learned in this chapter and the previous one, you now have a lot of flexibility in scraping the web and converting text into networks so that you can explore embedded and <span class="No-Break">hidden relationships.</span></p>
+			<p>Here is some good news: collecting and cleaning data is the most difficult part of what we are going to do, and this marks the end of data collection and most of the cleanup. After this chapter, we will mostly be having fun <span class="No-Break">with networks!</span></p>
+			<p>In the next chapter, we will look at graph construction. We will make use of the techniques we used in this chapter to create networks for analysis <span class="No-Break">and visualization.</span></p>
+		</div>
+	</div>
+</div>
+</body></html>

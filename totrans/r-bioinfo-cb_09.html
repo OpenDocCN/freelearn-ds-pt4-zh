@@ -1,0 +1,993 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Useful Statistical and Machine Learning Methods</h1>
+                </header>
+            
+            <article>
+                
+<p><span>In bioinformatics, the statistical analysis of datasets of varied size and composition is a frequent task. R is, of course, a hugely powerful statistical language with abundant options for all sorts of tasks. In this chapter, we will focus a little on some of those useful but not so often discussed methods that, while none of them make up an analysis in and of themselves, can be powerful additions to the analyses that you likely do quite often. We'll look at recipes for simulating datasets and machine learning methods for class prediction and dimensionality reduction.</span></p>
+<p>The following recipes will be covered in this chapter:</p>
+<ul>
+<li>Correcting p-values to account for multiple hypotheses</li>
+<li>Generating a simulated dataset to represent a background</li>
+<li>Learning groupings within data and classifying with kNN</li>
+<li>Predicting classes with random forests</li>
+<li>Predicting classes with SVM</li>
+<li>Learning groups in data without prior information</li>
+<li>Identifying the most important variables in data with random forests</li>
+<li>Identifying the most important variables in data with PCA</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>The sample data you'll need is available from this book's GitHub repository at <a href="https://github.com/PacktPublishing/R-Bioinformatics-Cookbook">https://github.com/PacktPublishing/R-Bioinformatics-Cookbook</a>. If you want to use the code examples as they are written, then you will need to make sure that this data is in a sub-directory of whatever your working directory is.</p>
+<p class="mce-root"/>
+<p>Here are the R packages that you'll need. In general, you can install these with<span> </span><kbd>install.packages("package_name")</kbd>. The packages listed under <kbd>Bioconductor</kbd> need to be installed with the dedicated installer. If you need to do anything further, installation will be described in the recipes in which the packages are used:</p>
+<ul>
+<li> <kbd>Bioconductor</kbd>
+<ul>
+<li><kbd>Biobase</kbd> </li>
+</ul>
+</li>
+<li><kbd>caret</kbd></li>
+<li><kbd>class</kbd></li>
+<li><kbd>dplyr</kbd></li>
+<li><kbd>e1071</kbd></li>
+<li><kbd>factoextra</kbd></li>
+<li><kbd>fakeR</kbd></li>
+<li><kbd>magrittR</kbd></li>
+<li><kbd>randomForest</kbd></li>
+<li><kbd>RColorBrewer</kbd></li>
+</ul>
+<p><kbd>Bioconductor</kbd> is huge and has its own installation manager. You can install the manager with the following code:<a href="https://www.bioconductor.org/install/"/></p>
+<pre>if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")</pre>
+<p>Then, you can install the packages with this code:</p>
+<div>
+<pre>BiocManager::install("package_name")<span> </span></pre></div>
+<div class="packt_infobox"><span> </span><span>Further information is available at</span><span> </span><span><a href="https://www.bioconductor.org/install/">https://www.bioconductor.org/install/</a>.</span></div>
+<div>
+<p>Normally, in R, a user will load a library and use the functions directly by name. This is great in interactive sessions but it can cause confusion when many packages are loaded. To clarify which package and function I'm using at a given moment, I will occasionally use the<span> </span><kbd>packageName::functionName()</kbd> convention. </p>
+<div class="packt_infobox"><span><span>Sometimes, in the middle of a recipe, I'll interrupt the code so you can see some intermediate output or the structure of an object that's important to understand. Whenever that happens, you'll see a code block where each line begins with <kbd>##</kbd> (double hash) symbols. Consider the following command:<br/></span></span>
+<p><kbd>letters[1:5]</kbd></p>
+<p><span>This will give us the following output:<br/></span></p>
+<p class="mce-root"><kbd>## a b c d e</kbd></p>
+<p><span>Note that the output lines are prefixed with <kbd>##</kbd>.</span></p>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Correcting p-values to account for multiple hypotheses</h1>
+                </header>
+            
+            <article>
+                
+<p>In bioinformatics, particularly in genomics projects, we often perform statistical tests thousands of times in an analysis. But this can be a source of significant error in our results. Consider a gene expression experiment that has small numbers of measurements per treatment (often only three) but has tens of thousands of genes. A user doing a statistical test at <em>p &lt;= 0.05</em> will reject the null hypothesis incorrectly five percent of the time. Correcting for performing multiple hypotheses allows us to reduce the error rate from such analyses. We will look at a simple-to-apply method for making such a correction.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>All of the functions we need are base R and we will create our own data with code.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Correcting p-values to account for multiple hypotheses can be done using the following steps:</p>
+<ol>
+<li>Run 10,000 t-tests:</li>
+</ol>
+<pre style="padding-left: 60px">set.seed(1)
+random_number_t_test &lt;- function(n){
+  x &lt;- rnorm(10)
+  y &lt;- rnorm(10)
+  return(t.test(x,y)$p.value)
+}
+
+p_values &lt;- sapply(1:10000, random_number_t_test )</pre>
+<ol start="2">
+<li>Assess the number of p<em>-</em>values, <kbd>&lt;= 0.05</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">sum(p_values &lt;= 0.05)</pre>
+<ol start="3">
+<li>Adjust the p-values:</li>
+</ol>
+<pre style="padding-left: 60px">adj_p_values &lt;- p.adjust(p_values, method = "holm")</pre>
+<ol start="4">
+<li>Re-assess the number of p-values, <kbd>&lt;= 0.05</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">sum(adj_p_values &lt;= 0.05)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The first line in <em>Step 1</em> simply fixes the random number generator so that we get consistent results between computers; you won't need this other than to compare the results in this book. The next part is to create a custom function that creates two sets (<em>x</em> and <em>y</em>) of 10 random numbers, then performs a t-test and returns the p-value. As these are just random numbers from the same distribution, there is no real difference. The final line uses the <kbd>sapply()</kbd> function to run our custom function and create a vector of 10,000 p-values.</p>
+<p>In <em>Step 2</em>, we simply count the number of p-values that are lower than 0.05. We get this:</p>
+<pre>## [1] 506</pre>
+<p>This indicates that we have 506 falsely called significant results. </p>
+<p>In <em>Step 3</em>, we use the <kbd>p.adjust()</kbd> function to apply a correction method. The <kbd>argument</kbd> method can be one of several available methods. In practice, it's best to try <kbd>holm</kbd> or <kbd>BH</kbd> (Benjamini Hochberg) as these give accurate false detection rates. A widely used but not very useful method is <kbd>Bonferroni</kbd>; avoid this in most cases. </p>
+<p>In <em>Step 4</em>, we re-assess the number of p-values that are lower than 0.05. This time, it's as we expect:</p>
+<pre>## [1] 0</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Generating a simulated dataset to represent a background</h1>
+                </header>
+            
+            <article>
+                
+<p>Constructing simulated datasets for sensible controls, making appropriate comparisons to an expected background distribution, and having a proper background population from which to draw samples can be important aspects of many studies. In this recipe, we'll look at various ways of generating these either from scratch or by mixing up an existing dataframe.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll use the <kbd>fakeR</kbd> package and the <span><kbd>iris</kbd> </span>built-in dataset.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Generating a simulated dataset to represent a background can be done using the following steps:</p>
+<ol>
+<li>Make a random dataset with the same characteristics as a given set:</li>
+</ol>
+<pre style="padding-left: 60px">library(fakeR)<br/>fake_iris &lt;- simulate_dataset(iris)</pre>
+<ol start="2">
+<li>Make a vector of normal random numbers with the mean and standard deviation of a given vector:</li>
+</ol>
+<pre style="padding-left: 60px">sample_mean &lt;- mean(iris$Sepal.Length)<br/>sample_sd &lt;- sd(iris$Sepal.Length)<br/>random_sepal_lengths &lt;- rnorm(iris$Sepal.Length, mean = sample_mean, sd = sample_sd)<br/>hist( random_sepal_lengths)</pre>
+<ol start="3">
+<li>Make a vector of uniform random integers in a range:</li>
+</ol>
+<pre style="padding-left: 60px">low_num &lt;- 1<br/>high_num &lt;- 6<br/>hist(runif(1500, low_num, high_num))</pre>
+<p class="mce-root"/>
+<ol start="4">
+<li>Make a vector of the number of binomial successes:</li>
+</ol>
+<pre style="padding-left: 60px">number_of_coins &lt;- 1<br/>p_heads &lt;- 0.5<br/>hist(rbinom(1500, number_of_coins, p_heads ))<br/>number_of_coins &lt;- 5<br/>hist(rbinom(1500, number_of_coins, p_heads ))</pre>
+<ol start="5">
+<li>Make a vector of random selections from a list, with a different probability for each:</li>
+</ol>
+<pre style="padding-left: 60px">random_from_list &lt;- sample(c("Low", "Medium", "High"), 100, replace = TRUE, prob = c(0.2, 0.6, 0.2))<br/>table(random_from_list)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step</em> <em>1</em> uses the <kbd>fakeR</kbd> package function called <kbd>simulate_dataset()</kbd> to create a new dataset with the same number of values, identical column names, the same number of factor levels and level names, and the same number of rows as the source dataset (<kbd>iris</kbd>). The values are randomized but, otherwise, the dataframe is identical. Note how using the <kbd>str()</kbd> function reports identical structures for <kbd>iris</kbd> and the new <kbd>fake_iris</kbd> object:</p>
+<pre>str(iris)<br/>## 'data.frame':    150 obs. of  5 variables:
+##  $ Sepal.Length: num  5.1 4.9 4.7 4.6 5 5.4 4.6 5 4.4 4.9 ...
+##  $ Sepal.Width : num  3.5 3 3.2 3.1 3.6 3.9 3.4 3.4 2.9 3.1 ...
+##  $ Petal.Length: num  1.4 1.4 1.3 1.5 1.4 1.7 1.4 1.5 1.4 1.5 ...
+##  $ Petal.Width : num  0.2 0.2 0.2 0.2 0.2 0.4 0.3 0.2 0.2 0.1 ...
+##  $ Species     : Factor w/ 3 levels "setosa","versicolor",..: 1 1 1 1 1 1 1 1 1 1 ...<br/><br/><br/>str(fake_iris)<br/>## 'data.frame':    150 obs. of  5 variables:
+##  $ Sepal.Length: num  5.26 6.69 5.63 5.21 5.28 6.45 6.8 5.71 6.01 6.44 ...
+##  $ Sepal.Width : num  2.84 2.78 2.83 2.44 2.19 3.87 3.14 2.58 2.78 3.25 ...
+##  $ Petal.Length: num  4.03 4.84 2.64 2.83 5.37 3.63 5.54 4.74 4.63 4.29 ...
+##  $ Petal.Width : num  1.63 1.33 0.7 0.61 2.03 1.17 2.05 1.6 1.57 1.32 ...
+##  $ Species     : Factor w/ 3 levels "setosa","versicolor",..: 3 2 2 3 1 2 1 3 3 1 ...</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In <em>Step 2</em>, our objective is to make a vector of random numbers with the same mean and standard deviation as those in the iris <kbd>Sepal.Length</kbd> column. To that end, we first calculate those quantities with <kbd>mean()</kbd> and <kbd>sd()</kbd>. Then, we use them as parameter values for the <kbd>mean</kbd> and <kbd>sd</kbd> arguments of the <kbd>rnorm()</kbd> function. Running <kbd>hist()</kbd> to plot the resulting <kbd>random_sepal_lengths</kbd> vector confirms the distribution and parameters.</p>
+<p>In <em>Step 3</em>, we wish to create a vector of numeric (floating point) values that can occur with equal probability—this is analogous to repeated rolls of a dice: each option is equally likely. Indeed, in this recipe, we set the low value of the range (<kbd>low_num</kbd>) to 1 and the high value (<kbd>high_num</kbd>) to 6 to mimic that. We ask the <kbd>runif()</kbd> function for 1,500 values with those low and high values and, by plotting the result with <kbd>hist()</kbd><em> </em>again, we can see the relatively level frequencies in each bin, confirming the uniformity of those values.</p>
+<p>In <em>Step 4</em>, we wish to mimic a coin-toss style probability experiment—a so-called binomial success probability distribution. We first must decide on the number of trials each time—in a coin-toss experiment, this is the number of coins we toss. Here, we set the <kbd>number_of_coins</kbd> vari<span>able </span>to 1. We must also decide the probability of success. Again, mimicking a coin-toss means we set the <kbd>p_heads</kbd> <span>variable </span>to 0.5. To run the simulation, we pass these values to the <kbd>rbinom()</kbd> function, asking for 1,500 separate repeats of the experiment. The <kbd>hist()</kbd> function shows us the frequency of 0 successes (a tails toss) and 1 success (a heads toss) over all 1,500 repeats is roughly equal. Next, we change the number of trials to 5, by changing the value of the <kbd>number_of_coins</kbd> variable. This mimics an experiment where we are using five coins at every repetition. We again use <kbd>rbinom()</kbd> and plot the result with <kbd>hist()</kbd>, this time observing that two and three successes (heads) are the most common outcomes from a trial with five coins.</p>
+<p>Finally, in <em>Step 5</em>, we look at selecting items from a vector with the <kbd>sample()</kbd> function. The first argument to sample is the vector to sample from—so, here, the integers 1 to 10. The second argument is the number of items to select—here, we select 10. Note that, by default, <kbd>sample()</kbd> will select without replacement, so that no item will appear twice, though each item in the vector has an equal probability of being selected each time. The second use of <kbd>sample()</kbd> sets the value of the <kbd>replacement</kbd> argument to <kbd>TRUE</kbd>, meaning that items can be selected repeatedly. This use also sets the <kbd>prob</kbd> argument—a vector containing the probabilities of selecting each value in the initial vector. Running this sample and putting the result through the <kbd>table()</kbd> function confirms that we get selections in the approximate probabilities expected. </p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Learning groupings within data and classifying with kNN</h1>
+                </header>
+            
+            <article>
+                
+<p>The <strong><span>k-Nearest Neighbors</span></strong> (<strong><span>kNN</span></strong>) <span>algorithm </span>is a supervised learning <span><span>algorithm </span></span>that, given a data point, will try to classify it based on its similarity to a set of training examples of known classes. In this recipe, we'll look at taking a dataset, dividing it into a test and train set, and predicting the test classes from a model built on the training set. These sorts of approaches are widely applicable in bioinformatics and can be invaluable in clustering when we have some known examples of our target classes.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll need a few new packages: <kbd>caret</kbd>, <kbd>class</kbd>, <kbd>dplyr</kbd>, and <kbd>magrittr</kbd>. As a dataset, we will use the built-in <kbd>iris</kbd> dataset.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Learning groupings within data and classifying with kNN can be done using the following steps:</p>
+<ol>
+<li>Scale the data and remove non-numeric columns:</li>
+</ol>
+<pre style="padding-left: 60px">set.seed(123)
+scaled_iris &lt;- iris %&gt;% mutate_if( is.numeric, .funs = scale)<br/>labels &lt;- scaled_iris$Species
+scaled_iris$Species &lt;- NULL</pre>
+<ol start="2">
+<li>Extract a training and test dataset:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">train_rows &lt;- sample(nrow(scaled_iris), 0.8 * nrow(scaled_iris), replace = FALSE)<br/>train_set &lt;- scaled_iris[train_rows, ]
+test_set &lt;- scaled_iris[-train_rows, ]
+train_labels &lt;- labels[train_rows]
+test_set_labels &lt;- labels[-train_rows]</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="3">
+<li>Make the model and predictions on the test set:</li>
+</ol>
+<pre style="padding-left: 60px">test_set_predictions &lt;- knn(train = train_set, test = test_set, cl = train_labels, k = 10)</pre>
+<ol start="4">
+<li>Compare the prediction with the actual class:</li>
+</ol>
+<pre style="padding-left: 60px">caret::confusionMatrix(test_set_predictions,  test_set_labels)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we initially use <kbd>set.seed()</kbd> to ensure random number reproducibility and then scale each column of the dataset using the <kbd>dplyr mutate_if()</kbd> function. The first argument of <kbd>mutate_if()</kbd> is a condition to be tested; the <kbd>.funs</kbd> argument is the function to be applied if the condition is true. Here, then, we're applying the <kbd>scale()</kbd> function to a column of the <kbd>iris</kbd> dataframe and if it is numeric, returning a dataframe we call <kbd>scaled_iris</kbd>. Performing scaling between columns is very important in kNN as the magnitude of the actual values can have a strong effect, so we need them to be of similar scale between columns. Next, we make a copy of the <kbd>Species</kbd> column from the data as this contains the class labels and remove it from the dataframe by assigning <kbd>NULL</kbd> to the column—for the next steps, the dataframe should contain only numeric data.</p>
+<p>In <em>Step 2</em>, we decide which rows should be in our training set and our test set. We use the <kbd>sample()</kbd> function to select from a vector of 1 to the number of rows in <kbd>iris</kbd>; we select 80% of the row numbers without a replacement so that <kbd>train_rows</kbd> is a vector of integers giving the rows from <kbd>scaled_iris</kbd>, which we will use in our training set. In the rest of this step, we use subsetting and negative subsetting to prepare the subsets of <kbd>scaled_iris</kbd> we will need.</p>
+<p>In <em>Step 3</em>, we apply the kNN algorithm with the <kbd>knn()</kbd> function to build the model and classify the test set in a single operation. The <kbd>train</kbd> argument gets the portion of the data we set aside for training, the <kbd>test</kbd> argument the portion for testing, and the <kbd>cl</kbd> (class) argument gets the labels for the training set. The <kbd>k</kbd> argument is the number of neighbors that should be used in classifying each unknown test point. The function returns a vector of predicted classes for each row in the test data, which we save in <kbd>test_set_predictions</kbd>.</p>
+<p class="mce-root"/>
+<p>In <em>Step 4</em>, we assess the predictions using the <kbd>caret</kbd> package function, <kbd>confusionMatrix().</kbd> This takes the predicted classes and real classes and creates a set of statistics, including the following table, which contains the <kbd>Real</kbd> labels in the rows and the <kbd>Predicted</kbd> labels in the columns. This model predicted one <kbd>versicolor</kbd> row as <kbd>virginica</kbd>, incorrectly, with all other predictions correct:</p>
+<pre>##             Reference
+## Prediction   setosa versicolor virginica
+##   setosa          8          0         0
+##   versicolor      0          9         1
+##   virginica       0          0        12</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Predicting classes with random forests</h1>
+                </header>
+            
+            <article>
+                
+<p>Random forests is another supervised learning algorithm that uses ensembles of decision trees to make many class predictions so that the most frequently called class becomes the model's final prediction. Random forests is useful generally as it will work with categorical and numerical data together and can be applied to classification and regression, and we'll use it again for predicting the most important variables in our data in the <em>Identifying the most important variables in data with random forests</em> recipe in this chapter. In this recipe, we'll use random forests to predict classes of data.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll need the <kbd>caret</kbd><strong> </strong>and <kbd>randomForest</kbd> packages and the built-in <kbd>iris</kbd> dataset.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Predicting classes with random forests can be done using the following steps:</p>
+<ol>
+<li>Prepare a training set from the <kbd>iris</kbd> data:</li>
+</ol>
+<pre style="padding-left: 60px">library(randomForest)<br/><br/>train_rows &lt;- sample(nrow(iris), 0.8 * nrow(iris), replace = FALSE)
+train_set &lt;- iris[train_rows, ]
+test_set &lt;- iris[-train_rows, ]</pre>
+<p class="mce-root"/>
+<ol start="2">
+<li>Build a model on the training data:</li>
+</ol>
+<pre style="padding-left: 60px">model &lt;- randomForest(Species ~ . , data = train_set, mtry = 2)</pre>
+<ol start="3">
+<li>Use the model to make predictions on the test data:</li>
+</ol>
+<pre style="padding-left: 60px">test_set_predictions &lt;- predict(model, test_set, type = "class")
+caret::confusionMatrix(test_set_predictions,  test_set$Species)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The whole of <em>Step 1</em> is the preparation of training and test sets. <span>We use the </span><kbd>sample()</kbd><span> function to select from a vector of 1 to the number of rows in <kbd>iris</kbd>; we select 80% of the row numbers without a replacement so that </span><kbd>train_rows</kbd><span> is a vector of integers giving the rows from </span><kbd>iris</kbd>, which <span>we will use in our training set. In the rest of this step, we use subsetting and negative subsetting to prepare the subsets of </span><kbd>iris</kbd><span> we will need.</span></p>
+<p>In <em>Step 2</em>, we proceed directly to build a model we make predictions with. The <kbd>randomForest()</kbd> function takes, at its first argument, an R formula naming the column to be predicted (in other words, <kbd>Species</kbd>, the response variable), and the dataframe columns to use as training data—here, we use all columns, which we express as a <kbd>.</kbd> character. The <kbd>data</kbd> argument is the name of the source dataframe and the <kbd>mtry</kbd> argument is a tunable parameter that tells the algorithm how many splits to use. The best value of this is usually around the square root of the number of columns, but optimizing it can be helpful. The resulting model is saved in a variable called <kbd>model</kbd>, which can be printed for inspection.</p>
+<p>At <em>Step 3</em>, we use the <kbd>predict()</kbd> function with <kbd>model</kbd>, the <kbd>test_set</kbd> data, and the <kbd>type</kbd> argument set to <kbd>class</kbd> to predict the classes of the test set. We then assess them with <kbd>caret::confusionMatrix()</kbd><em> </em>to give the following result:</p>
+<pre>##             Reference
+## Prediction   setosa versicolor virginica
+##   setosa         13          0         0
+##   versicolor      0          8         0
+##   virginica       0          0        9
+## </pre>
+<p><span>The result indicates that the test set was classified perfectly.</span></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more</h1>
+                </header>
+            
+            <article>
+                
+<p>It is possible to perform regression (the prediction of a numeric value) with a very similar approach. Look at the similarity of the following code for building a regression and doing an assessment. Here, we predict sepal length based on the other columns. After model building, we <span>run the prediction as before</span>; note how we drop the <kbd>type</kbd> argument (as regression is actually the default). Finally, we assess by calculating the <strong>Mean Squared Error </strong>(<strong>MSE</strong>), in which we square the difference between the prediction and the actual value for sepal length and then take the mean of both:</p>
+<pre>model &lt;- randomForest(Sepal.Length ~ . , data = train_set, mtry = 2)<br/>test_set_predictions &lt;- predict(model, test_set)<br/><br/>mean( (test_set$Sepal.Length - test_set_predictions )^2 ) </pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Predicting classes with SVM</h1>
+                </header>
+            
+            <article>
+                
+<p>The <strong>support vector machine</strong> (<strong>SVM</strong>) algorithm is a classifier that works by finding the maximum distance between classes in multiple dimensions of data<span>—</span>effectively the largest gap between classes—and uses the middle point of that gap as a boundary for classification. In this recipe, we'll look at using the SVM for peforming supervised class prediction and illustrating the boundary graphically.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll continue to use the built-in <kbd>iris</kbd> dataset and the <kbd>e1071</kbd> <span>package.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Predicting classes with SVM can be done using the following steps:</p>
+<ol>
+<li>Build the training and test sets:</li>
+</ol>
+<pre style="padding-left: 60px">library(e1071)
+train_rows &lt;- sample(nrow(iris), 0.8 * nrow(iris), replace = FALSE)
+
+train_set &lt;- iris[train_rows, ]
+test_set &lt;- iris[-train_rows, ]</pre>
+<p class="mce-root"/>
+<ol start="2">
+<li>Construct the model:</li>
+</ol>
+<pre style="padding-left: 60px">model &lt;- svm(Species~., data=train_set, type="C-classification", kernel="radial", gamma=0.25)</pre>
+<ol start="3">
+<li>Plot the boundary of the model:</li>
+</ol>
+<pre style="padding-left: 60px">cols_to_hold &lt;- c("Sepal.Length", "Sepal.Width")
+held_constant &lt;- lapply(cols_to_hold, function(x){mean(train_set[[x]])})
+names(held_constant) &lt;- cols_to_hold
+
+plot(model, train_set, Petal.Width ~ Petal.Length, slice = held_constant)</pre>
+<ol start="4">
+<li>Make predictions on the test set:</li>
+</ol>
+<pre style="padding-left: 60px">test_set_predictions &lt;- predict(model, test_set, type = "class")
+caret::confusionMatrix(test_set_predictions,  test_set$Species)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we have the probably familiar train and test set generation step we discussed in the previous recipes. Briefly, here, we create a vector of row numbers to use as a training set and use subsetting and negative subsetting to extract to new sub-datasets.</p>
+<p>In <em>Step 2</em>, we proceed to create the model using the <kbd>svm()</kbd> function. The first argument is an R formula that specifies the column to use as the classes (the response variable, <kbd>Species</kbd>), and after <kbd>~</kbd>, we use the <kbd>.</kbd> character to mean that all other columns are to be used as the data from which to build the model. We set the <kbd>data</kbd> argument to the <kbd>train_set</kbd> dataframe and select appropriate values for the <kbd>kernel</kbd> and <kbd>gamma</kbd> type. <kbd>type</kbd> may be classification- or regression-based; <kbd>kernel</kbd> is one of a variety of functions that are designed for different data and problems; and <kbd>gamma</kbd> is a parameter for the kernel. You may wish to check the function documentation for details. These values can also be optimized empirically. </p>
+<p>In <em>Step 3</em>, we create some objects that we can use to render the four-dimensional boundary in two dimensions. First, we select the columns we don't want to plot (those to hold constant), then we use the <kbd>lapply()</kbd> function to iterate over a character vector of those column names and apply a function to calculate the mean of the named column. We add column names to the resultant list in the <kbd>cols_to_hold</kbd> <span>variable.</span> We then use the generic <kbd>plot()</kbd> function, passing the model, the training data to plot, the two dimensions to plot as a formula (<kbd>Petal.Width ~ Petal.Length</kbd>), and a <kbd>slice</kbd> argument that takes our means from the other columns in the <kbd>held_constant</kbd> list.</p>
+<p>The result looks like this, showing the margins in colors for each class:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-615 image-border" src="Images/95c47bd6-d945-4fc3-a22d-3c00437a076f.png" style="width:40.08em;height:27.58em;" width="1297" height="891"/></p>
+<p>In <em>Step 4</em>, we repeat the predictions on the test set using <kbd>predict()</kbd> and generate the confusion matrix with <kbd>caret::confusionMatrix()</kbd> to see the accuracy.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Learning groups in data without prior information</h1>
+                </header>
+            
+            <article>
+                
+<p>It is common in bioinformatics to want to classify things into groups without first knowing what or how many groups there may be. This process is usually known as clustering and is a type of unsupervised machine learning. A common place for this approach is in genomics experiments, particularly RNAseq and related expression technologies. In this recipe, we'll start with a large gene expression dataset of around 150 samples, learn how to estimate how many groups of samples there are, and apply a method to cluster them based on the reduction of dimensionality with <strong>Principal Component Analysis </strong>(<strong><span>PCA</span></strong>), followed by a k-means cluster.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll need the <kbd>factoextra</kbd> and <kbd>biobase</kbd> <span>libraries </span>(the latter from <kbd>Bioconductor</kbd>) and the <kbd>modencodefly_eset.RData</kbd> file from the <kbd>datasets/ch1</kbd> folder of this book's repository.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Learning about groups in data without prior information can be done using the following steps:</p>
+<ol>
+<li>Load the data and run a PCA:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">library(factoextra)<br/>library(Biobase)<br/><br/>load(file.path(getwd(), "datasets", "ch1", "modencodefly_eset.RData") ) <br/>expr_pca &lt;- prcomp(exprs(modencodefly.eset), scale=TRUE, center=TRUE ) fviz_screeplot(expr_pca)</pre>
+<ol start="2">
+<li>Extract the principal components and estimate the optimal clusters:</li>
+</ol>
+<pre style="padding-left: 60px">main_components &lt;- expr_pca$rotation[, 1:3]
+fviz_nbclust(main_components, kmeans, method = "wss")</pre>
+<ol start="3">
+<li>Perform k-means clustering and visualizing:</li>
+</ol>
+<pre style="padding-left: 60px">kmean_clus &lt;- kmeans(main_components, 5, nstart=25, iter.max=1000)<br/><br/>fviz_cluster(kmean_clus, data = main_components,
+             palette = RColorBrewer::brewer.pal(5, "Set2"),
+             ggtheme = theme_minimal(),
+             main = "k-Means Sample Clustering"
+             )</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step</em> <em>1</em>, we use the <kbd>load()</kbd> function to import the <kbd>modencodefly.eset</kbd> object into memory; this is a gene expression dataset. Then, we use the <kbd>Biobase</kbd> function, called <kbd>exprs()</kbd> to extract the expression measurements as a rectangular matrix and pass that to the <kbd>prcomp()</kbd> <span>function, which  </span>performs PCA and returns a PCA object, which we store in the <kbd>expr_pca</kbd> variable.</p>
+<p class="mce-root"/>
+<p>We then plot the PCA with the <kbd>factoextra</kbd> function, <kbd>fviz_screeplot()</kbd>, and see the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-616 image-border" src="Images/d0a8b873-4af6-4684-b24c-7bd281470469.png" style="width:112.00em;height:80.00em;" width="1344" height="960"/></p>
+<p><span>This shows how much of the variance within the data is captured by each principal component. The first three components capture over 70% of the variance. Hence, we can use these three instead of the whole 150-column dataset, simplifying the process and speeding up the analysis greatly. </span></p>
+<p>In <em>Step 2</em>, we extract the main components using subsetting on the rotation slot of the <kbd>expr_pca</kbd> object, extracting the first three columns—these correspond to the first three components. We save these in a variable called <kbd>main_components</kbd> and use the <kbd>fviz_nbclust()</kbd> function on <kbd>main_components</kbd> and the <kbd>kmeans</kbd> <span>function</span> to create the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-617 image-border" src="Images/236e1075-e0a6-4720-97b5-72b15747af67.png" style="width:42.50em;height:30.33em;" width="1344" height="960"/></p>
+<p><span>In this function, the data is divided into increasing amounts of clusters and the</span> <kbd>wss</kbd> <span>(<strong>Within Sum of Squares</strong>), a measure of variability within the cluster. The diagram shows that the <strong>Within Sum of Squares</strong> measure decreases greatly up until about 5 clusters, after which no improvement is seen, indicating that the data contains about 5 clusters.</span></p>
+<p class="mce-root"/>
+<p>In <em>Step 3</em>, we perform a k-means cluster using the <kbd>kmeans()</kbd> function, providing <kbd>main_components</kbd> as data for the first argument and <kbd>5</kbd> for the number of clusters as the second argument. The values for the <kbd>nstart</kbd> and <kbd>iter.max</kbd> <span>arguments </span>are reasonable options for most runs of the algorithm. Finally, we pass the <kbd>kmeans_clust</kbd> object to the <kbd>fviz_cluster()</kbd> function and set some display options to get the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-618 image-border" src="Images/7358aec3-8fc4-4b59-82dd-606ade79fcfb.png" style="width:112.00em;height:80.00em;" width="1344" height="960"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more</h1>
+                </header>
+            
+            <article>
+                
+<p>We have performed k-means clustering for the samples or columns of this dataset. If you wish to do the same for genes or rows, extract the main components from the unrotated data in the <em>x</em> slot in <em>Step 2</em>:</p>
+<pre>main_components &lt;- expr_pca$x[, 1:3]</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p>If you wish to get the actual cluster IDs for each sample, that is stored in the <kbd>cluster</kbd> slot of the <kbd>kmeans_clus</kbd> object:</p>
+<pre>kmean_clus$cluster[1:5]<br/><br/>## SRX007811 SRX008180 SRX008227 SRX008238 SRX008258 
+##         2         2         2         2         2</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Identifying the most important variables in data with random forests</h1>
+                </header>
+            
+            <article>
+                
+<p>We've already seen the random forests algorithm in use in this chapter, in the <em>Predicting classes with random forests</em> recipe, where we used it for class prediction and regression. Here, we're going to use it for a different purpose—to try and work out which of the variables in a dataset contribute most to the classification or regression accuracy of the trained model. This requires only a simple change to the code we already have and a <span><span>new </span></span>function or two.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll need the <kbd>randomForest</kbd> package and the built-in <kbd>iris</kbd> dataset.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Identifying the most important variables in data with random forests can be done using the following steps:</p>
+<ol>
+<li>Prepare the training and test data:</li>
+</ol>
+<pre style="padding-left: 60px">library(randomForest)
+
+train_rows &lt;- sample(nrow(iris), 0.8 * nrow(iris), replace = FALSE)
+train_set &lt;- iris[train_rows, ]
+test_set &lt;- iris[-train_rows, ]</pre>
+<ol start="2">
+<li>Train the model and create the <kbd>importance</kbd> plot:</li>
+</ol>
+<pre style="padding-left: 60px">model &lt;- randomForest(Species ~ . , data = train_set, mtry = 2, importance = TRUE)
+varImpPlot(model)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we perform a similar dataset split to those in several previous recipes. Using the <kbd>sample()</kbd> function, we create a list of 80% of the row numbers of the original <kbd>iris</kbd> data and then, using subsetting and negative subsetting, we extract the rows.</p>
+<p>In <em>Step 2</em>, we train the model using the <kbd>randomForest()</kbd> function. The first argument here is a formula; we're specifying that <kbd>Species</kbd> is the value we wish to predict based on all other variables, which are described by <kbd>. </kbd>. <kbd>data</kbd> is our <kbd>train_set</kbd> object. The key in this recipe is to make sure we set the <kbd>importance</kbd> variable to <kbd>TRUE</kbd>, meaning the model will test variables that, when left out of the model building, cause the biggest decrease in accuracy. Once the model is built and tested, we can visualize the importance of each variable with the <kbd>varImpPlot()</kbd> function. In doing so, we get the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-620 image-border" src="Images/c17eef5b-627c-46bf-8368-9da91dad763d.png" style="width:38.75em;height:23.83em;" width="1325" height="813"/></p>
+<p><span>We can see that it is the <kbd>Petal.Width</kbd> and <kbd>Petal.Length</kbd> variables that, when left out, cause the greatest decrease in model accuracy, so are, by this measure, the most important.</span></p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Identifying the most important variables in data with PCA</h1>
+                </header>
+            
+            <article>
+                
+<p>We've seen PCA in use in the <em>Learning groups in data without prior information</em> recipe as a dimensionality reduction technique—a method for reducing the size of our dataset whilst retaining the important information. As you might imagine, that means that we can get an idea of which of the original variables are contributing most to our reduced representation and we can, therefore, work out which are the most important. We'll see how that works in this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll use the <kbd>factoextra</kbd> package and the built-in <kbd>iris</kbd> dataset. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Identifying the most important variables in data with PCA can be done using the following steps:</p>
+<ol>
+<li>Perform PCA:</li>
+</ol>
+<pre style="padding-left: 60px">library(factoextra)
+pca_result &lt;- prcomp(iris[,-5], scale=TRUE, center=TRUE )</pre>
+<ol start="2">
+<li>Create a variable plot:</li>
+</ol>
+<pre style="padding-left: 60px">fviz_pca_var(pca_result, col.var="cos2")</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>This brief recipe begins in <em>Step 1</em> with the simple construction of <kbd>pca_result</kbd> from the <kbd>prcomp()</kbd> function. We pass the <kbd>iris</kbd> data as the first argument (without the fifth categorical column) and scale and center the data—this stops magnitude differences from measurements in different scales taking up inappropriate weights. </p>
+<p>With the <kbd>pca_result</kbd> constructed, we can plot the variables using the <kbd>fviz_pca_var()</kbd> function to get the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-621 image-border" src="Images/4c0dc688-49cd-460f-a55c-fddc5a822b85.png" style="width:41.58em;height:36.17em;" width="1102" height="959"/></p>
+<p>In it, we can see arrows depicting each variable. The angle at which an arrow moves away from the center indicates a characteristic of the variable; the closer the arrows are, the more similar the variables—hence, <kbd>Petal.Length</kbd> and <kbd>Petal.Width</kbd> are highly correlated variables. The color of the arrows indicates a complicated quantity (called <kbd>cos2</kbd>), which represents the quality of the contribution of the variable. The higher the contribution of the variable, the higher <kbd>cos2</kbd>. Here, we can see that <kbd>Sepal.Width</kbd> and <kbd>Petal.Length</kbd> contribute well to the PCA. <kbd>Petal.Width</kbd> is too similar to be considered. This is a different result to that of the <em>Identifying the most important variables in data with random forests</em> recipe, as the two techniques are asking different questions.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  </body></html>

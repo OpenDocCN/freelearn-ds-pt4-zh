@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en-US" xml:lang="en-US">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="generator" content="pandoc"/>
+  <title>ch027.xhtml</title>
+  <style>
+  </style>
+  <link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/>
+</head>
+<body epub:type="bodymatter">
+<section id="optimization-in-multiple-variables" class="level2 chapterHead">
+<h1 class="chapterHead"><span class="titlemark"><span class="cmss-10x-x-109">17</span></span><br/>
+<span id="x1-26800020"></span><span class="cmss-10x-x-109">Optimization in Multiple Variables</span></h1>
+<p><span class="cmss-10x-x-109">Hey! We are at the last checkpoint of our calculus study. What’s missing? Gradient descent, of course.</span></p>
+<p><span class="cmss-10x-x-109">In the previous eight chapters, we lined up all of our ducks in a row, and now it’s time to take that shot. First, we’ll put multivariable functions to code. Previously, we built a convenient interface in the form of our </span><span class="cmtt-10x-x-109">Function </span><span class="cmss-10x-x-109">class to represent differentiable functions. After the lengthy setup in the previous chapter, we can easily extend it, and with the power of vectorization, we don’t even have to change that much. Let’s go!</span></p>
+<section id="multivariable-functions-in-code" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_238"><span class="titlemark"><span class="cmss-10x-x-109">17.1 </span></span> <span id="x1-26900020.1"></span><span class="cmss-10x-x-109">Multivariable functions in code</span></h2>
+<p><span class="cmss-10x-x-109">It’s been a long</span><span id="dx1-269001"></span> <span class="cmss-10x-x-109">time since we put theory into code. So, let’s take a look at multivariable functions!</span></p>
+<p><span class="cmss-10x-x-109">Last time, we built a </span><span class="cmtt-10x-x-109">Function </span><span class="cmss-10x-x-109">base class with two main methods: one for computing the derivative (</span><span class="cmtt-10x-x-109">Function.prime</span><span class="cmss-10x-x-109">) and one for getting the dictionary of parameters (</span><span class="cmtt-10x-x-109">Function.parameters</span><span class="cmss-10x-x-109">).</span></p>
+<p><span class="cmss-10x-x-109">This won’t be much of a surprise: the multivariate function base class is not much different. For clarity, we’ll appropriately rename the </span><span class="cmtt-10x-x-109">prime </span><span class="cmss-10x-x-109">method to </span><span class="cmtt-10x-x-109">grad</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-285" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>class MultivariableFunction: 
+    def __init__(self): 
+        pass 
+ 
+    def __call__(self, *args, **kwargs): 
+        pass 
+ 
+    def grad(self): 
+        pass 
+ 
+    def parameters(self): 
+        return dict()</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Let’s see a</span> <span id="dx1-269014"></span><span class="cmss-10x-x-109">few examples right away. The simplest one is the squared Euclidean norm </span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">x</span>) = <span class="cmsy-10x-x-109">∥</span><span class="cmbx-10x-x-109">x</span><span class="cmsy-10x-x-109">∥</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">, a close relative to the mean squared error function. Its gradient is given by</span></p>
+
+<img src="../media/file1575.png" class="math-display" width="150" alt="∇f (x) = 2x, "/>
+
+<p><span class="cmss-10x-x-109">thus everything is ready to implement it. As we’ve used NumPy arrays to represent vectors, we’ll use them as the input as well.</span></p>
+<pre class="lstinputlisting"><code>import numpy as np
+
+
+class SquaredNorm(MultivariableFunction):
+    def __call__(self, x: np.array):
+        return np.sum(x**2)
+    
+    def grad(self, x: np.array):
+        return 2*x</code></pre>
+<p><span class="cmss-10x-x-109">Note that </span><span class="cmtt-10x-x-109">SquaredNorm </span><span class="cmss-10x-x-109">is different from </span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">x</span>) = <span class="cmsy-10x-x-109">∥</span><span class="cmbx-10x-x-109">x</span><span class="cmsy-10x-x-109">∥</span><sup><span class="cmr-8">2</span></sup> <span class="cmss-10x-x-109">in a mathematical sense, as it accepts any NumPy array, not just an </span><span class="cmmi-10x-x-109">n</span><span class="cmss-10x-x-109">-dimensional vector. This is not a problem now, but will be later, so keep that in mind.</span></p>
+<p><span class="cmss-10x-x-109">Another example can be given with the parametric linear function</span></p>
+<div class="math-display">
+<img src="../media/file1578.png" class="math-display" alt="g(x,y) = ax + by, "/>
+</div>
+<p><span class="cmss-10x-x-109">where </span><span class="cmmi-10x-x-109">a,b </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">are arbitrary parameters. Let’s see how </span><span class="cmmi-10x-x-109">g</span>(<span class="cmmi-10x-x-109">x,y</span>) <span class="cmss-10x-x-109">is implemented!</span></p>
+<div id="tcolobox-286" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>class Linear(MultivariableFunction): 
+    def __init__(self, a: float, b: float): 
+        self.a = a 
+        self.b = b 
+ 
+    def __call__(self, x: np.array): 
+        #x0022;"/span&gt; 
+        x: np.array of shape (2, ) 
+        #x0022;"/span&gt; 
+        x = x.reshape(2) 
+        return self.a*x[0] + self.b*x[1] 
+ 
+    def grad(self, x: np.array): 
+        return np.array([self.a, self.b]).reshape(2, 1) 
+ 
+    def parameters(self): 
+        return {"/span&gt;a self.a, /span&gt;b self.b}</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">To check if our implementation works correctly, we can quickly test it</span><span id="dx1-269041"></span> <span class="cmss-10x-x-109">out on a simple example.</span></p>
+<div id="tcolobox-287" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>g = Linear(a=1, b=-1) 
+ 
+g(np.array([1, 0]))</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.int64(1)</code></pre>
+<p><span class="cmss-10x-x-109">Perhaps we might have overlooked this question until now, but trust me, specifying the input and output shapes is of crucial importance. When doing mathematics, we can be flexible in our notation and treat any vector </span><span class="cmbx-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">as a column or row vector, but painfully, this is not the case in practice.</span></p>
+<p><span class="cmss-10x-x-109">Correctly keeping track of array shapes is of utmost importance and can save you hundreds of hours. No joke.</span></p>
+</section>
+<section id="minima-and-maxima-revisited" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_239"><span class="titlemark"><span class="cmss-10x-x-109">17.2 </span></span> <span id="x1-27000020.2"></span><span class="cmss-10x-x-109">Minima and maxima, revisited</span></h2>
+<p><span class="cmss-10x-x-109">In a single</span> <span id="dx1-270001"></span><span class="cmss-10x-x-109">variable, we have successfully used the derivatives to find</span><span id="dx1-270002"></span> <span class="cmss-10x-x-109">the local optima of differentiable functions.</span></p>
+<p><span class="cmss-10x-x-109">Recall that if </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ </span><span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">is differentiable everywhere, then </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-214004r87"><span class="cmssi-10x-x-109">87</span></a> <span class="cmss-10x-x-109">gives that</span></p>
+<p><span class="cmssi-10x-x-109">(a) </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0 <span class="cmss-10x-x-109">implies a local minimum. </span><span class="cmssi-10x-x-109">(b) </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′′</span></sup>(<span class="cmmi-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0 <span class="cmss-10x-x-109">implies a local maximum.</span> </span></span></p>
+<p><span class="cmss-10x-x-109">(A simple </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmss-10x-x-109">is not enough, as the example </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">3</span></sup> <span class="cmss-10x-x-109">shows at</span> 0<span class="cmss-10x-x-109">.)</span></p>
+<p><span class="cmss-10x-x-109">Can we do something similar in multiple variables?</span></p>
+<p><span class="cmss-10x-x-109">Right from the start, there seems to be an issue: the derivative is not a scalar (thus, we can’t equate it to 0).</span></p>
+<p><span class="cmss-10x-x-109">This is easy to solve: the analogue of the condition </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmss-10x-x-109">is </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = (0<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,…,</span>0)<span class="cmss-10x-x-109">. For simplicity, the zero vector </span>(0<span class="cmmi-10x-x-109">,</span>0<span class="cmmi-10x-x-109">,…,</span>0) <span class="cmss-10x-x-109">will also be denoted by </span>0<span class="cmss-10x-x-109">. Don’t worry, this won’t be confusing; it’s all clear from the context. Introducing a</span><span id="dx1-270003"></span> <span class="cmss-10x-x-109">new</span> <span id="dx1-270004"></span><span class="cmss-10x-x-109">notation for the zero vector would just add more complexity.</span></p>
+<p><span class="cmss-10x-x-109">We can visualize what happens with the tangent plane at critical points. In a single variable, we have already seen this: as </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">17.1</span></a> <span class="cmss-10x-x-109">illustrates, </span><span class="cmmi-10x-x-109">f</span><sup><span class="cmsy-8">′</span></sup>(<span class="cmmi-10x-x-109">a</span>) = 0 <span class="cmss-10x-x-109">implies that the tangent line is horizontal.</span></p>
+<div class="minipage">
+<p><img src="../media/file1579.png" width="427" alt="PIC"/> <span id="x1-270005r1"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 17.1: Local extrema in a single variable</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">In multiple variables, the situation is similar: </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = <span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">implies that the best local linear approximation (</span><a href="ch026.xhtml#x1-257003r68"><span class="cmss-10x-x-109">16.3</span></a><span class="cmss-10x-x-109">) is constant; that is, the tangent </span><span class="cmssi-10x-x-109">plane </span><span class="cmss-10x-x-109">is horizontal. (As visualized by </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">17.2</span></a><span class="cmss-10x-x-109">.)</span></p>
+<div class="minipage">
+<p><img src="../media/file1580.png" width="427" alt="PIC"/> <span id="x1-270006r2"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 17.2: Local extrema in multiple variables</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">So, what does </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = <span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">imply? Similarly to the single-variable case, an </span><span class="cmbx-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">is called a </span><span class="cmssi-10x-x-109">critical point </span><span class="cmss-10x-x-109">of </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">if </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = <span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">holds. The similarity doesn’t stop at the level of terminologies. We also have three options in multiple variables as well: </span><span class="cmbx-10x-x-109">a </span><span class="cmss-10x-x-109">is</span></p>
+<ol>
+<li><span id="x1-270008x1"><span class="cmss-10x-x-109">a local minimum,</span></span></li>
+<li><span id="x1-270010x2"><span class="cmss-10x-x-109">a local maximum,</span></span></li>
+<li><span id="x1-270012x3"><span class="cmss-10x-x-109">or neither.</span></span></li>
+</ol>
+<p><span class="cmss-10x-x-109">In multiple</span> <span id="dx1-270013"></span><span class="cmss-10x-x-109">variables, a non-extremal critical point is called a</span><span id="dx1-270014"></span> <span class="cmssi-10x-x-109">saddle point</span><span class="cmss-10x-x-109">, because the two-dimensional case bears a striking resemblance to an actual horse saddle, as you are about to see. Saddle points are the high-dimensional analogues of the one-dimensional inflection points. The functions</span></p>
+<div class="math-display">
+<img src="../media/file1581.png" class="math-display" alt=" 2 2 f (x,y) = x + y , 2 2 g(x,y) = − (x + y ), h (x,y) = x2 − y2 "/>
+</div>
+<p><span class="cmss-10x-x-109">at </span>(0<span class="cmmi-10x-x-109">,</span>0) <span class="cmss-10x-x-109">provide an example for all three, as </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">17.3</span></a><span class="cmss-10x-x-109">, </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">17.4</span></a><span class="cmss-10x-x-109">, and </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">17.5</span></a> <span class="cmss-10x-x-109">show. (Keep in mind that a local extremum might be global.)</span></p>
+<div class="minipage">
+<p><img src="../media/file1582.png" width="456" alt="PIC"/> <span id="x1-270015r3"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 17.3: A (local) maximum</span> </span>
+</div>
+<div class="minipage">
+<p><img src="../media/file1583.png" width="456" alt="PIC"/> <span id="x1-270016r4"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 17.4: A (local) minima</span> </span>
+</div>
+<div class="minipage">
+<p><img src="../media/file1584.png" width="456" alt="PIC"/> <span id="x1-270017r5"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 17.5: A saddle point</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">To put things into order, let’s start formulating definitions and theorems.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-270018r73"></span> <span class="cmbx-10x-x-109">Definition 73.</span> </span><span class="cmbx-10x-x-109">(Critical points)</span></p>
+<p>Let <span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span>be an arbitrary vector-scalar function. We say that <span class="cmbx-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> is a <span class="cmti-10x-x-109">critical point </span>of <span class="cmmi-10x-x-109">f </span>if either</p>
+<img src="../media/file1585.png" class="math-display" width="75" alt="∇f (a) = 0 "/>
+
+<p>holds, or <span class="cmmi-10x-x-109">f </span>is not partially differentiable at <span class="cmbx-10x-x-109">a </span>in at least one variable.</p>
+</div>
+<p><span class="cmss-10x-x-109">The</span> <span id="dx1-270019"></span><span class="cmss-10x-x-109">second case (where </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">is not differentiable at </span><span class="cmbx-10x-x-109">a</span><span class="cmss-10x-x-109">) is there to handle</span> <span id="dx1-270020"></span><span class="cmss-10x-x-109">situations like </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x,y</span>) = <span class="cmmi-10x-x-109">jxj </span>+ <span class="cmmi-10x-x-109">jyj</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">For the sake of precision, let’s define local extrema in multiple dimensions as well.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-270021r74"></span> <span class="cmbx-10x-x-109">Definition 74.</span> </span><span class="cmbx-10x-x-109">(Local minima and maxima)</span></p>
+<p>Let <span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span>be an arbitrary vector-scalar function and let <span class="cmbx-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> be an arbitrary point.</p>
+<p><span class="cmti-10x-x-109">(a) </span><span class="cmbx-10x-x-109">a </span>is a <span class="cmti-10x-x-109">local minimum </span>if there exists an <span class="cmmi-10x-x-109">𝜀/span&gt;0 such that </span></p>
+<div class="math-display">
+<img src="../media/file1586.png" class="math-display" alt="f(a) ≤ f(x), x ∈ B(𝜀,a). "/>
+</div>
+<p><span class="cmti-10x-x-109">(b) </span><span class="cmbx-10x-x-109">a </span>is a <span class="cmti-10x-x-109">strict local minimum </span>if there exists an <span class="cmmi-10x-x-109">𝜀/span&gt;0 such that </span></p>
+<div class="math-display">
+<img src="../media/file1587.png" class="math-display" alt="f(a) &lt;f(x), x ∈ B(𝜀,a). "/>
+</div>
+<p><span class="cmti-10x-x-109">(c) </span><span class="cmbx-10x-x-109">a </span>is a <span class="cmti-10x-x-109">local maximum </span>if there exists an <span class="cmmi-10x-x-109">𝜀/span&gt;0 such that </span></p>
+<div class="math-display">
+<img src="../media/file1588.png" class="math-display" alt="f(a) ≥ f(x), x ∈ B (𝜀,a) ∖{a}. "/>
+</div>
+<p><span class="cmti-10x-x-109">(d) </span><span class="cmbx-10x-x-109">a </span>is a <span class="cmti-10x-x-109">strict local maximum </span>if there exists an <span class="cmmi-10x-x-109">𝜀/span&gt;0 such that </span></p>
+<div class="math-display">
+<img src="../media/file1589.png" class="math-display" alt="f(a) &gt;f(x), x ∈ B (𝜀,a) ∖{a}. "/>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">As the example of </span><span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup> <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">y</span><sup><span class="cmr-8">2</span></sup> <span class="cmss-10x-x-109">shows, a critical point is not necessarily a local extremum, but a local extremum is always a critical point. The next result, which is the analogue of </span><span class="cmssi-10x-x-109">Definition </span><a href="ch027.xhtml#x1-270018r73"><span class="cmssi-10x-x-109">73</span></a><span class="cmss-10x-x-109">, makes this mathematically precise.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-270022r106"></span> <span class="cmbx-10x-x-109">Theorem 106.</span> </span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be an arbitrary vector-scalar function, and suppose that </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is partially differentiable with respect to all variables at some </span><span class="cmbx-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">If </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">has a local extremum at </span><span class="cmbx-10x-x-109">a</span><span class="cmti-10x-x-109">, then </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = <span class="cmbx-10x-x-109">0</span><span class="cmti-10x-x-109">.</span></p>
+</div>
+<div id="tcolobox-288" class="tcolorbox proofbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-content">
+<p><span class="cmssi-10x-x-109">Proof. </span><span class="cmss-10x-x-109">This is a direct consequence of </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-213005r86"><span class="cmssi-10x-x-109">86</span></a><span class="cmss-10x-x-109">, as if </span><span class="cmbx-10x-x-109">a </span>= (<span class="cmmi-10x-x-109">a</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,a</span><sub><span class="cmmi-8">n</span></sub>) <span class="cmss-10x-x-109">is a local extremum of the vector-scalar function </span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">, then it is a local extremum of the single-variable functions </span><span class="cmmi-10x-x-109">h</span>→<span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a </span>+ <span class="cmmi-10x-x-109">h</span><span class="cmbx-10x-x-109">e</span><sub><span class="cmmi-8">i</span></sub>)<span class="cmss-10x-x-109">, where </span><span class="cmbx-10x-x-109">e</span><sub><span class="cmmi-8">i</span></sub> <span class="cmss-10x-x-109">is the vector whose </span><span class="cmmi-10x-x-109">i</span><span class="cmss-10x-x-109">-th component is </span>1<span class="cmss-10x-x-109">, while the others are 0.</span></p>
+<p><span class="cmss-10x-x-109">According to the very definition of the partial derivative given by </span><span class="cmssi-10x-x-109">Definition </span><a href="ch026.xhtml#x1-254009r66"><span class="cmssi-10x-x-109">66</span></a><span class="cmss-10x-x-109">,</span></p>
+<div class="math-display">
+<img src="../media/file1591.png" class="math-display" alt="-d-f(a + hei) =-∂f-(a). dh ∂xi "/>
+</div>
+<p><span class="cmss-10x-x-109">Thus, </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch021.xhtml#x1-213005r86"><span class="cmssi-10x-x-109">86</span></a> <span class="cmss-10x-x-109">gives that</span></p>
+
+<img src="../media/file1592.png" width="150" class="math-display" alt=" ∂f ∂x--(a ) = 0 i "/>
+<p><span class="cmss-10x-x-109">for all </span><span class="cmmi-10x-x-109">i </span>= 1<span class="cmmi-10x-x-109">,…,n</span><span class="cmss-10x-x-109">, giving that </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = <span class="cmbx-10x-x-109">0</span><span class="cmss-10x-x-109">.</span></p>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">So, how can we find the local extrema with the derivative? As we have</span><span id="dx1-270023"></span> <span class="cmss-10x-x-109">already suggested, studying</span><span id="dx1-270024"></span> <span class="cmss-10x-x-109">the second derivative will help us pinpoint the extrema among critical points. Unfortunately, things are much more complicated in </span><span class="cmmi-10x-x-109">n </span><span class="cmss-10x-x-109">variables, so let’s focus on the two-variable case first.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-270025r107"></span> <span class="cmbx-10x-x-109">Theorem 107.</span> </span><span class="cmbxti-10x-x-109">(The two-variable second derivative test)</span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">2</span></sup> <span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be an arbitrary vector-scalar function, and suppose that </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is partially differentiable at some </span><span class="cmbx-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">2</span></sup><span class="cmti-10x-x-109">. Also suppose that </span><span class="cmbx-10x-x-109">a </span><span class="cmti-10x-x-109">is a critical point, that is, </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = <span class="cmbx-10x-x-109">0</span><span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(a) If</span> det<span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0 <span class="cmti-10x-x-109">and</span> <img src="../media/file1593.png" width="15" data-align="middle" alt="∂2f- ∂x22"/><span class="cmmi-10x-x-109">/span&gt;0<span class="cmti-10x-x-109">, then </span><span class="cmbx-10x-x-109">a </span><span class="cmti-10x-x-109">is a local minimum.</span> </span></span></p>
+<p><span class="cmti-10x-x-109">(b) If</span> det<span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0 <span class="cmti-10x-x-109">and</span> <img src="../media/file1594.png" width="15" data-align="middle" alt="∂2f- ∂x22"/><span class="cmmi-10x-x-109">/span&gt;0<span class="cmti-10x-x-109">, then </span><span class="cmbx-10x-x-109">a </span><span class="cmti-10x-x-109">is a local maximum.</span> </span></span></p>
+<p><span class="cmti-10x-x-109">(c) If</span> det<span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>)<span class="cmmi-10x-x-109">/span&gt;0<span class="cmti-10x-x-109">, then </span><span class="cmbx-10x-x-109">a </span><span class="cmti-10x-x-109">is a saddle point.</span> </span></p>
+</div>
+<p><span class="cmss-10x-x-109">We will not prove this, but some remarks are in order. First, as the determinant of the Hessian can be 0, </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch027.xhtml#x1-270025r107"><span class="cmssi-10x-x-109">107</span></a> <span class="cmss-10x-x-109">does not cover all possible cases.</span></p>
+<p><span class="cmss-10x-x-109">It’s probably best to see a few examples, so let’s revisit the previously seen functions</span></p>
+<div class="math-display">
+<img src="../media/file1595.png" class="math-display" alt="f (x,y) = x2 + y2, g(x,y) = − (x2 + y2), 2 2 h (x,y) = x − y . "/>
+</div>
+<p><span class="cmss-10x-x-109">All three have a critical point at </span><span class="cmbx-10x-x-109">0</span><span class="cmss-10x-x-109">, so the Hessians can provide a clearer picture. The Hessians are given by the matrices</span></p>
+
+<img src="../media/file1596.png" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ ⌊ ⌋ ⌈2 0⌉ ⌈− 2 0 ⌉ ⌈2 0 ⌉ Hf (x,y) = 0 2 , Hg(x,y) = 0 − 2 , Hh (x,y) = 0 − 2 . " width="450"/>
+
+<p><span class="cmss-10x-x-109">For</span> <span id="dx1-270026"></span><span class="cmss-10x-x-109">functions</span> <span id="dx1-270027"></span><span class="cmss-10x-x-109">of two variables, </span><span class="cmssi-10x-x-109">Theorem </span><a href="ch027.xhtml#x1-270025r107"><span class="cmssi-10x-x-109">107</span></a> <span class="cmss-10x-x-109">says that it is enough to study</span> det<span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>) <span class="cmss-10x-x-109">and</span> <img src="../media/file1597.png" width="15" data-align="middle" alt="∂2f ∂y2"/>(<span class="cmbx-10x-x-109">a</span>)<span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">In the case of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x,y</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup> + <span class="cmmi-10x-x-109">y</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">, we have </span><span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(0<span class="cmmi-10x-x-109">,</span>0) = 4 <span class="cmss-10x-x-109">and</span> <img src="../media/file1598.png" width="15" data-align="middle" alt="∂2f ∂y2"/>(0<span class="cmmi-10x-x-109">,</span>0) = 2<span class="cmss-10x-x-109">, giving that </span><span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">is a local minimum of </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x,y</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup> + <span class="cmmi-10x-x-109">y</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">Similarly, we can conclude that </span><span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">is a local maximum of </span><span class="cmmi-10x-x-109">g</span>(<span class="cmmi-10x-x-109">x,y</span>) = <span class="cmsy-10x-x-109">−</span>(<span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup> + <span class="cmmi-10x-x-109">y</span><sup><span class="cmr-8">2</span></sup>) <span class="cmss-10x-x-109">(which shouldn’t surprise you, as </span><span class="cmmi-10x-x-109">g </span>= <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">).</span></p>
+<p><span class="cmss-10x-x-109">Finally, for </span><span class="cmmi-10x-x-109">h</span>(<span class="cmmi-10x-x-109">x,y</span>) = <span class="cmmi-10x-x-109">x</span><sup><span class="cmr-8">2</span></sup> <span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">y</span><sup><span class="cmr-8">2</span></sup><span class="cmss-10x-x-109">, the second derivative test confirms that </span><span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">is indeed a saddle point.</span></p>
+<p><span class="cmss-10x-x-109">So, what’s up with the general case? Unfortunately, just studying the determinant of the Hessian matrix is not enough. We need to bring in the heavy-hitters: eigenvalues. (See </span><span class="cmssi-10x-x-109">Definition </span><a href="ch012.xhtml#x1-105003r23"><span class="cmssi-10x-x-109">23</span></a><span class="cmss-10x-x-109">.) Here is</span> <span id="dx1-270028"></span><span class="cmss-10x-x-109">the second derivative test in its full glory.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-270029r108"></span> <span class="cmbx-10x-x-109">Theorem 108.</span> </span><span class="cmbxti-10x-x-109">(The multivariable second derivative test)</span></p>
+<p><span class="cmti-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmti-10x-x-109">be an arbitrary vector-scalar function, and suppose that </span><span class="cmmi-10x-x-109">f </span><span class="cmti-10x-x-109">is partially differentiable with respect to all variables at some </span><span class="cmbx-10x-x-109">a </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmti-10x-x-109">. Also suppose that </span><span class="cmbx-10x-x-109">a </span><span class="cmti-10x-x-109">is a critical point, that is, </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = <span class="cmbx-10x-x-109">0</span><span class="cmti-10x-x-109">.</span></p>
+<p><span class="cmti-10x-x-109">(a) If all the eigenvalues of </span><span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>) <span class="cmti-10x-x-109">are positive, then </span><span class="cmbx-10x-x-109">a </span><span class="cmti-10x-x-109">is a local minimum.</span></p>
+<p><span class="cmti-10x-x-109">(b) If all the eigenvalues of </span><span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>) <span class="cmti-10x-x-109">are negative, then </span><span class="cmbx-10x-x-109">a </span><span class="cmti-10x-x-109">is a local maximum.</span></p>
+<p><span class="cmti-10x-x-109">(c) If all the eigenvalues of </span><span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>) <span class="cmti-10x-x-109">are either positive or negative, then </span><span class="cmbx-10x-x-109">a </span><span class="cmti-10x-x-109">is a saddle point.</span></p>
+</div>
+<p><span class="cmss-10x-x-109">That’s right: if any of the eigenvalues are 0, then the test is inconclusive. You might recall from linear algebra that in practice, computing the eigenvalues is not as fast as computing the second-order derivatives, but there are plenty of numerical methods (like the QR-algorithm, as we saw in </span><span class="cmssi-10x-x-109">Section </span><a href="ch013.xhtml#computing-eigenvalues"><span class="cmssi-10x-x-109">7.5</span></a><span class="cmss-10x-x-109">).</span></p>
+<p><span class="cmss-10x-x-109">To sum it up, the method of optimizing (differentiable) multivariable functions is a simple two-step process:</span></p>
+<ol>
+<li><span id="x1-270031x1"><span class="cmss-10x-x-109">find the critical points by solving the equation </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">x</span>) = 0<span class="cmss-10x-x-109">,</span></span></li>
+<li><span id="x1-270033x2"><span class="cmss-10x-x-109">then use the second derivative test to determine which critical points are extrema.</span></span></li>
+</ol>
+<p><span class="cmss-10x-x-109">Do we use this method in practice to optimize functions? No. Why? Most importantly, because computing the eigenvalues of the Hessian for a vector-scalar function with millions of variables is extremely hard. Why is the second derivative test so important? Because understanding the behavior of functions around their extremal points is essential to truly understand gradient descent. Believe it or not, this is the key behind the theoretical guarantees for convergence.</span></p>
+<p><span class="cmss-10x-x-109">Speaking of gradient descent, now is the time to dig deep into the algorithm that powers neural networks.</span></p>
+</section>
+<section id="gradient-descent-in-its-full-form" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_240"><span class="titlemark"><span class="cmss-10x-x-109">17.3 </span></span> <span id="x1-27100020.3"></span><span class="cmss-10x-x-109">Gradient descent in its full form</span></h2>
+<p><span class="cmss-10x-x-109">Gradient descent is one of the most important algorithms in machine</span><span id="dx1-271001"></span> <span class="cmss-10x-x-109">learning. We have talked about this a lot, although up until this point, we have only seen it for single-variable functions (which is, I admit, not the most practical use case).</span></p>
+<p><span class="cmss-10x-x-109">However, now we have all the tools we need to talk about gradient descent in its general form. Let’s get to it!</span></p>
+<p><span class="cmss-10x-x-109">Suppose that we have a differentiable vector-scalar function </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">that we want to </span><span class="cmssi-10x-x-109">maximize</span><span class="cmss-10x-x-109">. This can describe the return on investment of an investing strategy, or any other quantity. Calculating the gradient and finding the critical points is often not an option, as solving the equation </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">x</span>) = <span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">can be computationally unfeasible. Thus, we resort to an iterative solution.</span></p>
+<p><span class="cmss-10x-x-109">The algorithm is the same as for single-variable functions (as seen in </span><span class="cmssi-10x-x-109">Section </span><a href="ch021.xhtml#the-basics-of-gradient-descent"><span class="cmssi-10x-x-109">13.2</span></a><span class="cmss-10x-x-109">):</span></p>
+<ol>
+<li><span id="x1-271003x1"><span class="cmss-10x-x-109">Start from a random point.</span></span></li>
+<li><span id="x1-271005x2"><span class="cmss-10x-x-109">Calculate its gradient.</span></span></li>
+<li><span id="x1-271007x3"><span class="cmss-10x-x-109">Take a step towards its direction.</span></span></li>
+<li><span id="x1-271009x4"><span class="cmss-10x-x-109">Repeat until convergence.</span></span></li>
+</ol>
+<p><span class="cmss-10x-x-109">This is called </span><span class="cmssi-10x-x-109">gradient ascent</span><span class="cmss-10x-x-109">. We can formalize it in the following way.</span> <span id="x1-271010r2"></span></p>
+
+<span class="cmbx-10x-x-109">(The gradient ascent algorithm) Step 1.</span> Initialize the starting point <span class="cmbx-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> and select a learning rate <span class="cmmi-10x-x-109">h </span><span class="cmsy-10x-x-109">∈ </span>(0<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">∞</span>). <span class="cmbx-10x-x-109">Step 2.</span> Let
+<div class="math-display">
+<img src="../media/file1599.png" class="math-display" alt="xn+1 := xn + h∇f (xn ). "/>
+</div>
+<span class="cmbx-10x-x-109">Step 3.</span> Repeat <span class="cmbx-10x-x-109">Step 2.</span> until convergence.
+
+<p><span class="cmss-10x-x-109">If we want to </span><span class="cmssi-10x-x-109">minimize </span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">, we might as well </span><span class="cmssi-10x-x-109">maximize </span><span class="cmsy-10x-x-109">−</span><span class="cmmi-10x-x-109">f</span><span class="cmss-10x-x-109">. The only effect of this is a sign change for the gradient. In this form, the algorithm is called </span><span class="cmssi-10x-x-109">gradient descent</span><span class="cmss-10x-x-109">, and this is the version that’s widely used to train neural networks.</span> <span id="x1-271011r3"></span></p>
+
+ <span class="cmbx-10x-x-109">(The gradient descent algorithm) Step 1.</span> Initialize the starting point <span class="cmbx-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> and select a learning rate <span class="cmmi-10x-x-109">h </span><span class="cmsy-10x-x-109">∈ </span>(0<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">∞</span>). <span class="cmbx-10x-x-109">Step 2.</span> Let
+<div class="math-display">
+<img src="../media/file1600.png" class="math-display" alt="xn+1 := xn − h∇f (xn ). "/>
+</div>
+<span class="cmbx-10x-x-109">Step 3.</span> Repeat <span class="cmbx-10x-x-109">Step 2.</span> until convergence.
+
+<p><span class="cmss-10x-x-109">After all of this</span><span id="dx1-271012"></span> <span class="cmss-10x-x-109">setup, implementing gradient descent is straightforward.</span></p>
+<div id="tcolobox-289" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def gradient_descent( 
+    f: MultivariableFunction, 
+    x_init: np.array,               # the initial guess 
+    learning_rate: float = 0.1,     # the learning rate 
+    n_iter: int = 1000,             # number of steps 
+): 
+    x = x_init 
+ 
+    for n in range(n_iter): 
+        grad = f.grad(x) 
+        x = x - learning_rate*grad 
+ 
+    return x</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Notice that it is almost identical to the single-variable version in </span><span class="cmssi-10x-x-109">Section </span><a href="ch021.xhtml#the-basics-of-gradient-descent"><span class="cmssi-10x-x-109">13.2</span></a><span class="cmss-10x-x-109">. To see if it works correctly, let’s test it out on the squared Euclidean norm function, implemented by </span><span class="cmtt-10x-x-109">SquaredNorm </span><span class="cmss-10x-x-109">earlier!</span></p>
+<div id="tcolobox-290" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>squared_norm = SquaredNorm() 
+local_minimum = gradient_descent( 
+    f=squared_norm, 
+    x_init=np.array([10.0, -15.0]) 
+) 
+ 
+local_minimum</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([ 1.23023192e-96, -1.84534788e-96])</code></pre>
+<p><span class="cmss-10x-x-109">There is nothing special to it, really. The issues with multivariable gradient descent are the same as what we discussed with the single-variable version: it can get stuck in local minima, it is sensitive to our choice of learning rate, and the gradient can be computationally hard to calculate in high dimensions.</span></p>
+</section>
+<section id="summary16" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_241"><span class="titlemark"><span class="cmss-10x-x-109">17.4 </span></span> <span id="x1-27200020.4"></span><span class="cmss-10x-x-109">Summary</span></h2>
+<p><span class="cmss-10x-x-109">Although this chapter was short and sweet, we took quite a big step by dissecting the fine details of gradient descent in high dimensions. The chapter’s brevity is a testament to the power of vectorization: same formulas, code, and supercharged functionality. It’s quite unbelievable, but the simple algorithm</span></p>
+<div class="math-display">
+<img src="../media/file1601.png" class="math-display" alt="xn+1 = xn − h∇f (xn) "/>
+</div>
+<p><span class="cmss-10x-x-109">is behind most of the neural network models. Yes, even state-of-the-art ones.</span></p>
+<p><span class="cmss-10x-x-109">This lies on the same theoretical foundations as the univariate case, but instead of checking the positivity of the second derivatives, we have to study the full Hessian matrix </span><span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub><span class="cmss-10x-x-109">. To be more precise, we have learned that a critical point </span><span class="cmsy-10x-x-109">∇</span><span class="cmmi-10x-x-109">f</span>(<span class="cmbx-10x-x-109">a</span>) = <span class="cmbx-10x-x-109">0 </span><span class="cmss-10x-x-109">is</span></p>
+<ol>
+<li><span id="x1-272002x1"><span class="cmss-10x-x-109">a local minimum if all the eigenvalues of </span><span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>) <span class="cmss-10x-x-109">are positive,</span></span></li>
+<li><span id="x1-272004x2"><span class="cmss-10x-x-109">and a local maximum if all the eigenvalues of </span><span class="cmmi-10x-x-109">H</span><sub><span class="cmmi-8">f</span></sub>(<span class="cmbx-10x-x-109">a</span>) <span class="cmss-10x-x-109">are negative.</span></span></li>
+</ol>
+<p><span class="cmss-10x-x-109">Deep down, this is the reason why gradient descent works. And with this, we have finished our study of calculus, both in single and multiple variables.</span></p>
+<p><span class="cmss-10x-x-109">Take a deep breath and relax a bit. We are approaching the final stretch of our adventure: our last stop is the theory of probability, the thinking paradigm that is behind predictive modeling. For instance, the most famous loss functions, like the mean-squared error or the cross-entropy, are founded upon probabilistic concepts. Understanding and taming uncertainty is one of the biggest intellectual feats of science, and we are about to undertake this journey ourselves.</span></p>
+<p><span class="cmss-10x-x-109">See you in the next chapter!</span></p>
+</section>
+<section id="problems15" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_242"><span class="titlemark"><span class="cmss-10x-x-109">17.5 </span></span> <span id="x1-27300020.5"></span><span class="cmss-10x-x-109">Problems</span></h2>
+<p><span class="cmssbx-10x-x-109">Problem 1. </span><span class="cmss-10x-x-109">Let </span><span class="cmbx-10x-x-109">y </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">be an arbitrary vector. The general version of the famous mean-squared error is defined by</span></p>
+<div class="math-display">
+<img src="../media/file1602.png" class="math-display" alt=" n MSE (x) = 1-∑ (x − y )2. n i i i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">Compute its gradient and implement it using the </span><span class="cmtt-10x-x-109">MultivariateFunction </span><span class="cmss-10x-x-109">base class!</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 2. </span><span class="cmss-10x-x-109">Let </span><span class="cmmi-10x-x-109">f </span>: <span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">2</span></sup> <span class="cmsy-10x-x-109">→</span><span class="msbm-10x-x-109">ℝ </span><span class="cmss-10x-x-109">be the function defined by</span></p>
+<div class="math-display">
+<img src="../media/file1603.png" class="math-display" alt=" 2 2 f(x,y) = (2x − y)(y − x ). "/>
+</div>
+<p><span class="cmss-10x-x-109">Does </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">have a local extremum in </span><span class="cmbx-10x-x-109">x </span>= (0<span class="cmmi-10x-x-109">,</span>0)<span class="cmss-10x-x-109">?</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 3. </span><span class="cmss-10x-x-109">Use the previously implemented </span><span class="cmtt-10x-x-109">gradient_descent </span><span class="cmss-10x-x-109">function to find the minimum of</span></p>
+<div class="math-display">
+<img src="../media/file1604.png" class="math-display" alt=" 2 2 f(x,y) = sin(x+ y)+ x y . "/>
+</div>
+<p><span class="cmss-10x-x-109">Experiment with various learning rates and initial values!</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 4. </span><span class="cmss-10x-x-109">In the problem section of Chapter 13, we saw the improved version of gradient descent, called </span><span class="cmssi-10x-x-109">gradient descent with momentum</span><span class="cmss-10x-x-109">. We can do the same in multiple variables: define</span></p>
+<div class="math-display">
+<img src="../media/file1605.png" class="math-display" alt="dn+1 = αdn − hf ′(xn), xn+1 = xn + dn, "/>
+</div>
+<p><span class="cmss-10x-x-109">where </span><span class="cmbx-10x-x-109">d</span><sub><span class="cmr-8">0</span></sub> = 0 <span class="cmss-10x-x-109">and </span><span class="cmbx-10x-x-109">x</span><sub><span class="cmr-8">0</span></sub> <span class="cmss-10x-x-109">is arbitrary. Implement it!</span></p>
+</section>
+<section id="join-our-community-on-discord17" class="level3 likesectionHead">
+<h2 class="likesectionHead sigil_not_in_toc" id="sigil_toc_id_243"><span id="x1-274000"></span><span class="cmss-10x-x-109">Join our community on Discord</span></h2>
+<p><span class="cmss-10x-x-109">Read this book alongside other users, Machine Learning experts, and the author himself. Ask questions, provide solutions to other readers, chat with the author via Ask Me Anything sessions, and much more. Scan the QR code or visit the link to join the community.</span> <a href="https://packt.link/math" class="url"><span class="cmtt-10x-x-109">https://packt.link/math</span></a></p>
+<p><img src="../media/file1.png" width="85" alt="PIC"/></p>
+</section>
+</section>
+</body>
+</html>

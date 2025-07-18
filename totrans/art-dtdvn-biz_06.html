@@ -1,0 +1,504 @@
+<html><head></head><body>
+<div id="_idContainer159">
+<h1 class="chapter-number" id="_idParaDest-62"><a id="_idTextAnchor703"/><span class="koboSpan" id="kobo.1.1">6</span></h1>
+<h1 id="_idParaDest-63"><a id="_idTextAnchor704"/><span class="koboSpan" id="kobo.2.1">Product Recommendation</span></h1>
+<p><span class="koboSpan" id="kobo.3.1">Product recommendation is essentially a filtering system that aims to anticipate and present the goods that a user would be interested in buying. </span><span class="koboSpan" id="kobo.3.2">It is used to generate recommendations that keep users engaged with your product and service and provides relevant suggestions to them. </span><span class="koboSpan" id="kobo.3.3">In this chapter, we will learn how to do </span><span class="No-Break"><span class="koboSpan" id="kobo.4.1">the following:</span></span></p>
+<ul>
+<li><span class="koboSpan" id="kobo.5.1">Detect clients who are reducing </span><span class="No-Break"><span class="koboSpan" id="kobo.6.1">their sales</span></span></li>
+<li><span class="koboSpan" id="kobo.7.1">Target clients with personalized product suggestions for products that they are not </span><span class="No-Break"><span class="koboSpan" id="kobo.8.1">yet buying</span></span></li>
+<li><span class="koboSpan" id="kobo.9.1">Create specific product recommendations based on already bought products using market basket analysis and the </span><span class="No-Break"><span class="koboSpan" id="kobo.10.1">Apriori algorithm</span></span></li>
+</ul>
+<p><span class="koboSpan" id="kobo.11.1">Let’s determine what will be the requirements to understand the steps and follow </span><span class="No-Break"><span class="koboSpan" id="kobo.12.1">the chapter.</span></span></p>
+<p><span class="koboSpan" id="kobo.13.1">This chapter covers the </span><span class="No-Break"><span class="koboSpan" id="kobo.14.1">following topics:</span></span></p>
+<ul>
+<li><span class="koboSpan" id="kobo.15.1">Targeting decreasing </span><span class="No-Break"><span class="koboSpan" id="kobo.16.1">returning buyers</span></span></li>
+<li><span class="koboSpan" id="kobo.17.1">Understanding product </span><span class="No-Break"><span class="koboSpan" id="kobo.18.1">recommendation systems</span></span></li>
+<li><span class="koboSpan" id="kobo.19.1">Using the Apriori algorithm for </span><span class="No-Break"><span class="koboSpan" id="kobo.20.1">product bundling</span></span></li>
+</ul>
+<h1 id="_idParaDest-64"><a id="_idTextAnchor705"/><span class="koboSpan" id="kobo.21.1">Technical requirements</span></h1>
+<p><span class="koboSpan" id="kobo.22.1">In order to be able to follow the steps in this chapter, you will need to meet the </span><span class="No-Break"><span class="koboSpan" id="kobo.23.1">next requirements:</span></span></p>
+<ul>
+<li><span class="koboSpan" id="kobo.24.1">Have a Jupyter notebook instance running Python 3.7 and above. </span><span class="koboSpan" id="kobo.24.2">You can also use the Google Colab notebook to run the steps if you have a Google </span><span class="No-Break"><span class="koboSpan" id="kobo.25.1">Drive account.</span></span></li>
+<li><span class="koboSpan" id="kobo.26.1">Have an understanding of basic math and </span><span class="No-Break"><span class="koboSpan" id="kobo.27.1">statistical concepts.</span></span></li>
+</ul>
+<h1 id="_idParaDest-65"><a id="_idTextAnchor706"/><span class="koboSpan" id="kobo.28.1">Targeting decreasing returning buyers</span></h1>
+<p><span class="koboSpan" id="kobo.29.1">One important aspect of businesses</span><a id="_idIndexMarker269"/><span class="koboSpan" id="kobo.30.1"> is that recurring customers always buy more than new ones, so it’s important to keep an eye on them and act if we see that they are changing their behavior. </span><span class="koboSpan" id="kobo.30.2">One of the things that we can do is identify the clients with decreasing buying patterns and offer them new products that they are not yet buying. </span><span class="koboSpan" id="kobo.30.3">In this case, we will look at consumer goods distribution center data to identify these customers with </span><span class="No-Break"><span class="koboSpan" id="kobo.31.1">decreasing purchases:</span></span></p>
+<ol>
+<li><span class="koboSpan" id="kobo.32.1">First, we will import the necessary libraries, which are the following: pandas for data manipulation, NumPy for masking and NaNs handling, and scikit-surprise for collaborative filtering </span><span class="No-Break"><span class="koboSpan" id="kobo.33.1">product recommendation.</span></span></li>
+<li><span class="koboSpan" id="kobo.34.1">We will explore the data to determine the right strategy to normalize the data into the </span><span class="No-Break"><span class="koboSpan" id="kobo.35.1">right format.</span></span></li>
+<li><span class="koboSpan" id="kobo.36.1">Once the data is structured, we will set up a linear regression to determine the clients with a negative slope to identify the ones with decreasing consumption patterns. </span><span class="koboSpan" id="kobo.36.2">This information will allow us to create specific actions for these clients and avoid </span><span class="No-Break"><span class="koboSpan" id="kobo.37.1">customer churn.</span></span></li>
+</ol>
+<p><span class="koboSpan" id="kobo.38.1">Let’s get started with the </span><span class="No-Break"><span class="koboSpan" id="kobo.39.1">following steps:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.40.1">Our first stage will be to load these packages and install the </span><strong class="source-inline"><span class="koboSpan" id="kobo.41.1">scikit-surprise</span></strong><span class="koboSpan" id="kobo.42.1"> package for collaborative filtering, which is a method to filter out items that a user might like based on the ratings of similar users. </span><span class="koboSpan" id="kobo.42.2">It works by linking the behaviors of a smaller set of users with tastes similar to a particular user </span><span class="No-Break"><span class="koboSpan" id="kobo.43.1">product recommendations:</span></span><a id="_idTextAnchor707"/><pre class="console"><span class="koboSpan" id="kobo.44.1">
+!pip install --upgrade openpyxl scikit-surprise</span><a id="_idTextAnchor708"/></pre><pre class="console"><span class="koboSpan" id="kobo.45.1">
+import pandas as pd</span><a id="_idTextAnchor709"/></pre><pre class="console"><span class="koboSpan" id="kobo.46.1">
+import numpy as np</span></pre></li>
+<li><span class="koboSpan" id="kobo.47.1">For readability purposes, we will limit the maximum number of rows to be shown to 20, set the limit of maximum columns to 50, and show the floats with 2 digits </span><span class="No-Break"><span class="koboSpan" id="kobo.48.1">of precision:</span></span><a id="_idTextAnchor710"/><pre class="console"><span class="koboSpan" id="kobo.49.1">
+pd.options.display.max_rows = 20</span><a id="_idTextAnchor711"/></pre><pre class="console"><span class="koboSpan" id="kobo.50.1">
+pd.options.display.max_columns = 50</span><a id="_idTextAnchor712"/></pre><pre class="console"><span class="koboSpan" id="kobo.51.1">
+pd.options.display.precision = 2</span></pre></li>
+<li><span class="koboSpan" id="kobo.52.1">Now we can load the data to </span><span class="No-Break"><span class="koboSpan" id="kobo.53.1">be analyzed:</span></span><a id="_idTextAnchor713"/><pre class="console"><span class="koboSpan" id="kobo.54.1">
+df = pd.read_csv('/content/distributed_products.csv')</span><a id="_idTextAnchor714"/></pre><pre class="console"><span class="koboSpan" id="kobo.55.1">
+df.head()</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.56.1">In the next figure, we show</span><a id="_idIndexMarker270"/><span class="koboSpan" id="kobo.57.1"> the historical sales of sold goods by period, details of both the client and product, and the </span><span class="No-Break"><span class="koboSpan" id="kobo.58.1">quantity sold:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer137">
+<span class="koboSpan" id="kobo.59.1"><img alt="Figure 6.1: Data of consumer goods transactions " src="image/B19026_06_1.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Figure"><a id="_idTextAnchor715"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.60.1">Figure 6.1: Data of consumer goods transactions</span></p>
+<p><span class="koboSpan" id="kobo.61.1">The data consists of buy orders from different clients, for different products and different periods. </span><span class="koboSpan" id="kobo.61.2">The data has a period column with information about both the year and the month when the buy </span><span class="No-Break"><span class="koboSpan" id="kobo.62.1">was made.</span></span></p>
+<ol>
+<li value="4"><span class="koboSpan" id="kobo.63.1">We can keep exploring the data by taking a look at the </span><span class="No-Break"><span class="koboSpan" id="kobo.64.1">columns list:</span></span><a id="_idTextAnchor716"/><pre class="console"><span class="koboSpan" id="kobo.65.1">
+df.columns.tolist()</span><a id="_idTextAnchor717"/></pre><pre class="console"><span class="koboSpan" id="kobo.66.1">
+&gt;&gt;&gt; ['period', 'sub_market', 'client_class', 'division', 'brand','cat', 'product', 'client_code', 'client_name', 'kgs_sold']</span></pre></li>
+<li><span class="koboSpan" id="kobo.67.1">Now, let’s look at the total number of clients </span><span class="No-Break"><span class="koboSpan" id="kobo.68.1">to analyze:</span></span><a id="_idTextAnchor718"/><pre class="console"><span class="koboSpan" id="kobo.69.1">
+len(df.client_name.unique())</span><a id="_idTextAnchor719"/></pre><pre class="console"><span class="koboSpan" id="kobo.70.1">
+&gt;&gt;&gt; 11493</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.71.1">In this case, we have almost 12,000 clients. </span><span class="koboSpan" id="kobo.71.2">For the demonstration purposes of this chapter, we will focus on the most important clients, based on the criteria of who are the ones that consume </span><span class="No-Break"><span class="koboSpan" id="kobo.72.1">the most.</span></span></p>
+<ol>
+<li value="6"><span class="koboSpan" id="kobo.73.1">Now, we will find the clients</span><a id="_idIndexMarker271"/><span class="koboSpan" id="kobo.74.1"> that have been reducing sales. </span><span class="koboSpan" id="kobo.74.2">We will gauge the information to get the list of clients that have the highest total number of kilograms of products purchased to determine the best customers. </span><span class="koboSpan" id="kobo.74.3">We will use the </span><strong class="source-inline"><span class="koboSpan" id="kobo.75.1">groupby</span></strong><span class="koboSpan" id="kobo.76.1"> method with the sum by period to get the kilograms bought per client </span><span class="No-Break"><span class="koboSpan" id="kobo.77.1">and period</span><a id="_idTextAnchor720"/><span class="koboSpan" id="kobo.78.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.79.1">
+kgs_by_period = df[['period','client_name','kgs_sold']</span><a id="_idTextAnchor721"/><span class="koboSpan" id="kobo.80.1">]</span></pre><pre class="console"><span class="koboSpan" id="kobo.81.1">
+kgs_by_period = kgs_by_period.groupby(['</span></pre><pre class="console"><span class="koboSpan" id="kobo.82.1">
+      period','client_name']).sum().reset_index(</span><a id="_idTextAnchor722"/><span class="koboSpan" id="kobo.83.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.84.1">
+kgs_by_period.head()</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.85.1">In the next figure, we can see the total kilograms of goods sold by client </span><span class="No-Break"><span class="koboSpan" id="kobo.86.1">and </span></span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.87.1">period</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.88.1">:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer138">
+<span class="koboSpan" id="kobo.89.1"><img alt="Figure 6.2: Aggregate sum of goods in kg by client and period " src="image/B19026_06_2.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><a id="_idTextAnchor723"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.90.1">Figure 6.2: Aggregate sum of goods in kg by client and period</span></p>
+<ol>
+<li value="7"><span class="koboSpan" id="kobo.91.1">Now that we have the list of total clients, we will characterize them by the number of purchases </span><span class="No-Break"><span class="koboSpan" id="kobo.92.1">per period:</span></span><a id="_idTextAnchor724"/><pre class="console"><span class="koboSpan" id="kobo.93.1">
+unique_clients = kgs_by_period.client_name.value_counts().reset_index()</span><a id="_idTextAnchor725"/></pre><pre class="console"><span class="koboSpan" id="kobo.94.1">
+unique_clients.columns = ['client_name','purchases']</span><a id="_idTextAnchor726"/></pre><pre class="console"><span class="koboSpan" id="kobo.95.1">
+unique_clients.head()</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.96.1">In the next</span><a id="_idIndexMarker272"/><span class="koboSpan" id="kobo.97.1"> DataFrame, we can see the count of purchases </span><span class="No-Break"><span class="koboSpan" id="kobo.98.1">by client:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer139">
+<span class="koboSpan" id="kobo.99.1"><img alt="Figure 6.3: Data of users per number of purchases " src="image/B19026_06_3.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><a id="_idTextAnchor727"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.100.1">Figure 6.3: Data of users per number of purchases</span></p>
+<ol>
+<li value="8"><span class="koboSpan" id="kobo.101.1">Now we will filter top clients by the number of purchases, keeping the ones with at least five purchases of the total 8 periods we have. </span><span class="koboSpan" id="kobo.101.2">This limit is arbitrary in this case to find the clients that are mostly </span><span class="No-Break"><span class="koboSpan" id="kobo.102.1">regular clients:</span></span><a id="_idTextAnchor728"/><pre class="console"><span class="koboSpan" id="kobo.103.1">
+unique_clients = unique_clients[unique_clients.purchases&gt;5]</span></pre></li>
+<li><span class="koboSpan" id="kobo.104.1">Now, we can check the total number of </span><span class="No-Break"><span class="koboSpan" id="kobo.105.1">clients again:</span></span><a id="_idTextAnchor729"/><pre class="console"><span class="koboSpan" id="kobo.106.1">
+unique_clients.shape</span><a id="_idTextAnchor730"/></pre><pre class="console"><span class="koboSpan" id="kobo.107.1">
+&gt;&gt;&gt; (7550, 2)</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.108.1">As we can see, most of the clients have more than 5 periods of purchases, so we have reduced around 30% of the </span><span class="No-Break"><span class="koboSpan" id="kobo.109.1">total users.</span></span></p>
+<ol>
+<li value="10"><span class="koboSpan" id="kobo.110.1">Now, we will list the</span><a id="_idIndexMarker273"/><span class="koboSpan" id="kobo.111.1"> total kgs of goods sold in all of the periods, filtering the clients that have less than 5 periods </span><span class="No-Break"><span class="koboSpan" id="kobo.112.1">of buys</span><a id="_idTextAnchor731"/><span class="koboSpan" id="kobo.113.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.114.1">
+kgs_by_client = df[['client_name','kgs_sold']</span><a id="_idTextAnchor732"/><span class="koboSpan" id="kobo.115.1">]</span></pre><pre class="console"><span class="koboSpan" id="kobo.116.1">
+kgs_by_client = kgs_by_client[kgs_by_client.client_name.isin(unique_clients.client_name)]</span></pre></li>
+<li><span class="koboSpan" id="kobo.117.1">Now, to get the total number of kgs sold in all of the periods, we will use the </span><strong class="source-inline"><span class="koboSpan" id="kobo.118.1">groupby</span></strong><span class="koboSpan" id="kobo.119.1"> method and sort the values in </span><span class="No-Break"><span class="koboSpan" id="kobo.120.1">ascending order</span><a id="_idTextAnchor733"/><span class="koboSpan" id="kobo.121.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.122.1">
+kgs_by_client = kgs_by_client.groupby(['client_name']).sum().reset_index(</span><a id="_idTextAnchor734"/><span class="koboSpan" id="kobo.123.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.124.1">
+kgs_by_client.columns = ['client','total_kgs'</span><a id="_idTextAnchor735"/><span class="koboSpan" id="kobo.125.1">]</span></pre><pre class="console"><span class="koboSpan" id="kobo.126.1">
+kgs_by_client = kgs_by_client.sort_values([</span></pre><pre class="console"><span class="koboSpan" id="kobo.127.1">
+      'total_kgs'],ascending= False)</span></pre></li>
+<li><span class="koboSpan" id="kobo.128.1">As the next step and only for visualization and demonstration, we will limit the clients to the top </span><span class="No-Break"><span class="koboSpan" id="kobo.129.1">25 clients</span><a id="_idTextAnchor736"/><span class="koboSpan" id="kobo.130.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.131.1">
+kgs_by_client = kgs_by_client.head(25</span><a id="_idTextAnchor737"/><span class="koboSpan" id="kobo.132.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.133.1">
+kgs_by_client.head()</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.134.1">We can then see the top 25 clients by </span><span class="No-Break"><span class="koboSpan" id="kobo.135.1">total kgs:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer140">
+<span class="koboSpan" id="kobo.136.1"><img alt="Figure 6.4: Clients with the highest kgs bought " src="image/B19026_06_4.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><a id="_idTextAnchor738"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.137.1">Figure 6.4: Clients with the highest kgs bought</span></p>
+<ol>
+<li value="13"><span class="koboSpan" id="kobo.138.1">Now that we have the information</span><a id="_idIndexMarker274"/><span class="koboSpan" id="kobo.139.1"> about the top clients in terms of kgs sold, we can create a histogram to understand their consumption patterns. </span><span class="koboSpan" id="kobo.139.2">We will be using the </span><strong class="source-inline"><span class="koboSpan" id="kobo.140.1">plot</span></strong><span class="koboSpan" id="kobo.141.1"> method to create a bar chart for the </span><span class="No-Break"><span class="koboSpan" id="kobo.142.1">pandas Dataframe</span><a id="_idTextAnchor739"/><span class="koboSpan" id="kobo.143.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.144.1">
+kgs_by_client.plot(kind='bar',x='client',y='total_kgs',figsize=(14,6),rot=90)</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.145.1">This results in the </span><span class="No-Break"><span class="koboSpan" id="kobo.146.1">following output:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer141">
+<span class="koboSpan" id="kobo.147.1"><img alt="Figure 6.5: Chart of clients with the highest amount of kgs sold " src="image/B19026_06_5.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Figure"><a id="_idTextAnchor740"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.148.1">Figure 6.5: Chart of clients with the highest amount of kgs sold</span></p>
+<ol>
+<li value="14"><span class="koboSpan" id="kobo.149.1">To capture the clients</span><a id="_idIndexMarker275"/><span class="koboSpan" id="kobo.150.1"> that have been decreasing their level of expenditure, we will create a mask that filters all but the top clients, to visualize the kgs bought per client </span><span class="No-Break"><span class="koboSpan" id="kobo.151.1">and period</span><a id="_idTextAnchor741"/><span class="koboSpan" id="kobo.152.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.153.1">
+mask = kgs_by_period.client_name.isin(kgs_by_client.client</span><a id="_idTextAnchor742"/><span class="koboSpan" id="kobo.154.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.155.1">
+kgs_by_period = kgs_by_period[mask</span><a id="_idTextAnchor743"/><span class="koboSpan" id="kobo.156.1">]</span></pre><pre class="console"><span class="koboSpan" id="kobo.157.1">
+kgs_by_period = kgs_by_period.sort_values([</span></pre><pre class="console"><span class="koboSpan" id="kobo.158.1">
+      'kgs_sold'],ascending=False</span><a id="_idTextAnchor744"/><span class="koboSpan" id="kobo.159.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.160.1">
+kgs_by_period</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.161.1">This is the filtered data after filtering the top clients </span><span class="No-Break"><span class="koboSpan" id="kobo.162.1">by weight:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer142">
+<span class="koboSpan" id="kobo.163.1"><img alt="Figure 6.6: Kgs sold by period and client " src="image/B19026_06_6.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><a id="_idTextAnchor745"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.164.1">Figure 6.6: Kgs sold by period and client</span></p>
+<ol>
+<li value="15"><span class="koboSpan" id="kobo.165.1">Finally, we will pivot</span><a id="_idIndexMarker276"/><span class="koboSpan" id="kobo.166.1"> the DataFrame for visualization, and we will fill the NaN values with 0 as this is an indication that the client did not buy anything for </span><span class="No-Break"><span class="koboSpan" id="kobo.167.1">this period</span><a id="_idTextAnchor746"/><span class="koboSpan" id="kobo.168.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.169.1">
+dfx = kgs_by_period.pivot(index='period',columns=</span></pre><pre class="console"><span class="koboSpan" id="kobo.170.1">
+      'client_name',values='kgs_sold').reset_index(</span><a id="_idTextAnchor747"/><span class="koboSpan" id="kobo.171.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.172.1">
+dfx.columns.name = '</span><a id="_idTextAnchor748"/><span class="koboSpan" id="kobo.173.1">'</span></pre><pre class="console"><span class="koboSpan" id="kobo.174.1">
+dfx = dfx.fillna(0</span><a id="_idTextAnchor749"/><span class="koboSpan" id="kobo.175.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.176.1">
+dfx</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.177.1">The next DataFrame has the data pivoted and is better encoded for working with machine </span><span class="No-Break"><span class="koboSpan" id="kobo.178.1">learning models:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer143">
+<span class="koboSpan" id="kobo.179.1"><img alt="Figure 6.7: Pivoted data " src="image/B19026_06_7.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><a id="_idTextAnchor750"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.180.1">Figure 6.7: Pivoted data</span></p>
+<ol>
+<li value="16"><span class="koboSpan" id="kobo.181.1">Now, we can visualize</span><a id="_idIndexMarker277"/><span class="koboSpan" id="kobo.182.1"> the consumption throughout </span><span class="No-Break"><span class="koboSpan" id="kobo.183.1">the periods</span><a id="_idTextAnchor751"/><span class="koboSpan" id="kobo.184.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.185.1">
+import seaborn as sn</span><a id="_idTextAnchor752"/><span class="koboSpan" id="kobo.186.1">s</span></pre><pre class="console"><span class="koboSpan" id="kobo.187.1">
+import matplotlib.pyplot as plt # visualizatio</span><a id="_idTextAnchor753"/><span class="koboSpan" id="kobo.188.1">n</span></pre><pre class="console"><span class="koboSpan" id="kobo.189.1">
+f, ax = plt.subplots(figsize=(20, 6)</span><a id="_idTextAnchor754"/><span class="koboSpan" id="kobo.190.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.191.1">
+# Load the long-form example gammas datase</span><a id="_idTextAnchor755"/><span class="koboSpan" id="kobo.192.1">t</span></pre><pre class="console"><span class="koboSpan" id="kobo.193.1">
+g = sns.lineplot(data=dfx.drop(['period'],axis=1)</span><a id="_idTextAnchor756"/><span class="koboSpan" id="kobo.194.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.195.1">
+# Put the legend out of the figur</span><a id="_idTextAnchor757"/><span class="koboSpan" id="kobo.196.1">e</span></pre><pre class="console"><span class="koboSpan" id="kobo.197.1">
+g.legend(loc='center left', bbox_to_anchor=(1, 0.5))</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.198.1">The line plot allows us to see at first glance the clients with the </span><span class="No-Break"><span class="koboSpan" id="kobo.199.1">biggest sales:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer144">
+<span class="koboSpan" id="kobo.200.1"><img alt="Figure 6.8: Line plot of kgs sold by client and period " src="image/B19026_06_8.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Figure"><a id="_idTextAnchor758"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.201.1">Figure 6.8: Line plot of kgs sold by client and period</span></p>
+<ol>
+<li value="17"><span class="koboSpan" id="kobo.202.1">To identify the curves</span><a id="_idIndexMarker278"/><span class="koboSpan" id="kobo.203.1"> with a decreasing trend, we will determine the slope and the standard deviation in terms of sales per month. </span><span class="koboSpan" id="kobo.203.2">This will allow us to identify the clients with decreasing consumer behavior by looking at the slope as well as to identify users with high </span><span class="No-Break"><span class="koboSpan" id="kobo.204.1">consumption variability</span><a id="_idTextAnchor759"/><span class="koboSpan" id="kobo.205.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.206.1">
+from scipy import stat</span><a id="_idTextAnchor760"/><span class="koboSpan" id="kobo.207.1">s</span></pre><pre class="console"><span class="koboSpan" id="kobo.208.1">
+results = [</span><a id="_idTextAnchor761"/><span class="koboSpan" id="kobo.209.1">]</span></pre><pre class="console"><span class="koboSpan" id="kobo.210.1">
+for i in range(1,dfx.shape[1])</span><a id="_idTextAnchor762"/><span class="koboSpan" id="kobo.211.1">:</span></pre><pre class="console"><span class="koboSpan" id="kobo.212.1">
+  client = dfx.columns[i</span><a id="_idTextAnchor763"/><span class="koboSpan" id="kobo.213.1">]</span></pre><pre class="console"><span class="koboSpan" id="kobo.214.1">
+  slope, intercept, r_value, p_value, std_err = stats.linregress(dfx.index,dfx.iloc[0:,i]</span><a id="_idTextAnchor764"/><span class="koboSpan" id="kobo.215.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.216.1">
+  results.append([client,slope,std_err]</span><a id="_idTextAnchor765"/><span class="koboSpan" id="kobo.217.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.218.1">
+  print('Client Name:',client,'; Buy Tendency (Slope):',round(slope,3),'; Common Standard deviation:',round(std_err,3))</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.219.1">We can see in the prints that some of the clients have a negative slope, which indicates that their consumer patterns show a decline in </span><span class="No-Break"><span class="koboSpan" id="kobo.220.1">monthly purchases:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer145">
+<span class="koboSpan" id="kobo.221.1"><img alt="Figure 6.9: Slope of clients buying trends " src="image/B19026_06_9.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Figure"><a id="_idTextAnchor766"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.222.1">Figure 6.9: Slope of clients buying trends</span></p>
+<p><span class="koboSpan" id="kobo.223.1">In this case, the values are shown in absolutes, but it would be even better to show it as a percentage</span><a id="_idIndexMarker279"/><span class="koboSpan" id="kobo.224.1"> of the median purchase of each client to keep the consistency. </span><span class="koboSpan" id="kobo.224.2">You can apply this change and evaluate </span><span class="No-Break"><span class="koboSpan" id="kobo.225.1">the difference.</span></span></p>
+<ol>
+<li value="18"><span class="koboSpan" id="kobo.226.1">Next, we will store the results in a DataFrame and use it to visualize </span><span class="No-Break"><span class="koboSpan" id="kobo.227.1">the results</span><a id="_idTextAnchor767"/><span class="koboSpan" id="kobo.228.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.229.1">
+results_df = pd.DataFrame(results).dropna(</span><a id="_idTextAnchor768"/><span class="koboSpan" id="kobo.230.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.231.1">
+results_df.columns = ['client','slope','std'</span><a id="_idTextAnchor769"/><span class="koboSpan" id="kobo.232.1">]</span></pre><pre class="console"><span class="koboSpan" id="kobo.233.1">
+results_df.index = results_df.clien</span><a id="_idTextAnchor770"/><span class="koboSpan" id="kobo.234.1">t</span></pre><pre class="console"><span class="koboSpan" id="kobo.235.1">
+results_df = results_df.drop(['client'],axis=1</span><a id="_idTextAnchor771"/><span class="koboSpan" id="kobo.236.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.237.1">
+results_df.head()</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.238.1">The DataFrame shows us the clients, along with the parameter estimated by the </span><span class="No-Break"><span class="koboSpan" id="kobo.239.1">regression model:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer146">
+<span class="koboSpan" id="kobo.240.1"><img alt="Figure 6.10: Final slope and standard deviation " src="image/B19026_06_10.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><a id="_idTextAnchor772"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.241.1">Figure 6.10: Final slope and standard deviation</span></p>
+<ol>
+<li value="19"><span class="koboSpan" id="kobo.242.1">Now that our information</span><a id="_idIndexMarker280"/><span class="koboSpan" id="kobo.243.1"> is neatly structured, we can create a seaborn heatmap to visualize the resulting data </span><span class="No-Break"><span class="koboSpan" id="kobo.244.1">more graphically</span><a id="_idTextAnchor773"/><span class="koboSpan" id="kobo.245.1">:</span></span><pre class="console"><span class="koboSpan" id="kobo.246.1">
+f, ax = plt.subplots(figsize=(12, 12)</span><a id="_idTextAnchor774"/><span class="koboSpan" id="kobo.247.1">)</span></pre><pre class="console"><span class="koboSpan" id="kobo.248.1">
+sns.heatmap(results_df, annot=True)</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.249.1">This results in the </span><span class="No-Break"><span class="koboSpan" id="kobo.250.1">following output:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer147">
+<span class="koboSpan" id="kobo.251.1"><img alt="Figure 6.11: Slope and deviation heatmap " src="image/B19026_06_11.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Figure"><a id="_idTextAnchor775"/></p>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.252.1">Figure 6.11: Slope and deviation heatmap</span></p>
+<p><span class="koboSpan" id="kobo.253.1">From the data, we can see some clients that show a marked decline in their monthly purchases, and some of them have been increasingly buying more. </span><span class="koboSpan" id="kobo.253.2">It is also helpful to look at the standard deviation to find how varying the purchases that this client </span><span class="No-Break"><span class="koboSpan" id="kobo.254.1">does are.</span></span></p>
+<p><span class="koboSpan" id="kobo.255.1">Now that we understand</span><a id="_idIndexMarker281"/><span class="koboSpan" id="kobo.256.1"> the performance of each one of the clients, we can act on the clients with a pattern of declining sales by offering them tailor-made recommendations. </span><span class="koboSpan" id="kobo.256.2">In the next section, we will train recommender systems based on the purchase pattern of </span><span class="No-Break"><span class="koboSpan" id="kobo.257.1">the clients</span><a id="_idTextAnchor776"/><span class="koboSpan" id="kobo.258.1">.</span></span></p>
+<h1 id="_idParaDest-66"><a id="_idTextAnchor777"/><span class="koboSpan" id="kobo.259.1">Understanding product recommendation systems</span></h1>
+<p><span class="koboSpan" id="kobo.260.1">Now that we have identified</span><a id="_idIndexMarker282"/><span class="koboSpan" id="kobo.261.1"> the customers with decreasing consumption, we can create specific product recommendations for them. </span><span class="koboSpan" id="kobo.261.2">How do you recommend products? </span><span class="koboSpan" id="kobo.261.3">In most cases, we can do this with a recommender system, which is a filtering system that attempts to forecast and display the products that a user would like to purchase as what makes up a product suggestion. </span><span class="koboSpan" id="kobo.261.4">The k-nearest neighbor method and latent factor analysis, which is a statistical method to find groups of correlated variables, are the two algorithms utilized in collaborative filtering. </span><span class="koboSpan" id="kobo.261.5">Additionally, with collaborative filters, the system learns the likelihood that two or more things will be purchased collectively. </span><span class="koboSpan" id="kobo.261.6">A recommender system’s goal is to make user-friendly recommendations for products in the same way that you like. </span><span class="koboSpan" id="kobo.261.7">Collaborative filtering approaches and content-based methods are the two main categories of techniques available to accomplish </span><span class="No-Break"><span class="koboSpan" id="kobo.262.1">this goal.</span></span></p>
+<p><span class="koboSpan" id="kobo.263.1">The importance of having relevant products being recommended to the clients is critical, as businesses can personalize client experience with the recommended system by recommending the products that make the most sense to them based on their consumption patterns. </span><span class="koboSpan" id="kobo.263.2">To provide pertinent product recommendations, a recommendation engine also enables companies to examine the customer’s past and present </span><span class="No-Break"><span class="koboSpan" id="kobo.264.1">website activity.</span></span></p>
+<p><span class="koboSpan" id="kobo.265.1">There are many applications for recommender systems, with some of the most well-known ones including playlist makers for video and audio services, product recommenders for online shops, content recommenders for social media platforms, and open web </span><span class="No-Break"><span class="koboSpan" id="kobo.266.1">content recommenders.</span></span></p>
+<p><span class="koboSpan" id="kobo.267.1">In summary, recommendation engines provide personalized, direct recommendations that are based on the requirements and interests of each client. </span><span class="koboSpan" id="kobo.267.2">Machine learning is being used to improve online searches as well as it provides suggestions based on a user’s visual preferences rather than </span><span class="No-Break"><span class="koboSpan" id="kobo.268.1">product descriptions.</span></span></p>
+<h2 id="_idParaDest-67"><a id="_idTextAnchor778"/><span class="koboSpan" id="kobo.269.1">Creating a recommender system</span></h2>
+<p><span class="koboSpan" id="kobo.270.1">Our first step to train our recommender</span><a id="_idIndexMarker283"/><span class="koboSpan" id="kobo.271.1"> system is to capture the consumption patterns of the clients. </span><span class="koboSpan" id="kobo.271.2">In the following example, we will focus on the products that the customers bought throughout </span><span class="No-Break"><span class="koboSpan" id="kobo.272.1">the perio</span><a id="_idTextAnchor779"/><span class="koboSpan" id="kobo.273.1">ds:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.274.1">
+dfs = df[['client_name','product']].groupby(['client_name','product']).size().reset_index(name='count</span><a id="_idTextAnchor780"/><span class="koboSpan" id="kobo.275.1">s')
+dfs =  dfs.sort_values(['counts'],ascending=Fal</span><a id="_idTextAnchor781"/><span class="koboSpan" id="kobo.276.1">se)
+dfs.head()</span></pre>
+<p><span class="koboSpan" id="kobo.277.1">This results</span><a id="_idIndexMarker284"/><span class="koboSpan" id="kobo.278.1"> in the </span><span class="No-Break"><span class="koboSpan" id="kobo.279.1">following output</span><a id="_idTextAnchor782"/><span class="koboSpan" id="kobo.280.1">:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer148">
+<span class="koboSpan" id="kobo.281.1"><img alt="Figure 6.12: Products bought by client " src="image/B19026_06_12.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.282.1">Figure 6.12: Products bought by client</span></p>
+<p><span class="koboSpan" id="kobo.283.1">We will train the recommender with a rating scale between 0 and 1 so we need to scale these values. </span><span class="koboSpan" id="kobo.283.2">Now we can see that some clients have consistently bought some products, so we will use the </span><strong class="source-inline"><span class="koboSpan" id="kobo.284.1">sklearn</span></strong><span class="koboSpan" id="kobo.285.1"> min max scaler to adjust </span><span class="No-Break"><span class="koboSpan" id="kobo.286.1">the scale.</span></span></p>
+<p><span class="koboSpan" id="kobo.287.1">In machine learning, we normalize the data by generating new values, maintaining the general distribution, and adjusting the ratio in the data; normalization prevents the use of raw data and numerous dataset issues. </span><span class="koboSpan" id="kobo.287.2">Utilizing a variety of methods and algorithms also enhances the efficiency and accuracy of machine </span><span class="No-Break"><span class="koboSpan" id="kobo.288.1">learning models.</span></span></p>
+<p><span class="koboSpan" id="kobo.289.1">The </span><strong class="source-inline"><span class="koboSpan" id="kobo.290.1">MinMaxScaler</span></strong><span class="koboSpan" id="kobo.291.1"> from scikit-learn can be applied to scale the variables within a range. </span><span class="koboSpan" id="kobo.291.2">It’s important</span><a id="_idIndexMarker285"/><span class="koboSpan" id="kobo.292.1"> to note that the distribution of the variables should be normal. </span><span class="koboSpan" id="kobo.292.2">The original distribution’s shape is preserved by </span><strong class="source-inline"><span class="koboSpan" id="kobo.293.1">MinMaxScaler</span></strong><span class="koboSpan" id="kobo.294.1"> making sure that the information present in the original data is not materially altered. </span><span class="koboSpan" id="kobo.294.2">Keep in mind that </span><strong class="source-inline"><span class="koboSpan" id="kobo.295.1">MinMaxScaler</span></strong><span class="koboSpan" id="kobo.296.1"> does not lessen the significance of outliers and that the resulting feature has a default range of 0 </span><span class="No-Break"><span class="koboSpan" id="kobo.297.1">to 1.</span></span></p>
+<p><span class="koboSpan" id="kobo.298.1">Which scaler—</span><strong class="source-inline"><span class="koboSpan" id="kobo.299.1">MinMaxScaler</span></strong><span class="koboSpan" id="kobo.300.1"> or </span><strong class="source-inline"><span class="koboSpan" id="kobo.301.1">StandardScaler</span></strong><span class="koboSpan" id="kobo.302.1">—is superior? </span><span class="koboSpan" id="kobo.302.2">For features that follow a normal distribution, </span><strong class="source-inline"><span class="koboSpan" id="kobo.303.1">StandardScaler</span></strong><span class="koboSpan" id="kobo.304.1"> is helpful. </span><span class="koboSpan" id="kobo.304.2">When the upper and lower boundaries are well defined from domain knowledge, </span><strong class="source-inline"><span class="koboSpan" id="kobo.305.1">MinMaxScaler</span></strong><span class="koboSpan" id="kobo.306.1"> may be employed (pixel intensities that go from 0 to 255 in the RGB </span><span class="No-Break"><span class="koboSpan" id="kobo.307.1">color ran</span><a id="_idTextAnchor783"/><span class="koboSpan" id="kobo.308.1">ge).</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.309.1">
+from sklearn.preprocessing import MinMaxSc</span><a id="_idTextAnchor784"/><span class="koboSpan" id="kobo.310.1">aler
+scaler = MinMaxScal</span><a id="_idTextAnchor785"/><span class="koboSpan" id="kobo.311.1">er()
+dfs['count_sc'] = scaler.fit_transform(dfs[['counts</span><a id="_idTextAnchor786"/><span class="koboSpan" id="kobo.312.1">']])
+dfs = dfs.drop(['counts'],axis=1)</span></pre>
+<p><span class="koboSpan" id="kobo.313.1">Now that we have standardized the values, we can start working on the recommender system. </span><span class="koboSpan" id="kobo.313.2">Here, we will be using the SVDpp algorithm, which is an extension of SVD that takes into account implicit ratings. </span><span class="koboSpan" id="kobo.313.3">SVD is employed as a collaborative filtering mechanism in the recommender system. </span><span class="koboSpan" id="kobo.313.4">Each row in the matrix symbolizes a user, and each column is a piece of merchandise. </span><span class="koboSpan" id="kobo.313.5">The ratings that users provide for items make up the </span><span class="No-Break"><span class="koboSpan" id="kobo.314.1">matrix’s elements.</span></span></p>
+<p><span class="koboSpan" id="kobo.315.1">The general formula of </span><span class="No-Break"><span class="koboSpan" id="kobo.316.1">SVD is:</span></span></p>
+<p><span class="No-Break"><em class="italic"><span class="koboSpan" id="kobo.317.1">M=UΣV</span></em></span><span class="No-Break"><em class="italic"><span class="koboSpan" id="kobo.318.1">ᵗ</span></em></span></p>
+<p><span class="No-Break"><span class="koboSpan" id="kobo.319.1">where:</span></span></p>
+<ul>
+<li><span class="koboSpan" id="kobo.320.1">M is the original matrix we want to decompose, which is the dense matrix of users and products </span><span class="No-Break"><span class="koboSpan" id="kobo.321.1">they bought</span></span></li>
+<li><span class="koboSpan" id="kobo.322.1">U is the left singular matrix (columns are left </span><span class="No-Break"><span class="koboSpan" id="kobo.323.1">singular vectors)</span></span></li>
+<li><span class="koboSpan" id="kobo.324.1">Σ is a diagonal matrix containing </span><span class="No-Break"><span class="koboSpan" id="kobo.325.1">singular eigenvalues</span></span></li>
+<li><span class="koboSpan" id="kobo.326.1">V is the right singular matrix (columns are right </span><span class="No-Break"><span class="koboSpan" id="kobo.327.1">singular vectors)</span></span><a id="_idTextAnchor787"/></li>
+</ul>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"> </p>
+<div>
+<div class="IMG---Figure" id="_idContainer149">
+<span class="koboSpan" id="kobo.328.1"><img alt="Figure 6.13: Collaborative filtering factorization matrix " src="image/B19026_06_13.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.329.1">Figure 6.13: Collaborative filtering factorization matrix</span></p>
+<p><span class="koboSpan" id="kobo.330.1">The </span><strong class="source-inline"><span class="koboSpan" id="kobo.331.1">scikit-surprise</span></strong><span class="koboSpan" id="kobo.332.1"> package efficiently implements the SVD algorithm. </span><span class="koboSpan" id="kobo.332.2">Without having to reinvent the wheel, we can quickly construct rating-based recommender systems using</span><a id="_idIndexMarker286"/><span class="koboSpan" id="kobo.333.1"> the simple-to-use Python module called </span><strong class="source-inline"><span class="koboSpan" id="kobo.334.1">SurpriseSVD</span></strong><span class="koboSpan" id="kobo.335.1">. </span><span class="koboSpan" id="kobo.335.2">When utilizing models such as SVD, </span><strong class="source-inline"><span class="koboSpan" id="kobo.336.1">SurpriseSVD</span></strong><span class="koboSpan" id="kobo.337.1"> also gives us access to the matrix factors, which enables us to visually see how related the objects in our </span><span class="No-Break"><span class="koboSpan" id="kobo.338.1">dataset are:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.339.1">We will start by importing </span><span class="No-Break"><span class="koboSpan" id="kobo.340.1">the librar</span><a id="_idTextAnchor788"/><span class="koboSpan" id="kobo.341.1">ies:</span></span><pre class="console"><span class="koboSpan" id="kobo.342.1">
+from surprise import S</span><a id="_idTextAnchor789"/><span class="koboSpan" id="kobo.343.1">VDpp</span></pre><pre class="console"><span class="koboSpan" id="kobo.344.1">
+from surprise.model_selection import cross_vali</span><a id="_idTextAnchor790"/><span class="koboSpan" id="kobo.345.1">date</span></pre><pre class="console"><span class="koboSpan" id="kobo.346.1">
+from surprise import Reader, Dataset</span></pre></li>
+<li><span class="koboSpan" id="kobo.347.1">Now, we will initiate the reader for which we will set the scale between 0 </span><span class="No-Break"><span class="koboSpan" id="kobo.348.1">an</span><a id="_idTextAnchor791"/><span class="koboSpan" id="kobo.349.1">d 1:</span></span><pre class="console"><span class="koboSpan" id="kobo.350.1">
+reader = Reader(rating_scale=(0,1))</span></pre></li>
+<li><span class="koboSpan" id="kobo.351.1">Then, we can load the data with the </span><strong class="source-inline"><span class="koboSpan" id="kobo.352.1">Dataset</span></strong><span class="koboSpan" id="kobo.353.1"> method from the DataFrame with standardized value counts </span><span class="No-Break"><span class="koboSpan" id="kobo.354.1">of produ</span><a id="_idTextAnchor792"/><span class="koboSpan" id="kobo.355.1">cts:</span></span><pre class="console"><span class="koboSpan" id="kobo.356.1">
+data = Dataset.load_from_df(dfs, reader)</span></pre></li>
+<li><span class="koboSpan" id="kobo.357.1">Finally, we can instantiate the SVD algorithm and train it on </span><span class="No-Break"><span class="koboSpan" id="kobo.358.1">the d</span><a id="_idTextAnchor793"/><span class="koboSpan" id="kobo.359.1">ata:</span></span><pre class="console"><span class="koboSpan" id="kobo.360.1">
+algo = SVD</span><a id="_idTextAnchor794"/><span class="koboSpan" id="kobo.361.1">pp()</span></pre><pre class="console"><span class="koboSpan" id="kobo.362.1">
+algo.fit(data.build_full_trainset())</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.363.1">The training process should take a couple of minutes depending on the hardware specs that you have, but once it is finished, we can start using it to </span><span class="No-Break"><span class="koboSpan" id="kobo.364.1">make predictions.</span></span></p>
+<ol>
+<li value="5"><span class="koboSpan" id="kobo.365.1">We will start by taking a particular user and filtering up all the products that they are still not buying to offer them the ones that are </span><span class="No-Break"><span class="koboSpan" id="kobo.366.1">more recommen</span><a id="_idTextAnchor795"/><span class="koboSpan" id="kobo.367.1">ded:</span></span><pre class="console"><span class="koboSpan" id="kobo.368.1">
+usr = 'LA TR</span><a id="_idTextAnchor796"/><span class="koboSpan" id="kobo.369.1">OYA'</span></pre><pre class="console"><span class="koboSpan" id="kobo.370.1">
+# Filter the products that the client is already bu</span><a id="_idTextAnchor797"/><span class="koboSpan" id="kobo.371.1">ying</span></pre><pre class="console"><span class="koboSpan" id="kobo.372.1">
+user_prods = dfs[dfs.client_name==usr]['product'].unique().toli</span><a id="_idTextAnchor798"/><span class="koboSpan" id="kobo.373.1">st()</span></pre><pre class="console"><span class="koboSpan" id="kobo.374.1">
+prods = dfs[dfs.client_name!=usr]['product'].unique().toli</span><a id="_idTextAnchor799"/><span class="koboSpan" id="kobo.375.1">st()</span></pre><pre class="console"><span class="koboSpan" id="kobo.376.1">
+prods = [p for p in prods if p not in user_prods]</span></pre></li>
+<li><span class="koboSpan" id="kobo.377.1">Now that we have determined</span><a id="_idIndexMarker287"/><span class="koboSpan" id="kobo.378.1"> the products that the user is not buying, let’s see how the algorithm rates them to this </span><span class="No-Break"><span class="koboSpan" id="kobo.379.1">specific </span><a id="_idTextAnchor800"/><span class="koboSpan" id="kobo.380.1">user:</span></span><pre class="console"><span class="koboSpan" id="kobo.381.1">
+my_recs</span><a id="_idTextAnchor801"/><span class="koboSpan" id="kobo.382.1"> = []</span></pre><pre class="console"><span class="koboSpan" id="kobo.383.1">
+for iid in p</span><a id="_idTextAnchor802"/><span class="koboSpan" id="kobo.384.1">rods:</span></pre><pre class="console"><span class="koboSpan" id="kobo.385.1">
+    my_recs.append((iid, algo.predict(uid=usr,iid=iid).est))</span></pre></li>
+<li><span class="koboSpan" id="kobo.386.1">The preceding code will iterate over the products in the following data and create a DataFrame with the products that have the highest </span><span class="No-Break"><span class="koboSpan" id="kobo.387.1">recommendation v</span><a id="_idTextAnchor803"/><span class="koboSpan" id="kobo.388.1">alue:</span></span><pre class="console"><span class="koboSpan" id="kobo.389.1">
+dk = pd.DataFrame(my_</span><a id="_idTextAnchor804"/><span class="koboSpan" id="kobo.390.1">recs)</span></pre><pre class="console"><span class="koboSpan" id="kobo.391.1">
+dk.columns = ['product', 'rat</span><a id="_idTextAnchor805"/><span class="koboSpan" id="kobo.392.1">ing']</span></pre><pre class="console"><span class="koboSpan" id="kobo.393.1">
+dk = dk.sort_values('rating',ascending= False).reset_index(drop=</span><a id="_idTextAnchor806"/><span class="koboSpan" id="kobo.394.1">True)</span></pre><pre class="console"><span class="koboSpan" id="kobo.395.1">
+dk.head()</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.396.1">The next DataFrame shows us the recommended products for </span><span class="No-Break"><span class="koboSpan" id="kobo.397.1">the clien</span><a id="_idTextAnchor807"/><span class="koboSpan" id="kobo.398.1">t:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer150">
+<span class="koboSpan" id="kobo.399.1"><img alt="Figure 6.14: Client-recommended products " src="image/B19026_06_14.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.400.1">Figure 6.14: Client-recommended products</span></p>
+<ol>
+<li value="8"><span class="koboSpan" id="kobo.401.1">Now that we have determined</span><a id="_idIndexMarker288"/><span class="koboSpan" id="kobo.402.1"> this for a single user, we can extrapolate this to the rest of the clients. </span><span class="koboSpan" id="kobo.402.2">We will keep only the first 20 recommendations, as the number of products is </span><span class="No-Break"><span class="koboSpan" id="kobo.403.1">too extens</span><a id="_idTextAnchor808"/><span class="koboSpan" id="kobo.404.1">ive:</span></span><pre class="console"><span class="koboSpan" id="kobo.405.1">
+dki_full = pd.DataFr</span><a id="_idTextAnchor809"/><span class="koboSpan" id="kobo.406.1">ame()</span></pre><pre class="console"><span class="koboSpan" id="kobo.407.1">
+# For top 25 cl</span><a id="_idTextAnchor810"/><span class="koboSpan" id="kobo.408.1">ients</span></pre><pre class="console"><span class="koboSpan" id="kobo.409.1">
+users = kgs_by_period.client_name.uni</span><a id="_idTextAnchor811"/><span class="koboSpan" id="kobo.410.1">que()</span></pre><pre class="console"><span class="koboSpan" id="kobo.411.1">
+for usr in u</span><a id="_idTextAnchor812"/><span class="koboSpan" id="kobo.412.1">sers:</span></pre><pre class="console"><span class="koboSpan" id="kobo.413.1">
+  print</span><a id="_idTextAnchor813"/><span class="koboSpan" id="kobo.414.1">(usr)</span></pre><pre class="console"><span class="koboSpan" id="kobo.415.1">
+  user_prods = dfs[dfs.client_name==usr]['product'].unique().tol</span><a id="_idTextAnchor814"/><span class="koboSpan" id="kobo.416.1">ist()</span></pre><pre class="console"><span class="koboSpan" id="kobo.417.1">
+  prods = dfs[dfs.client_name!=usr]['product'].unique().tol</span><a id="_idTextAnchor815"/><span class="koboSpan" id="kobo.418.1">ist()</span></pre><pre class="console"><span class="koboSpan" id="kobo.419.1">
+  prods = [p for p in prods if p not in user_p</span><a id="_idTextAnchor816"/><span class="koboSpan" id="kobo.420.1">rods]</span></pre><pre class="console"><span class="koboSpan" id="kobo.421.1">
+  my_recs</span><a id="_idTextAnchor817"/><span class="koboSpan" id="kobo.422.1"> = []</span></pre><pre class="console"><span class="koboSpan" id="kobo.423.1">
+  for iid in p</span><a id="_idTextAnchor818"/><span class="koboSpan" id="kobo.424.1">rods:</span></pre><pre class="console"><span class="koboSpan" id="kobo.425.1">
+      my_recs.append((iid, algo.predict(uid=usr,iid=iid).</span><a id="_idTextAnchor819"/><span class="koboSpan" id="kobo.426.1">est))</span></pre><pre class="console"><span class="koboSpan" id="kobo.427.1">
+  dk = pd.DataFrame(my_</span><a id="_idTextAnchor820"/><span class="koboSpan" id="kobo.428.1">recs)</span></pre><pre class="console"><span class="koboSpan" id="kobo.429.1">
+  dk.columns = ['product', 'rat</span><a id="_idTextAnchor821"/><span class="koboSpan" id="kobo.430.1">ing']</span></pre><pre class="console"><span class="koboSpan" id="kobo.431.1">
+  dk = dk.sort_values('rating',ascending= False).reset_index(drop=</span><a id="_idTextAnchor822"/><span class="koboSpan" id="kobo.432.1">True)</span></pre><pre class="console"><span class="koboSpan" id="kobo.433.1">
+  dk['client'] </span><a id="_idTextAnchor823"/><span class="koboSpan" id="kobo.434.1">= usr</span></pre><pre class="console"><span class="koboSpan" id="kobo.435.1">
+  dki_full = pd.concat([dki_full, dk.head(20)])</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.436.1">This script will allow us to loop through our clients and generate a list of recommendations for each one of them. </span><span class="koboSpan" id="kobo.436.2">In this case, we are looking into a specific analysis, but this could be implemented into a pipeline delivering these results in </span><span class="No-Break"><span class="koboSpan" id="kobo.437.1">real time.</span></span></p>
+<p><span class="koboSpan" id="kobo.438.1">Now we have data that allows</span><a id="_idIndexMarker289"/><span class="koboSpan" id="kobo.439.1"> us to target each one of our clients with tailor-made product recommendations for products that they are not buying yet. </span><span class="koboSpan" id="kobo.439.2">We can also offer products that are complementary to the ones they are already buying, and this is what we will do in the </span><span class="No-Break"><span class="koboSpan" id="kobo.440.1">next sec</span><a id="_idTextAnchor824"/><span class="koboSpan" id="kobo.441.1">tion.</span></span></p>
+<h1 id="_idParaDest-68"><a id="_idTextAnchor825"/><span class="koboSpan" id="kobo.442.1">Using the Apriori algorithm for product bundling</span></h1>
+<p><span class="koboSpan" id="kobo.443.1">For now, we have focused</span><a id="_idIndexMarker290"/><span class="koboSpan" id="kobo.444.1"> on clients that are decreasing</span><a id="_idIndexMarker291"/><span class="koboSpan" id="kobo.445.1"> their purchases to create specific offers for them for products that they are not buying, but we can also improve the results for those that are already loyal customers. </span><span class="koboSpan" id="kobo.445.2">We can improve the number of products that they are buying by doing a market basket analysis and offering products that relate to their patterns of consumption. </span><span class="koboSpan" id="kobo.445.3">For this, we can use </span><span class="No-Break"><span class="koboSpan" id="kobo.446.1">several algorithms.</span></span></p>
+<p><span class="koboSpan" id="kobo.447.1">One of the most popular methods for association rule learning is the Apriori algorithm. </span><span class="koboSpan" id="kobo.447.2">It recognizes the things in a data collection and expands them to ever-larger groupings of items. </span><span class="koboSpan" id="kobo.447.3">Apriori is employed in association rule mining in datasets to search for several often-occurring sets of things. </span><span class="koboSpan" id="kobo.447.4">It expands on the itemsets’ connections and linkages. </span><span class="koboSpan" id="kobo.447.5">This is the implementation of the “You may also like” suggestions that you frequently see on recommendation sites are the result of </span><span class="No-Break"><span class="koboSpan" id="kobo.448.1">an algorithm.</span></span></p>
+<p><span class="koboSpan" id="kobo.449.1">Apriori is an algorithm for association rule learning and frequent item set mining in relational databases. </span><span class="koboSpan" id="kobo.449.2">As long as such item sets exist in the database frequently enough, it moves forward by detecting the frequent individual items and extending them to larger and larger item sets. </span><span class="koboSpan" id="kobo.449.3">The Apriori algorithm is generally used with transactional databases that are mined for frequent item sets and association rules using the Apriori method. </span><span class="koboSpan" id="kobo.449.4">“Support”, “Lift”, and “confidence” are utilized as parameters, where support is the likelihood that an item will occur, and confidence is a conditional probability. </span><span class="koboSpan" id="kobo.449.5">An item set is made up of the items in a transaction. </span><span class="koboSpan" id="kobo.449.6">This algorithm uses two steps, “join” and “prune,” to reduce the search space. </span><span class="koboSpan" id="kobo.449.7">It is an iterative approach to discovering the most frequent itemsets. </span><span class="koboSpan" id="kobo.449.8">In association rule learning, the items in a dataset are identified, and the dataset is expanded to include ever-larger groupings </span><span class="No-Break"><span class="koboSpan" id="kobo.450.1">of things.</span></span></p>
+<p><span class="koboSpan" id="kobo.451.1">The Apriori method is a common algorithm</span><a id="_idIndexMarker292"/><span class="koboSpan" id="kobo.452.1"> used in market basket analysis</span><a id="_idIndexMarker293"/><span class="koboSpan" id="kobo.453.1"> and is a well-known and widely used association rule algorithm. </span><span class="koboSpan" id="kobo.453.2">It aids in the discovery of frequent itemsets in transactions and pinpoints the laws of association between </span><span class="No-Break"><span class="koboSpan" id="kobo.454.1">these items.</span></span></p>
+<h2 id="_idParaDest-69"><a id="_idTextAnchor826"/><span class="koboSpan" id="kobo.455.1">Performing market basket analysis with Apriori</span></h2>
+<p><span class="koboSpan" id="kobo.456.1">For this</span><a id="_idIndexMarker294"/><span class="koboSpan" id="kobo.457.1"> analysis, we will use</span><a id="_idIndexMarker295"/><span class="koboSpan" id="kobo.458.1"> separate data found in the UCI ML </span><span class="No-Break"><span class="koboSpan" id="kobo.459.1">repository (</span></span><a href="http://archive.ics.uci.edu/ml/datasets/Online+Retail"><span class="No-Break"><span class="koboSpan" id="kobo.460.1">http://archive.ics.uci.edu/ml/datasets/Online+Retail</span></span></a><span class="No-Break"><span class="koboSpan" id="kobo.461.1">):</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.462.1">We begin the analysis by importing the packages and loading the data. </span><span class="koboSpan" id="kobo.462.2">Remember to install the </span><strong class="source-inline"><span class="koboSpan" id="kobo.463.1">mlxtend</span></strong><span class="koboSpan" id="kobo.464.1"> module prior to running this block of code, otherwise, we will have a </span><strong class="bold"><span class="koboSpan" id="kobo.465.1">Module Not </span><a id="_idTextAnchor827"/></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.466.1">Found</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.467.1"> error:</span></span><pre class="console"><span class="koboSpan" id="kobo.468.1">
+from mlxtend.frequent_patterns import apriori, assoc</span><a id="_idTextAnchor828"/><span class="koboSpan" id="kobo.469.1">iation_rules</span></pre><pre class="console"><span class="koboSpan" id="kobo.470.1">
+data = pd.read_csv('/content/Online Retail.csv',encoding='</span><a id="_idTextAnchor829"/><span class="koboSpan" id="kobo.471.1">iso-8859-1')</span></pre><pre class="console"><span class="koboSpan" id="kobo.472.1">
+da</span><a id="_idTextAnchor830"/><span class="koboSpan" id="kobo.473.1">ta.head()</span></pre></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer151">
+<span class="koboSpan" id="kobo.474.1"><img alt="Figure 6.15: Online retail data " src="image/B19026_06_15.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.475.1">Figure 6.15: Online retail data</span></p>
+<p><span class="koboSpan" id="kobo.476.1">This international data collection</span><a id="_idIndexMarker296"/><span class="koboSpan" id="kobo.477.1"> includes every transaction</span><a id="_idIndexMarker297"/><span class="koboSpan" id="kobo.478.1"> made by a UK-based, registered non-store internet retailer between December 1, 2010, and December 9, 2011. </span><span class="koboSpan" id="kobo.478.2">The company primarily offers one-of-a-kind gifts for every occasion. </span><span class="koboSpan" id="kobo.478.3">The company has a large number of wholesalers </span><span class="No-Break"><span class="koboSpan" id="kobo.479.1">as clients.</span></span></p>
+<ol>
+<li value="2"><span class="koboSpan" id="kobo.480.1">We begin exploring the columns</span><a id="_idTextAnchor831"/><span class="koboSpan" id="kobo.481.1"> of </span><span class="No-Break"><span class="koboSpan" id="kobo.482.1">the data:</span></span><pre class="console">
+<a id="_idTextAnchor832"/><span class="koboSpan" id="kobo.483.1">data.columns</span></pre><pre class="console"><span class="koboSpan" id="kobo.484.1">
+&gt;&gt;&gt; Index(['InvoiceNo', 'StockCode', 'Description', 'Quantity', 'InvoiceDate','UnitPrice', 'CustomerID', 'Country'],dtype='object')</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.485.1">The data contains transactional sales data with information about codes and dates that we will not use now. </span><span class="koboSpan" id="kobo.485.2">Instead, we will focus on the description, quantity, </span><span class="No-Break"><span class="koboSpan" id="kobo.486.1">and price.</span></span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.487.1">We can look at the statistical summary</span><a id="_idTextAnchor833"/><span class="koboSpan" id="kobo.488.1"> of </span><span class="No-Break"><span class="koboSpan" id="kobo.489.1">the data:</span></span><pre class="console"><span class="koboSpan" id="kobo.490.1">
+data.d</span><a id="_idTextAnchor834"/><span class="koboSpan" id="kobo.491.1">escribe()</span></pre></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer152">
+<span class="koboSpan" id="kobo.492.1"><img alt="Figure 6.16: Descriptive statistical summary " src="image/B19026_06_16.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.493.1">Figure 6.16: Descriptive statistical summary</span></p>
+<ol>
+<li value="4"><span class="koboSpan" id="kobo.494.1">In order to assess</span><a id="_idIndexMarker298"/><span class="koboSpan" id="kobo.495.1"> the categorical</span><a id="_idIndexMarker299"/><span class="koboSpan" id="kobo.496.1"> variables, we use the </span><strong class="source-inline"><span class="koboSpan" id="kobo.497.1">describe</span></strong><span class="koboSpan" id="kobo.498.1"> method focused on object columns in </span><span class="No-Break"><span class="koboSpan" id="kobo.499.1">t</span><a id="_idTextAnchor835"/><span class="koboSpan" id="kobo.500.1">he DataFrame:</span></span><pre class="console"><span class="koboSpan" id="kobo.501.1">
+data.describe(i</span><a id="_idTextAnchor836"/><span class="koboSpan" id="kobo.502.1">nclude='O')</span></pre></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer153">
+<span class="koboSpan" id="kobo.503.1"><img alt="Figure 6.17: Descriptive categorical summary " src="image/B19026_06_17.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.504.1">Figure 6.17: Descriptive categorical summary</span></p>
+<p><span class="koboSpan" id="kobo.505.1">This information shows us some of the counts for each object column and shows us that the most common country is the UK, </span><span class="No-Break"><span class="koboSpan" id="kobo.506.1">as expected.</span></span></p>
+<ol>
+<li value="5"><span class="koboSpan" id="kobo.507.1">We will also explore</span><a id="_idIndexMarker300"/><span class="koboSpan" id="kobo.508.1"> the different regions</span><a id="_idIndexMarker301"/><span class="koboSpan" id="kobo.509.1"> of transactions to gain some understandi</span><a id="_idTextAnchor837"/><span class="koboSpan" id="kobo.510.1">ng of </span><span class="No-Break"><span class="koboSpan" id="kobo.511.1">the data:</span></span><pre class="console"><span class="koboSpan" id="kobo.512.1">
+data['Country'].value_counts().head(10).plot(kind='bar',fig</span><a id="_idTextAnchor838"/><span class="koboSpan" id="kobo.513.1">size=(12,6))</span></pre></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer154">
+<span class="koboSpan" id="kobo.514.1"><img alt="Figure 6.18: Markets in the data " src="image/B19026_06_18.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.515.1">Figure 6.18: Markets in the data</span></p>
+<p><span class="koboSpan" id="kobo.516.1">We can confirm that the vast majority of transactions are in the UK, followed by Germany </span><span class="No-Break"><span class="koboSpan" id="kobo.517.1">and France.</span></span></p>
+<ol>
+<li value="6"><span class="koboSpan" id="kobo.518.1">For readability, we will be stripping extra spaces in </span><span class="No-Break"><span class="koboSpan" id="kobo.519.1">th</span><a id="_idTextAnchor839"/><span class="koboSpan" id="kobo.520.1">e description:</span></span><pre class="console"><span class="koboSpan" id="kobo.521.1">
+data['Description'] = data['Description'].str.strip()</span></pre></li>
+<li><span class="koboSpan" id="kobo.522.1">Now, we will drop rows with NaNs in the invoice number and convert them into strings for </span><span class="No-Break"><span class="koboSpan" id="kobo.523.1">categori</span><a id="_idTextAnchor840"/><span class="koboSpan" id="kobo.524.1">cal treatment:</span></span><pre class="console"><span class="koboSpan" id="kobo.525.1">
+data = data[~data['Invoi</span><a id="_idTextAnchor841"/><span class="koboSpan" id="kobo.526.1">ceNo'].isna()]</span></pre><pre class="console"><span class="koboSpan" id="kobo.527.1">
+data['InvoiceNo'] = data['InvoiceNo'].astype('str')</span></pre></li>
+<li><span class="koboSpan" id="kobo.528.1">For now, we will focus</span><a id="_idIndexMarker302"/><span class="koboSpan" id="kobo.529.1"> on noncredit transactions, so</span><a id="_idIndexMarker303"/><span class="koboSpan" id="kobo.530.1"> we will be dropping all transactions that were</span><a id="_idTextAnchor842"/><span class="koboSpan" id="kobo.531.1"> done </span><span class="No-Break"><span class="koboSpan" id="kobo.532.1">on credit:</span></span><pre class="console"><span class="koboSpan" id="kobo.533.1">
+data = data[~data['InvoiceNo'].str.contains('C')]</span></pre></li>
+<li><span class="koboSpan" id="kobo.534.1">We will begin the analysis by looking at the UK </span><span class="No-Break"><span class="koboSpan" id="kobo.535.1">as</span><a id="_idTextAnchor843"/><span class="koboSpan" id="kobo.536.1">sociation rules:</span></span><pre class="console"><span class="koboSpan" id="kobo.537.1">
+data_uk = data[data['Country'] =="</span><a id="_idTextAnchor844"/><span class="koboSpan" id="kobo.538.1">United Kingdom"]</span></pre><pre class="console"><span class="koboSpan" id="kobo.539.1">
+basket_uk = data_uk.groupby(['InvoiceNo', 'Description'])['</span><a id="_idTextAnchor845"/><span class="koboSpan" id="kobo.540.1">Quantity'].sum()</span></pre><pre class="console"><span class="koboSpan" id="kobo.541.1">
+basket_uk = basket_uk.unstack().reset_i</span><a id="_idTextAnchor846"/><span class="koboSpan" id="kobo.542.1">ndex().fillna(0)</span></pre><pre class="console"><span class="koboSpan" id="kobo.543.1">
+basket_uk = basket_uk.set_in</span><a id="_idTextAnchor847"/><span class="koboSpan" id="kobo.544.1">dex('InvoiceNo')</span></pre><pre class="console"><span class="koboSpan" id="kobo.545.1">
+bas</span><a id="_idTextAnchor848"/><span class="koboSpan" id="kobo.546.1">ket_uk.head()</span></pre></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer155">
+<span class="koboSpan" id="kobo.547.1"><img alt="Figure 6.19: UK market basket " src="image/B19026_06_19.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.548.1">Figure 6.19: UK market basket</span></p>
+<p><span class="koboSpan" id="kobo.549.1">We can see the dense matrix of products bought on </span><span class="No-Break"><span class="koboSpan" id="kobo.550.1">each invoice.</span></span></p>
+<ol>
+<li value="10"><span class="koboSpan" id="kobo.551.1">We will do the same</span><a id="_idIndexMarker304"/><span class="koboSpan" id="kobo.552.1"> with the transactions</span><a id="_idTextAnchor849"/><a id="_idIndexMarker305"/><span class="koboSpan" id="kobo.553.1"> done </span><span class="No-Break"><span class="koboSpan" id="kobo.554.1">in France:</span></span><pre class="console"><span class="koboSpan" id="kobo.555.1">
+basket_fr = data[data['Coun</span><a id="_idTextAnchor850"/><span class="koboSpan" id="kobo.556.1">try'] =="France"]</span></pre><pre class="console"><span class="koboSpan" id="kobo.557.1">
+basket_fr = basket_fr.groupby(['InvoiceNo', 'Description'])[</span><a id="_idTextAnchor851"/><span class="koboSpan" id="kobo.558.1">'Quantity'].sum()</span></pre><pre class="console"><span class="koboSpan" id="kobo.559.1">
+basket_fr = basket_fr.unstack().reset_</span><a id="_idTextAnchor852"/><span class="koboSpan" id="kobo.560.1">index().fillna(0)</span></pre><pre class="console"><span class="koboSpan" id="kobo.561.1">
+basket_fr = basket_fr.set_index('InvoiceNo')</span></pre></li>
+<li><span class="koboSpan" id="kobo.562.1">Finally, we will do the same for the </span><a id="_idTextAnchor853"/><span class="koboSpan" id="kobo.563.1">data </span><span class="No-Break"><span class="koboSpan" id="kobo.564.1">for Germany:</span></span><pre class="console"><span class="koboSpan" id="kobo.565.1">
+basket_de = data[data['Count</span><a id="_idTextAnchor854"/><span class="koboSpan" id="kobo.566.1">ry'] =="Germany"]</span></pre><pre class="console"><span class="koboSpan" id="kobo.567.1">
+basket_de = basket_de.groupby(['InvoiceNo', 'Description'])[</span><a id="_idTextAnchor855"/><span class="koboSpan" id="kobo.568.1">'Quantity'].sum()</span></pre><pre class="console"><span class="koboSpan" id="kobo.569.1">
+basket_de = basket_de.unstack().reset_</span><a id="_idTextAnchor856"/><span class="koboSpan" id="kobo.570.1">index().fillna(0)</span></pre><pre class="console"><span class="koboSpan" id="kobo.571.1">
+basket_de = basket_de.set_index('InvoiceNo')</span></pre></li>
+<li><span class="koboSpan" id="kobo.572.1">Now, we will be defining the hot encoding function to make the data suitable for the concerned libraries as they need discrete values</span><a id="_idTextAnchor857"/><span class="koboSpan" id="kobo.573.1"> (either 0 </span><span class="No-Break"><span class="koboSpan" id="kobo.574.1">or 1):</span></span><pre class="console"><span class="koboSpan" id="kobo.575.1">
+basket_uk = (basket_</span><a id="_idTextAnchor858"/><span class="koboSpan" id="kobo.576.1">uk&gt;0).astype(int)</span></pre><pre class="console"><span class="koboSpan" id="kobo.577.1">
+basket_fr = (basket_</span><a id="_idTextAnchor859"/><span class="koboSpan" id="kobo.578.1">fr&gt;0).astype(int)</span></pre><pre class="console"><span class="koboSpan" id="kobo.579.1">
+basket_de = (basket_de&gt;0).astype(int)</span></pre></li>
+<li><span class="koboSpan" id="kobo.580.1">Once we have encoded the results into a one hot encoder, we can start to build the models</span><a id="_idTextAnchor860"/><span class="koboSpan" id="kobo.581.1"> for </span><span class="No-Break"><span class="koboSpan" id="kobo.582.1">each market:</span></span><pre class="console"><span class="koboSpan" id="kobo.583.1">
+frq_items_uk = apriori(basket_uk, min_support = 0.01, use_colnames = True)</span></pre></li>
+<li><span class="koboSpan" id="kobo.584.1">Once the model is built, we can look at the found association rules f</span><a id="_idTextAnchor861"/><span class="koboSpan" id="kobo.585.1">or the </span><span class="No-Break"><span class="koboSpan" id="kobo.586.1">UK market:</span></span><pre class="console"><span class="koboSpan" id="kobo.587.1">
+# Collecting the inferred rul</span><a id="_idTextAnchor862"/><span class="koboSpan" id="kobo.588.1">es in a dataframe</span></pre><pre class="console"><span class="koboSpan" id="kobo.589.1">
+rules_uk = association_rules(frq_items_uk, metric ="lift", m</span><a id="_idTextAnchor863"/><span class="koboSpan" id="kobo.590.1">in_threshold = 1)</span></pre><pre class="console"><span class="koboSpan" id="kobo.591.1">
+# rules_uk = rules_uk.sort_values(['confidence', 'lift'], ascending</span><a id="_idTextAnchor864"/><span class="koboSpan" id="kobo.592.1"> =[False, False])</span></pre><pre class="console"><span class="koboSpan" id="kobo.593.1">
+r</span><a id="_idTextAnchor865"/><span class="koboSpan" id="kobo.594.1">ules_uk.head()</span></pre></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer156">
+<span class="koboSpan" id="kobo.595.1"><img alt="Figure 6.20: UK association rules " src="image/B19026_06_20.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.596.1">Figure 6.20: UK association rules</span></p>
+<p><span class="koboSpan" id="kobo.597.1">If the rules for the UK transactions</span><a id="_idIndexMarker306"/><span class="koboSpan" id="kobo.598.1"> are examined in more</span><a id="_idIndexMarker307"/><span class="koboSpan" id="kobo.599.1"> detail, it becomes clear that the British bought variously colored tea plates collectively. </span><span class="koboSpan" id="kobo.599.2">This may be due to the fact that the British often enjoy tea very much and frequently collect various colored tea dishes for </span><span class="No-Break"><span class="koboSpan" id="kobo.600.1">various occasions.</span></span></p>
+<ol>
+<li value="15"><span class="koboSpan" id="kobo.601.1">We will now do the same for th</span><a id="_idTextAnchor866"/><span class="koboSpan" id="kobo.602.1">e data </span><span class="No-Break"><span class="koboSpan" id="kobo.603.1">for France:</span></span><pre class="console"><span class="koboSpan" id="kobo.604.1">
+frq_items_fr = apriori(basket_fr, min_support = 0.05, us</span><a id="_idTextAnchor867"/><span class="koboSpan" id="kobo.605.1">e_colnames = True)</span></pre><pre class="console"><span class="koboSpan" id="kobo.606.1">
+# Collecting the inferred ru</span><a id="_idTextAnchor868"/><span class="koboSpan" id="kobo.607.1">les in a dataframe</span></pre><pre class="console"><span class="koboSpan" id="kobo.608.1">
+rules_fr = association_rules(frq_items_fr, metric ="lift", </span><a id="_idTextAnchor869"/><span class="koboSpan" id="kobo.609.1">min_threshold = 1)</span></pre><pre class="console"><span class="koboSpan" id="kobo.610.1">
+rules_fr = rules_fr.sort_values(['confidence', 'lift'], ascendin</span><a id="_idTextAnchor870"/><span class="koboSpan" id="kobo.611.1">g =[False, False])</span></pre><pre class="console">
+<a id="_idTextAnchor871"/><span class="koboSpan" id="kobo.612.1">rules_fr.head()</span></pre></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer157">
+<span class="koboSpan" id="kobo.613.1"><img alt="Figure 6.21: France association rules " src="image/B19026_06_21.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.614.1">Figure 6.21: France association rules</span></p>
+<p><span class="koboSpan" id="kobo.615.1">It is clear from this data</span><a id="_idIndexMarker308"/><span class="koboSpan" id="kobo.616.1"> that paper plates, glasses, and napkins</span><a id="_idIndexMarker309"/><span class="koboSpan" id="kobo.617.1"> are frequently purchased together in France. </span><span class="koboSpan" id="kobo.617.2">This is due to the French habit of gathering with friends and family at least once every week. </span><span class="koboSpan" id="kobo.617.3">Additionally, since the French government has outlawed the use of plastic in the nation, citizens must purchase replacements made </span><span class="No-Break"><span class="koboSpan" id="kobo.618.1">of paper.</span></span></p>
+<ol>
+<li value="16"><span class="koboSpan" id="kobo.619.1">Finally, we will build the model f</span><a id="_idTextAnchor872"/><span class="koboSpan" id="kobo.620.1">or the </span><span class="No-Break"><span class="koboSpan" id="kobo.621.1">German data:</span></span><pre class="console"><span class="koboSpan" id="kobo.622.1">
+frq_items_de = apriori(basket_de, min_support = 0.05, u</span><a id="_idTextAnchor873"/><span class="koboSpan" id="kobo.623.1">se_colnames = True)</span></pre><pre class="console"><span class="koboSpan" id="kobo.624.1">
+# Collecting the inferred r</span><a id="_idTextAnchor874"/><span class="koboSpan" id="kobo.625.1">ules in a dataframe</span></pre><pre class="console"><span class="koboSpan" id="kobo.626.1">
+rules_de = association_rules(frq_items_de, metric ="lift",</span><a id="_idTextAnchor875"/><span class="koboSpan" id="kobo.627.1"> min_threshold = 1)</span></pre><pre class="console"><span class="koboSpan" id="kobo.628.1">
+rules_de = rules_de.sort_values(['confidence', 'lift'], ascendi</span><a id="_idTextAnchor876"/><span class="koboSpan" id="kobo.629.1">ng =[False, False])</span><a id="_idTextAnchor877"/></pre><pre class="console"><span class="koboSpan" id="kobo.630.1">
+rules_de.head()</span></pre></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer158">
+<span class="koboSpan" id="kobo.631.1"><img alt="Figure 6.22: Germany association rules " src="image/B19026_06_22.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.632.1">Figure 6.22: Germany association rules</span></p>
+<p><span class="koboSpan" id="kobo.633.1">The preceding data shows</span><a id="_idIndexMarker310"/><span class="koboSpan" id="kobo.634.1"> us that most of the items </span><a id="_idIndexMarker311"/><span class="koboSpan" id="kobo.635.1">are associated with costs of delivery, so it might be an indication that German transactions are mostly m</span><a id="_idTextAnchor878"/><span class="koboSpan" id="kobo.636.1">ade of </span><span class="No-Break"><span class="koboSpan" id="kobo.637.1">single items.</span></span></p>
+<h1 id="_idParaDest-70"><a id="_idTextAnchor879"/><span class="koboSpan" id="kobo.638.1">Summary</span></h1>
+<p><span class="koboSpan" id="kobo.639.1">In this chapter, we have learned to identify the clients that have a decreasing number of sales in order to offer them specific product recommendations based on their consumption patterns. </span><span class="koboSpan" id="kobo.639.2">We have identified the decreasing sales by looking at the slope in the historical sales in the given set of periods, and we used the SVD collaborative filtering algorithm to create personalized recommendations for products that customers are </span><span class="No-Break"><span class="koboSpan" id="kobo.640.1">not buying.</span></span></p>
+<p><span class="koboSpan" id="kobo.641.1">As the next step and to improve the loyalty of existing customers, we have explored the use of the Apriori algorithm to run a market basket analysis and to be able to offer product recommendations based on specific products </span><span class="No-Break"><span class="koboSpan" id="kobo.642.1">being bought.</span></span></p>
+<p><span class="koboSpan" id="kobo.643.1">In the next chapter, we will dive into how we identify the common traits of customers that churn in order to complement these approaches with a deeper understanding of our </span><span class="No-Break"><span class="koboSpan" id="kobo.644.1">customer churn.</span></span></p>
+</div>
+
+
+<div class="Content" id="_idContainer160">
+<h1 id="_idParaDest-71"><a id="_idTextAnchor880"/><span class="koboSpan" id="kobo.1.1">Part 3: Operation and Pricing Optimization</span></h1>
+<p><span class="koboSpan" id="kobo.2.1">The final part of the book will cover how to optimize business operations. </span><span class="koboSpan" id="kobo.2.2">We will move away from understanding the market and customers, and dive into how we can adjust the operations to improve the revenue margin. </span><span class="koboSpan" id="kobo.2.3">This will be done by improving the pricing strategies, optimizing the use of promotions, and finally, improving the digital marketing strategies to reach more </span><span class="No-Break"><span class="koboSpan" id="kobo.3.1">possible customers.</span></span></p>
+<p><span class="koboSpan" id="kobo.4.1">This part covers the </span><span class="No-Break"><span class="koboSpan" id="kobo.5.1">following chapters:</span></span></p>
+<ul>
+<li><a href="B19026_07.xhtml#_idTextAnchor881"><em class="italic"><span class="koboSpan" id="kobo.6.1">Chapter 7</span></em></a><span class="koboSpan" id="kobo.7.1">, </span><em class="italic"><span class="koboSpan" id="kobo.8.1">Predicting Customer Churn</span></em></li>
+<li><a href="B19026_08.xhtml#_idTextAnchor1010"><em class="italic"><span class="koboSpan" id="kobo.9.1">Chapter 8</span></em></a><span class="koboSpan" id="kobo.10.1">, </span><em class="italic"><span class="koboSpan" id="kobo.11.1">Grouping Users with Customer Segmentation</span></em></li>
+<li><a href="B19026_09.xhtml#_idTextAnchor1188"><em class="italic"><span class="koboSpan" id="kobo.12.1">Chapter 9</span></em></a><span class="koboSpan" id="kobo.13.1">, </span><em class="italic"><span class="koboSpan" id="kobo.14.1">Using Historical Markdown Data to Predict Sales</span></em></li>
+<li><a href="B19026_10.xhtml#_idTextAnchor1316"><em class="italic"><span class="koboSpan" id="kobo.15.1">Chapter 10</span></em></a><span class="koboSpan" id="kobo.16.1">, </span><em class="italic"><span class="koboSpan" id="kobo.17.1">Web Analytics Optimization </span></em></li>
+<li><a href="B19026_11.xhtml#_idTextAnchor1469"><em class="italic"><span class="koboSpan" id="kobo.18.1">Chapter 11</span></em></a><span class="koboSpan" id="kobo.19.1">, </span><em class="italic"><span class="koboSpan" id="kobo.20.1">Creating a Data-Driven Culture in Business </span></em></li>
+</ul>
+</div>
+<div>
+<div id="_idContainer161">
+</div>
+</div>
+<div>
+<div id="_idContainer162">
+</div>
+</div>
+</body></html>

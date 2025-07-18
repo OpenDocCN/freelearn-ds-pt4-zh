@@ -1,0 +1,890 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+lang="en"
+xmlns="http://www.w3.org/1999/xhtml"
+xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Time Series Analysis with Python Cookbook, 2E - Second Edition</title>
+<link rel="stylesheet" type="text/css" href="../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/><link rel="stylesheet" type="text/css" href="../styles/stylesheet2.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content"><section id="outlier-detection-using-unsupervised-machine-learning" class="level1 pkt" data-number="13">
+<h1 data-number="13">14 Outlier Detection Using Unsupervised Machine Learning</h1>
+<section id="join-our-book-community-on-discord-11" class="level2" data-number="13.1">
+<h2 data-number="13.1">Join our book community on Discord</h2>
+<p>
+<img style="width:15rem" src="../media/file0.png" width="200" height="200"/>
+</p>
+<p><a href="https://packt.link/zmkOY">https://packt.link/zmkOY</a></p>
+<p>In <em>Chapter 8</em>, <em>Outlier Detection Using Statistical Methods</em>, you explored parametric and non-parametric statistical techniques to spot potential outliers. The methods were simple, interpretable, and yet quite effective.</p>
+<p>Outlier detection is not straightforward, mainly due to the ambiguity surrounding the definition of what an outlier is, specific to your data or the problem that you are trying to solve. For example, though common, some of the thresholds used in <em>Chapter 8</em>, <em>Outlier Detection Using Statistical Methods</em>, are still arbitrary and not a rule that you must follow. Therefore, having domain knowledge or access to <strong>Subject Matter Experts</strong> (<strong>SMEs</strong>) is vital to making the proper judgment when spotting outliers.</p>
+<p>In this chapter, you will be introduced to a handful of machine learning-based methods for outlier detection. Most of the machine learning techniques for outlier detection are considered <em>unsupervised</em> outlier detection methods, such as <strong>Isolation Forests</strong> (<strong>iForest</strong>), unsupervised <strong>K-Nearest Neighbors</strong> (<strong>KNN</strong>), <strong>Local Outlier Factor</strong> (<strong>LOF</strong>), and <strong>Copula-Based Outlier Detection</strong> (<strong>COPOD</strong>), to name a few.</p>
+<p>Generally, outliers (or anomalies) are considered a rare occurrence (later in the chapter, you will see this referenced as the contamination percentage). In other words, you would assume a small fraction of your data are outliers in a large data set. For example, 1% of the data may be potential outliers. However, this complexity requires methods designed to find patterns in the data. Unsupervised outlier detection techniques are great at finding patterns in rare occurrences.</p>
+<p>After investigating outliers, you will have a historical set of labeled data, allowing you to leverage semi-supervised outlier detection techniques. This chapter focuses on unsupervised outlier detection.</p>
+<p>In this chapter, you will be introduced to the <strong>PyOD</strong> library, described as <em>"a comprehensive and scalable Python toolkit for detecting outlying objects in multivariate data."</em> The library offers an extensive collection of implementations for popular and emerging algorithms in the field of outlier detection, which you can read about here: <a href="https://github.com/yzhao062/pyod">https://github.com/yzhao062/pyod</a>.</p>
+<p>You will be using the same New York taxi dataset to make it easier to compare the results between the different machine learning methods in this chapter and the statistical methods from <em>Chapter 8</em>, <em>Outlier Detection Using Statistical Methods</em>.</p>
+<p>The recipes that you will encounter in this chapter are as follow<em>s</em>:</p>
+<ul>
+<li>Detecting outliers using <strong>KNN</strong></li>
+<li>Detecting outliers using <strong>LOF</strong></li>
+<li>Detecting outliers using <strong>iForest</strong></li>
+<li>Detecting outliers using <strong>One-Class Support Vector Machine</strong> (<strong>OCSVM</strong>)</li>
+<li>Detecting outliers using <strong>COPOD</strong></li>
+<li>Detecting outliers with <strong>PyCaret</strong></li>
+</ul>
+</section>
+<section id="technical-requirements-11" class="level2" data-number="13.2">
+<h2 data-number="13.2">Technical requirements</h2>
+<p>You can download the Jupyter notebooks and datasets required from the GitHub repository:</p>
+<ul>
+<li>Jupyter notebooks: <a href="https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch14/Chapter%2014.ipynb">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch14/Chapter%2014.ipynb</a></li>
+<li>Datasets: <a href="https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch14">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch14</a></li>
+</ul>
+<p>You can install PyOD with either <code>pip</code> or Conda. For a <code>pip</code> install, run the following command:</p>
+<div class="C0-SHConPACKT">
+<pre><code>pip install pyod</code></pre>
+</div>
+<p>For a <code>Conda</code> install, run the following command:</p>
+<div class="C0-SHConPACKT">
+<pre><code>conda install -c conda-forge pyod</code></pre>
+</div>
+<p>To prepare for the outlier detection recipes, start by loading the libraries that you will be using throughout the chapter:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+import warnings
+warnings.filterwarnings('ignore')
+plt.rcParams["figure.figsize"] = [16, 3]</code></pre>
+</div>
+<p>Load the <code>nyc_taxi.csv</code> data into a pandas DataFrame as it will be used throughout the chapter:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>file = Path("../../datasets/Ch14/nyc_taxi.csv")
+nyc_taxi_2 = pd.read_csv(file,
+                     index_col='timestamp',
+                     parse_dates=True)
+nyc_taxi_2.index.freq = '30T'</code></pre>
+</div>
+<p>You can store the known dates containing outliers, also known as ground truth labels:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>nyc_dates =  [
+        "2014-11-01",
+        "2014-11-27",
+        "2014-12-25",
+        "2015-01-01",
+        "2015-01-27"]</code></pre>
+</div>
+<p>Create the <code>plot_outliers</code> function that you will use throughout the recipes:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>def plot_outliers(outliers, data, method='KNN',
+                 halignment = 'right',
+                 valignment = 'top',
+                 labels=False):
+    ax = data.plot(alpha=0.6)
+   
+    if labels:
+        for i in outliers['value'].items():
+            plt.plot(i[0], i[1], 'v', markersize=8, markerfacecolor='none', markeredgecolor='k')
+            plt.text(i[0], i[1]-(i[1]*0.04), f'{i[0].strftime("%m/%d")}',
+                         horizontalalignment=halignment,
+                         verticalalignment=valignment)
+    else:
+        data.loc[outliers.index].plot(ax=ax, style='rX', markersize=9)       
+    plt.title(f'NYC Taxi - {method}')
+    plt.xlabel('date'); plt.ylabel('# of passengers')
+    plt.legend(['nyc taxi','outliers'])
+    plt.show()</code></pre>
+</div>
+<p>As you proceed with the outlier detection recipes, the goal is to see how the different techniques capture outliers and compare them to the ground truth labels, as follows:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>tx = nyc_taxi.resample('D').mean()
+known_outliers = tx.loc[nyc_dates]
+plot_outliers(known_outliers, tx, 'Known Outliers')</code></pre>
+</div>
+<p>The preceding code should produce a time series plot with <code>X</code> markers for the known outliers:</p>
+<figure>
+<img src="../media/file278.jpg" alt="Figure 14.1: Plotting the NYC taxi data after downsampling with ground truth labels (outliers)" width="1380" height="635"/><figcaption aria-hidden="true">Figure 14.1: Plotting the NYC taxi data after downsampling with ground truth labels (outliers)</figcaption>
+</figure>
+<blockquote>
+<p>PYOD'S METHODS FOR TRAINING AND MAKING PREDICTIONS</p>
+<blockquote>
+<p>Like scikit-learn, PyOD offers familiar methods for training your model and making predictions by providing three methods: <code>model.fit()</code>, <code>model.predict()</code>, and <code>model.fit_predict()</code>.</p>
+</blockquote>
+<blockquote>
+<p>In the recipes, we will break down the process into two steps by first fitting the model (training) using <code>.fit()</code> and then making a prediction using <code>.predict()</code>.</p>
+</blockquote>
+</blockquote>
+<p>In addition to the <code>predict</code> method, PyOD provides two additional methods: <code>predict_proba</code> and <code>predict_confidence</code>.</p>
+<p>In the first recipe, you will explore how PyOD works behind the scenes and introduce fundamental concepts, for example, the concept of <code>contamination</code> and how <code>threshold_</code> and <code>decision_scores_</code> are used to generate the binary labels (<em>abnormal</em> or <em>normal</em>). These concepts will be covered in more depth in the following recipe.</p>
+</section>
+<section id="detecting-outliers-using-knn" class="level2" data-number="13.3">
+<h2 data-number="13.3">Detecting outliers using KNN</h2>
+<p>The KNN algorithm is typically used in a supervised learning setting where prior results or outcomes (labels) are known.</p>
+<p>It can be used to solve classification or regression problems. The idea is simple; for example, you can classify a new data point, Y, based on its nearest neighbors. For instance, if k=5, the algorithm will find the five nearest data points (neighbors) by distance to the point Y and determine its class based on the majority. If there are three blue and two red nearest neighbors, Y is classified as blue. The K in KNN is a parameter you can modify to find the optimal value.</p>
+<p>In the case of outlier detection, the algorithm is used differently. Since we do not know the outliers (labels) in advance, KNN is used in an <em>unsupervised</em> learning manner. In this scenario, the algorithm finds the closest <em>K</em> nearest neighbors for every data point and measures the average distance. The points with the most significant distance from the population will be considered outliers, and more specifically, they are considered <em>global</em> outliers. In this case, the distance becomes the score to determine which points are outliers among the population, and hence KNN is a <strong>proximity-based algorithm</strong>.</p>
+<p>Generally, proximity-based algorithms rely on the distance or proximity between an outlier point and its nearest neighbors. In KNN, the number of nearest neighbors, <em>k</em>, is a parameter you need to determine. There are other variants of the KNN algorithm supported by PyOD, for example, <strong>Average KNN</strong> (<strong>AvgKNN</strong>), which uses the average distance to the KNN for scoring, and <strong>Median KNN</strong> (<strong>MedKNN</strong>), which uses the median distance for scoring.</p>
+<section id="how-to-do-it...-6" class="level3" data-number="13.3.1">
+<h3 data-number="13.3.1">How to do it...</h3>
+<p>In this recipe, you will continue to work with the <code>tx</code> DataFrame, created in the <em>Technical requirements</em> section, to detect outliers using the <code>KNN</code> class from PyOD:</p>
+<ol>
+<li>Start by loading the <code>KNN</code> class:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from pyod.models.knn import KNN</code></pre>
+</div>
+<ol>
+<li>You should be familiar with a few parameters to control the algorithm's behavior. The first parameter is <code>contamination</code>, a numeric (float) value representing the dataset's fraction of outliers. This is a common parameter across all the different classes (algorithms) in PyOD. For example, a <code>contamination</code> value of <code>0.1</code> indicates that you expect 10% of the data to be outliers. The default value is <code>contamination=0.1</code>. The contamination value can range from <code>0</code> to <code>0.5</code> (or 50%). You will need to experiment with the contamination value, since the value influences the scoring threshold used to determine potential outliers, and how many of these potential outliers are to be returned. You will learn more about this in the <em>How it works...</em> section of this chapter.</li>
+</ol>
+<p>For example, if you suspect the proportion of outliers in your data at 3%, then you can use that as the contamination value. You could experiment with different contamination values, inspect the results, and determine how to adjust the contamination level. We already know that there are 5 known outliers out of the 215 observations (around 2.3%), and in this recipe, you will use 0.03 (or 3%).</p>
+<p>The second parameter, specific to KNN, is <code>method</code>, which defaults to <code>method='largest'</code>. In this recipe, you will change it to the <code>mean</code> (the average of all <em>k</em> neighbor distances). The third parameter, also specific to KNN, is <code>metric</code>, which tells the algorithm how to compute the distances. The default is the <code>minkowski</code> distance but it can take any distance metrics from scikit-learn or the SciPy library. Finally, you need to provide the number of neighbors, which defaults to <code>n_neighbors=5</code>. Ideally, you will want to run for different KNN models with varying values of <em>k</em> and compare the results to determine the optimal number of neighbors.</p>
+<ol>
+<li>Instantiate KNN with the updated parameters and then train (fit) the model:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>knn = KNN(contamination=0.03,
+          method='mean',
+          n_neighbors=5)
+knn.fit(tx)
+&gt;&gt;
+KNN(algorithm='auto', contamination=0.05, leaf_size=30, method='mean',
+  metric='minkowski', metric_params=None, n_jobs=1, n_neighbors=5, p=2,
+  radius=1.0)</code></pre>
+</div>
+<ol>
+<li>The <code>predict</code> method will generate binary labels, either <code>1</code> or <code>0</code>, for each data point. A value of <code>1</code> indicates an outlier. Store the results in a pandas Series:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>predicted = pd.Series(knn.predict(tx),
+                      index=tx.index)
+print('Number of outliers = ', predicted.sum())
+&gt;&gt;
+Number of outliers =  6</code></pre>
+</div>
+<ol>
+<li>Filter the <code>predicted</code> Series to only show the outlier values:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>outliers = predicted[predicted == 1]
+outliers = tx.loc[outliers.index]
+outliers
+&gt;&gt; 
+Timestamp  value
+2014-11-01  20553.500000
+2014-11-27  10899.666667
+2014-12-25  7902.125000
+2014-12-26  10397.958333
+2015-01-26  7818.979167
+2015-01-27  4834.541667</code></pre>
+</div>
+<p>Overall, the results look promising; four out of the five known dates have been identified. Additionally, the algorithm identified the day after Christmas as well as January 26, 2015, which was when all vehicles were ordered off the street due to the North American blizzard.</p>
+<ol>
+<li>Use the <code>plot_outliers</code> function created in the <em>Technical requirements</em> section to visualize the output to gain better insight:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'KNN')</code></pre>
+</div>
+<p>The preceding code should produce a plot similar to that in <em>Figure 14.1</em>, except the <code>x</code> markers are based on the outliers identified using the KNN algorithm:</p>
+<figure>
+<img src="../media/file279.jpg" alt="Figure 14.2: Markers showing the identified potential outliers using the KNN algorithm" width="1380" height="635"/><figcaption aria-hidden="true">Figure 14.2: Markers showing the identified potential outliers using the KNN algorithm</figcaption>
+</figure>
+<p>To print the labels (dates) along with the markers, just call the <code>plot_outliers</code> function again, but this time with <code>labels=True</code>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'KNN', labels=True)</code></pre>
+</div>
+<p>The preceding code should produce a similar plot to the one in <em>Figure 14.2</em> with the addition of text labels.</p>
+</section>
+<section id="how-it-works...-7" class="level3" data-number="13.3.2">
+<h3 data-number="13.3.2">How it works...</h3>
+<p>The unsupervised approach to the KNN algorithm calculates the distance of an observation to other neighboring observations. The default distance used in PyOD for KNN is the Minkowski distance (the p-norm distance). You can change to different distance measures, such as the Euclidean distance with <code>euclidean</code> or <code>l2</code> or the Manhattan distance with <code>manhattan</code> or <code>l1</code>. This can be accomplished using the <code>metric</code> parameter, which can take a string value, for example, <code>metric='l2'</code> or <code>metric='euclidean'</code>, or a callable function from scikit-learn or SciPy. This is a parameter that you experiment with as it influences how the distance is calculated, which is what the outlier scores are based on.</p>
+<p>Traditionally, when people hear KNN, they immediately assume it is only a supervised learning algorithm. For unsupervised KNN, there are three popular algorithms: ball tree, KD tree, and brute-force search. The PyOD library supports all three as <code>ball_tree</code>, <code>kd_tree</code>, and <code>brute</code>, respectively. The default value is set to <code>algorithm="auto"</code>.</p>
+<p>PyOD uses an internal score specific to each algorithm, scoring each observation in the training set. The <code>decision_scores_</code> attribute will show these scores for each observation. Higher scores indicate a higher potential of being an abnormal observation:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>knn_scores = knn.decision_scores_</code></pre>
+</div>
+<p>You can convert this into a DataFrame:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>knn_scores_df = (pd.DataFrame(scores,
+             index=tx.index,
+             columns=['score']))
+knn_scores_df</code></pre>
+</div>
+<p>Since all the data points are scored, PyOD will determine a threshold to limit the number of outliers returned. The threshold value depends on the <em>contamination</em> value you provided earlier (the proportion of outliers you suspect). The higher the contamination value, the lower the threshold, and hence more outliers are returned. A lower contamination value will increase the threshold.</p>
+<p>You can get the threshold value using the <code>threshold_</code> attribute from the model after fitting it to the training data. Here is the threshold for KNN based on a 3% contamination rate:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>knn.threshold_
+&gt;&gt; 225.0179166666657</code></pre>
+</div>
+<p>This is the value used to filter out the significant outliers. Here is an example of how you reproduce that:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>knn_scores_df[knn_scores_df['score'] &gt;= knn.threshold_].sort_values('score', ascending=False)</code></pre>
+</div>
+<p>The output is as follows:</p>
+<figure>
+<img src="../media/file280.jpg" alt="Figure 14.3: Showing the decision scores from PyOD" width="357" height="424"/><figcaption aria-hidden="true">Figure 14.3: Showing the decision scores from PyOD</figcaption>
+</figure>
+<p>Notice the last observation on <code>2014-09-27</code> is slightly above the threshold, but it was not returned when you used the <code>predict</code> method. If you use the contamination threshold, you can get a better cutoff:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>n = int(len(tx)*0.03)
+knn_scores_df.nlargest(n, 'score')</code></pre>
+</div>
+<p>Another helpful method is <code>predict_proba</code>, which returns the probability of being normal and the probability of being abnormal for each observation. PyOD provides two methods for determining these percentages: <code>linear</code> or <code>unify</code>. The two methods scale the outlier scores before calculating the probabilities. For example, in the case of <code>linear</code>, the implementation uses <code>MinMaxScaler</code> from scikit-learn to scale the scores before calculating the probabilities. The <code>unify</code> method uses the z-score (standardization) and the Gaussian error function (<code>erf</code>) from the SciPy library (<code>scipy.special.erf</code>).</p>
+<p>You can compare the two approaches. First, start using the <code>linear</code> method to calculate the prediction probability, you can use the following:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>knn_proba = knn.predict_proba(tx, method='linear')
+knn_proba_df = (pd.DataFrame(np.round(knn_proba * 100, 3),
+            index=tx.index,
+            columns=['Proba_Normal', 'Proba_Anomaly']))
+knn_proba_df.nlargest(n, 'Proba_Anomaly')</code></pre>
+</div>
+<p>For the <code>unify</code> method, you can just update <code>method='unify'</code>.</p>
+<p>To save any PyOD model, you can use the <code>joblib</code> Python library:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>from joblib import dump, load
+# save the knn model
+dump(knn, 'knn_outliers.joblib')
+# load the knn model
+knn = load('knn_outliers.joblib')</code></pre>
+</div>
+</section>
+<section id="theres-more...-12" class="level3" data-number="13.3.3">
+<h3 data-number="13.3.3">There's more...</h3>
+<p>Earlier in the recipe, when instantiating the <code>KNN</code> class, you changed the value of <code>method</code> for calculating the outlier <em>score</em> to be <code>mean</code>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>knn = KNN(contamination=0.03,
+          method='mean',
+          n_neighbors=5)</code></pre>
+</div>
+<p>Let's create a function for the KNN algorithm to train the model on different scoring methods by updating the <code>method</code> parameter to either <code>mean</code>, <code>median</code>, or <code>largest</code> to examine the impact on the decision scores:</p>
+<ul>
+<li><code>largest</code> uses the largest distance to the <em>k</em>th neighbor as the outlier score.</li>
+<li><code>mean</code> uses the average of the distances to the <em>k</em> neighbors as the outlier score.</li>
+<li><code>median</code> uses the median of the distances to the <em>k</em> neighbors as the outlier score.</li>
+</ul>
+<p>Create the <code>knn_anomaly</code> function with the following parameters: <code>data</code>, <code>method</code>, <code>contamination</code>, and <code>k</code>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>def knn_anomaly(df, method='mean', contamination=0.05, k=5):
+    knn = KNN(contamination=contamination,
+              method=method,
+              n_neighbors=5)
+    knn.fit(df)   
+    decision_score = pd.DataFrame(knn.decision_scores_,
+                          index=df.index, columns=['score'])
+    n = int(len(df)*contamination)
+    outliers = decision_score.nlargest(n, 'score')
+    return outliers, knn.threshold_</code></pre>
+</div>
+<p>You can run the function using different methods, contamination, and <em>k</em> values to experiment.</p>
+<p>Explore how the different methods produce a different threshold, which impacts the outliers being detected:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>for method in ['mean', 'median', 'largest']:
+    o, t = knn_anomaly(tx, method=method)
+    print(f'Method= {method}, Threshold= {t}')
+    print(o)</code></pre>
+</div>
+<p>The preceding code should print out the top 10 outliers for each method (with contamination at 5%):</p>
+<figure>
+<img src="../media/file281.jpg" alt="Figure 14.4: Comparing decision scores using different KNN distance metrics" width="590" height="1045"/><figcaption aria-hidden="true">Figure 14.4: Comparing decision scores using different KNN distance metrics</figcaption>
+</figure>
+<p>Notice the top six (representing the 3% contamination) are identical for all three methods. The order may vary and the decision scores are different between the methods. Do notice the difference between the methods is more apparent beyond the top six, as shown in <em>Figure 14.4</em>.</p>
+</section>
+<section id="see-also-52" class="level3" data-number="13.3.4">
+<h3 data-number="13.3.4">See also</h3>
+<p>Check out the following resources:</p>
+<ul>
+<li>To learn more about unsupervised KNN, the scikit-learn library has a great explanation about its implementation: <a href="https://scikit-learn.org/stable/modules/neighbors.html#unsupervised-nearest-neighbors">https://scikit-learn.org/stable/modules/neighbors.html#unsupervised-nearest-neighbors</a>.</li>
+<li>To learn more about PyOD KNN and the different parameters, visit the official documentation here: <a href="https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=knn#module-pyod.models.knn">https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=knn#module-pyod.models.knn</a>.</li>
+</ul>
+</section>
+</section>
+<section id="detecting-outliers-using-lof" class="level2" data-number="13.4">
+<h2 data-number="13.4">Detecting outliers using LOF</h2>
+<p>In the previous recipe, <em>Detecting outliers using KNN</em>, in the KNN algorithm, the decision scoring for detecting outliers was based on the distance between observations. A data point far from its KNN can be considered an outlier. Overall, the algorithm does a good job of capturing global outliers, but those far from the surrounding points may not do well with identifying local outliers.</p>
+<p>This is where the LOF (Local Outlier Factor) comes in to solve this limitation. Instead of using the distance between neighboring points, it uses density as a basis for scoring data points and detecting outliers. The LOF is considered a <strong>density-based algorithm</strong>. The idea behind the LOF is that outliers will be further from other data points and more isolated, and thus will be in low-density regions.</p>
+<p>It is easier to illustrate this with an example: imagine a person standing in line in a small but busy Starbucks, and everyone is pretty much close to each other; then, we can say the person is in a high-density area and, more specifically, <strong>high local density</strong>. If the person decides to wait in their car in the parking lot until the line eases up, they are isolated and in a <strong>low-density</strong> area, thus being considered an outlier. From the perspective of the people standing in line, who are probably not aware of the person in the car, that person is considered not reachable even though that person in the vehicle can see all of the individuals standing in line. So, we say that the person in the car is not reachable from their perspective. Hence, we sometimes refer to this as <strong>inverse reachability</strong> (how far you are from the neighbors' perspective, not just yours).</p>
+<p>Like KNN, you still need to define the <em>k</em> parameter for the number of nearest neighbors. The nearest neighbors are identified based on the distance measured between the observations (think KNN), then the <strong>Local Reachability Density</strong> (<strong>LRD</strong> or <strong>local density</strong> for short) is measured for each neighboring point. This local density is the score used to compare the <em>k</em>th neighboring observations and those with lower local densities than their <em>k</em>th neighbors are considered outliers (they are further from the reach of their neighbors).</p>
+<section id="how-to-do-it...-7" class="level3" data-number="13.4.1">
+<h3 data-number="13.4.1">How to do it...</h3>
+<p>In this recipe, you will continue to work with the <code>tx</code> DataFrame, created in the <em>Technical requirements</em> section, to detect outliers using the <strong>LOF</strong> class from PyOD:</p>
+<ol>
+<li>Start by loading the <code>LOF</code> class:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from pyod.models.lof import LOF</code></pre>
+</div>
+<ol>
+<li>You should be familiar with a few parameters to control the algorithm's behavior. The first parameter is <code>contamination</code>, a numeric (float) value representing the dataset's fraction of outliers. For example, a value of <code>0.1 </code>indicates that you expect 10% of the data to be outliers. The default value is <em>contamination=0.1</em>. In this recipe, you will use <code>0.03</code> (3%).</li>
+</ol>
+The second parameter is the number of neighbors, which defaults to <code>n_neighbors=5</code>, similar to the KNN algorithm. Ideally, you will want to run different models with varying values of <em>k</em> (<code>n_neighbors</code>) and compare the results to determine the optimal number of neighbors. Lastly, the <code>metric </code>parameter specifies which metric to use to calculate the distance. This can be any distance metrics from the scikit-learn or SciPy libraries (for example, <strong>Euclidean</strong> or <strong>Manhattan</strong> distance). The default value is the <strong>Minkowski</strong> distance with <code>metric='minkowski'</code>. Since the Minkowski distance is a generalization for both the Euclidean (
+<figure>
+<img src="../media/file282.png" width="49" height="48"/>
+</figure>
+) and Manhattan distances (
+<figure>
+<img src="../media/file283.png" width="42" height="42"/>
+</figure>
+), you will notice a <code>p</code> parameter. By default, <code>p=2</code> indicates Euclidean distance, while a value of <code>p=1</code> indicates Manhattan distance.
+<ol>
+<li>Instantiate LOF by updating <code>n_neighbors=5</code> and <code>contamination=0.03</code> while keeping the rest of the parameters with the default values. Then, train (fit) the model:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>lof = LOF(contamination=0.03, n_neighbors=5)
+lof.fit(tx)
+&gt;&gt;
+LOF(algorithm='auto', contamination=0.03, leaf_size=30, metric='minkowski',
+  metric_params=None, n_jobs=1, n_neighbors=5, novelty=True, p=2)</code></pre>
+</div>
+<ol>
+<li>The <code>predict</code> method will output either <code>1</code> or <code>0</code> for each data point. A value of <code>1</code> indicates an outlier. Store the results in a pandas Series:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>predicted = pd.Series(lof.predict(tx),
+                      index=tx.index)
+print('Number of outliers = ', predicted.sum())
+&gt;&gt;
+Number of outliers = 6</code></pre>
+</div>
+<ol>
+<li>Filter the predicted Series to only show the outlier values:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>outliers = predicted[predicted == 1]
+outliers = tx.loc[outliers.index]
+outliers
+&gt;&gt;       
+Timestamp    value
+2014-10-31  17473.354167
+2014-11-01  20553.500000
+2014-12-25  7902.125000
+2014-12-26  10397.958333
+2015-01-26  7818.979167
+2015-01-27  4834.541667</code></pre>
+</div>
+<p>Interestingly, it captured three out of the five known dates but managed to identify the day after Thanksgiving and the day after Christmas as outliers. Additionally, October 31 was on a Friday, and it was Halloween night.</p>
+<p>Use the <code>plot_outliers</code> function created in the <em>Technical requirements</em> section to visualize the output to gain better insight:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'LOF')</code></pre>
+</div>
+<p>The preceding code should produce a plot similar to that in <em>Figure 14.1</em>, except the <code>x</code> markers are based on the outliers identified using the LOF algorithm:</p>
+<figure>
+<img src="../media/file284.jpg" alt="Figure 14.5: Markers showing the identified potential outliers using the LOF algorithm" width="1380" height="652"/><figcaption aria-hidden="true">Figure 14.5: Markers showing the identified potential outliers using the LOF algorithm</figcaption>
+</figure>
+<p>To print the labels (dates) with the markers, just call the <code>plot_outliers</code> function again but this time with <code>labels=True</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'LOF', labels=True)</code></pre>
+</div>
+<p>The preceding code should produce a similar plot to the one in <em>Figure 14.5</em> with the addition of text labels.</p>
+</section>
+<section id="how-it-works...-8" class="level3" data-number="13.4.2">
+<h3 data-number="13.4.2">How it works...</h3>
+<p>The <strong>LOF</strong> is a <strong>density-based algorithm</strong> that assumes that outlier points are more isolated and have lower local density scores compared to their neighbors.</p>
+<p>LOF is like KNN in that we measure the distances between the neighbors before calculating the local density. The local density is the basis of the decision scores, which you can view using the <code>decision_scores_</code> attribute:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>timestamp  score
+2014-11-01  14.254309
+2015-01-27  5.270860
+2015-01-26  3.988552
+2014-12-25  3.952827
+2014-12-26  2.295987
+2014-10-31  2.158571</code></pre>
+</div>
+<p>The scores are very different from those in <em>Figure 14.3</em> for KNN.</p>
+<p>For more insight into <code>decision_</code>scores_, threshold_, or predict_proba, please review the first recipe of this chapter, Detecting outliers using KNN.</p>
+</section>
+<section id="theres-more...-13" class="level3" data-number="13.4.3">
+<h3 data-number="13.4.3">There's more...</h3>
+<p>Like the LOF, another extension of the algorithm is the <strong>Cluster-Based Local Outlier Factor (CBLOF).</strong> The CBLOF is similar to LOF in concept as it relies on cluster size and distance when calculating the scores to determine outliers. So, instead of the number of neighbors (<code>n_neighbors</code> like in LOF), we now have a new parameter, which is the number of clusters (<code>n_clusters</code>).</p>
+<p>The default clustering estimator, <code>clustering_estimator</code>, in PyOD is the k-means clustering algorithm.</p>
+<p>You will use the CBLOF class from PyOD and keep most parameters at the default values. Change the <code>n_clusters=8</code> and <code>contamination=0.03</code> parameters:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>from pyod.models.cblof import CBLOF
+cblof = CBLOF(n_clusters=4, contamination=0.03)
+cblof.fit(tx)
+predicted = pd.Series(lof.predict(tx),
+                      index=tx.index)
+outliers = predicted[predicted == 1]
+outliers = tx.loc[outliers.index]
+plot_outliers(outliers, tx, 'CBLOF')</code></pre>
+</div>
+<p>The preceding code should produce a plot similar to that in <em>Figure 14.1</em> except the <code>x</code> markers are based on the outliers identified using the CBLOF algorithm:</p>
+<figure>
+<img src="../media/file285.jpg" alt="Figure 14.6: Markers showing the identified potential outliers using the CBLOF algorithm" width="1380" height="652"/><figcaption aria-hidden="true">Figure 14.6: Markers showing the identified potential outliers using the CBLOF algorithm</figcaption>
+</figure>
+<p>Compare <em>Figure 14.6</em> with <em>Figure 14.5</em> (LOF) and notice the similarity.</p>
+</section>
+<section id="see-also-53" class="level3" data-number="13.4.4">
+<h3 data-number="13.4.4">See also</h3>
+<p>To learn more about the LOF and CBLOF algorithms, you can visit the PyOD documentation:</p>
+<ul>
+<li>LOF: <a href="https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.lof">https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.lof</a></li>
+<li>CBLOF: <a href="https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.cblof">https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.cblof</a></li>
+</ul>
+</section>
+</section>
+<section id="detecting-outliers-using-iforest" class="level2" data-number="13.5">
+<h2 data-number="13.5">Detecting outliers using iForest</h2>
+<p><strong>iForest</strong> has similarities with another popular algorithm known as <strong>Random Forests</strong>. Random Forests is a <strong>tree-based supervised learning</strong> algorithm. In supervised learning, you have existing labels (classification) or values (regression) representing the target variable. This is how the algorithm learns (it is supervised).</p>
+<p>The name <em>forest</em> stems from the underlying mechanism of how the algorithm works. For example, in classification, the algorithm randomly samples the data to build multiple weak classifiers (smaller decision trees) that collectively make a prediction. In the end, you get a forest of smaller trees (models). This technique outperforms a single complex classifier that may overfit the data. Ensemble learning is the concept of multiple weak learners collaborating to produce an optimal solution.</p>
+<p>iForest, also an <strong>ensemble learning</strong> method, is the unsupervised learning approach to Random Forests. The iForest algorithm isolates anomalies by randomly partitioning (splitting) a dataset into multiple partitions. This is performed recursively until all data points belong to a partition. The number of partitions required to isolate an anomaly is typically smaller than the number of partitions needed to isolate a regular point. The idea is that an anomaly data point is further from other points and thus easier to separate (isolate).</p>
+<p>In contrast, a normal data point is probably clustered closer to the larger set and, therefore, will require more partitions (splits) to isolate that point. Hence the name, isolation forest, since it identifies outliers through isolation. Once all the points are isolated, the algorithm will create an outlier score. You can think of these splits as creating a decision tree path. The shorter the path length to a point, the higher the chances of an anomaly.</p>
+<section id="how-to-do-it...-8" class="level3" data-number="13.5.1">
+<h3 data-number="13.5.1">How to do it...</h3>
+<p>In this recipe, you will continue to work with the <code>nyc_taxi</code> DataFrame to detect outliers using the <code>IForest</code> class from the PyOD library:</p>
+<ol>
+<li>Start by loading the <code>IForest</code> class:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from pyod.models.iforest import IForest</code></pre>
+</div>
+<ol>
+<li>There are a few parameters that you should be familiar with to control the algorithm's behavior. The first parameter is <code>contamination</code>. The default value is <code>contamination=0.1</code> but in this recipe, you will use <code>0.03</code> (3%).</li>
+</ol>
+<p>The second parameter is <code>n_estimators</code>, which defaults to <code>n_estimators=100</code>. This is the number of random trees generated. Depending on the complexity of your data, you may want to increase this value to a higher range, such as <code>500</code> or more. Start with the default smaller value to understand how the baseline model works—finally, <code>random_state</code> defaults to <code>None</code>. Since the iForest algorithm randomly generates partitions for the data, it is good to set a value to ensure that your work is reproducible. This way, you can get consistent results back when you rerun the code. Of course, this could be any integer value.</p>
+<ol>
+<li>Instantiate <code>IForest</code> and update the <code>contamination</code> and <code>random_state</code> parameters. Then, fit the new instance of the class (<code>iforest</code>) on the resampled data to train the model:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>iforest = IForest(contamination=0.03,
+                 n_estimators=100,
+                 random_state=0)
+iforest.fit(nyc_daily)
+&gt;&gt;
+IForest(behaviour='old', bootstrap=False, contamination=0.03,
+    max_features=1.0, max_samples='auto', n_estimators=100, n_jobs=1,
+    random_state=0, verbose=0)</code></pre>
+</div>
+<ol>
+<li>Use the <code>predict</code> method to identify outliers. The method will output either <code>1</code> or <code>0</code> for each data point. For example, a value of <code>1</code> indicates an outlier.</li>
+</ol>
+<p>Let's store the results in a pandas Series:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>predicted = pd.Series(iforest.predict(tx),
+                      index=tx.index)
+print('Number of outliers = ', predicted.sum())
+&gt;&gt;
+Number of outliers =  7</code></pre>
+</div>
+<p>Interestingly, unlike the previous recipe, <em>Detecting outliers using KNN</em>, iForest detected <code>7</code> outliers while the KNN algorithm detected <code>6</code>.</p>
+<div class="C1-SHCodePACKT">
+<pre><code>Filter the predicted Series to only show the outlier values:
+outliers = predicted[predicted == 1]
+outliers = tx.loc[outliers.index]
+outliers
+&gt;&gt;     
+timestamp  value
+2014-11-01  20553.500000
+2014-11-08  18857.333333
+2014-11-27  10899.666667
+2014-12-25  7902.125000
+2014-12-26  10397.958333
+2015-01-26  7818.979167
+2015-01-27  4834.541667</code></pre>
+</div>
+<p>Overall, iForest captured four out of the five known outliers. There are additional but interesting dates identified that should trigger an investigation to determine whether these data points are outliers. For example, November 8, 2014, was detected as a potential outlier by the algorithm, which was not considered in the data.</p>
+<ol>
+<li>Use the <code>plot_outliers</code> function created in the <em>Technical requirements</em> section to visualize the output to gain better insight:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'IForest')</code></pre>
+</div>
+<p>The preceding code should produce a plot similar to that in <em>Figure 14.1</em> except the <code>x</code> markers are based on the outliers identified using the iForest algorithm:</p>
+<figure>
+<img src="../media/file286.jpg" alt="Figure 14.7: Markers showing the identified potential outliers using the iForest algorithm" width="1380" height="635"/><figcaption aria-hidden="true">Figure 14.7: Markers showing the identified potential outliers using the iForest algorithm</figcaption>
+</figure>
+<p>To print the labels (dates) with the markers, just call the <code>plot_outliers</code> function again but this time with <code>labels=True</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'IForest', labels=True)</code></pre>
+</div>
+<p>The preceding code should produce a similar plot as the one in <em>Figure 14.7</em> with the addition of text labels.</p>
+</section>
+<section id="how-it-works...-9" class="level3" data-number="13.5.2">
+<h3 data-number="13.5.2">How it works...</h3>
+<p>Since iForest is an ensemble method, you will be creating multiple models (tree learners). The default value of <code>n_estimators</code> is <code>100</code>. Increasing the number of base estimators may improve model performance up to a certain level before the computational performance takes a hit. So, for example, think of the number of estimators as trained models. For instance, for 100 estimators, you are essentially creating 100 decision tree models.</p>
+<p>There is one more parameter worth mentioning, which is the <code>bootstrap</code> parameter. It is a Boolean set to <code>False</code> by default. Since iForest randomly samples the data, you have two options: random sampling with replacement (known as <em>bootstrapping</em>) or random sampling without replacement. The default behavior is sampling without replacement.</p>
+</section>
+<section id="theres-more...-14" class="level3" data-number="13.5.3">
+<h3 data-number="13.5.3">There's more...</h3>
+<p>The iForest algorithm from PyOD (the <code>IForest</code> class) is a wrapper to scikit-learn's <code>IsolationForest</code> class. This is also true for the KNN used in the previous recipe, <em>Detecting outliers using KNN</em>.</p>
+<p>Let's explore this further and use scikit-learn to implement the iForest algorithm. You will use the <code>fit_predict()</code> method as a single step to train and predict, which is also available in PyOD's implementations across the various algorithms:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>from sklearn.ensemble import IsolationForest
+sk_iforest = IsolationForest(contamination=0.03)
+sk_prediction = pd.Series(sk_iforest.fit_predict(tx),
+                      index=tx.index)
+sk_outliers = sk_prediction[sk_prediction == -1]
+sk_outliers = tx.loc[sk_outliers.index]
+sk_outliers
+&gt;&gt; 
+timestamp   value
+2014-11-01  20553.500000
+2014-11-08  18857.333333
+2014-11-27  10899.666667
+2014-12-25  7902.125000
+2014-12-26  10397.958333
+2015-01-26  7818.979167
+2015-01-27  4834.541667</code></pre>
+</div>
+<p>The results are the same. But do notice that, unlike PyOD, the identified outliers were labeled as <code>-1</code>, while in PyOD, outliers were labeled with <code>1</code>.</p>
+</section>
+<section id="see-also-54" class="level3" data-number="13.5.4">
+<h3 data-number="13.5.4">See also</h3>
+<p>The PyOD iForest implementation is actually a wrapper to the <code>IsolationForest</code> class from scikit-learn:</p>
+<ul>
+<li>To learn more about PyOD iForest and the different parameters, visit their official documentation here: <a href="https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=knn#module-pyod.models.iforest">https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=knn#module-pyod.models.iforest</a>.</li>
+<li>To learn more about the <code>IsolationForest</code> class from scikit-learn, you can visit their official documentation page here: <a href="https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html#sklearn-ensemble-isolationforest">https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html#sklearn-ensemble-isolationforest</a>.</li>
+</ul>
+</section>
+</section>
+<section id="detecting-outliers-using-one-class-support-vector-machine-ocsvm" class="level2" data-number="13.6">
+<h2 data-number="13.6">Detecting outliers using One-Class Support Vector Machine (OCSVM)</h2>
+<p><strong>Support Vector Machine (SVM)</strong> is a popular supervised machine learning algorithm that is mainly known for classification but can also be used for regression. The popularity of SVM comes from the use of kernel functions (sometimes referred to as the <strong>kernel trick</strong>), such as linear, polynomial, <strong>Radius-Based Function</strong> (<strong>RBF</strong>), and the sigmoid function.</p>
+<p>In addition to classification and regression, SVM can also be used for outlier detection in an unsupervised manner, similar to KNN, which is mostly known as a supervised machine learning technique but was used in an unsupervised manner for outlier detection, as seen in the <em>Outlier detection using KNN</em> recipe.</p>
+<section id="how-to-do-it...-9" class="level3" data-number="13.6.1">
+<h3 data-number="13.6.1">How to do it...</h3>
+<p>In this recipe, you will continue to work with the <code>tx</code> DataFrame, created in the <em>Technical requirements</em> section, to detect outliers using the <code>ocsvm</code> class from PyOD:</p>
+<ol>
+<li>Start by loading the <code>OCSVM</code> class:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from pyod.models.ocsvm import OCSVM</code></pre>
+</div>
+<ol>
+<li>There are a few parameters that you should be familiar with to control the algorithm's behavior. The first parameter is <code>contamination</code>. The default value is <code>contamination=0.1</code> and in this recipe, you will use <code>0.03</code> (3%).</li>
+</ol>
+<p>The second parameter is <code>kernel</code>, which is set to <code>rbf</code>, which you will keep as is.</p>
+<p>Instantiate OCSVM by updating <code>contamination=0.03</code> while keeping the rest of the parameters with the default values. Then, train (fit) the model:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>ocsvm = OCSVM(contamination=0.03, kernel='rbf')
+ocsvm.fit(tx)
+&gt;&gt;
+OCSVM(cache_size=200, coef0=0.0, contamination=0.03, degree=3, gamma='auto',
+   kernel='rbf', max_iter=-1, nu=0.5, shrinking=True, tol=0.001,
+   verbose=False)</code></pre>
+</div>
+<ol>
+<li>The <code>predict</code> method will output either <code>1</code> or <code>0</code> for each data point. A value of <code>1</code> indicates an outlier. Store the results in a pandas Series:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>predicted = pd.Series(ocsvm.predict(tx),
+                      index=tx.index)
+print('Number of outliers = ', predicted.sum())
+&gt;&gt;
+Number of outliers =  5</code></pre>
+</div>
+<ol>
+<li>Filter the predicted Series to only show the outlier values:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>outliers = predicted[predicted == 1]
+outliers = tx.loc[outliers.index]
+outliers
+&gt;&gt; 
+timestamp  value
+2014-08-09  15499.708333
+2014-11-18  15499.437500
+2014-11-27  10899.666667
+2014-12-24  12502.000000
+2015-01-05  12502.750000</code></pre>
+</div>
+<p>Interestingly, it captured one out of the five known dates.</p>
+<ol>
+<li>Use the <code>plot_outliers</code> function created in the <em>Technical requirements</em> section to visualize the output to gain better insight:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'OCSVM')</code></pre>
+</div>
+<p>The preceding code should produce a plot similar to that in <em>Figure 14.1</em> except the <code>x</code> markers are based on the outliers identified using the OCSVM algorithm:</p>
+<figure>
+<img src="../media/file287.jpg" alt="Figure 14.8: Line plot with markers for each outlying point using OCSVM" width="1380" height="635"/><figcaption aria-hidden="true">Figure 14.8: Line plot with markers for each outlying point using OCSVM</figcaption>
+</figure>
+<p>When examining the plot in <em>Figure 14.8</em>, it is not clear why OCSVM picked up on those dates as being outliers. The RBF kernel can capture non-linear relationships, so you would expect it to be a robust kernel.</p>
+<p>The reason for this inaccuracy is that SVM is sensitive to data scaling. To get better results, you will need to standardize (scale) your data first.</p>
+<ol>
+<li>Let's fix this issue and standardize the data and then rerun the algorithm again:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from pyod.utils.utility import standardizer
+scaled = standardizer(tx)
+predicted = pd.Series(ocsvm.fit_predict(scaled),
+                      index=tx.index)
+outliers = predicted[predicted == 1]
+outliers = tx.loc[outliers.index]
+outliers
+&gt;&gt;
+timestamp  value
+2014-07-06  11464.270833
+2014-11-01  20553.500000
+2014-11-27  10899.666667
+2014-12-25  7902.125000
+2014-12-26  10397.958333
+2015-01-26  7818.979167
+2015-01-27  4834.541667</code></pre>
+</div>
+<p>Interestingly, now the model identified four out of the five known outlier dates.</p>
+<ol>
+<li>Use the <code>plot_outliers</code> function on the new result set:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'OCSVM Scaled'))</code></pre>
+</div>
+<p>The preceding code should produce a more reasonable plot, as shown in the following figure:</p>
+<figure>
+<img src="../media/file288.jpg" alt="Figure 14.9: OCSVM after scaling the data using the standardizer function" width="1198" height="554"/><figcaption aria-hidden="true">Figure 14.9: OCSVM after scaling the data using the standardizer function</figcaption>
+</figure>
+<p>Compare the results from <em>Figure 14.9</em> and <em>Figure 14.8</em> to see how scaling made a big difference in how the OCSVM algorithm identified outliers.</p>
+</section>
+<section id="how-it-works...-10" class="level3" data-number="13.6.2">
+<h3 data-number="13.6.2">How it works...</h3>
+<p>The PyOD implementation for OCSVM is a wrapper to scikit-learn's <strong>OneClassSVM</strong> implementation.</p>
+<p>Similar to SVM, OneClassSVM is sensitive to outliers and also the scaling of the data. In order to get reasonable results, it is important to standardize (scale) your data before training your model.</p>
+</section>
+<section id="theres-more...-15" class="level3" data-number="13.6.3">
+<h3 data-number="13.6.3">There's more...</h3>
+<p>Let's explore how the different kernels perform on the same dataset. In the following code, you test four kernels: <code>'linear'</code>, <code>'poly'</code>, <code>'rbf'</code>, and <code>'sigmoid'</code>.</p>
+<p>Recall that when working with SVM, you will need to scale your data. You will use the scaled dataset created earlier:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>for kernel in ['linear', 'poly', 'rbf', 'sigmoid']:
+    ocsvm = OCSVM(contamination=0.03, kernel=kernel)
+    predict = pd.Series(ocsvm.fit_predict(scaled),
+                      index=tx.index, name=kernel)
+    outliers = predict[predict == 1]
+    outliers = tx.loc[outliers.index]
+    plot_outliers(outliers, tx, kernel, labels=True)</code></pre>
+</div>
+<p>The preceding code should produce a plot for each kernel so you can visually inspect and compare the difference between them:</p>
+<figure>
+<img src="../media/file289.jpg" alt="Figure 14.10: Comparing the different kernels with OCSVM" width="1091" height="2055"/><figcaption aria-hidden="true">Figure 14.10: Comparing the different kernels with OCSVM</figcaption>
+</figure>
+<p>Interestingly, each kernel method captured slightly different outliers. You can rerun the previous code to print out the labels (dates) for each marker by passing the <code>labels=True</code> parameter.</p>
+</section>
+<section id="see-also-55" class="level3" data-number="13.6.4">
+<h3 data-number="13.6.4">See also</h3>
+<p>To learn more about the OCSVM implementation, visit the official documentation here: <a href="https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.ocsvm">https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.ocsvm</a>.</p>
+</section>
+</section>
+<section id="detecting-outliers-using-copod" class="level2" data-number="13.7">
+<h2 data-number="13.7">Detecting outliers using COPOD</h2>
+<p>COPOD is an exciting algorithm based on a paper published in September 2020, which you can read here: <a href="https://arxiv.org/abs/2009.09463">https://arxiv.org/abs/2009.09463</a>.</p>
+<p>The PyOD library offers many algorithms based on the latest research papers, which can be broken down into linear models, proximity-based models, probabilistic models, ensembles, and neural networks.</p>
+<p>COPOD falls under probabilistic models and is labeled as a <em>parameter-free</em> algorithm. The only parameter it takes is the <em>contamination</em> factor, which defaults to <code>0.1</code>. The COPOD algorithm is inspired by statistical methods, making it a fast and highly interpretable model. The algorithm is based on copula, a function generally used to model dependence between independent random variables that are not necessarily normally distributed. In time series forecasting, copulas have been used in univariate and multivariate forecasting, which is popular in financial risk modeling. The term copula stems from the copula function joining (coupling) univariate marginal distributions to form a uniform multivariate distribution function.</p>
+<section id="how-to-do-it...-10" class="level3" data-number="13.7.1">
+<h3 data-number="13.7.1">How to do it...</h3>
+<p>In this recipe, you will continue to work with the <code>tx</code> DataFrame to detect outliers using the <code>COPOD</code> class from the PyOD library:</p>
+<ol>
+<li>Start by loading the <code>COPOD</code> class:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from pyod.models.copod import COPOD</code></pre>
+</div>
+<ol>
+<li>The only parameter you need to consider is <code>contamination</code>. Generally, think of this parameter (used in all the outlier detection implementations) as a threshold to control the model's sensitivity and minimize the false positives. Since it is a parameter you control, ideally, you want to run several models to experiment with the ideal threshold rate that works for your use cases.</li>
+</ol>
+<p>For more insight into <code>decision_scores_</code>, <code>threshold_</code>, or <code>predict_proba</code>, please review the first recipe, <em>Detecting outliers using KNN</em>, of this chapter.</p>
+<ol>
+<li>Instantiate <code>COPOD</code> and update <code>contamination</code> to <code>0.03</code>. Then, fit on the resampled data to train the model:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>copod = COPOD(contamination=0.03)
+copod.fit(tx)
+&gt;&gt;
+COPOD(contamination=0.03, n_jobs=1)</code></pre>
+</div>
+<ol>
+<li>Use the <code>predict</code> method to identify outliers. The method will output either <code>1</code> or <code>0</code> for each data point. For example, a value of <code>1</code> indicates an outlier.</li>
+</ol>
+<p>Store the results in a pandas Series:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>predicted = pd.Series(copod.predict(tx),
+                      index=tx.index)
+print('Number of outliers = ', predicted.sum())
+&gt;&gt;
+Number of outliers =  7</code></pre>
+</div>
+<p>The number of outliers matches the number you got using iForest.</p>
+<ol>
+<li>Filter the predicted Series only to show the outlier values:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>outliers = predicted[predicted == 1]
+outliers = tx.loc[outliers.index]
+outliers
+&gt;&gt;           
+timestamp  value
+2014-07-04  11511.770833
+2014-07-06  11464.270833
+2014-11-27  10899.666667
+2014-12-25  7902.125000
+2014-12-26  10397.958333
+2015-01-26  7818.979167
+2015-01-27  4834.541667</code></pre>
+</div>
+<p>Compared with other algorithms you have explored so far, you will notice some interesting outliers captured with COPOD that were not identified before. For example, COPOD identified July 4, a national holiday in the US (Independence Day). It happens to fall on a weekend (Friday being off). The COPOD model captured anomalies throughout the weekend for July 4 and July 6. It happens that July 6 was an interesting day due to a baseball game in New York.</p>
+<ol>
+<li>Use the <code>plot_outliers</code> function created in the <em>Technical requirements</em> section to visualize the output to gain better insights:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'COPOD')</code></pre>
+</div>
+<p>The preceding code should produce a plot similar to that in <em>Figure 14.1</em>, except the <code>x</code> markers are based on the outliers identified using the COPOD algorithm:</p>
+<figure>
+<img src="../media/file290.jpg" alt="Figure 14.11: Markers showing the identified potential outliers using the COPOD algorithm" width="1198" height="565"/><figcaption aria-hidden="true">Figure 14.11: Markers showing the identified potential outliers using the COPOD algorithm</figcaption>
+</figure>
+<p>To print the labels (dates) with the markers, just call the <code>plot_outliers</code> function again, but this time with <code>labels=True</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, 'COPOD', labels=True)</code></pre>
+</div>
+<p>The preceding code should produce a similar plot to the one in <em>Figure 14.11</em> with the addition of text labels.</p>
+</section>
+<section id="how-it-works...-11" class="level3" data-number="13.7.2">
+<h3 data-number="13.7.2">How it works...</h3>
+<p>COPOD is an advanced algorithm, but it is still based on probabilistic modeling and finding statistically significant extremes within the data. Several tests using COPOD have demonstrated its superb performance against benchmark datasets. The appeal of using COPOD is that it is parameter-free (aside from the contamination factor). So, as a user, you do not have to worry about hyperparameter tuning.</p>
+</section>
+<section id="theres-more...-16" class="level3" data-number="13.7.3">
+<h3 data-number="13.7.3">There's more...</h3>
+<p>Another simple and popular probabilistic algorithm is the <strong>Median Absolute Deviation</strong> (<strong>MAD</strong>). We explored MAD in <em>Chapter 8</em>, <em>Outlier Detection Using Statistical Methods</em>, in the <em>Outlier detection using modified z-score</em> recipe, in which you built the algorithm from scratch.</p>
+<p>This is a similar implementation provided by PyOD and takes one parameter, the threshold. If you recall from <em>Chapter 8</em>, <em>Outlier Detection Using Statistical Methods</em>, the threshold is based on the standard deviation.</p>
+<p>The following code shows how we can implement MAD with PyOD. You will use <code>threshold=3</code> to replicate what you did in <em>Chapter 8</em>, <em>Outlier Detection Using Statistical Methods</em>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>from pyod.models.mad import MAD
+mad = MAD(threshold=3)
+predicted = pd.Series(mad.fit_predict(tx),
+                      index=tx.index)
+outliers = predicted[predicted == 1]
+outliers = tx.loc[outliers.index]
+outliers
+&gt;&gt; 
+timestamp  value
+2014-11-01  20553.500000
+2014-11-27  10899.666667
+2014-12-25  7902.125000
+2014-12-26  10397.958333
+2015-01-26  7818.979167
+2015-01-27  4834.541667</code></pre>
+</div>
+<p>This should match the results you obtained in <em>Chapter 8</em>, <em>Outlier Detection Using Statistical Methods</em>, with the modified z-score implementation.</p>
+</section>
+<section id="see-also-56" class="level3" data-number="13.7.4">
+<h3 data-number="13.7.4">See also</h3>
+<p>To learn more about COPOD and its implementation in PyOD, visit the official documentation here: <a href="https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=copod#pyod.models.copod.COPOD">https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=copod#pyod.models.copod.COPOD</a>.</p>
+<p>If you are interested in reading the research paper for <em>COPOD: Copula-Based Outlier Detection</em> (published in September 2020), visit the arXiv.org page here: <a href="https://arxiv.org/abs/2009.09463">https://arxiv.org/abs/2009.09463</a>.</p>
+</section>
+</section>
+<section id="detecting-outliers-with-pycaret" class="level2" data-number="13.8">
+<h2 data-number="13.8">Detecting outliers with PyCaret</h2>
+<p>In this recipe, you will explore <strong>PyCaret</strong> for outlier detection. PyCaret (<a href="https://pycaret.org">https://pycaret.org</a>) is positioned as "an open-source, low-code machine learning library in Python that automates machine learning workflows". PyCaret acts as a wrapper for PyOD, which you used earlier in the previous recipes for outlier detection. What PyCaret does is simplify the entire process for rapid prototyping and testing with a minimal amount of code.</p>
+<p>You will use PyCaret to examine multiple outlier detection algorithms, similar to the ones you used in earlier recipes, and see how PyCaret simplifies the process for you.</p>
+<section id="getting-ready-38" class="level3" data-number="13.8.1">
+<h3 data-number="13.8.1">Getting ready</h3>
+<p>The recommended way to explore PyCaret is to create a new virtual Python environment just for PyCaret so it can install all the required dependencies without any conflicts or issues with your current environment. If you need a quick refresher on how to create a virtual Python environment, check out the <em>Development environment setup</em> recipe, from <em>Chapter 1</em>, <em>Getting Started with Time Series Analysis</em>. The chapter covers two methods: using <code>conda</code> and <code>venv</code>.</p>
+<p>The following instructions will show the process using <code>conda</code>. You can call the environment any name you like; for the following example, we will name our environment <code>pycaret</code>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>&gt;&gt; conda create -n pycaret python=3.8 -y
+&gt;&gt; conda activate pycaret
+&gt;&gt; pip install "pycaret[full]"</code></pre>
+</div>
+<p>In order to make the new <code>pycaret</code> environment visible within Jupyter, you can run the following code:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>python -m ipykernel install --user --name pycaret --display-name "PyCaret"</code></pre>
+</div>
+<p>There is a separate Jupyter notebook for this recipe, which you can download from the GitHub repository:</p>
+<p><a href="https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch14/Chapter%2014-pycaret.ipynb">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch14/Chapter%2014-pycaret.ipynb</a></p>
+</section>
+<section id="how-to-do-it...-11" class="level3" data-number="13.8.2">
+<h3 data-number="13.8.2">How to do it...</h3>
+<p>In this recipe, you will not be introduced to any new concepts. The focus is to demonstrate how PyCaret can be a great starting point when you are experimenting and want to quickly evaluate different models. You will load PyCaret and run it for different outlier detection algorithms:</p>
+<ol>
+<li>Start by loading all the available functions from the <code>pycaret.anomaly</code> module:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from pycaret.anomaly import *
+setup = setup(tx, session_id = 1, normalize=True)</code></pre>
+</div>
+<p>The preceding code should produce a table summary as show in Figure 14.12</p>
+<figure>
+<img src="../media/file291.png" alt="Figure 14.12 – PyCaret summary output" width="724" height="910"/><figcaption aria-hidden="true">Figure 14.12 – PyCaret summary output</figcaption>
+</figure>
+<ol>
+<li>To print a list of available outlier detection algorithms, you can run <code>models()</code>:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>models()</code></pre>
+</div>
+<p>This should display a pandas DataFrame, as follows:</p>
+<figure>
+<img src="../media/file292.png" alt="Figure 14.14: Available outlier detection algorithms from PyCaret" width="1286" height="810"/><figcaption aria-hidden="true">Figure 14.14: Available outlier detection algorithms from PyCaret</figcaption>
+</figure>
+<p>Notice these are all sourced from the PyOD library. As stated earlier, PyCaret is a wrapper on top of PyOD and other libraries, such as scikit-learn.</p>
+<ol>
+<li>Let's store the names of the first eight algorithms in a list to use later:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>list_of_models = models().index.tolist()[0:8]
+list_of_models
+&gt;&gt;
+['abod', 'cluster', 'cof', 'iforest', 'histogram', 'knn', 'lof', 'svm']</code></pre>
+</div>
+<ol>
+<li>Loop through the list of algorithms and store the output in a dictionary so you can reference it later for your analysis. To create a model in PyCaret, you simply use the <code>create_model()</code> function. This is similar to the <code>fit()</code> function in scikit-learn and PyOD for training the model. Once the model is created, you can use the model to predict (identify) the outliers using the <code>predict_model()</code> function. PyCaret will produce a DataFrame with three columns: the original <code>value</code> column, a new column, <code>Anomaly</code>, which stores the outcome as either <code>0</code> or <code>1</code>, where <code>1</code> indicates an outlier, and another new column, <code>Anomaly_Score</code>, which stores the score used (the higher the score, the higher the chance it is an anomaly).</li>
+</ol>
+<p>You will only change the contamination parameter to match earlier recipes using PyOD. In PyCaret, the contamination parameter is called <code>fraction</code> and to be consistent, you will set that to <code>0.03</code> or 3% with <code>fraction=0.03</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>results = {}
+for model in list_of_models:
+    cols = ['value', 'Anomaly_Score']
+    outlier_model = create_model(model, fraction=0.03)
+    print(outlier_model)
+    outliers = predict_model(outlier_model, data=tx)
+    outliers = outliers[outliers['Anomaly'] == 1][cols]
+    outliers.sort_values('Anomaly_Score', ascending=False, inplace=True)
+    results[model] = {'data': outliers, 'model': outlier_model}</code></pre>
+</div>
+<p>The <code>results</code> dictionary contains the output (a DataFrame) from each model.</p>
+<ol>
+<li>To print out the outliers from each model, you can simply loop through the dictionary:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>for model in results:
+    print(f'Model: {model}')
+    print(results[model]['data'], '\n')</code></pre>
+</div>
+<p>This should print the results for each of the eight models. The following are the first two models from the list as an example:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>Model: abod
+                   value  Anomaly_Score
+timestamp                             
+2014-11-01  20553.500000      -0.002301
+2015-01-27   4834.541667      -0.007914
+2014-12-26  10397.958333      -3.417724
+2015-01-26   7818.979167    -116.341395
+2014-12-25   7902.125000    -117.582752
+2014-11-27  10899.666667    -122.169590
+2014-10-31  17473.354167   -2239.318906
+Model: cluster
+                   value  Anomaly_Score
+timestamp                             
+2015-01-27   4834.541667       3.657992
+2015-01-26   7818.979167       2.113955
+2014-12-25   7902.125000       2.070939
+2014-11-01  20553.500000       0.998279
+2014-12-26  10397.958333       0.779688
+2014-11-27  10899.666667       0.520122
+2014-11-28  12850.854167       0.382981</code></pre>
+</div>
+</section>
+<section id="how-it-works...-12" class="level3" data-number="13.8.3">
+<h3 data-number="13.8.3">How it works...</h3>
+<p>PyCaret is a great library for automated machine learning, and recently they have been expanding their capabilities around time series analysis and forecasting and anomaly (outlier) detection. PyCaret is a wrapper over PyOD, the same library you used in earlier recipes of this chapter. <em>Figure 14.14</em> shows the number of PyOD algorithms supported by PyCaret, which is a subset of the more extensive list from PyOD: <a href="https://pyod.readthedocs.io/en/latest/index.html#implemented-algorithms">https://pyod.readthedocs.io/en/latest/index.html#implemented-algorithms</a>.</p>
+</section>
+<section id="see-also-57" class="level3" data-number="13.8.4">
+<h3 data-number="13.8.4">See also</h3>
+<p>To learn more about PyCaret's outlier detection, please visit the official documentation here: <a href="https://pycaret.gitbook.io/docs/get-started/quickstart#anomaly-detection">https://pycaret.gitbook.io/docs/get-started/quickstart#anomaly-detection</a>.</p>
+</section>
+</section>
+</section>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,889 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+lang="en"
+xmlns="http://www.w3.org/1999/xhtml"
+xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Time Series Analysis with Python Cookbook, 2E - Second Edition</title>
+<link rel="stylesheet" type="text/css" href="../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/><link rel="stylesheet" type="text/css" href="../styles/stylesheet2.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content"><section id="outlier-detection-using-statistical-methods" class="level1 pkt" data-number="9">
+<h1 data-number="9">8 Outlier Detection Using Statistical Methods</h1>
+<section id="join-our-book-community-on-discord-7" class="level2" data-number="9.1">
+<h2 data-number="9.1">Join our book community on Discord</h2>
+<p>
+<img style="width:15rem" src="../media/file0.png" width="200" height="200"/>
+</p>
+<p><a href="https://packt.link/zmkOY">https://packt.link/zmkOY</a></p>
+<p>In addition to missing data, as discussed in <em>Chapter 7</em>, <em>Handling Missing Data</em>, a common data issue you may face is the presence of <strong>outliers</strong>. Outliers can be point outliers, collective outliers, or contextual outliers. For example, a <strong>point outlier</strong> occurs when a data point deviates from the rest of the population—sometimes referred to as a <strong>global outlier</strong>. <strong>Collective outliers</strong>, which are groups of observations, differ from the population and don't follow the expected pattern. Lastly, <strong>contextual outliers</strong> occur when an observation is considered an outlier based on a particular condition or context, such as deviation from neighboring data points. Note that with contextual outliers, the same observation may not be considered an outlier if the context changes.</p>
+<p>In this chapter, you will be introduced to a handful of practical statistical techniques that cover parametric and non-parametric methods. In <em>Chapter 14</em>, <em>Outlier Detection Using Unsupervised Machine Learning</em>, you will dive into more advanced machine learning and deep learning-based techniques.</p>
+<p>In the literature, you will find another popular term, <strong>anomaly detection</strong>, which can be synonymous with <strong>outlier detection</strong>. The methods and techniques to identify outlier or anomaly observations are similar; the difference lies in the context and the actions that follow once these points have been identified. For example, an outlier transaction in financial transactions may be referred to as an anomaly and trigger a fraud investigation to stop them from re-occurring. Under a different context, survey data with outlier data points may simply be removed by the researchers once they examine the overall impact of keeping versus removing such points. Sometimes you may decide to keep these outlier points if they are part of the natural process. In other words, they are legitimate and opt to use robust statistical methods that are not influenced by outliers.</p>
+<p>Another concept, known as <strong>change point detection</strong> (<strong>CPD</strong>), relates to outlier detection. In CPD, the goal is to anticipate abrupt and impactful fluctuations (increasing or decreasing) in the time series data. CPD covers specific techniques, for example, <strong>cumulative sum</strong> (<strong>CUSUM</strong>) and <strong>Bayesian online change point detection</strong> (<strong>BOCPD</strong>). Detecting change is vital in many situations. For example, a machine may break if the internal temperature reaches a certain point or if you are trying to understand whether the discounted price did increase sales or not. This distinction between outlier detection and CPD is vital since sometimes you may want the latter. Where the two disciplines converge, depending on the context, sudden changes may indicate the potential presence of outliers (anomalies).</p>
+<p>The recipes that you will encounter in this chapter are as follows:</p>
+<ul>
+<li>Resampling time series data</li>
+<li>Detecting outliers using visualizations</li>
+<li>Detecting outliers using the Tukey method</li>
+<li>Detecting outliers using a z-score</li>
+<li>Detecting outliers using a modified z-score</li>
+<li>Detecting outliers using other non-parametric methods</li>
+</ul>
+</section>
+<section id="technical-requirements-7" class="level2" data-number="9.2">
+<h2 data-number="9.2">Technical requirements</h2>
+<p>You can download the Jupyter Notebooks and needed datasets from the GitHub repository:</p>
+<ul>
+<li>Jupyter Notebook: <a href="https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook-Second-Edition/blob/main/code/Ch8/Chapter%208.ipynb">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook-Second-Edition/blob/main/code/Ch8/Chapter%208.ipynb</a></li>
+<li>Datasets: <a href="https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook-Second-Edition/tree/main/datasets/Ch8">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook-Second-Edition/tree/main/datasets/Ch8</a></li>
+</ul>
+<p>Throughout the chapter, you will be using a dataset from the <strong>Numenta Anomaly Benchmark</strong> (<strong>NAB</strong>), which provides outlier detection benchmark datasets. For more information about NAB, please visit their GitHub repository here: <a href="https://github.com/numenta/NAB">https://github.com/numenta/NAB</a>.</p>
+<p>The <em>New York Taxi dataset</em> captures the number of NYC taxi passengers at a specific timestamp. The data contains known anomalies that are provided to evaluate the performance of our outlier detectors. The dataset contains <em>10,320</em> records between <em>July 1, 2014</em>, to <em>May 31, 2015</em>. The observations are captured in a 30-minute interval, which translates to <code>freq = ‘30T’</code>.</p>
+<p>To prepare for the outlier detection recipes, start by loading the libraries that you will be using throughout the chapter:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+plt.rcParams[“figure.figsize”] = [16, 3]</code></pre>
+</div>
+<p>Load the <code>nyc_taxi.csv</code> data into a pandas DataFrame as it will be used throughout the chapter:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>file = Path(“../../datasets/Ch8/nyc_taxi.csv”)
+nyc_taxi = pd.read_csv(folder / file,
+                     index_col=‘timestamp’,
+                     parse_dates=True)
+nyc_taxi.index.freq = ‘30T’</code></pre>
+</div>
+<p>You can store the known dates containing outliers, also known as <strong>ground truth labels</strong>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>nyc_dates =  [
+        ”2014-11-01”,
+        ”2014-11-27”,
+        ”2014-12-25”,
+        ”2015-01-01”,
+        ”2015-01-27”
+]</code></pre>
+</div>
+<p>If you investigate these dates to gain more insight into their significance, you will find similar information to the following summary:</p>
+<ul>
+<li><em>Saturday, November 1, 2014</em>, was before the New York Marathon, and the official marathon event was on Sunday, November 2, 2014.</li>
+<li><em>Thursday, November 27, 2014</em>, was Thanksgiving Day.</li>
+<li><em>Thursday, December 25, 2014</em>, was Christmas Day.</li>
+<li><em>Thursday, January 1, 2015</em>, was New Year’s Day.</li>
+<li><em>Tuesday, January 27, 2015</em>, was the North American Blizzard where all vehicles were ordered off the street from January 26 to January 27, 2015.</li>
+</ul>
+<p>You can plot the time series data to gain an intuition on the data you will be working with for outlier detection:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>nyc_taxi.plot(title=“NYC Taxi”, alpha=0.6)</code></pre>
+</div>
+<p>This should produce a time series with a 30-minute frequency:</p>
+<figure>
+<img src="../media/file82.jpg" alt="Figure 8.1: Plot of the New York City taxi time series data" width="1381" height="336"/><figcaption aria-hidden="true">Figure 8.1: Plot of the New York City taxi time series data</figcaption>
+</figure>
+<p>Finally, create the <code>plot_outliers</code> function that you will use throughout the recipes:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>def plot_outliers(outliers, data, method=‘KNN’,
+                 halignment = ‘right’,
+                 valignment = ‘bottom’,
+                 labels=False):
+    ax = data.plot(alpha=0.6)
+   
+    if labels:
+        for I in outliers’'valu’'].items():
+            plt.plot(i[0], i[1],’'r’')
+            plt.text(i[0], i[1], ‘'{i[0].date()’',
+                         horizontalalignment=halignment,
+                         verticalalignment=valignment)
+    else:
+        data.loc[outliers.index].plot(ax=ax, style’'r’')
+       
+    plt.title(‘'NYC Taxi–- {method’')
+    plt.xlabel’'dat’'); plt.ylabel’'# of passenger’')
+    plt.legend(‘'nyc tax’'‘'outlier’'])
+    plt.show()</code></pre>
+</div>
+<p>As we proceed with the outlier detection recipes, the goal is to see how the different techniques capture outliers and compare them to the ground truth labels.</p>
+</section>
+<section id="understanding-outliers" class="level2" data-number="9.3">
+<h2 data-number="9.3">Understanding outliers</h2>
+<p>The presence of outliers requires special handling and further investigation before hastily jumping to decisions on how to handle them. First, you will need to detect and spot their existence, which this chapter is all about. Domain knowledge can be instrumental in determining whether these identified points are outliers, their impact on your analysis, and how you should deal with them.</p>
+<p>Outliers can indicate bad data due to a random variation in the process, known as noise, or due to data entry error, faulty sensors, bad experiment, or natural variation. Outliers are usually undesirable if they seem synthetic, for example, bad data. On the other hand, if outliers are a natural part of the process, you may need to rethink removing them and opt to keep these data points. In such circumstances, you can rely on <strong>non-parametric</strong> statistical methods that do not make assumptions on the underlying distribution.</p>
+<p>Generally, outliers can cause side effects when building a model based on strong assumptions on the data distribution; for example, the data is from a Gaussian (normal) distribution. Statistical methods and tests based on assumptions of the underlying distribution are referred to as <strong>parametric methods</strong>.</p>
+<p>There is no fixed protocol for dealing with outliers, and the magnitude of their impact will vary. For example, sometimes you may need to test your model with outliers and again without outliers to understand the overall impact on your analysis. In other words, not all outliers are created, nor should they be treated equally. However, as stated earlier, having domain knowledge is essential when dealing with these outliers.</p>
+<p>Now, before using a dataset to build a model, you will need to test for the presence of such outliers so you can further investigate their significance. Spotting outliers is usually part of the data cleansing and preparation process before going deep into your analysis.</p>
+<p>A common approach to handling outliers is to delete these data points and not have them be part of the analysis or model development. Alternatively, you may wish to replace the outliers using similar techniques highlighted in <em>Chapter 7, Handling Missing Data</em>, such as imputation and interpolation. Other methods, such as smoothing the data, could minimize the impact of outliers. Smoothing, such as exponential smoothing, is discussed in <em>Chapter 10, Building Univariate Time Series Models Using Statistical Methods</em> . You may also opt to keep the outliers and use more resilient algorithms to their effect.</p>
+<p>There are many well-known methods for outlier detection. The area of research is evolving, ranging from basic statistical techniques to more advanced approaches leveraging neural networks and deep learning. In statistical methods, you have different tools that you can leverage, such as the use of visualizations (boxplots, QQ-plots, histograms, and scatter plots), z-score, <strong>interquartile range</strong> (<strong>IQR</strong>) and Tukey fences, and statistical tests such as Grubbs test, the Tietjen-Moore test, or the generalized <strong>Extreme Studentized Deviate</strong> (<strong>ESD</strong>) test. These are basic, easy to interpret, and effective methods.</p>
+<p>In your first recipe, you will be introduced to a crucial time series transformation technique known as resampling before diving into outlier detection.</p>
+</section>
+<section id="resampling-time-series-data" class="level2" data-number="9.4">
+<h2 data-number="9.4">Resampling time series data</h2>
+<p>A typical transformation that is done on time series data is <strong>resampling</strong>. The process implies changing the frequency or level of granularity of the data.</p>
+<p>Usually, you will have limited control over how the time series is generated in terms of frequency. For example, the data can be generated and stored in small intervals, such as milliseconds, minutes, or hours. In some cases, the data can be in larger intervals, such as daily, weekly, or monthly.</p>
+<p>The need for resampling time series can be driven by the nature of your analysis and at what granular level you need your data to be. For instance, you can have daily data, but your analysis requires the data to be weekly, and thus you will need to resample. This process is known as <strong>downsampling</strong>. When you are downsampling, you will need to provide some level of aggregation, such as mean, sum, min, or max, to name a few. On the other hand, some situations require you to resample your data from daily to hourly. This process is known as <strong>upsampling</strong>. When upsampling, you may introduce null rows, which you can fill using imputation or interpolation techniques. See <em>Chapter 7</em>, <em>Handling Missing Data</em>, where both imputation and interpolation methods were discussed in more detail.</p>
+<p>In this recipe, you will explore how resampling is done using the <code>pandas</code> library.</p>
+<section id="how-to-do-it-32" class="level3" data-number="9.4.1">
+<h3 data-number="9.4.1">How to do it…</h3>
+<p>In this recipe, you will work with the <code>nyc_taxis</code> DataFrame created earlier in the <em>Technical requirements</em> section. The data captures the number of passengers in <em>30-minute</em> intervals.</p>
+<ol>
+<li><strong>Downsample</strong> the data to a daily frequency. Currently, you have <code>10,320</code> records, and when you resample the data to daily, you will need to aggregate the data. In this example, you will use the <code>.mean()</code> function. This will reduce the number of samples to 215 records. The term <em>downsampling</em> indicates that the number of samples went down, and more concretely, we are decreasing the frequency of the data.</li>
+</ol>
+<p>Inspect the first five rows of the original DataFrame:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>nyc_taxi.head()
+&gt;&gt;
+            value
+timestamp   
+2014-07-01 00:00:00    10844
+2014-07-01 00:30:00    8127
+2014-07-01 01:00:00    6210
+2014-07-01 01:30:00    4656
+2014-07-01 02:00:00    3820</code></pre>
+</div>
+<p>Resampling is done using the <code>DataFrame.resample()</code> function. For daily, you will use <code>'D'</code> as the date offset rule, followed by <code>.mean() </code>as the method of aggregation:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>df_downsampled = nyc_taxi.resample('D').mean()
+df_downsampled.head()
+&gt;&gt;
+            value
+timestamp   
+2014-07-01    15540.979167
+2014-07-02    15284.166667
+2014-07-03    14794.625000
+2014-07-04    11511.770833
+2014-07-05    11572.291667</code></pre>
+</div>
+<p>Notice how <code>DatetimeIndex</code> is now at a daily frequency, and the number of passengers now reflects the daily average. Inspect the first <code>DatetimeIndex</code> to check its frequency:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>df_downsampled.index[0]
+&gt;&gt;
+Timestamp('2014-07-01 00:00:00', freq='D')</code></pre>
+</div>
+<p>You can also check frequency directly using the <code>.freq</code> property:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>df_downsampled.index.freq
+&gt;&gt;
+&lt;Day&gt;</code></pre>
+</div>
+<p>Check the number of records now after downsampling:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>df_downsampled.shape
+&gt;&gt;
+(215, 1)</code></pre>
+</div>
+<p>Indeed, now you have <code>215</code> records.</p>
+<ol>
+<li>Resample the <code>nyc_taxi </code>data again, but this time as a 3-day frequency. You can do this by using the offset string <code>'3D'</code>. This time, use the <code>.sum()</code> method instead:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>df_downsampled = nyc_taxi.resample('3D').sum()
+df_downsampled.head()
+&gt;&gt;
+            value
+timestamp   
+2014-07-01   15540.979167
+2014-07-02   15284.166667
+2014-07-03   14794.625000
+2014-07-04   11511.770833
+2014-07-05   11572.291667</code></pre>
+</div>
+<p>Check the frequency of <code>DatetimeIndex</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>df_downsampled.index.freq
+&gt;&gt;
+&lt;3 * Days&gt;</code></pre>
+</div>
+<p>If you use <code>df_downsampled.shape </code>you will notice the number of records got reduced to 72 records.</p>
+<ol>
+<li>Now, change the frequency to three (3) business days instead. The default in <code>pandas</code> is Monday to Friday. In the <em>Working with custom business days recipe</em> in <em>Chapter 6</em>, <em>Working with Date and Time in Python</em>, You learned how to create custom business days. For now, you will use the default definition of business days. If you observe the output from the previous step, <code>2014-07-13</code> falls on a Sunday. Using <code>'3B'</code> as the <code>DateOffset</code> will push it to the following Monday, <code>2014-07-14</code>:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>df_downsampled = nyc_taxi.resample('3B').sum()
+df_downsampled.head()
+&gt;&gt;
+             value
+timestamp   
+2014-07-01  745967
+2014-07-04  1996347
+2014-07-09  3217427
+2014-07-14  3747009
+2014-07-17  2248113</code></pre>
+</div>
+<p>Interesting output in how it skips 5 days from 2014-07-04 to 2014-07-09, and then again from 2014-07-09 to 2014-07-14. The reason is the <em>Business Day rule</em> which specifies we have two (2) days of the week as weekends. Since the function is calendar-aware, it knows a weekend is coming after the first 3-day increment, so it adds a 2-day weekend to skip them, and thus, it makes a 5-day jump. Starting from 2014-07-04, thus moving to 2014-07-09, and from 2017-07-09 moving to 2017-07-14. And similarly, from 2014-07-17 to 2014-07-22, and so on.</p>
+<ol>
+<li>Lastly, let's <strong>upsample</strong> the data from a 30-minute interval (frequency) to a 15-minutes frequency. This will create an empty entry (<code>NaN</code>) between every other entry. You will use offset string <code>'T'</code> for minutes, since <code>'M'</code> is used for monthly aggregation:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>df_upsampled = nyc_taxi.resample('15T').mean()
+df_upsampled.head()
+&gt;&gt;
+                     value
+timestamp   
+2014-07-01 00:00:00    10844.0
+2014-07-01 00:15:00    NaN
+2014-07-01 00:30:00    8127.0
+2014-07-01 00:45:00    NaN
+2014-07-01 01:00:00    6210.0</code></pre>
+</div>
+<p>Notice that upsampling creates <code>NaN</code> rows. Unlike <em>downsampling</em>, when <em>upsampling</em>, you need to give instructions on how to fill the <code>NaN</code> rows. You might be wondering why we used <code>.mean()</code> here? The simple answer is because it would not matter whether you used <code>.sum()</code>, <code>.max()</code>, or <code>.min()</code>, for example. You will need to augment the missing rows using imputation or interpolation techniques when you <em>upsample</em>. For example, you can specify an imputation value using <code>.fillna()</code> or by using <code>.ffill()</code> or <code>.bfill() methods</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>df_upsampled = nyc_taxi.resample('15T').ffill()
+df_upsampled.head()
+&gt;&gt;
+                    value
+timestamp   
+2014-07-01 00:00:00    10844
+2014-07-01 00:15:00    10844
+2014-07-01 00:30:00    8127
+2014-07-01 00:45:00    8127
+2014-07-01 01:00:00    6210</code></pre>
+</div>
+<p>The first five records show the use of forward filling. For more information on using <code>.fillna()</code>,<code> .bfill()</code>, or <code>.ffill()</code> or imputation in general, refer to <em>Chapter 7, Handling Missing Data</em>.</p>
+<p>Overall, resampling in pandas is very convenient and straightforward. This can be a handy tool when you want to change the frequency of your time series.</p>
+</section>
+<section id="how-it-works-31" class="level3" data-number="9.4.2">
+<h3 data-number="9.4.2">How it works…</h3>
+<p>The <code>DataFrame.resample()</code> method allows you to group rows in a specified time frame, for example, by day, week, month, year, or any DateTime attribute. The way <code>.resample()</code> works is by grouping the data using the <code>DatetimeIndex</code> and the frequency provided, hence, this method is specific to time series DataFrames.</p>
+<p>The <code>.resample()</code> function works in a very similar manner to the <code>.groupby()</code> function; the difference is that <code>.resample()</code> is specific to time series data and groups at the <code>DatetimeIndex</code>.</p>
+</section>
+<section id="theres-more...-2" class="level3" data-number="9.4.3">
+<h3 data-number="9.4.3">There's more...</h3>
+<p>You can supply more than one aggregation at once when downsampling using the <code>.agg()</code> function.</p>
+<p>For example, using <code>'M'</code> for monthly, you can supply the <code>.agg()</code> function with a list of aggregations you want to perform:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>nyc_taxi.resample('M').agg(['mean', 'min',
+                            'max', 'median', 'sum'])</code></pre>
+</div>
+<p>This should produce a DataFrame with five columns, one for each aggregation method specified. The index column, a <code>timestamp</code> column, will be grouped at monthly intervals:</p>
+<figure>
+<img src="../media/file83.jpg" alt="Figure 8.2: Multiple aggregations using the .agg() method" width="676" height="424"/><figcaption aria-hidden="true">Figure 8.2: Multiple aggregations using the .agg() method</figcaption>
+</figure>
+<p>Notice that the default behavior for <code>'M'</code> or monthly frequency is at the month's end (example <em>2014-07-31</em>). You can change to month's start instead by using <code>'MS'</code>. For example, this will produce <em>2014-07-01</em> instead (the beginning of each month).</p>
+</section>
+<section id="see-also-33" class="level3" data-number="9.4.4">
+<h3 data-number="9.4.4">See also</h3>
+<p>To learn more about pandas <code>DataFrame.resample()</code>, please visit the official documentation here: <a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.resample.html">https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.resample.html</a>.</p>
+</section>
+</section>
+<section id="detecting-outliers-using-visualizations" class="level2" data-number="9.5">
+<h2 data-number="9.5">Detecting outliers using visualizations</h2>
+<p>There are two general approaches for using statistical techniques to detect outliers: <strong>parametric</strong> and <strong>non-parametric</strong> methods. <strong>Parametric</strong> methods assume you know the underlying distribution of the data. For example, if your data follows a normal distribution. On the other hand, in <strong>non-parametric</strong> methods, you make no such assumptions.</p>
+<p>Using histograms and box plots are basic non-parametric techniques that can provide insight into the distribution of the data and the presence of outliers. More specifically, box plots, also known as <strong>box and whisker</strong> plots, provide a five-number summary: the <em>minimum</em>, <em>first quartile</em> (25th percentile), <em>median</em> (50th percentile), <em>third quartile</em> (75th percentile), and the <em>maximum</em>. There are different implementations for how far the whiskers extend, for example, the whiskers can extend to the <em>minimum</em> and <em>maximum</em> values. In most statistical software, including Python's <strong>matplotlib</strong> and <strong>seaborn</strong> libraries, the whiskers extend to what is called <strong>Tukey's Lower and Upper Fences</strong>. Any data point outside these boundaries is considered a potential outlier. You will dive into the actual calculation and implementation in the <em>Detecting outliers using the Tukey method</em> recipe. For now, let's focus on the visualization aspect of the analysis.</p>
+<p>In this recipe, you will use <strong>seaborn</strong> as another Python visualization library that is based on <strong>matplotlib</strong><code>.</code></p>
+<section id="getting-ready-26" class="level3" data-number="9.5.1">
+<h3 data-number="9.5.1">Getting ready</h3>
+<p>You can download the Jupyter Notebooks and required datasets from the GitHub repository. Please refer to the <em>Technical requirements</em> section of this chapter. You will be using the <code>nyc_taxi</code> DataFrame that you loaded earlier in the <em>Technical requirements</em> section.</p>
+<p>You will be using <code>seaborn</code> version <em>0.11.2</em>, which is the latest version as of this writing.</p>
+<p>To install <code>seaborn</code> using <code>pip</code>, use the following:</p>
+<div class="C0-SHConPACKT">
+<pre><code>pip install seaborn</code></pre>
+</div>
+<p>To install <code>seaborn</code> using <code>conda</code>, use the following:</p>
+<div class="C0-SHConPACKT">
+<pre><code>conda install seaborn</code></pre>
+</div>
+</section>
+<section id="how-to-do-it...-1" class="level3" data-number="9.5.2">
+<h3 data-number="9.5.2">How to do it...</h3>
+<p>In this recipe, you will explore different plots available from <code>seaborn</code> including <code>histplot()</code>, <code>displot()</code>, <code>boxplot()</code>, <code>boxenplot()</code>, and <code>violinplot()</code>.</p>
+<p>You will notice that these plots tell a similar story but visually, each plot represents the information differently. Eventually, you will develop a preference toward some of these plots for your own use when investigating your data:</p>
+<ol>
+<li>Start by importing the <code>seaborn</code> library to begin exploring how these plots work to help you detect outliers:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>Import seaborn as sns
+sns.__version__
+&gt;&gt; '0.13.1'</code></pre>
+</div>
+<ol>
+<li>Recall from <em>Figure 8.1</em>, the <code>nyc_taxi</code> DataFrame contains passenger counts recorded every 30 minutes. Keep in mind that every analysis or investigation is unique and so should be your approach to align with the problem you are solving. This also means that you will need to consider your data preparation approach, for example, determine what transformations you need to apply to your data.</li>
+</ol>
+<p>For this recipe, the goal is to find which days have outlier observations, not at which interval within the day, so you will <em>resample</em> the data to a daily frequency. You will start by <strong>downsampling</strong> the data using the <code>mean</code> aggregation. Even though such a transformation will smooth out the data, you will not lose too much of the detail as it pertains to finding outliers since the <code>mean</code> is sensitive to outliers. In other words, if there was an extreme outlier on a specific interval (there are 48 intervals in a day), the <code>mean</code> will still carry that information.</p>
+<p>In this step you will Downsample the data to a daily frequency using the <code>.resample()</code> method and using <code>‘D’</code> as the offset string. This will reduce the number of observations from <code>10,320</code> to <code>215</code> (which is <code>10320/48 = 215</code>):</p>
+<div class="C1-SHCodePACKT">
+<pre><code>tx = nyc_taxi.resample('D').mean()</code></pre>
+</div>
+<ol>
+<li>Plot the new <code>tx</code> DataFrame with the ground truth labels to use as a reference. You will call the <code>plot_outliers</code> function that you created from the <em>Technical requirements</em> section:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>known_outliers= tx.loc[nyc_dates]
+plot_outliers(known_outliers, tx, 'Known Outliers')</code></pre>
+</div>
+<p>This should produce a time series plot with <code>X</code> markers for known outliers.</p>
+<figure>
+<img src="../media/file84.jpg" alt="Figure 8.3: Plotting the NYC Taxi data after downsampling with ground truth labels (outliers)" width="1377" height="329"/><figcaption aria-hidden="true">Figure 8.3: Plotting the NYC Taxi data after downsampling with ground truth labels (outliers)</figcaption>
+</figure>
+<ol>
+<li>Now, let's start with your first plot for inspecting your time series data using the <code>histplot()</code> function:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>sns.histplot(tx)</code></pre>
+</div>
+<p>This should produce the following:</p>
+<figure>
+<img src="../media/file85.jpg" alt="Figure 8.4: Histogram showing extreme daily mean passenger rides" width="1381" height="273"/><figcaption aria-hidden="true">Figure 8.4: Histogram showing extreme daily mean passenger rides</figcaption>
+</figure>
+<p>In <em>Figure 8.4</em>, the observations labeled as <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, and <code>5</code> seem to represent extreme passenger values. Recall, these numbers represent the average daily passengers after resampling. The question you should ask is whether these observations are outliers. The center of the histogram is close to 15,000 daily average passengers. This should make you question whether the extreme value close to 20,000 (<em>label</em> <code>5</code>) is that extreme. Similarly, the observations labeled <code>3 </code>and <code>4 </code>(since they are close to the tail of the distribution), are they actually extreme values? How about labels <code>1</code> and <code>2</code> with average passenger rides at 3,000 and 8,000 daily average passengers respectively? These do seem more extreme compared to the rest and may potentially be actual outliers. Again, determining what is an outlier and what is not requires domain knowledge and further analysis. There is no specific rule, and you will see throughout this chapter that some of the generally accepted rules are arbitrary and subjective. You should not jump to conclusions immediately.</p>
+<ol>
+<li>You can achieve a similar plot using <code>displot()</code>, which has a <code>kind</code> parameter. The <code>kind</code> parameter can take one of three values: <code>hist</code> for the histogram plot, <code>kde</code> for the kernel density estimate plot, and <code>ecdf</code> for the empirical cumulative distribution function plot.</li>
+</ol>
+<p>You will use <code>displot(kind='hist')</code> to plot a similar histogram as the one in <em>Figure 8.4</em>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>sns.displot(tx, kind='hist', height=3, aspect=4)</code></pre>
+</div>
+<ol>
+<li>A box plot provides more information than a histogram and can be a better choice for spotting outliers. In a box plot, observations that are outside the whiskers or boundaries are considered potential outliers. The whiskers represent the visual boundary for the upper and lower fences as proposed by mathematician <strong>John Tukey</strong> in 1977.</li>
+</ol>
+<p>The following code shows how to create a box plot using <code>seaborn</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>sns.boxplot(tx['value'], orient='h')</code></pre>
+</div>
+<p>The following figure shows the potential outliers:</p>
+<figure>
+<img src="../media/file86.jpg" alt="Figure 8.5: A box plot showing potential outliers that are outside the boundaries (whiskers)" width="1376" height="468"/><figcaption aria-hidden="true">Figure 8.5: A box plot showing potential outliers that are outside the boundaries (whiskers)</figcaption>
+</figure>
+<p>The width of the box (<strong>Q1</strong> to <strong>Q3</strong>) is called the <strong>interquartile range</strong> (<strong>IQR</strong>) calculated as the difference between the 75th and 25th percentiles (<strong>Q3</strong> – <strong>Q1</strong>). The lower fence is calculated as <code>Q1 - (1.5 x IQR)</code>, and the upper fence as <code>Q3 + (1.5 x IQR)</code>. Any observation less than the lower boundary or greater than the upper boundary is considered a potential outlier. More on that in the <em>Detecting outliers using the Tukey method</em> recipe. The <code>whis</code> parameter in the <code>boxplot()</code> function is set to <code>1.5</code> by default (1.5 times IQR), which controls the width or distance between the upper and lower fences. Larger values mean fewer observations will be deemed as outliers, and smaller values will make non-outlier points seem outside of boundaries (more outliers).</p>
+<div class="C1-SHCodePACKT">
+<pre><code>sns.boxplot(tx['value'], orient='h', whis=1.5)</code></pre>
+</div>
+<ol>
+<li>There are two more variations for box plots in <strong>seaborn</strong> (<code>boxenplot()</code> and <code>violinplot()</code>). They provide similar insight as to the boxplot but are presented differently. The <em>boxen plot</em>, which in literature is referred to as a <em>letter-value</em> plot, can be considered as an enhancement to regular box plots to address some of their shortcomings, as described in the paper <em>Heike Hofmann, Hadley Wickham &amp; Karen Kafadar (2017) Letter-Value Plots: Boxplots for Large Data, Journal of Computational and Graphical Statistics, 26:3, 469-477</em>. More specifically, boxen (letter-value) plots are better suited when working with larger datasets (higher number of observations for displaying data distribution and more suitable for differentiating outlier points for larger datasets). The <code>seaborn</code> implementation of <code>boxenplot</code> is based on that paper.</li>
+</ol>
+<p>The following code shows how to create a boxen (letter-value) plot using <code>seaborn</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>sns.boxenplot(tx['value'], orient='h')</code></pre>
+</div>
+<p>This should produce a plot that looks like the box plot in <em>Figure 8.5</em>, but with boxes extending beyond the quartiles (<strong>Q1</strong>, <strong>Q2</strong>, and <strong>Q3</strong>). The 25th percentile is at the 14,205 daily average passengers mark, and the 75th percentile is at the 16,209 daily average passengers mark.</p>
+<figure>
+<img src="../media/file87.jpg" alt="Figure 8.6: A boxen (letter-value) plot for the average daily taxi passengers in NYC" width="1376" height="468"/><figcaption aria-hidden="true">Figure 8.6: A boxen (letter-value) plot for the average daily taxi passengers in NYC</figcaption>
+</figure>
+<blockquote>
+<p>PERCENTILE VALUES</p>
+<blockquote>
+<p>Are you wondering how I was able to determine the exact value for the 25th, 50th, and 75th percentiles?</p>
+</blockquote>
+<blockquote>
+<p>You can obtain these values for a DataFrame or series with the <code>describe</code> method. For example, if you run <code>tx.describe()</code>, you should see a table of descriptive statistics that includes count, mean, standard deviation, minimum, maximum, 25th, 50th, and 75th percentile values for the dataset.</p>
+</blockquote>
+</blockquote>
+<p>In <em>Figure 8.6</em>, you are getting additional insight into the distribution of passengers beyond the quantiles. In other words, it extends the box plot to show additional distributions to give more insight into the tail of the data. The boxes in theory could keep going to accommodate all the data points, but in order to show outliers, there needs to be a stopping point, referred to as <strong>depth</strong>. In <code>seaborn</code>, this parameter is called <code>k_depth</code>, which can take a numeric value, or you can specify different methods such as <code>tukey</code>, <code>proportion</code>, <code>trustworthy</code>, or <code>full</code>. For example, a <code>k_depth=1</code> numeric value will show a similar box to the boxplot in <em>Figure 8.5</em> (one box). As a reference, <em>Figure 8.6</em> shows four boxes determined using the <code>Tukey</code> method, which is the default value (<code>k_depth="tukey"</code>). Using <code>k_depth=4</code> would produce the same plot.</p>
+<p>These methods are explained in the referenced paper by <em>Heike Hofmann, Hadley Wickham &amp; Karen Kafadar (2017)</em>. To explore the different methods, you can try the following code:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>for k in ["tukey", "proportion", "trustworthy", "full"]:
+    sns.boxenplot(tx['value'], orient='h', k_depth=k, orient='h')
+    plt.title(k)
+    plt.show()</code></pre>
+</div>
+<p>This should produce four plots; notice the different numbers of boxes that were determined by each method. Recall, you can also specify <code>k_depth</code> numerically as well:</p>
+<figure>
+<img src="../media/file88.jpg" alt="Figure 8.7: The different k_depth methods available in seaborn for the boxenplot function" width="1380" height="1371"/><figcaption aria-hidden="true">Figure 8.7: The different k_depth methods available in seaborn for the boxenplot function</figcaption>
+</figure>
+<ol>
+<li>Now, the final variation is the violin plot, which you can display using the <code>violinplot</code> function:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>sns.violinplot(tx['value'], orient='h')</code></pre>
+</div>
+<p>This should produce a plot that is a hybrid between a box plot and a <strong>kernel density estimation</strong> (<strong>KDE</strong>). A kernel is a function that estimates the probability density function, the larger peaks (wider area), for example, show where the majority of the points are concentrated. This means that there is a higher probability that a data point will be in that region as opposed to the much thinner regions showing much lower probability.</p>
+<figure>
+<img src="../media/file89.jpg" alt="Figure 8.8: A violin plot for the average daily taxi passengers in NYC" width="1381" height="459"/><figcaption aria-hidden="true">Figure 8.8: A violin plot for the average daily taxi passengers in NYC</figcaption>
+</figure>
+<p>Notice that <em>Figure 8.8</em> shows the distribution for the entire dataset. Another observation is the number of peaks; in this case, we have one peak, which makes it a unimodal distribution. If there is more than one peak, we call it a multimodal distribution, which should trigger a further investigation into the data. A KDE plot will provide similar insight as a histogram but with a more smoothed curve.</p>
+</section>
+<section id="how-it-works...-2" class="level3" data-number="9.5.3">
+<h3 data-number="9.5.3">How it works...</h3>
+<p>In the recipe, we were introduced to several plots that help visualize the distribution of the data and show outliers. Generally, histograms are great for showing distribution, but a box plot (and its variants) are much better for outlier detection. We also explored the boxen (letter-value) plot, which is more suited for larger datasets and is more appropriate than regular box plots.</p>
+</section>
+<section id="theres-more...-3" class="level3" data-number="9.5.4">
+<h3 data-number="9.5.4">There's more...</h3>
+<p>In <strong>seaboarn</strong> both <code>histlpot()</code> and <code>displot()</code> support adding the kernel density estimate (KDE) plot with the parameter <code>kde</code>. The following code snippets should produce a similar plot:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>sns.histplot(tx, kde=True)
+sns.displot(tx, kind='hist', height=3, aspect=4, kde=True)</code></pre>
+</div>
+<p>This should produce a plot that combines a histogram and a KDE plot as shown:</p>
+<figure>
+<img src="../media/file90.png" alt="Figure 8.9: A histogram with a KDE plot" width="782" height="168"/><figcaption aria-hidden="true">Figure 8.9: A histogram with a KDE plot</figcaption>
+</figure>
+<p>Additionally, another useful visualization for spotting outliers is the <strong>lag plot</strong>. A lag plot is essentially a scatter plot, but instead of plotting two variables to observe correlation, as an example, we plot the same variable against its lagged version. This means, it is a scatter plot using the same variable, but the <em>y</em> axis represents passenger count at the current time (<em>t</em>) and the <em>x</em> axis will show passenger count at a prior period (<em>t-1</em>), which we call <strong>lag</strong>. The lag parameter determines how many periods to go back; for example, a lag of <code>1</code> means one period back, while a lag of <code>2</code> means two periods back. In our resampled data (downsampled to daily), a lag of <code>1</code> represents the prior day.</p>
+<p>The pandas library provides the <code>lag_plot</code> function, which you can use as shown in the following example:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>from pandas.plotting import lag_plot
+lag_plot(tx)</code></pre>
+</div>
+<p>This should produce the following scatter plot:</p>
+<figure>
+<img src="../media/file91.jpg" alt="Figure 8.10: A lag plot of average daily taxi passengers in NYC" width="1381" height="291"/><figcaption aria-hidden="true">Figure 8.10: A lag plot of average daily taxi passengers in NYC</figcaption>
+</figure>
+<p>The circled data points highlight interesting points that can be potential outliers. Some seem more extreme than others. Further, you can see some linear relationship between the passenger counts and its lagged version (prior day) indicating the existence of an autocorrelation. Recall from basic statistics that correlation shows the relationship between two independent variables, so you can think of autocorrelation as a correlation of a variable at a time (<em>t</em>) and its prior version at a time (<em>t-1</em>). More on this in <em>Chapter 9, Exploratory Data Analysis and Diagnosis</em>, and <em>Chapter 10, Building Univariate Time Series Models Using Statistical Methods</em>.</p>
+<p>The labels for the <em>x</em>-axis and the <em>y</em>-axis in <em>Figure 8.10</em> can be a bit confusing, with the <em>y-axis</em> being labeled as <em>y(t+1)</em>. Essentially it is saying the same thing we described earlier: the <em>x</em>-axis represents prior values (the predictor) to its future self at <em>t+1</em>, which is what the <em>y</em>-axis represents. To make it clearer, you can recreate the exact visualization produced by <code>lag_plot</code> using <code>seaborn</code> manually, as shown in the following code:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>y = tx[1:].values.reshape(-1)
+x = tx[:-1].values.reshape(-1)
+sns.scatterplot(x=x, y=y)</code></pre>
+</div>
+<p>This should produce a similar plot to that in <em>Figure 8.10</em>.</p>
+<p>Notice in the code that the <code>y</code> values start from <em>t+1</em> (we skipped the value at index <code>0</code>) up to the last observation, and the <code>x</code> values start from index <code>0</code> up to index <code>-1</code> (we skip the last observation). This makes the values in the <em>y</em> axis ahead by one period.</p>
+<p>In the next recipe, we will dive further into <strong>IQR</strong> and <strong>Tukey fences</strong> that we briefly discussed when talking about box plots.</p>
+</section>
+<section id="see-also-34" class="level3" data-number="9.5.5">
+<h3 data-number="9.5.5">See also</h3>
+<p>You can learn more about the plots we used and the different options available from the <code>seaborn</code> documentation. To learn more about the following, visit the associated URLs:</p>
+<ul>
+<li>For box plots (<code>boxplot</code>), you can visit <a href="https://seaborn.pydata.org/generated/seaborn.boxplot.html">https://seaborn.pydata.org/generated/seaborn.boxplot.html</a>.</li>
+<li>For boxen plots (<code>boxenplot</code>), you can visit <a href="https://seaborn.pydata.org/generated/seaborn.boxenplot.html">https://seaborn.pydata.org/generated/seaborn.boxenplot.html</a>.</li>
+<li>For violin plots (<code>violinplot</code>), you can visit <a href="https://seaborn.pydata.org/generated/seaborn.violinplot.html#seaborn.violinplot">https://seaborn.pydata.org/generated/seaborn.violinplot.html#seaborn.violinplot</a>.</li>
+<li>For histograms (<code>histpolot</code>), you can visit <a href="https://seaborn.pydata.org/generated/seaborn.histplot.html">https://seaborn.pydata.org/generated/seaborn.histplot.html</a>.</li>
+<li>For distribution plots (<code>displot</code>), you can visit <a href="https://seaborn.pydata.org/generated/seaborn.displot.html#seaborn.displot">https://seaborn.pydata.org/generated/seaborn.displot.html#seaborn.displot</a>.</li>
+</ul>
+</section>
+</section>
+<section id="detecting-outliers-using-the-tukey-method" class="level2" data-number="9.6">
+<h2 data-number="9.6">Detecting outliers using the Tukey method</h2>
+<p>This recipe will extend on the previous recipe, <em>Detecting outliers using visualizations</em>. In <em>Figure 8.5</em>, the box plot showed the quartiles with whiskers extending to the upper and lower fences. These boundaries or fences were calculated using the Tukey method.</p>
+<p>Let's expand on <em>Figure 8.5</em> with additional information of other components:</p>
+<figure>
+<img src="../media/file92.jpg" alt="Figure 8.11: Box plot for the daily average taxi passengers data" width="1306" height="555"/><figcaption aria-hidden="true">Figure 8.11: Box plot for the daily average taxi passengers data</figcaption>
+</figure>
+<p>Visualizations are great to give you a high-level perspective on the data you are dealing with, such as the overall distribution and potential outliers. Ultimately you want to identify these outliers programmatically so you can isolate these data points for further investigation and analysis. This recipe will teach you how to calculate IQR and define points that fall outside the lower and upper Tukey fences.</p>
+<section id="how-to-do-it...-2" class="level3" data-number="9.6.1">
+<h3 data-number="9.6.1">How to do it...</h3>
+<p>Most statistical methods allow you to spot extreme values beyond a certain threshold. For example, this could be the mean, standard deviation, the 10th or 90th percentile, or some other value that you want to compare against. You will start the recipe by learning how to obtain basic descriptive statistics and more specifically, the quantiles.</p>
+<ol>
+<li>Both DataFrame and Series have the <code>describe</code> method that outputs summary descriptive statistics. By default, it shows the quartiles: the first quartile, which is the 25th percentile, the second quartile (median), which is the 50th percentile, and the third quartile, which is the 75th percentile. You can customize the percentiles by providing a list of values to the <code>percentiles</code> parameter. The following code shows how you can get values for additional percentiles:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>percentiles = [0, 0.05, .10, .25, .5, .75, .90, .95, 1]
+tx.describe(percentiles= percentiles)</code></pre>
+</div>
+<p>This should produce the following DataFrame:</p>
+<figure>
+<img src="../media/file93.jpg" alt="Figure 8.12: Descriptive statistics with custom percentiles for the daily taxi passenger data" width="716" height="869"/><figcaption aria-hidden="true">Figure 8.12: Descriptive statistics with custom percentiles for the daily taxi passenger data</figcaption>
+</figure>
+<blockquote>
+<p>QUANTILES VERSUS QUARTILES VERSUS PERCENTILES</p>
+<blockquote>
+<p>The terms can be confusing, but essentially both percentiles and quartiles are quantiles. Sometimes you will see people use percentiles more loosely and interchangeably with quantiles.</p>
+</blockquote>
+<blockquote>
+<p>Quartiles divide your distribution into four segments (hence the name) marked as <em>Q1</em> (25th percentile), <em>Q2</em> (50th percentile or Median), and <em>Q3</em> (75th percentile). Percentiles, on the other hand, can take any range from 0 to 100 (in pandas from 0 to 1, while in NumPy from 0 to 100), but most commonly refer to when the distribution is partitioned into 100 segments. These segments are called quantiles.</p>
+</blockquote>
+<blockquote>
+<p>The names pretty much indicate the type of partitioning (number of quantiles) applied on the distribution; for example, with four quantiles we call it quartiles, with two quantiles we call it median, with 10 quantiles we call it deciles, and with 100 quantiles we call it percentiles.</p>
+</blockquote>
+</blockquote>
+<ol>
+<li>The NumPy library also offers the <code>percentile</code> function, which would return the value(s) for the specified percentiles. The following code explains how this can be used:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>percentiles = [0, 5, 10, 25, 50, 75, 90, 95, 100]
+np.percentile(tx, percentiles)
+&gt;&gt;
+array([ 4834.54166667, 11998.18125   , 13043.85416667, 14205.19791667,
+       15299.9375    , 16209.42708333, 17279.3       , 18321.61666667,
+       20553.5       ])</code></pre>
+</div>
+<ol>
+<li>In <em>Figure 8.11</em>, notice that most extreme values, potential outliers, fall below the lower fence calculated as <code>Q1 – (1.5 x IQR)</code> or above the upper fence calculated as <code>Q3 + (1.5 x IQR)</code>. IQR is calculated as the difference between <em>Q3</em> and <em>Q1</em> (<code>IQR = Q3 – Q1</code>), which determines the width of the box in the box plot. These upper and lower fences are known as <strong>Tukey's fences</strong>, and more specifically, they are referred to as <strong>inner boundaries</strong>. The <strong>outer boundaries</strong> also have lower <code>Q1 - (3.0 x IQR)</code> and upper <code>Q3 + (3.0 x IQR) </code>fences. We will focus on the inner boundaries and describe anything outside of those as potential outliers.</li>
+</ol>
+<p>You will create a function, <code>iqr_outliers</code>, which calculates the IQR, upper (inner) fence, lower (inner) fence, and then filters the data to return the outliers. These outliers are any data points that are below the lower fence or above the upper fence:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>def iqr_outliers(data):
+    q1, q3 = np.percentile(data, [25, 75])
+    IQR = q3 - q1
+    lower_fence = q1 - (1.5 * IQR)
+    upper_fence = q3 + (1.5 * IQR)
+    return data[(data.value &gt; upper_fence) | (data.value &lt; lower_fence)]</code></pre>
+</div>
+<ol>
+<li>Test the function by passing the <code>tx</code> DataFrame:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>outliers = iqr_outliers(tx)
+outliers
+&gt;&gt;    
+                  value
+timestamp              
+2014-11-01  20553.500000
+2014-11-27  10899.666667
+2014-12-25   7902.125000
+2014-12-26  10397.958333
+2015-01-26   7818.979167
+2015-01-27   4834.541667      </code></pre>
+</div>
+<p>These dates (points) are the same ones identified in <em>Figure 8.5</em> and <em>Figure 8.11</em> as outliers based on Tukey's fences.</p>
+<ol>
+<li>Use the <code>plot_outliers</code> function defined earlier in the <em>Technical requirements</em> section:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, "Outliers using IQR with Tukey's Fences")</code></pre>
+</div>
+<p>This should produce a plot similar to that in <em>Figure 8.3</em>, except the <code>x</code> markers are based on the outliers identified using the Tukey method:</p>
+<figure>
+<img src="../media/file94.jpg" alt="Figure 8.13: Daily average taxi passengers and outliers identified using the Tukey method" width="1381" height="335"/><figcaption aria-hidden="true">Figure 8.13: Daily average taxi passengers and outliers identified using the Tukey method</figcaption>
+</figure>
+<p>Compare <em>Figures 8.13</em> and <em>Figure 8.3</em> and you will see that this simple method did a great job at identifying four of the five known outliers. In addition, Tukey's method identified two additional outliers on <em>2014-12-26</em> and <em>2015-01-26</em>.</p>
+</section>
+<section id="how-it-works...-3" class="level3" data-number="9.6.2">
+<h3 data-number="9.6.2">How it works...</h3>
+<p>Using IQR and Tukey's fences is a simple non-parametric statistical method. Most box plot implementations use <code>1.5x(IQR)</code> to define the upper and lower fences.</p>
+</section>
+<section id="theres-more...-4" class="level3" data-number="9.6.3">
+<h3 data-number="9.6.3">There's more...</h3>
+<p>The use of <code>1.5x(IQR)</code> is common when it comes to defining outliers; the choice is still arbitrary, even though there is a lot of discussion about its reasoning. You can change the value for more experimentation. For example, in <code>seaborn,</code> you can change the default <code>1.5</code> value by updating the <code>whis</code> parameter in the <code>boxplot</code> function. The choice of <code>1.5</code> makes the most sense when the data follows a Gaussian distribution (normal), but this is not always the case. Generally, the larger the value, the fewer outliers you will capture as you expand your boundaries (fences). Similarly, the smaller the value, the more non-outliers will be defined as outliers, as you are shrinking the boundaries (fences).</p>
+<p>Let's update the <code>iqr_outliers</code> function to accept a <code>p</code> parameter so you can experiment with different values:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>def iqr_outliers(data, p):
+    q1, q3 = np.percentile(data, [25, 75])
+    IQR = q3 - q1
+    lower_fence = q1 - (p * IQR)
+    upper_fence = q3 + (p * IQR)
+    return data[(data.value &gt; upper_fence) | (data.value &lt; lower_fence)]</code></pre>
+</div>
+<p>Run the function on different values:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>for p in [1.3, 1.5, 2.0, 2.5,  3.0]:
+    print(f'with p={p}')
+    print(iqr_outliers(tx, p))
+    print('-'*15)
+&gt;&gt;
+with p=1.3
+                   value
+timestamp              
+2014-07-04  11511.770833
+2014-07-05  11572.291667
+2014-07-06  11464.270833
+2014-09-01  11589.875000
+2014-11-01  20553.500000
+2014-11-08  18857.333333
+2014-11-27  10899.666667
+2014-12-25   7902.125000
+2014-12-26  10397.958333
+2015-01-26   7818.979167
+2015-01-27   4834.541667
+---------------
+with p=1.5
+                   value
+timestamp              
+2014-11-01  20553.500000
+2014-11-27  10899.666667
+2014-12-25   7902.125000
+2014-12-26  10397.958333
+2015-01-26   7818.979167
+2015-01-27   4834.541667
+---------------
+with p=2.0
+                   value
+timestamp              
+2014-11-01  20553.500000
+2014-12-25   7902.125000
+2015-01-26   7818.979167
+2015-01-27   4834.541667
+---------------
+with p=2.5
+                  value
+timestamp             
+2014-12-25  7902.125000
+2015-01-26  7818.979167
+2015-01-27  4834.541667
+---------------
+with p=3.0
+                  value
+timestamp             
+2014-12-25  7902.125000
+2015-01-26  7818.979167
+2015-01-27  4834.541667
+---------------</code></pre>
+</div>
+<p>The best value will depend on your data and how sensitive you need the outlier detection to be.</p>
+</section>
+<section id="see-also-35" class="level3" data-number="9.6.4">
+<h3 data-number="9.6.4">See also</h3>
+<p>To learn more about Tukey's fences for outlier detection, you can refer to this Wikipedia page: <a href="https://en.wikipedia.org/wiki/Outlier#Tukey's_fences">https://en.wikipedia.org/wiki/Outlier#Tukey's_fences</a>.</p>
+<p>We will explore another statistical method based on a z-score in the following recipe.</p>
+</section>
+</section>
+<section id="detecting-outliers-using-a-z-score" class="level2" data-number="9.7">
+<h2 data-number="9.7">Detecting outliers using a z-score</h2>
+<p>The <strong>z-score</strong> is a common transformation for standardizing data. This is common when you want to compare different datasets. For example, it is easier to compare two data points from two different datasets relative to their distributions. This can be done because the z-score standardizes the data to be centered around a zero mean and the units represent standard deviations away from the mean. For example, in our dataset, the unit is measured in daily taxi passengers (in thousands). Once you apply the z-score transformation, you are no longer dealing with the number of passengers, but rather, the units represent standard deviation, which tells us how far an observation is from the mean. Here is the formula for the z-score:</p>
+<figure>
+<img style="width:15rem" src="../media/file95.jpg" width="231" height="107"/>
+</figure>
+Where
+<figure>
+<img style="width:2rem" src="../media/file96.png" width="29" height="31"/>
+</figure>
+is a data point (an observation), mu (
+<figure>
+<img style="width:2rem" src="../media/file97.png" width="32" height="47"/>
+</figure>
+) is the mean of the dataset, and sigma (
+<figure>
+<img style="width:2rem" src="../media/file98.png" width="31" height="44"/>
+</figure>
+) is the standard deviation for the dataset.
+<p>Keep in mind that the z-score is a lossless transformation, which means you will not lose information such as its distribution (shape of the data) or the relationship between the observations. All that is changing is the units of measurement as they are being scaled (standardized).</p>
+<p>Once the data is transformed using the z-score, you can pick a threshold. So, any data point above or below that threshold (in standard deviation) is considered an outlier. For example, your threshold can be <code>+3</code> and <code>-3</code> standard deviations away from the mean. Any point lower than <code>-3</code> or higher than <code>+3</code> standard deviation can be considered an outlier. In other words, the further a point is from the mean, the higher the probability of it being an outlier.</p>
+<p>The z-score has one major shortcoming due to it being a parametric statistical method based on assumptions. It assumes a Gaussian (normal) distribution. So, suppose the data is not normal. In that case, you will need to use a modified version of the z-score, which is discussed in the following recipe, <em>Detecting outliers using a modified z-score</em>.</p>
+<section id="how-to-do-it...-3" class="level3" data-number="9.7.1">
+<h3 data-number="9.7.1">How to do it...</h3>
+<p>You will start by creating the <code>zscore</code> function that takes in a dataset and a threshold value that we will call <code>degree</code>. The function will return the standardized data and the identified outliers. These outliers are any points above the positive threshold or below the negative threshold.</p>
+<ol>
+<li>Create the <code>zscore()</code> function to standardize the data and filter out the extreme values based on a threshold. Recall, the threshold is based on the standard deviation:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>def zscore(df, degree=3):
+    data = df.copy()
+    data['zscore'] = (data - data.mean())/data.std()
+    outliers = data[(data['zscore'] &lt;= -degree) | (data['zscore'] &gt;= degree)]
+   
+    return outliers['value'], data</code></pre>
+</div>
+<ol>
+<li>Now, use the <code>zscore</code> function and store the returned objects:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>threshold = 2.5
+outliers, transformed = zscore(tx, threshold)</code></pre>
+</div>
+<ol>
+<li>To see the effect of the z-score transformation, you can plot a histogram. The transformed DataFrame contains two columns, the original data labeled <code>value</code> and the standardized data labeled <code>zscore</code>:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>transformed.hist()</code></pre>
+</div>
+<p>This should produce two histograms for the two columns:</p>
+<figure>
+<img src="../media/file99.jpg" alt="Figure 8.14: Histogram to compare the distribution of the original and standardized data" width="1378" height="310"/><figcaption aria-hidden="true">Figure 8.14: Histogram to compare the distribution of the original and standardized data</figcaption>
+</figure>
+<p>Notice how the shape of the data did not change, hence why the z-score is called a <em>lossless transformation</em>. The only difference between the two is the scale (units).</p>
+<ol>
+<li>You ran the <code>zscore</code> function using a threshold of <code>2.5</code>, meaning any data point that is 2.5 standard deviations away from the mean in either direction. For example, any data point that is above the <code>+2.5</code> standard deviations or below the <code>-2.5</code> standard deviations will be considered an outlier. Print out the results captured in the <code>outliers</code> object:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>print(outliers)
+&gt;&gt;
+timestamp
+2014-11-01    20553.500000
+2014-12-25     7902.125000
+2015-01-26     7818.979167
+2015-01-27     4834.541667
+Name: value, dtype: float64</code></pre>
+</div>
+<p>This simple method managed to capture three out of the five known outliers.</p>
+<ol>
+<li>Use the <code>plot_outliers</code> function defined earlier in the <em>Technical requirements</em> section:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, "Outliers using Z-score")</code></pre>
+</div>
+<p>This should produce a plot similar to that in <em>Figure 8.3</em>, except the <code>x</code> markers are based on the outliers identified using the z-score method:</p>
+<figure>
+<img src="../media/file100.jpg" alt="Figure 8.15: Daily average taxi passengers and outliers identified using the z-score method" width="1378" height="329"/><figcaption aria-hidden="true">Figure 8.15: Daily average taxi passengers and outliers identified using the z-score method</figcaption>
+</figure>
+<p>You will need to play around to determine the best threshold value. The larger the threshold, the fewer outliers you will capture, and the smaller the threshold, the more non-outliers will be labeled as outliers.</p>
+<ol>
+<li>Finally, let's create a <code>plot_zscore</code> function that takes the standardized data to plot the data with the threshold lines. This way you can visually see how the threshold is isolating extreme values:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>def plot_zscore(data, d=3):
+    n = len(data)
+    plt.figure(figsize=(8,8))
+    plt.plot(data,'k^')
+    plt.plot([0,n],[d,d],'r--')
+    plt.plot([0,n],[-d,-d],'r--')</code></pre>
+</div>
+<p>Run the function using a threshold of <code>2.5</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>data = transformed['zscore'].values
+plot_zscore(data, d=2.5)</code></pre>
+</div>
+<p>This should produce a scatter plot with two horizontal lines:</p>
+<figure>
+<img src="../media/file101.jpg" alt="Figure 8.16: Plot of the standardized data and outliers based on the threshold lines" width="786" height="754"/><figcaption aria-hidden="true">Figure 8.16: Plot of the standardized data and outliers based on the threshold lines</figcaption>
+</figure>
+<p>The four circled data points represent the outliers that were returned by the <code>zscore</code> function. Run the function using different threshold values to gain a deeper understanding of this simple technique.</p>
+</section>
+<section id="how-it-works...-4" class="level3" data-number="9.7.2">
+<h3 data-number="9.7.2">How it works...</h3>
+<p>The z-score method is a very simple and interpretable method. The z-scores are interpreted as standard deviation units away from the mean, which is the center of the distribution. Since we are subtracting the mean from all observations, we are essentially mean-centering the data. We also divide by the standard deviation to standardize the data.</p>
+<p><em>Figure 8.15</em> pretty much explains the understanding of this method. Once the data is standardized, it became easy to just use the standard deviation threshold. If the data was not standardized, it may have been challenging to determine the threshold based on daily passengers.</p>
+</section>
+<section id="theres-more...-5" class="level3" data-number="9.7.3">
+<h3 data-number="9.7.3">There's more...</h3>
+<p>The z-score is a parametric method and assumes the data comes from a Gaussian (normal) distribution. There are several tests available in the <code>statsmodels</code> library to test if the data is normally distributed. One of these tests is the <em>Kolmogorov-Smirnov</em> test. The null hypothesis is that the data comes from a normal distribution. The test returns the test statistics and a <code>p</code>-value; if the <code>p</code>-value is less than <code>0.05</code>, you can reject the null hypothesis (data is not normally distributed). Otherwise, you would fail to reject the null hypothesis (data is normally distributed).</p>
+<p>You will use the <code>kstest_normal</code> function from the <code>statsmodels</code> library. To make the results easier to interpret, create the <code>test_normal</code> function as follows:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>from statsmodels.stats.diagnostic import kstest_normal
+def test_normal(df):
+    t_test, p_value = kstest_normal(df)
+    if p_value &lt; 0.05:
+        print("Reject null hypothesis. Data is not normal")
+    else:
+        print("Fail to reject null hypothesis. Data is normal")</code></pre>
+</div>
+<p>Run the test using the <code>test_normal</code> function:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>test_normal(tx)
+&gt;&gt;
+Reject null hypothesis. Data is not normal</code></pre>
+</div>
+<p>As expected, the dataset is not normally distributed. In Chapter 9, Exploratory Data Analysis and Diagnosis, you will learn about additional normality tests under the Applying power transformations recipe. But do be cautious; these tests will usually fail in the presence of outliers. If your data fails a normality test, then use some of the plotting methods discussed in the Detecting outliers using visualizations recipe to examine any outliers that may be causing the test to fail.</p>
+</section>
+<section id="see-also-36" class="level3" data-number="9.7.4">
+<h3 data-number="9.7.4">See also</h3>
+<p>To read more about z-scores and standardization, you can refer to this Wikipedia page: <a href="https://en.wikipedia.org/wiki/Standard_score">https://en.wikipedia.org/wiki/Standard_score</a>.</p>
+<p>In the following recipe, you will explore a very similar method to the z-score that is more robust to outliers and is more suitable with non-normal data.</p>
+</section>
+</section>
+<section id="detecting-outliers-using-a-modified-z-score" class="level2" data-number="9.8">
+<h2 data-number="9.8">Detecting outliers using a modified z-score</h2>
+<p>In the <em>Detecting outliers using a z-score</em> recipe, you experienced how simple and intuitive the method is. But it has one major drawback: it assumes your data is normally distributed.</p>
+<p>But, what if your data is not normally distributed? Luckily, there is a modified version of the z-score to work with non-normal data. The main difference between the regular z-score and the modified z-score is that we replace the mean with the median:</p>
+<figure>
+<img style="width:15rem" src="../media/file102.jpg" width="575" height="108"/>
+</figure>
+Where
+<figure>
+<img style="width:2rem" src="../media/file103.png" width="31" height="37"/>
+</figure>
+(<em>tilde x</em>) is the median of the dataset, and MAD is the median absolute deviation of the dataset:
+<figure>
+<img style="width:15rem" src="../media/file104.jpg" width="565" height="62"/>
+</figure>
+<p>The <code>0.6745</code> value is the standard deviation unit that corresponds to the 75th percentile (<em>Q3</em>) in a Gaussian distribution and is used as a normalization factor. In other words, it is used to approximate the standard deviation. This way, the units you obtain from this method are measured in standard deviation, similar to how you would interpret the regular z-score.</p>
+<p>You can obtain this value using SciPy's <strong>percent point function</strong> (<strong>PPF</strong>), also known as the inverse of the <strong>cumulative distribution function</strong> (<strong>CDF</strong>). Simply give the PPF function a percentile, for example, 75%, and it will return the quantile corresponding to the lower tail probability.</p>
+<div class="C0-SHCodePACKT">
+<pre><code>import scipy.stats as stats
+stats.norm.ppf(0.75)
+&gt;&gt;
+0.6744897501960817</code></pre>
+</div>
+<p>This is the normalization factor used in the formula.</p>
+<p>Lastly, the modified z-score is sometimes referred to as the <strong>robust z-score</strong>.</p>
+<section id="how-to-do-it...-4" class="level3" data-number="9.8.1">
+<h3 data-number="9.8.1">How to do it...</h3>
+<p>Overall, the approach will work exactly as the steps used when using the standard z-score method. You will start by creating the <code>modified_zscore</code> function that takes in a dataset, and a threshold value we will call <code>degree</code>, and the function will return the standardized data as well as the identified outliers. These outliers are any points above the positive threshold or below the negative threshold.</p>
+<ol>
+<li>Create the <code>modified_zscore</code> <code>()</code> function to standardize the data and filter out the extreme values based on a threshold. Recall, the threshold is based on the standard deviation:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>def modified_zscore(df, degree=3):
+    data = df.copy()
+    s = stats.norm.ppf(0.75)
+    numerator = s*(data - data.median())
+    MAD = np.abs(data - data.median()).median()
+    data['m_zscore'] = numerator/MAD
+    outliers = data[(data['m_zscore'] &gt; degree) | (data['m_zscore'] &lt; -degree)]
+   
+    return outliers['value'], data   </code></pre>
+</div>
+<ol>
+<li>Now, use the <code>modified_zscore</code> function and store the returned objects:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>threshold = 3
+outliers, transformed = modified_zscore (tx, threshold)</code></pre>
+</div>
+<ol>
+<li>To see the effect of the modified z-score transformation, let's plot a histogram. The transformed DataFrame contains two columns, the original data labeled <code>value</code> and the standardized data labeled <code>zscore</code>.</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>transformed.hist()</code></pre>
+</div>
+<p>This should produce two histograms for the two columns:</p>
+<figure>
+<img src="../media/file105.jpg" alt="Figure 8.17: Histogram to compare the distribution of the original and modified z-score standardized data" width="1377" height="301"/><figcaption aria-hidden="true">Figure 8.17: Histogram to compare the distribution of the original and modified z-score standardized data</figcaption>
+</figure>
+<p>Compare the results from <em>Figure 8.16</em> with <em>Figure 8.13</em>. Both approaches, the z-score and modified z-score approaches, do not change the shape of the data. The difference is in the scaling factor.</p>
+<ol>
+<li>Run the <code>modified_zscore</code> function using a threshold of <code>3</code>, meaning any data point three standard deviations away from the median in either direction. For example, any data point above <code>+3</code> standard deviations or below <code>-3</code> standard deviations will be considered an outlier. Print out the results captured in the <code>outliers</code> object:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>print(outliers)
+&gt;&gt;
+timestamp
+2014-11-01    20553.500000
+2014-11-27    10899.666667
+2014-12-25     7902.125000
+2014-12-26    10397.958333
+2015-01-26     7818.979167
+2015-01-27     4834.541667
+Name: value, dtype: float64</code></pre>
+</div>
+<p>Interestingly, the modified z-score did a much better job capturing four out of the five known outliers.</p>
+<ol>
+<li>Use the <code>plot_outliers</code> function defined earlier in the <em>Technical requirements</em> section:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot_outliers(outliers, tx, "Outliers using Modified  Z-score")</code></pre>
+</div>
+<p>This should produce a plot similar to that in <em>Figure 8.3,</em> except the <strong>x</strong> markers are based on the outliers identified using the modified z-score method:</p>
+<figure>
+<img src="../media/file106.jpg" alt="Figure 8.18: Daily average taxi passengers and outliers identified using the modified z-score method" width="1377" height="328"/><figcaption aria-hidden="true">Figure 8.18: Daily average taxi passengers and outliers identified using the modified z-score method</figcaption>
+</figure>
+<p>You will need to play around to determine the best threshold value. The larger the threshold, the fewer outliers you will capture, and the smaller the threshold, the more non-outliers will be labeled as outliers.</p>
+<ol>
+<li>Finally, let's create a <code>plot_m_zscore</code> function that takes the standardized data to plot the data with the threshold lines. This way you can visually see how the threshold is isolating extreme values:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>def plot_m_zscore(data, d=3):
+    n = len(data)
+    plt.figure(figsize=(8,8))
+    plt.plot(data,'k^')
+    plt.plot([0,n],[d,d],'r--')
+    plt.plot([0,n],[-d,-d],'r--')</code></pre>
+</div>
+<p>Run the function using a threshold of <code>3</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>data = transformed['m_zscore'].values
+plot_m_zscore(data, d=3)</code></pre>
+</div>
+<p>This should produce a scatter plot with two horizontal lines:</p>
+<figure>
+<img src="../media/file107.jpg" alt="Figure 8.19: Plot of the standardized data and outliers based on the threshold lines" width="780" height="755"/><figcaption aria-hidden="true">Figure 8.19: Plot of the standardized data and outliers based on the threshold lines</figcaption>
+</figure>
+<p>The six circled data points represent the outliers that were returned by the <code>modified_score</code> function. Run the function using different threshold values to gain more profound intuition into this simple technique.</p>
+<p>Notice in <em>Figure 8.19</em> how we have a data point that is right at the threshold line. Would you consider this an outlier? Generally, when it comes to outlier detection you will still need to apply due diligence to inspect the results.</p>
+</section>
+<section id="how-it-works...-5" class="level3" data-number="9.8.2">
+<h3 data-number="9.8.2">How it works...</h3>
+<p>The modified z-score (robust z-score) method is very similar to the z-score approach, as it depends on defining a standard deviation threshold. What makes this method more robust to outliers is the use of the median instead of the mean. We also use the <strong>median absolute deviation</strong> (<strong>MAD</strong>) instead of the standard deviation.</p>
+</section>
+<section id="theres-more...-6" class="level3" data-number="9.8.3">
+<h3 data-number="9.8.3">There's more...</h3>
+<p>In the previous recipe, <em>Detecting outliers using a z-score</em>, we used <code>kstest_normal</code> from <code>statsmodels</code> to test normality.</p>
+<p>Another helpful plot that is specifically designed to test for normality and sometimes can help detect outliers is the <strong>Quantile-Quantile plot</strong> (<strong>QQ-plot</strong>).</p>
+<p>You can plot a QQ-plot using SciPy or <code>statsmodels</code>. Both will produce the same plot. The following code will show you can plot using either.</p>
+<p>This shows how you can plot using SciPy:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>import scipy
+import matplotlib.pyplot as plt
+res = scipy.stats.probplot(tx.values.reshape(-1), plot=plt)</code></pre>
+</div>
+<p>This shows how you can plot using <code>statsmodels</code>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>from statsmodels.graphics.gofplots import qqplot
+qqplot(tx.values.reshape(-1), line='s')
+plt.show()</code></pre>
+</div>
+<p>Both SciPy and <code>statsmodels</code> will produce the following plot:</p>
+<figure>
+<img src="../media/file108.jpg" alt="Figure 8.20: QQ-plot comparing the taxi passenger data against a hypothetical normal distribution" width="1377" height="315"/><figcaption aria-hidden="true">Figure 8.20: QQ-plot comparing the taxi passenger data against a hypothetical normal distribution</figcaption>
+</figure>
+<p>The solid line represents a reference line for what normally distributed data would look like. If the data you are comparing is normally distributed, all the points will lie on that straight line. In <em>Figure 8.19</em>, we can see that the distribution is almost normal (not perfect), and we see issues toward the distribution's tails. This also aligns with what we have seen in <em>Figure 8.16</em> and <em>Figure 8.13,</em> showing the majority of the outliers are at the bottom tail end (less than <code>-2</code> standard deviation).</p>
+</section>
+<section id="see-also-37" class="level3" data-number="9.8.4">
+<h3 data-number="9.8.4">See also</h3>
+<p>To learn more about MAD, you can refer to the Wikipedia page here: <a href="https://en.wikipedia.org/wiki/Median_absolute_deviation">https://en.wikipedia.org/wiki/Median_absolute_deviation</a>.</p>
+</section>
+</section>
+</section>
+</div>
+</div>
+</body>
+</html>

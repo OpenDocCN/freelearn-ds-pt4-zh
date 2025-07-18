@@ -1,0 +1,1031 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+lang="en"
+xmlns="http://www.w3.org/1999/xhtml"
+xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Time Series Analysis with Python Cookbook, 2E - Second Edition</title>
+<link rel="stylesheet" type="text/css" href="../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/><link rel="stylesheet" type="text/css" href="../styles/stylesheet2.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content"><section id="exploratory-data-analysis-and-diagnosis" class="level1 pkt" data-number="10">
+<h1 data-number="10">9 Exploratory Data Analysis and Diagnosis</h1>
+<section id="join-our-book-community-on-discord-8" class="level2" data-number="10.1">
+<h2 data-number="10.1">Join our book community on Discord</h2>
+<p>
+<img style="width:15rem" src="../media/file0.png" width="200" height="200"/>
+</p>
+<p><a href="https://packt.link/zmkOY">https://packt.link/zmkOY</a></p>
+<p>So far, we have covered techniques to extract data from various sources. This was covered in <em>Chapter 2</em>, <em>Reading Time Series Data from Files</em>, and <em>Chapter 3</em>, <em>Reading Time Series Data from Databases</em>. <em>Chapter 6</em>, <em>Working with Date and Time in Python</em>, and <em>Chapter 7</em>, <em>Handling Missing Data</em>, covered several techniques to help prepare, clean, and adjust data.</p>
+<p>You will continue to explore additional techniques to better understand the time series process behind the data. Before modeling the data or doing any further analysis, an important step is to inspect the data at hand. More specifically, there are specific time series characteristics that you need to check for, such as stationarity, effects of trend and seasonality, and autocorrelation, to name a few. These characteristics that describe the time series process you are working with need to be combined with domain knowledge behind the process itself.</p>
+<p>This chapter will build on what you have learned from previous chapters to prepare you for creating and evaluating forecasting models starting from <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods</em>.</p>
+<p>In this chapter, you will learn how to visualize time series data, decompose a time series into its components (trend, seasonality, and the residual random process), test for different assumptions that your models may rely on (such as stationarity, normality, and homoskedasticity), and explore techniques to transform the data to satisfy some of these assumptions.</p>
+<p>The recipes that you will encounter in this chapter are as follows:</p>
+<ul>
+<li>Plotting time series data using pandas</li>
+<li>Plotting time series data with interactive visualizations using hvPlot</li>
+<li>Decomposing time series data</li>
+<li>Detecting time series stationarity</li>
+<li>Applying power transformations</li>
+<li>Testing for autocorrelation in time series data</li>
+</ul>
+</section>
+<section id="technical-requirements-8" class="level2" data-number="10.2">
+<h2 data-number="10.2">Technical requirements</h2>
+<p>You can download the Jupyter notebooks and datasets needed from the GitHub repository to follow along:</p>
+<ul>
+<li>Jupyter notebooks: <a href="https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch9/Chapter%209.ipynb">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch9/Chapter%209.ipynb</a></li>
+<li>Datasets: <a href="ch010.xhtml">https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch9</a></li>
+</ul>
+<p>In this chapter and onward, we will extensively use pandas 2.2.0 (released Jan 20, 2024). This applies to all the recipes in the chapter.</p>
+<p>There are four additional libraries that we will be using:</p>
+<ul>
+<li><code>hvplot</code> and <code>PyViz</code></li>
+<li><code>seaborn</code></li>
+<li><code>matplotlib</code></li>
+</ul>
+<p>If you are using <code>pip</code>, then you can install these packages from your terminal with the following:</p>
+<div class="C0-SHConPACKT">
+<pre><code>pip install hvplot seaborn matplotlib jupyterlab</code></pre>
+</div>
+<p>If you are using <code>conda</code>, then you can install these packages with the following:</p>
+<div class="C0-SHConPACKT">
+<pre><code>conda install jupyterlab matplotlib seaborn
+conda install -c pyviz hvplot</code></pre>
+</div>
+<p>The <strong>HvPlot</strong> library will be used to build interactive visualizations in JupyterLab. If you are on the latest version of <strong>JupyterLab</strong> (<code>jupyterlab &gt;= 3.0</code>) then all the required extensions are automatically installed as they are bundled in the <code>pyviz_comms</code> package. If you are on an older version of JupyterLab (<code>jupyterlab &lt; 3.0</code>) then you will need to install <code>jupyterlab_pyviz</code> extension manually as shown:</p>
+<div class="C0-SHConPACKT">
+<pre><code>jupyter labextension install @pyviz/jupyterlab_pyviz</code></pre>
+</div>
+<p>Throughout this chapter, you will be using three datasets (<code>Closing Price Stock Data</code>, <code>CO2</code>, and <code>Air Passengers</code>). The CO2 and Air Passengers datasets are provided with the <code>statsmodels</code> library. The Air Passengers dataset contains monthly airline passenger numbers from 1949 to 1960. The CO2 dataset contains weekly atmospheric carbon dioxide levels on Mauna Loa from 1958 to 2001. The Closing Price Stock Data dataset includes Microsoft, Apple, and IBM stock prices from November 2019 to November 2021.</p>
+<p>To get started, you will need to load the datasets and store them as pandas DataFrames and load any libraries or methods that are needed throughout:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>import pandas as pd
+from pathlib import Path
+import matplotlib.pyplot as plt
+from statsmodels.datasets import co2, get_rdataset
+file = Path(‘../../datasets/Ch9/closing_price.csv’)
+closing_price = pd.read_csv(file,
+                            index_col=‘Date’,
+                            parse_dates=True)
+co2_df = co2.load_pandas().data
+co2_df = co2_df.ffill()
+air_passengers = get_rdataset(“AirPassengers”)
+airp_df = air_passengers.data
+airp_df.index = pd.date_range(‘1949’, ‘1961’, freq=‘M’)
+airp_df.drop(columns=[‘time’], inplace=True)</code></pre>
+</div>
+<p>Now, you should have three DataFrames: <code>airp_df</code>, <code>closing_price</code>, and <code>co2_df</code>.</p>
+</section>
+<section id="plotting-time-series-data-using-pandas" class="level2" data-number="10.3">
+<h2 data-number="10.3">Plotting time series data using pandas</h2>
+<p>Visualization is a crucial aspect of data analysis, becoming even more significant when dealing with time series data. In previous chapters and recipes, you have encountered numerous instances where plotting the data was essential to highlight specific points or to draw conclusions about the time series. Visualizing our time series data enables us to easily identify patterns, trends, outliers, and other critical information at a glance. Furthermore, data visualization facilitates communication across different groups and can help bridge the gap between various stakeholders (such as business professionals and data scientists) by providing a common platform for communication and fostering constructive dialogue.</p>
+<p>In time series analysis, as well as in machine learning at large, we prioritize visualizing our data during exploratory data analysis (EDA) to gain a comprehensive understanding of the data we’re working with. We also depend on visualization when evaluating our models, comparing their performance, and identifying areas for improvement. Visualization plays a key role in model explainability, allowing stakeholders to grasp how models make predictions. Furthermore, after deploying our models, we rely on visualizations for ongoing monitoring, looking for any indications of performance degradation, such as model drift.</p>
+<p>The pandas library offers built-in plotting capabilities for visualizing data stored in a DataFrame or Series data structures. In the backend, these visualizations are powered by the <strong>Matplotlib</strong> library, which is also the default option.</p>
+<p>The pandas library offers many convenient methods to plot data. Simply calling <code>DataFrame.plot()</code> or <code>Series.plot()</code> will generate a line plot by default. You can change the type of the plot in two ways:</p>
+<ul>
+<li>Using the <code>kind</code> argument in the <code>plot</code> method as in<code>.plot(kind=“&lt;charttype&gt;“)</code> to specify the type of plot by replacing <code>&lt;charttype&gt;</code> with a chart type. For example, <code>.plot(kind=“hist”)</code> will plot a histogram while <code>.plot(kind=“bar”)</code> will produce a bar plot.</li>
+<li>Alternatively, you can extend<code> </code>the <code>plot</code> method. This can be achieved by chaining a specific plot function, such as <code>.hist()</code> or <code>.scatter()</code>, for example, using <code>.plot.hist()</code> or <code>.plot.line()</code>.</li>
+</ul>
+<p>This recipe will use the standard pandas <code>.plot()</code> method with Matplotlib backend support.</p>
+<section id="getting-ready-27" class="level3" data-number="10.3.1">
+<h3 data-number="10.3.1">Getting ready</h3>
+<p>You can download the Jupyter notebooks and datasets needed from the GitHub repository. Please refer to the <em>Technical requirements</em> section of this chapter.</p>
+<p>You will be using the <code>Closing Price Stock </code>dataset for Microsoft, Apple, and IBM, which you can find in the <code>closing_price.csv</code> file.</p>
+</section>
+<section id="how-to-do-it-33" class="level3" data-number="10.3.2">
+<h3 data-number="10.3.2">How to do it…</h3>
+<p>In this recipe, you will explore how to plot time series data, change themes, produce subplots, and customize the output visualization:</p>
+<ol>
+<li>Plotting in pandas can be done by simply adding <code>.plot()</code> to the end of the DataFrame or Series name:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>closing_price.plot();</code></pre>
+</div>
+<p>This will produce a line plot, which is the default option for the <code>kind</code> parameter, which looks like <code>.plot(kind=“line”)</code>:</p>
+<figure>
+<img src="../media/file110.png" alt="Figure 9.1: Multiline time series plot using pandas" width="2032" height="850"/><figcaption aria-hidden="true">Figure 9.1: Multiline time series plot using pandas</figcaption>
+</figure>
+<p>You can customize the plot further by adding a title, update the axes labels, and customizing the <em>x</em> ticks and <em>y</em> ticks, to name a few. To add a title to the plot and update the y-axis label use the <code>title</code> and <code>ylabel</code> parameters as shown:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>start_date = ‘2019’
+end_date = ‘2021’
+closing_price.plot(
+          title=f’Closing Prices from {start_date} – {end_date}’,
+          ylabel= ‘Closing Price’);</code></pre>
+</div>
+<ol>
+<li>If you want to see how the prices fluctuate (up or down) in comparison to each other, one easy approach is to <strong>normalize</strong> the data. To accomplish this, just divide the stock prices by the first-day price (first row) for each stock. This will make all the stocks have the same starting point:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>closing_price_n = closing_price.div(closing_price.iloc[0])
+closing_price_n.plot(
+            title=f’Closing Prices from {start_date} – {end_date}’,
+            ylabel= ‘Normalized Closing Price’);</code></pre>
+</div>
+<p>This would produce the following plot:</p>
+<figure>
+<img src="../media/file111.jpg" alt="Figure 9.2: Using a simple normalizing technique to make it visually easier to compare price fluctuations" width="1008" height="448"/><figcaption aria-hidden="true">Figure 9.2: Using a simple normalizing technique to make it visually easier to compare price fluctuations</figcaption>
+</figure>
+<p>From the output, you can observe that the lines now have the same starting point (origin), set to <code>1</code>. The plot shows how the prices in the time series plot deviate from each other:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>closing_price_n.head()</code></pre>
+</div>
+<p>Notice that the first row from the output table is set to <code>1.0</code>:</p>
+<figure>
+<img src="../media/file112.jpg" alt="Figure 9.3: Output of normalized time series with a common starting point at 1" width="627" height="372"/><figcaption aria-hidden="true">Figure 9.3: Output of normalized time series with a common starting point at 1</figcaption>
+</figure>
+<ol>
+<li>Additionally, Matplotlib allows you to change the style of the plots. To do that, you can use the <code>style.use()</code> function. You can specify a style name from an existing template or use a custom style. For example, the following code shows how you can change from the <code>default</code> style to the <code>ggplot</code> style:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plt.style.use('ggplot')
+closing_price_n.plot(
+          title=f'Closing Prices from {start_date} - {end_date}',
+          ylabel= 'Normalized Closing Price');</code></pre>
+</div>
+<p>The preceding code should produce the same plot in terms of data content but a different style.</p>
+<figure>
+<img src="../media/file113.jpg" alt="Figure 9.4: Using the ggplot style from Matplotlib" width="1270" height="557"/><figcaption aria-hidden="true">Figure 9.4: Using the ggplot style from Matplotlib</figcaption>
+</figure>
+<p>The <code>ggplot</code> style was inspired by the <code>ggplot2</code> package from <strong>R</strong>.</p>
+<p>You can explore other attractive styles: <code>fivethirtyeight</code>, which is inspired by <strong>fivethirtyeight.com</strong>, <code>dark_background</code>, <code>dark-background</code>, and <code>tableau-colorblind10</code>.</p>
+<p>For a comprehensive list of available style sheets, you can reference the Matplotlib documentation here: <a href="https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html.">https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html.</a></p>
+<p>If you want to revert to the original theme, you specify <code>plt.style.use("default")</code>.</p>
+<ol>
+<li>You can save your plots as a jpeg, png, svg or other file types. For example, you can save your file as a <code>plot_1.jpg</code> file with <code>.savefig()</code> method and specify dpi to be at a higher resolution for printing quality. The default dpi is 100:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>plot = closing_price_n.plot(
+            title=f'Closing Prices from {start_date} - {end_date}',
+            ylabel= 'Norm. Price')
+plot.get_figure().savefig('plot_1.jpg', dpi=300)</code></pre>
+</div>
+<p>The plot should be saved as a <code>plot_1.jpg</code> image file on your local directory.</p>
+</section>
+<section id="how-it-works-32" class="level3" data-number="10.3.3">
+<h3 data-number="10.3.3">How it works…</h3>
+<p>There is good collaboration between the pandas and Matplotlib libraries, with an ambition to integrate and add more plotting capabilities within pandas.</p>
+<p>There are many plotting styles that you can use within pandas simply by providing a value to the <code>kind</code> argument. For example, you can specify the following:</p>
+<ul>
+<li><code>line</code> for line charts commonly used to display time series</li>
+<li><code>bar</code> or <code>barh</code> (horizontal) for bar plots</li>
+<li><code>hist</code> for histogram plots</li>
+<li><code>box</code> for boxplots</li>
+<li><code>kde</code> or <code>density</code> for kernel density estimation plots</li>
+<li><code>area</code> for area plots</li>
+<li><code>pie</code> for pie plots</li>
+<li><code>scatter</code> for scatter plots</li>
+<li><code>hexbin</code> for hexagonal bin plots</li>
+</ul>
+</section>
+<section id="theres-more-31" class="level3" data-number="10.3.4">
+<h3 data-number="10.3.4">There's more…</h3>
+<p>As observed in the previous section, we plotted all three columns in the time series in one plot (three line charts in the same plot). What if you want each symbol (column) plotted separately?</p>
+<p>This can be done by simply changing the <code>subplots</code> parameter to <code>True</code>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>closing_price.plot(
+           subplots=True,
+           title=f'Closing Prices from {start_date} - {end_date}');</code></pre>
+</div>
+<p>The preceding code will generate a subplot for each column in the DataFrame. Using the <code>closing_price</code> DataFrame, this will generate three subplots.</p>
+<figure>
+<img src="../media/file114.jpg" alt="Figure 9.5: Using the pandas subplot feature" width="1332" height="629"/><figcaption aria-hidden="true">Figure 9.5: Using the pandas subplot feature</figcaption>
+</figure>
+</section>
+<section id="see-also-38" class="level3" data-number="10.3.5">
+<h3 data-number="10.3.5">See also</h3>
+<p>To learn more about pandas charting and plotting capabilities, please visit the official documentation here: <a href="https://pandas.pydata.org/pandas-docs/stable/user_guide/visualization.html">https://pandas.pydata.org/pandas-docs/stable/user_guide/visualization.html</a>.</p>
+</section>
+</section>
+<section id="plotting-time-series-data-with-interactive-visualizations-using-hvplot" class="level2" data-number="10.4">
+<h2 data-number="10.4">Plotting time series data with interactive visualizations using hvPlot</h2>
+<p>Interactive visualizations allow us to analyze data more efficiently compared to static visuals. Simple interactions, such as zooming in and out or slicing through the visual, can unearth additional insights for further investigation.</p>
+<p>In this recipe, we will explore the <strong>hvPlot</strong> library to create interactive visualizations. HvPlot offers a high-level API for data visualization and integrates seamlessly with various data sources, including pandas, Xarray, Dask, Polars, NetworkX, Streamlit, and GeoPandas. Utilizing hvPlot with pandas for rendering interactive visualizations requires minimal effort, allowing you to create dynamic visualizations with few modifications to the original code. We will use the 'closing_price.csv' dataset to explore the capabilities of the library in this recipe.</p>
+<section id="getting-ready-28" class="level3" data-number="10.4.1">
+<h3 data-number="10.4.1">Getting ready</h3>
+<p>You can download the Jupyter notebooks and datasets needed from the GitHub repository. Please refer to the <em>Technical requirements</em> section of this chapter.</p>
+</section>
+<section id="how-to-do-it-34" class="level3" data-number="10.4.2">
+<h3 data-number="10.4.2">How to do it…</h3>
+<ol>
+<li>Start by importing the libraries needed. Notice that hvPlot has a pandas extension, which makes it more convenient. This will allow you to use the same syntax as in the previous recipe:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>import pandas as pd
+import hvplot.pandas
+import hvplot as hv
+closing_price_n = closing_price.div(closing_price.iloc[0])</code></pre>
+</div>
+<p>When plotting using pandas, you would use the <code>.plot()</code> method, for example, <code>closing_price_n.plot()</code>. Similarly, hvPlot allows you to render an interactive plot simply by substituting <code>.plot()</code> with <code>.hvplot()</code>. This can be useful if you have a dense chart in terms of content. You can zoom in to a specific portion of the chart and then, with the panning feature, move to different portions of the chart:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>closing_price_n.hvplot(
+    title=f'Closing Prices from {start_date} - {end_date}')</code></pre>
+</div>
+<p>By substituting <code>.plot</code> with <code>.hvplot</code>, you get an interactive visualization with a hover effect:</p>
+<figure>
+<img src="../media/file115.png" alt="Figure 9.6: hvPlot interactive visualization" width="1422" height="602"/><figcaption aria-hidden="true">Figure 9.6: hvPlot interactive visualization</figcaption>
+</figure>
+<p>The same result could be accomplished simply by switching the pandas plotting backend. The default backend is <code>matplotlib</code>. To switch it to hvPlot, you can just update <code>backend='hvplot'</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>closing_price_n.plot(
+    backend='hvplot',
+    title=f'Closing Prices from {start_date} - {end_date}'
+)</code></pre>
+</div>
+<p>This should produce the same plot as in <em>Figure 9.6</em>.</p>
+<p>Notice the widget bar to the right, which has a set of modes for interaction, including pan, box zoom, wheel zoom, save, reset, and hover.</p>
+<figure>
+<img src="../media/file116.jpg" alt="Figure 9.7: Widget bar with six modes of interaction" width="245" height="488"/><figcaption aria-hidden="true">Figure 9.7: Widget bar with six modes of interaction</figcaption>
+</figure>
+<ol>
+<li>You can split each time series into separate plots per symbol (column). For example, to split into three columns one for each symbol (or ticker): MSFT, AAPL, and IBM. <strong>Subplotting</strong> can be done by specifying <code>subplots=True</code>:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>closing_price.hvplot(width=300, subplots=True)</code></pre>
+</div>
+<p>This should produce a subplot for each column:</p>
+<figure>
+<img src="../media/file117.png" alt="Figure 9.8: hvPlot subplot example" width="1830" height="674"/><figcaption aria-hidden="true">Figure 9.8: hvPlot subplot example</figcaption>
+</figure>
+<p>You can use the <code>.cols()</code> method for more control over the layout. The method allows you to control the number of plots per row. For example, <code>.cols(1)</code> means one plot per row, whereas <code>.cols(2)</code> indicates two plots per line:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>closing_price.hvplot(width=300, subplots=True).cols(2)</code></pre>
+</div>
+<p>This should produce a figure with two subplots in the first row and the third subplot on the second row, as follows:</p>
+<figure>
+<img src="../media/file118.png" alt="Figure 9.9: Example hvPlot with two columns per row using .col(2)" width="1220" height="1338"/><figcaption aria-hidden="true">Figure 9.9: Example hvPlot with two columns per row using .col(2)</figcaption>
+</figure>
+<p>Keep in mind that the <code>.cols()</code> method only works if the <code>subplots</code> parameter is set to <code>True</code>. Otherwise, you will get an error.</p>
+</section>
+<section id="how-it-works-33" class="level3" data-number="10.4.3">
+<h3 data-number="10.4.3">How it works…</h3>
+<p>Given the widespread use of pandas, it's notable that many libraries now integrate with pandas DataFrames and Series as inputs. Additionally, the integration between Matplotlib and hvPlot simplifies the process of changing the plotting engine used with pandas.</p>
+<p>HvPlot provides several convenient options for plotting your DataFrame: you can switch the backend easily, extend pandas functionality using <code>DataFrame.hvplot()</code>, or leverage hvPlot's native API for more advanced visualizations.</p>
+</section>
+<section id="theres-more-32" class="level3" data-number="10.4.4">
+<h3 data-number="10.4.4">There's more…</h3>
+<p>hvPlot allows you to use two arithmetic operators, <code>+</code> and <code>*</code>, to configure the layout of the plots.</p>
+<p>The plus sign (<code>+</code>) allows you to add two charts side by side, while multiply (<code>*</code>) will enable you to combine charts (merge one graph with another). In the following example, we will add two plots, so they are aligned side by side on the same row:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>(closing_price_n['AAPL'].hvplot(width=400) +
+ closing_price_n['MSFT'].hvplot(width=400))</code></pre>
+</div>
+<p>This should produce what is shown in the following figure:</p>
+<figure>
+<img src="../media/file119.png" alt="Figure 9.10: Two plots side by side using the addition operator" width="1614" height="656"/><figcaption aria-hidden="true">Figure 9.10: Two plots side by side using the addition operator</figcaption>
+</figure>
+<p>Notice that the two plots will share the same widget bar. If you filter or zoom into one of the charts, the other chart will have the same action applied.</p>
+<p>Now, let's see how multiplication will combine the two plots into one:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>(closing_price_n['AAPL'].hvplot(width=500, height=300) *
+ closing_price_n['MSFT'].hvplot()).opts(legend_position='top_left')</code></pre>
+</div>
+<p>The preceding code should produce one plot that combines both AAPL and MSFT:</p>
+<figure>
+<img src="../media/file120.png" alt="Figure 9.11: Two plots combined into one using the multiplication operator" width="1028" height="610"/><figcaption aria-hidden="true">Figure 9.11: Two plots combined into one using the multiplication operator</figcaption>
+</figure>
+<p>Lastly, to create subgroups (akin to a 'group by' operation) where each group is represented by a different color, you can use the by parameter as demonstrated below:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>closing_price['AAPL'].hvplot.line(by=['index.year'])</code></pre>
+</div>
+<p>This code generates a line chart, as expected, segmented by year (grouped by) as shown in Figure 9.12:</p>
+<figure>
+<img src="../media/file121.png" alt="Figure 9.12: Line chart with subgroups (by year)." width="1412" height="604"/><figcaption aria-hidden="true">Figure 9.12: Line chart with subgroups (by year).</figcaption>
+</figure>
+<p>Given that we have data spanning three years, you will observe three distinct colors on the chart, each corresponding to a different year, as indicated by the legend.</p>
+</section>
+<section id="see-also-39" class="level3" data-number="10.4.5">
+<h3 data-number="10.4.5">See also</h3>
+<p>For more information on hvPlot, please visit their official page here: <a href="https://hvplot.holoviz.org/">https://hvplot.holoviz.org/</a>.</p>
+</section>
+</section>
+<section id="decomposing-time-series-data" class="level2" data-number="10.5">
+<h2 data-number="10.5">Decomposing time series data</h2>
+<p>When conducting time series analysis, one key objective often involves forecasting, where you build a model capable of making future predictions. Before starting the modeling process, it is crucial to extract the components of the time series for analysis. This step is essential for making informed decisions throughout the modeling process.</p>
+<p>A time series typically comprises of <strong>three</strong> main components: trend, seasonality, and the residual random process. For statistical models that require the time series to be stationary, estimating and subsequently removing the trend and seasonality components from the time series might be necessary. Techniques and libraries for time series decomposition generally provide visual representations and identification of the trend, seasonality, and the residual random process.</p>
+<p>The <strong>trend</strong> component reflects the long-term direction of the time series, which can be upward, downward, or horizontal. For instance, a sales data time series might exhibit an upward trend, indicating increasing sales over time. <strong>Seasonality</strong> refers to patterns that repeat over specific intervals, such as an annual increase in sales around Christmas, a pattern that recurs each year as the holiday season approaches. The <strong>residual</strong> random process represents the portion of the time series that remains once the trend and seasonality have been extracted, encompassing the unexplained variability in the data.</p>
+<p>The <strong>decomposition</strong> of a time series is the process of separating it into the three components and estimating the trend and seasonality components as their respective models. The modeling of the decomposed components can be either <strong>additive</strong> or <strong>multiplicative</strong> depending on the nature of the interaction between the components.</p>
+<p>When you have an <em>additive</em> model the original time series can be reconstructed by adding all three components together:</p>
+<figure>
+<img style="width:15rem" src="../media/file122.jpg" width="337" height="55"/>
+</figure>
+<p>An additive decomposition model is reasonable when the seasonal variations do not change over time. On the other hand, if the time series can be reconstructed by multiplying all three components, you have a <em>multiplicative</em> model:</p>
+<figure>
+<img style="width:15rem" src="../media/file123.jpg" width="334" height="55"/>
+</figure>
+<p>A <em>multiplicative</em> model is suitable when the seasonal variation fluctuates over time.</p>
+<p>Furthermore, you can group these into predictable versus non-predictable components. Predictable components are consistent, repeating patterns that can be captured and modeled. Seasonality and trend are examples. On the other hand, every time series has an unpredictable component that shows irregularity, often called <strong>noise</strong>, though it is referred to as <strong>residual</strong> in the context of decomposition.</p>
+<p>In this recipe, you will explore different techniques for <strong>decomposing</strong> your time series using the <code>seasonal_decompose</code>, <strong>Seasonal-Trend decomposition with LOESS</strong> (<code>STL</code>), and <code>hp_filter</code> methods available in the <code>statsmodels</code> library.</p>
+<section id="getting-ready-29" class="level3" data-number="10.5.1">
+<h3 data-number="10.5.1">Getting ready</h3>
+<p>You can download the Jupyter notebooks and datasets needed from the GitHub repository. Please refer to the <em>Technical requirements</em> section of this chapter.</p>
+</section>
+<section id="how-to-do-it-35" class="level3" data-number="10.5.2">
+<h3 data-number="10.5.2">How to do it…</h3>
+<p>You will explore two methods available in the statsmodels library: seasonal_decompose and STL.</p>
+<section id="using-seasonal_decompose" class="level4" data-number="10.5.2.1">
+<h4 data-number="10.5.2.1">Using seasonal_decompose</h4>
+<p>The <code>seasonal_decompose</code> function relies on moving average to decompose a time series. You will be working with the CO2 and Air Passenger datasets from the <em>Technical requirements</em> section.</p>
+<ol>
+<li>Import the libraries needed and set <code>rcParams</code> for the visuals to make them large enough. Generally, plots produced by statsmodels are small. You can fix this by adjusting <code>rcParams</code> for <code>figure.figsize</code> to apply for all the plots in this recipe:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.tsa.seasonal import seasonal_decompose, STL
+plt.rcParams["figure.figsize"] = [10, 5]</code></pre>
+</div>
+<p>This will make all the charts in the notebook the same size: width at 10 inches and height at 3 inches (<em>W x H</em>).</p>
+<p>You can apply a style such as the grayscale theme</p>
+<div class="C1-SHCodePACKT">
+<pre><code>plt.style.use('grayscale')</code></pre>
+</div>
+<ol>
+<li>You can decompose both datasets using the <code>seasonal_decompose()</code> function. But before doing so, you should plot your time series to understand whether the seasonality shows <em>multiplicative</em> or <em>additive</em> behavior:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>co2_df.plot(title=co2.TITLE);</code></pre>
+</div>
+<p>This should display a line chart showing weekly carbon dioxide levels measured in <strong>parts per million</strong> (<strong>ppm</strong>) from 1960 to 2000. When using the <code>.plot()</code> method, the default chart type is a line chart with the <code>kind="line"</code> parameter. For more information about pandas' plotting capabilities, refer to the <em>Plotting time series data using pandas recipe</em>.</p>
+<figure>
+<img src="../media/file124.png" alt="Figure 9.13: The CO2 dataset showing an upward trend and constant seasonal variation" width="1654" height="894"/><figcaption aria-hidden="true">Figure 9.13: The CO2 dataset showing an upward trend and constant seasonal variation</figcaption>
+</figure>
+<p>The <code>co2_df</code> data shows a long-term linear trend (upward), with a repeated seasonal pattern at a constant rate (seasonal variation). This indicates that the CO2 dataset is an additive model.</p>
+<p>Similarly, you can explore the <code>airp_df</code> DataFrame for the Air Passengers dataset to observe whether the seasonality shows <em>multiplicative</em> or <em>additive</em> behavior:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>airp_df['value'].plot(title=air_passengers['title']);</code></pre>
+</div>
+<p>This should produce a line chart showing the number of passengers per month from 1949 to 1960:</p>
+<figure>
+<img src="../media/file125.png" alt="Figure 9.14: The Air Passengers dataset showing trend and increasing seasonal variation" width="1654" height="892"/><figcaption aria-hidden="true">Figure 9.14: The Air Passengers dataset showing trend and increasing seasonal variation</figcaption>
+</figure>
+<p>The <code>airp_df</code> data shows a long-term linear trend and seasonality (upward). However, the seasonality fluctuations seem to be increasing as well, indicating a multiplicative model.</p>
+<ol>
+<li>Use <code>seasonal_decompose</code> on the two datasets. For the CO2 data, use an additive model and a multiplicative model for the air passenger data:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>co2_decomposed = seasonal_decompose(co2_df,model='additive')
+air_decomposed = seasonal_decompose(airp_df,model='multiplicative')</code></pre>
+</div>
+<p>Both <code>co2_decomposed</code> and <code>air_decomposed</code> have access to several methods, including <code>.trend</code>, <code>.seasonal</code>, and <code>.resid</code>. You can plot all three components by using the <code>.plot()</code> method:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>air_decomposed.plot();</code></pre>
+</div>
+<p>The following plot is the result:</p>
+<figure>
+<img src="../media/file126.png" alt="Figure 9.15: Air Passengers multiplicative decomposed into trend, seasonality, and residual" width="2086" height="978"/><figcaption aria-hidden="true">Figure 9.15: Air Passengers multiplicative decomposed into trend, seasonality, and residual</figcaption>
+</figure>
+<p>Let's break down the resulting plot into four parts:</p>
+<ol>
+<li>This is the original observed data that we are decomposing.</li>
+<li>The <em>trend</em> component shows an upward direction. The trend indicates whether there is positive (increasing or upward), negative (decreasing or downward), or constant (no trend or horizontal) long-term movement.</li>
+<li>The <em>seasonal</em> component shows the seasonality effect in terms of a repeating pattern of highs and lows.</li>
+<li>Finally, the <em>residual</em> (sometimes called <em>noise</em>) component shows the random variation in the data after removing trend and seasonality. In this case, a multiplicative model was used.</li>
+</ol>
+<p>Similarly, you can plot the decomposition of the CO2 dataset:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>co2_decomposed.plot();</code></pre>
+</div>
+<p>This should produce the following plots:</p>
+<figure>
+<img src="../media/file127.png" alt="Figure 9.16: CO2 additive decomposition into trend, seasonality, and residual" width="1978" height="972"/><figcaption aria-hidden="true">Figure 9.16: CO2 additive decomposition into trend, seasonality, and residual</figcaption>
+</figure>
+<ol>
+<li>When reconstructing the time series, for example, in a multiplicative model, you will be multiplying the three components. To demonstrate this concept, use <code>air_decomposed</code>, an instance of the <code>DecomposeResult</code> class. The class provides the <code>seasonal</code>, <code>trend</code>, and <code>resid</code> attributes as well as the <code>.plot()</code> method.</li>
+</ol>
+<p>In the following code, you can multiply the components to reconstruct the time series:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>(air_decomposed.trend *
+ air_decomposed.seasonal *
+ air_decomposed.resid).plot() ;</code></pre>
+</div>
+<p>It gives the following plot as output:</p>
+<figure>
+<img src="../media/file128.png" alt="Figure 9.17: Reconstructing the Air Passengers time series dataset" width="1648" height="838"/><figcaption aria-hidden="true">Figure 9.17: Reconstructing the Air Passengers time series dataset</figcaption>
+</figure>
+</section>
+<section id="using-stl" class="level4" data-number="10.5.2.2">
+<h4 data-number="10.5.2.2">Using STL</h4>
+<p>Another decomposition option within <code>statsmodels</code> is <strong>STL</strong>. STL Stands for <em>Seasonal-Trend decomposition using LOESS</em> which is a more advanced decomposition technique. In statsmodels, the <code>STL</code> class requires additional parameters than the <code>seasonal_decompose</code> function. The two other parameters you will use are <code>seasonal</code> and <code>robust</code>. The <code>seasonal</code> parameter is for the seasonal smoother and can <em>only take odd integer values greater than or equal to 7</em>. Similarly, the <code>STL</code> function has a trend smoother (the <code>trend</code> parameter).</p>
+<p>The second parameter is <code>robust</code>, which takes a Boolean value (<code>True</code> or <code>False</code>). Setting <code>robust=True</code> helps remove the impact of outliers on seasonal and trend components when calculated.</p>
+<ol>
+<li>You will use <code>STL</code> to decompose the <code>co2_df</code> DataFrame:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>co2_stl = STL(
+    co2_df,
+    seasonal=13,
+    robust=True).fit()
+co2_stl.plot(); plt.show()</code></pre>
+</div>
+<p>This should produce similar subplots to the <code>seasonal_decompose</code> function, showing the trend, seasonality, and residuals:</p>
+<figure>
+<img src="../media/file129.png" alt="Figure 9.18: Decomposing the CO2 dataset with STL" width="1980" height="974"/><figcaption aria-hidden="true">Figure 9.18: Decomposing the CO2 dataset with STL</figcaption>
+</figure>
+<p>Compare the output in <code>Figure 9.16</code> to that in <code>Figure 9.18</code>.</p>
+<p>Notice when you used <code>STL</code>, you provided <code>seasonal=13</code> because the data has an annual seasonal effect. The seasonal argument takes only odd integers that are greater than or equal to 7.</p>
+<ol>
+<li>Both seasonal decomposition and STL produce an instance of DecomposeResult class which gives you access to residuals directly. You can compare the residuals from seasonal decomposition and STL from resid as shown:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 4))
+co2_stl.resid.plot(ax=ax1, title='Residual Plot from Seasonal Decomposition')
+co2_decomposed.resid.plot(ax=ax2, title='Residual Plot from STL');</code></pre>
+</div>
+<p>This should produce the following figure with two plots</p>
+<figure>
+<img src="../media/file130.png" alt="Figure 9.19: Comparing residual plots from seasonal decomposition and STL" width="2408" height="744"/><figcaption aria-hidden="true">Figure 9.19: Comparing residual plots from seasonal decomposition and STL</figcaption>
+</figure>
+<p>You will notice that the residual plots look different, indicating that both methods capture similar information using distinct mechanisms.</p>
+</section>
+</section>
+<section id="how-it-works-34" class="level3" data-number="10.5.3">
+<h3 data-number="10.5.3">How it works…</h3>
+<p>You used two different approaches for time series decomposition. Both methods decompose a time series into trend, seasonal, and residual components.</p>
+<p>The <code>STL</code> class uses the <strong>LOESS</strong> seasonal smoother, which stands for <strong>Locally Estimated Scatterplot Smoothing</strong>. <code>STL</code> is more robust than <code>seasonal_decompose</code> for measuring non-linear relationships. On the other hand, <code>STL</code> assumes additive composition, so you do not need to indicate a model, unlike with <code>seasonal_decompose</code>. Both approaches can extract seasonality from time series to better observe the overall trend in the data.</p>
+<p>The <code>seasonal_decompose</code> function performs the following <em>simplified</em> logic:</p>
+<ul>
+<li>Smooth the time series data to observe the trend. This is achieved by applying a convolution filter to estimate the trend.</li>
+<li>Once the trend is estimated, it is then removed from the time series (de-trended).</li>
+<li>The remaining de-trended time series is then averaged for each period or seasonal group. The seasonal averaging takes all data values in the time series corresponding to each season and averages them (for example, we take every January from each year and average that).</li>
+<li>Once the seasonal component is estimated, it is then removed, and you are left with the residuals.</li>
+</ul>
+<p>The <code>STL</code> function performs the following <em>simplified</em> logic:</p>
+<ul>
+<li>Similar to <code>seasonal_decompose</code>, the time series is smoothed to estimate the trend, but in STL, this is done using LOESS smoothing.</li>
+<li>Once the trend is estimated, it is then removed from the time series (de-trended).</li>
+<li>For the seasonal component, STL applies Loess smoothing to the de-trended data, but separately for each season.</li>
+<li>Once the seasonal component is estimated, it is then removed, and you are left with the residuals.</li>
+</ul>
+</section>
+<section id="theres-more-33" class="level3" data-number="10.5.4">
+<h3 data-number="10.5.4">There's more…</h3>
+<p>The <strong>Hodrick-Prescott filter</strong> is a smoothing filter that can be used to separate short-term fluctuations (cyclic variations) from long-term trends. This is implemented as <code>hp_filter</code> in the statsmodels library.</p>
+<p>Recall that <code>STL</code> and <code>seasonal_decompose</code> returned three components (trend, seasonal, and residual). On the other hand, <code>hp_filter</code> returns only two components: a <strong>cyclical component</strong> and a <strong>trend component</strong>.</p>
+<p>Start by importing the <code>hpfilter</code> function from the statsmodels library:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>from statsmodels.tsa.filters.hp_filter import hpfilter</code></pre>
+</div>
+<p>To decompose your time series into trend and cyclical components simply provide your time series DataFrame to the <code>hpfilter</code> function as shown:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>co2_cyclic, co2_trend = hpfilter(co2_df)</code></pre>
+</div>
+<p>The <code>hpfilter</code> function returns two pandas Series: the first Series is for the cycle and the second Series is for the trend. Plot <code>co2_cyclic</code> and <code>co2_trend</code> side by side to gain a better idea of what information the Hodrick-Prescott filter was able to extract from the data:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>fig, ax = plt.subplots(1,2, figsize=(16, 4))
+co2_cyclic.plot(ax=ax[0], title='CO2 Cyclic Component')
+co2_trend.plot(ax=ax[1], title='CO2 Trend Component');</code></pre>
+</div>
+<p>This should produce two subplots on the same row (side by side), as shown:</p>
+<figure>
+<img src="../media/file131.png" alt="Figure 9.20: Cyclical and trend components using the Hedrick-Prescott filter" width="2578" height="752"/><figcaption aria-hidden="true">Figure 9.20: Cyclical and trend components using the Hedrick-Prescott filter</figcaption>
+</figure>
+<p>Note that the two components from <code>hpfilter</code> are <strong>additive</strong>. In other words, to reconstruct the original time series, you would add <code>co2_cyclic</code> and <code>co2_trend</code></p>
+<div class="C0-SHCodePACKT">
+<pre><code>(co2_cyclic + co2_trend).plot();</code></pre>
+</div>
+<figure>
+<img src="../media/file132.png" alt="Figure 9.21: Reconstructing the CO2 dataset from the trend and cyclical components given by hpfilter function" width="1668" height="858"/><figcaption aria-hidden="true">Figure 9.21: Reconstructing the CO2 dataset from the trend and cyclical components given by hpfilter function</figcaption>
+</figure>
+<p>You can compare the reconstructed CO2 plot form the trend and cyclical components in Figure 9.21 with the original CO2 plot in Figure 9.13.</p>
+</section>
+<section id="see-also-40" class="level3" data-number="10.5.5">
+<h3 data-number="10.5.5">See also</h3>
+<ul>
+<li>To learn more about <code>hpfilter(),</code> please visit the official documentation page here: <a href="https://www.statsmodels.org/dev/generated/statsmodels.tsa.filters.hp_filter.hpfilter.html#statsmodels.tsa.filters.hp_filter.hpfilter">https://www.statsmodels.org/dev/generated/statsmodels.tsa.filters.hp_filter.hpfilter.html#statsmodels.tsa.filters.hp_filter.hpfilter</a>.</li>
+<li>To learn more about <code>seasonal_decompose(),</code> please visit the official documentation page here: <a href="https://www.statsmodels.org/dev/generated/statsmodels.tsa.seasonal.seasonal_decompose.html">https://www.statsmodels.org/dev/generated/statsmodels.tsa.seasonal.seasonal_decompose.html</a>.</li>
+<li>To learn more about <code>STL(),</code> please visit the official documentation page here: <a href="https://www.statsmodels.org/dev/generated/statsmodels.tsa.seasonal.STL.html#statsmodels.tsa.seasonal.STL">https://www.statsmodels.org/dev/generated/statsmodels.tsa.seasonal.STL.html#statsmodels.tsa.seasonal.STL</a>.</li>
+</ul>
+</section>
+</section>
+<section id="detecting-time-series-stationarity" class="level2" data-number="10.6">
+<h2 data-number="10.6">Detecting time series stationarity</h2>
+<p>Several time series forecasting techniques assume a <strong>stationary time</strong> series process. Thus, it is crucial to determine whether the time series you are working with (the observed time series or the realization that you have) originates from a <strong>stationary</strong> or <strong>non-stationary</strong> process.</p>
+<p>A stationary time series suggests that specific statistical properties do not change over time and remain steady, making the processes easier to model and predict. Conversely, a non-stationary process is more challenging to model due to its dynamic nature and variations over time (for example, in the presence of trend or seasonality).</p>
+<p>There are different approaches for defining stationarity; some are strict and may not be observable in real-world data, referred to as <strong>strong stationarity</strong>. In contrast, other definitions are more modest in their criteria and can be observed in real-world data (or transformed into), known as <strong>weak stationarity</strong>.</p>
+<p>In this recipe, and for practical reasons, the term stationarity implies “weak” stationary defined as a time series with a constant mean called <em>mu</em> (), a constant variance called <em>sigma squared</em> (), and a consistent covariance (or autocorrelation) between identical distanced periods (<em>lags</em>). Having the mean and variance as constants simplifies modeling since you are not solving for them as functions of time.</p>
+<p>Generally, a time series with trend or seasonality can be considered non-stationary. Usually, spotting trends or seasonality visually in a plot can help you determine whether the time series is stationary or not. In such cases, a simple line plot would suffice. But in this recipe, you will explore statistical tests to help you identify a stationary or non-stationary time series numerically. You will explore testing for stationarity and techniques for making a time series stationary.</p>
+<p>You will explore two statistical tests, the <strong>Augmented Dickey-Fuller</strong> (<strong>ADF</strong>) test and the <strong>Kwiatkowski-Phillips-Schmidt-Shin</strong> (<strong>KPSS</strong>) test, using the <code>statsmodels</code> library. Both ADF and KPSS test for unit roots in a univariate time series process. Note that unit roots are just one cause for a time series to be non-stationary, but generally, the presence of unit roots indicates non-stationarity.</p>
+<p>Both ADF and KPSS are based on linear regression and are a type of statistical hypothesis test. For example, the <strong>null hypothesis</strong> for ADF states that there is a unit root in the time series, and thus, it is non-stationary. On the other hand, KPSS has the opposite null hypothesis, which assumes the time series is stationary. Therefore, you will need to interpret the test results to determine whether you can reject or fail to reject the null hypothesis. Generally, you can rely on the p-values returned to decide whether you reject or fail to reject the null hypothesis.</p>
+<blockquote>
+<p>Remember, the interpretation for ADF and KPSS test results differs due to their opposite null hypotheses. If the p-value is less than the significance level (usually 0.05), you can reject the null hypothesis, suggesting the time series does not have a unit root and is likely <strong>stationary</strong>. If the p-value is less than the significance level in the KPSS test, it indicates you can reject the null hypothesis, suggesting the series is <strong>not stationary</strong>.</p>
+</blockquote>
+<section id="getting-ready-30" class="level3" data-number="10.6.1">
+<h3 data-number="10.6.1">Getting ready</h3>
+<p>You can download the Jupyter notebooks and datasets needed from the GitHub repository. Please refer to the <code>Technical requirements</code> section of this chapter.</p>
+<p>In this recipe, you will be using the CO2 dataset, which was previously loaded as a pandas DataFrame under the <code>Technical requirements</code> section of this chapter.</p>
+</section>
+<section id="how-to-do-it-36" class="level3" data-number="10.6.2">
+<h3 data-number="10.6.2">How to do it…</h3>
+<p>In addition to the visual interpretation of a time series plot to determine stationarity, a more concrete method would be to use one of the <em>unit root tests</em>, such as the ADF KPSS test.</p>
+<p>In <em>Figure 9.13</em>, you can spot an upward trend and a reoccurring seasonal pattern (annual). However, when trend or seasonality exists (in this case, both), it makes the time series non-stationary. It's not always this easy to identify stationarity or lack of it visually, and therefore, you will rely on statistical tests.</p>
+<p>You will use both the <code>adfuller</code> and <code>kpss</code> tests from the statsmodels library and interpret their results knowing they have opposite null hypotheses:</p>
+<ol>
+<li>Start by importing both the <code>adfuller</code> and <code>kpss</code> functions from statsmodels:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.tsa.stattools import adfuller, kpss</code></pre>
+</div>
+<p>To simplify the interpretation of the test results, create a function that outputs the results in a user-friendly way. Let's call the function <code>print_results</code>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>def print_results(output, test='adf'):   
+    pval = output[1]
+    test_score = output[0]
+    lags = output[2]   
+    decision = 'Non-Stationary'
+    if test == 'adf':
+        critical = output[4]
+        if pval &lt; 0.05:
+            decision = 'Stationary'
+    elif test=='kpss':
+        critical = output[3]
+        if pval &gt;= 0.05:
+            decision = 'Stationary'           
+    output_dict = {
+    'Test Statistic': test_score,
+    'p-value': pval,
+    'Numbers of lags': lags,
+    'decision': decision
+    }
+    for key, value in critical.items():
+        output_dict["Critical Value (%s)" % key] = value
+      
+    return pd.Series(output_dict, name=test)</code></pre>
+</div>
+<p>The function takes the output from the <code>adfuller</code> and <code>kpss</code> functions and returns a dictionary that adds labels to the output.</p>
+<ol>
+<li>Run both the <code>kpss</code> and <code>adfuller</code> tests. Use the default parameter values for both functions:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>adf_output = adfuller(co2_df)
+kpss_output = kpss(co2_df)</code></pre>
+</div>
+<ol>
+<li>Pass both outputs to the <code>print_results</code> function and concatenate them into a pandas DataFrame for easier comparison:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>pd.concat([
+print_results(adf_output, 'adf'),
+print_results(kpss_output, 'kpss')
+], axis=1)</code></pre>
+</div>
+<p>This should produce the following DataFrame:</p>
+<figure>
+<img src="../media/file133.jpg" alt="Figure 9.22: Result output from the ADF and KPSS unit root tests" width="788" height="537"/><figcaption aria-hidden="true">Figure 9.22: Result output from the ADF and KPSS unit root tests</figcaption>
+</figure>
+<p>For ADF, the p-value is at 0.96, which is greater than 0.05, so you <em>cannot reject</em> the null hypothesis, and therefore, the time series is non-stationary. For KPSS, the p-value is at 0.01, which is less than 0.05, so you <em>reject</em> the null hypothesis, and therefore, the time series is non-stationary.</p>
+<p>Next, you will explore six techniques for making the time series stationary, such as transformations and differencing. The techniques covered are first-order differencing, second-order differencing, subtracting moving average, log transformation, decomposition, and Hodrick-Prescott filter.</p>
+<p>Essentially, stationarity can be achieved by removing trend (de-trending) and seasonality effects. For each transformation, you will run the stationarity tests and compare the results between the different techniques. To simplify the interpretation and comparison, you will create two functions:</p>
+<ul>
+<li><code>check_stationarity</code> takes a DataFrame, performs both KPSS and ADF tests, and returns the outcome.</li>
+<li><code>plot_comparison</code> takes a list of methods and compares their plots. The function takes a <code>plot_type </code>parameter, so you can explore a line chart and a histogram. The function calls the <code>check_stationarity</code> function to capture the results for the subplot titles.</li>
+</ul>
+<p>Create the <code>check_stationarity</code> function, which is a simplified rewrite of the <code>print_results</code> function used earlier:</p>
+<div class="C0-SHCodePACKT">
+<pre><code> def check_stationarity(df):
+    kps = kpss(df)
+    adf = adfuller(df)
+   
+    kpss_pv, adf_pv = kps[1], adf[1]
+    kpssh, adfh = 'Stationary', 'Non-stationary'
+   
+    if adf_pv &lt; 0.05:
+        # Reject ADF Null Hypothesis
+        adfh = 'Stationary'
+    if kpss_pv &lt; 0.05:
+        # Reject KPSS Null Hypothesis
+        kpssh = 'Non-stationary'
+    return (kpssh, adfh)   </code></pre>
+</div>
+<p>Create the <code>plot_comparison</code> function:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>def plot_comparison(methods, plot_type='line'):
+    n = len(methods) // 2
+    fig, ax = plt.subplots(n,2, sharex=True, figsize=(20,10))
+    for i, method in enumerate(methods):
+        method.dropna(inplace=True)
+        name = [n for n in globals() if globals()[n] is method]
+        v, r = i // 2, i % 2
+        kpss_s, adf_s = check_stationarity(method)
+        method.plot(kind=plot_type,
+                    ax=ax[v,r],
+                    legend=False,
+                    title=f'{name[0]} --&gt; KPSS: {kpss_s}, ADF {adf_s}')
+        ax[v,r].title.set_size(20)
+        method.rolling(52).mean().plot(ax=ax[v,r], legend=False)                 </code></pre>
+</div>
+<p>Let's implement some of the methods for making the time series stationary or extracting a stationary component. Then, combine the methods into a Python list:</p>
+<ol>
+<li><p><strong>First-order differencing</strong>: Also known as de-trending, which is calculated by subtracting an observation at time <code>t</code> from the previous observation at time <code>t-1</code> (</p>
+<figure>
+<img style="width:10rem" src="../media/file134.png" width="170" height="44"/>
+</figure>
+<p>). In pandas this can be done using the <code>.diff()</code> function, which defaults to <code>period=1</code>. Note that the differenced data will contain one less data point (row) than the original data, hence the use of the <code>.dropna()</code> method:</p></li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>first_order_diff = co2_df.diff().dropna()</code></pre>
+</div>
+<ol>
+<li><strong>Second-order differencing</strong>: This is useful if seasonality exists or if the first-order differencing was insufficient. This is essentially differencing twice – differencing to remove trend followed by differencing to seasonality trend:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>differencing_twice = co2_df.diff(52).diff().dropna()</code></pre>
+</div>
+<ol>
+<li><strong>Subtracting moving average</strong> (rolling window) from the time series using <code>DataFrame.rolling(window=52).mean()</code> since it is weekly data:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>rolling_mean = co2_df.rolling(window=52).mean()
+rolling_mean = co2_df - rolling</code></pre>
+</div>
+<ol>
+<li><strong>Log transformation</strong> using <code>np.log()</code> is a common technique to stabilize the variance in a time series and sometimes enough to make the time series stationary. Simply, all it does is replace each observation with its log value:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>log_transform = np.log(co2_df)</code></pre>
+</div>
+<ol>
+<li>Using time series <strong>decomposition</strong> to remove the trend and seasonality components, such as <code>seasonal_decompose</code>. From <em>Figure 9.13,</em> it seems the process is additive. This is the default parameter in <code>seasonal_decompose</code>, so you do not need to make any changes here:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>decomp = seasonal_decompose(co2_df)
+seasonal_decomp = decomp.resid</code></pre>
+</div>
+<p>Let’s add STL as well for another decomposition method</p>
+<div class="C1-SHCodePACKT">
+<pre><code>co2_stl = STL(co2_df, seasonal=13,robust=True).fit()
+stl_decomp = co2_stl.resid</code></pre>
+</div>
+<ol>
+<li>Using the <strong>Hodrick-Prescott filter</strong> to remove the trend component, for example, using <code>hp_filter</code>:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>hp_cyclic, hp_trend = hpfilter(co2_df)</code></pre>
+</div>
+<p>Now, let's combine the methods into a Python list, then pass the list to the <code>plot_comparison</code> function:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>methods = [first_ord_diff, second_ord_diff,
+           diseasonalize, rolling_mean,
+           log_transform,  seasonal_decomp,
+           stl_decomp, hp_cyclic]
+plot_comparison(methods)</code></pre>
+</div>
+<p>This should display 4 x 2 subplots as shown:</p>
+<figure>
+<img src="../media/file135.png" alt="Figure 9.23: Plotting the different methods to make the CO2 time series stationary" width="2588" height="1342"/><figcaption aria-hidden="true">Figure 9.23: Plotting the different methods to make the CO2 time series stationary</figcaption>
+</figure>
+<p>Generally, you do not want to over-difference your time series as some studies have shown that models based on over-differenced data are less accurate. For example, <code>first_order_diff</code> already made the time series stationary, and thus there was no need to <em>difference</em> it any further. In other words, <code>differencing_twice</code> was not needed. Additionally, notice how <code>log_transform</code> is still non-stationary.</p>
+<p>Notice the center line representing the time series average (moving average). The mean should be constant for a stationary time series and look more like a straight horizontal line.</p>
+</section>
+<section id="how-it-works-35" class="level3" data-number="10.6.3">
+<h3 data-number="10.6.3">How it works…</h3>
+<p>Stationarity is an essential concept in time series forecasting, and more relevant when working with financial or economic data. Earlier we defined stationarity (weak) as having constant mean, a constant variance, and a consistent covariance.</p>
+<p>The mean is considered stable and constant if the time series is stationary. In other words, there is an equilibrium as values may deviate from the mean (above or below), but eventually, it always returns to the mean. Some trading strategies rely on this core assumption, formally called a <em>mean reversion</em> strategy.</p>
+<p>The statsmodels library offers several stationarity tests, such as the <code>adfuller</code> and <code>kpss</code> functions. Both are considered <strong>unit root tests</strong> and are used to determine whether differencing or other transformation strategies are needed to make the time series stationary.</p>
+<p>Remember, ADF and KPSS tests are based on different null hypotheses. For example, <code>adfuller</code> and <code>kpss</code> have an opposite null hypothesis. So, the p-value that you use to reject (or fail to reject) the null hypothesis will be interpreted differently between the two.</p>
+<p>In <em>Figure 9.22</em>, there is additional information returned by the tests. This includes the following:</p>
+<ul>
+<li>The <strong>Test Statistic</strong> value is 0.046 for ADF and 8.18 for KPSS, which are above the 1% critical value threshold. This indicates that the time series is non-stationary. It confirms that you cannot reject the null hypothesis. The critical values for ADF comes from a Dickey-Fuller table. Luckily, you do not have to reference the Dickey-Fuller table since all statistical software/libraries that offer the ADF test use the table internally. The same applies to KPSS.</li>
+<li>The <strong>p-value</strong> result is associated with the test statistic. Generally, you can reject the null hypothesis if the p-value is less than 0.05 (5%). Again, when using ADF, KPSS, or other stationarity tests, make sure to understand the null hypothesis to accurately interpret the results.</li>
+<li><strong>Number of lags</strong> represents the number of lags used in the autoregressive process in the test (ADF and KPSS). In both tests, 27 lags were used. Since our CO2 data is weekly, a lag represents 1 week back. So, 27 lags represent 27 weeks in our data.</li>
+<li>The number of observations used is the number of data points, excluding the number of lags.</li>
+<li>The maximized info criteria are based on the <strong>autolag</strong> parameter. The default is <code>autolag="aic"</code> for the <strong>Akaike Information Criterion</strong>. Other acceptable <code>autolag</code> parameter values are <code>bic</code> for the <strong>Bayesian Information Criterion</strong> and <code>t-stat</code>.</li>
+</ul>
+<p>You also explored some techniques for de-trending (removing trend) in a time series to make it stationary. For example, you used first-order differencing, decomposition, and log transform to remove the effect of the trend. Detrending stabilizes the mean of the time series and sometimes can be all that is needed to make it stationary. When you decide to de-trend your data, you are essentially removing an element of distraction so you can focus on hidden patterns that are not as obvious. Hence, you can build a model to capture these patterns and not be overshadowed by the long-term trend (upward or downward movement). An example was the first differencing approach.</p>
+<p>However, in the presence of seasonal patterns you will need to remove the seasonal effect as well, which can be done through seasonal differencing. This is done in addition to the first-order differencing for detrending; hence it can be called second-order differencing, twice-differencing, or differencing twice as you use differencing to remove the trend effect first and again to remove the seasonality. This assumes the seasonal differencing was insufficient to make the time series stationary. Your goal is to use the minimal amount of differencing needed and avoid over-differencing. You will rarely need to go beyond differencing twice.</p>
+</section>
+<section id="theres-more-34" class="level3" data-number="10.6.4">
+<h3 data-number="10.6.4">There's more…</h3>
+<p>In the introduction section of this recipe, we mentioned that both ADF and KPSS use linear regression. More specifically, <strong>Ordinary Least Squares</strong> (<strong>OLS</strong>) regression is used to compute the model's coefficients. To view the OLS results for ADF, you use the <code>store</code> parameter and set it to <code>True</code>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>adf_result = adfuller(first_order_diff, store=True)</code></pre>
+</div>
+<p>The preceding code will return a tuple that contains the test results. The regression summary will be appended as the last item. There should be four items in the tuple: the first item, <code>adf_result[0]</code>, contains the <strong>t-statistic</strong>, the second item, <code>adf_result[1]</code>, includes the <strong>p-value</strong>, and the third item, <code>adf_result[2]</code>, contains the <strong>critical values</strong> for 1%, 5%, and 10% intervals. The last item, <code>adf_result[3]</code>, includes a <strong>ResultStore</strong> object. You can also access the last item by using <code>adf_result[-1]</code>, as shown in the following code:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>adf_result[-1].resols.summary()</code></pre>
+</div>
+<p>The <code>ResultStore</code> object gives you access to <code>.resols</code>, which contains the <code>.summary()</code> method. This should produce the following output:</p>
+<figure>
+<img src="../media/file136.png" alt="Figure 9.24: ADF OLS regression summary and the first five lags and their coefficients" width="894" height="946"/><figcaption aria-hidden="true">Figure 9.24: ADF OLS regression summary and the first five lags and their coefficients</figcaption>
+</figure>
+</section>
+<section id="see-also-41" class="level3" data-number="10.6.5">
+<h3 data-number="10.6.5">See also</h3>
+<p>To learn more about stationarity and detrending, visit the official statsmodels page here: <a href="https://www.statsmodels.org/dev/examples/notebooks/generated/stationarity_detrending_adf_kpss.html">https://www.statsmodels.org/dev/examples/notebooks/generated/stationarity_detrending_adf_kpss.html</a>.</p>
+</section>
+</section>
+<section id="applying-power-transformations" class="level2" data-number="10.7">
+<h2 data-number="10.7">Applying power transformations</h2>
+<p>Time series data can be complex, and embedded within the data is critical information that you will need to understand and peek into to determine the best approach for building a model. For example, you have explored time series decomposition, understood the impact of trend and seasonality, and tested for stationarity. In the previous recipe, <em>Detecting time series stationarity</em>, you examined the technique to transform data from non-stationary to stationary. This includes the idea of detrending, which attempts to stabilize the mean over time.</p>
+<p>Depending on the model and analysis you are pursuing, you may need to test for additional assumptions against the observed dataset or the model's residuals. For example, testing for <strong>homoskedasticity</strong> (also spelled homoscedasticity) and <strong>normality</strong>. Homoskedasticity means that the variance is stable over time. More specifically, it is the variance of the residuals. When the variance is not constant, changing over time, we call it <strong>heteroskedasticity</strong> (also spelled heteroscedasticity). Another assumption you will need to test for is normality; does the specific observation come from a normal (Gaussian) distribution? Sometimes, you may want to check the normality of the residuals as well, which can be part of the model diagnostics stage. Therefore, it is important to be aware of the assumptions made by specific models or techniques so you can determine which test to use and against which dataset. If you do not do this, you may end up with a flawed model or an outcome that may be overly optimistic or overly pessimistic.</p>
+<p>Additionally, in this recipe, you will learn about <strong>Box-Cox transformation</strong>, which you can use to transform the data to satisfy normality and homoskedasticity. Box-Cox transformation takes the following form:</p>
+<figure>
+<img src="../media/file137.jpg" alt="Figure 9.25: Box-Cox transformation" width="476" height="121"/><figcaption aria-hidden="true">Figure 9.25: Box-Cox transformation</figcaption>
+</figure>
+The Box-Cox transformation relies on just one parameter, lambda (
+<figure>
+<img style="width:2rem" src="../media/file138.png" width="32" height="42"/>
+</figure>
+), and covers both logarithm and power transformations. If
+<figure>
+<img style="width:2rem" src="../media/file139.png" width="32" height="47"/>
+</figure>
+is 0, then you get a <strong>natural log transformation</strong>; otherwise, it's a power transformation. The approach is to try different values of
+<figure>
+<img style="width:2rem" src="../media/file140.png" width="31" height="43"/>
+</figure>
+and then test for normality and homoskedasticity. For example, the <strong>SciPy</strong> library has the <code>boxcox</code> function, and you can specify different
+<figure>
+<img style="width:2rem" src="../media/file141.png" width="30" height="44"/>
+</figure>
+values using the <code>lmbda</code> parameter (interestingly, this is how it is spelled in the implementation since <code>lambda</code> is a reserved Python keyword). If the <code>lmbda</code> parameter is set to <code>None</code>, the function will find the optimal lambda (
+<figure>
+<img style="width:2rem" src="../media/file142.png" width="30" height="45"/>
+</figure>
+) value for you.
+<section id="getting-ready-31" class="level3" data-number="10.7.1">
+<h3 data-number="10.7.1">Getting ready</h3>
+<p>You can download the Jupyter notebooks and datasets needed from the GitHub repository. Please refer to the <em>Technical requirements</em> section of this chapter.</p>
+<p>In this recipe, you will be using the Air Passengers dataset, which was previously loaded as a pandas DataFrame under the <em>Technical requirements</em> section of this chapter.</p>
+<p>You will be using the SciPy and <code>statsmodels</code>.</p>
+<p>For <code>pip</code> installation, use the following command:</p>
+<div class="C0-SHConPACKT">
+<pre><code>&gt; pip install scipy</code></pre>
+</div>
+<p>For <code>conda</code> installation, use the following command:</p>
+<div class="C0-SHConPACKT">
+<pre><code>&gt; conda install -c anaconda scipy</code></pre>
+</div>
+<p>In addition to the preparation highlighted in the <em>Technical requirements</em> section, you will need to import these common libraries that you will use throughout this recipe:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>import numpy as np
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+import statsmodels.api as sm</code></pre>
+</div>
+<p>To make the plots a lot bigger and easier to read, use the following command to establish a fixed size (20, 8) – a width of 20 inches and a height of 8 inches:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>plt.rcParams["figure.figsize"] = (20,8)</code></pre>
+</div>
+</section>
+<section id="how-to-do-it-37" class="level3" data-number="10.7.2">
+<h3 data-number="10.7.2">How to do it…</h3>
+<p>In this recipe, you will extend what you learned from the previous recipe, <em>Detecting time series stationarity</em>, and test for two additional assumptions: <strong>normality</strong> and <strong>homoskedasticity</strong>.</p>
+<blockquote>
+<p>Usually, stationarity is the most crucial assumption you will need to worry about but being familiar with additional diagnostic techniques will serve you well.</p>
+</blockquote>
+<p>Sometimes, you can determine normality and homoskedasticity from plots, for example, a histogram or a <strong>Q-Q plot</strong>. This recipe aims to teach you how to perform these diagnostic tests programmatically in Python. In addition, you will be introduced to the <strong>White test</strong> and the <strong>Breusch-Pagan Lagrange</strong> statistical test for <em>homoskedactisity</em>.</p>
+<p>For normality diagnostics, you will explore the <strong>Shapiro-Wilk</strong>, <strong>D'Agostino-Pearson</strong>, and <strong>Kolmogorov-Smirnov</strong> statistical tests. Overall, Shapiro-Wilk tends to perform best and handles a broader set of cases.</p>
+<section id="testing-normality" class="level4" data-number="10.7.2.1">
+<h4 data-number="10.7.2.1">Testing normality</h4>
+<p>The statsmodels library and the SciPy library have overlapping implementations. For example, the Kolmogorov-Smirnov test is implemented as <code>ktest</code> in SciPy and <code>ktest_normal</code> in statsmodels. In SciPy, the D'Agostino-Pearson test is implemented as <code>normaltest</code> and the Shapiro-Wilk test as <code>shapiro</code>:</p>
+<ol>
+<li>Start by importing the normality tests provided by the SciPy and statsmodels libraries:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from scipy.stats import shapiro, kstest, normaltest
+from statsmodels.stats.diagnostic import kstest_normal</code></pre>
+</div>
+<ol>
+<li>The normality diagnostic is a statistical test based on a null hypothesis that you need to determine whether you can accept or reject. Conveniently, the following tests that you will implement have the same null hypothesis. <em>The null hypothesis states that the data is normally distributed</em>; for example, you would reject the null hypothesis if the p-value is less than 0.05, making the time series not normally distributed. Let's create a simple function, <code>is_normal()</code>, that will return either <code>Normal</code> or <code>Not Normal</code> based on the p-value:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>def is_normal(test, p_level=0.05):
+    stat, pval = test
+    return 'Normal' if pval &gt; 0.05 else 'Not Normal'</code></pre>
+</div>
+<p>Run each test to check the results:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>normal_args = (np.mean(co2_df),np.std(co2_df))
+print(is_normal(shapiro(co2_df)))
+print(is_normal(normaltest(co2_df)))
+print(is_normal(normal_ad(co2_df)))
+print(is_normal(kstest_normal(co2_df)))
+print(is_normal(kstest(co2_df,
+                   cdf='norm',
+                   args=(np.mean(co2_df), np.std(co2_df)))))
+&gt;&gt;
+Not Normal
+Not Normal
+Not Normal
+Not Normal
+Not Normal</code></pre>
+</div>
+<p>The output from the tests confirms the data does not come from a normal distribution. You do not need to run that many tests. The <code>shapiro</code> test, for example, is a very common and popular test that you can rely on. Generally, as with any statistical test, you need to read the documentation regarding the implementation to gain an understanding of the test. More specifically, you will need to understand the null hypothesis behind the test to determine whether you can reject or fail to reject the null hypothesis.</p>
+<ol>
+<li>Sometimes, you may need to test normality as part of model evaluation and diagnostics. For example, you would evaluate the residuals (defined as the difference between actual and predicted values) if they follow a normal distribution. In <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods</em>, you will explore building forecasting models using autoregressive and moving average models. For now, you will run a simple autoregressive (AR(1)) model to demonstrate how you can use a normality test against the residuals of a model:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.tsa.api import AutoReg
+model = AutoReg(co2_df.dropna(), lags=1).fit()</code></pre>
+</div>
+<p>You can run the <code>shapiro</code> test against the residuals. To access the residuals, you would use the <code>.resid</code> property as in <code>model.resid</code>. This is common in many models you will build in <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods</em>:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>print(is_normal(shapiro(model.resid)))
+&gt;&gt;
+'Not Normal'</code></pre>
+</div>
+<p>The output indicates the residuals are not normally distributed. This fact, residuals not being normally distributed, is not enough to determine the model's validity or potential improvements. But taken into context with the other tests, it should help you determine how good your model is. This is a topic you will explore further in the next chapter.</p>
+</section>
+<section id="testing-homoskedactisity" class="level4" data-number="10.7.2.2">
+<h4 data-number="10.7.2.2">Testing homoskedactisity</h4>
+<p>You will be testing for the stability of the variance against the model's residuals. This will be the same AR(1) model used in the previous normality test:</p>
+<ol>
+<li>Let's start by importing the method needed for this recipe:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.stats.api import (het_breuschpagan,
+                                   het_white)</code></pre>
+</div>
+<ol>
+<li>You will perform a homoskedasticity test on the model's residuals. As stated earlier regarding statistical tests, it is vital to understand the hypothesis behind these tests. The null hypothesis states that <em>the data is homoskedastic</em> for the two tests. For example, you would reject the null hypothesis if the p-value is less than 0.05, making the time series heteroskedastic.</li>
+</ol>
+<p>Let's create a small function, calling it <code>het_test(model, test)</code>, that takes in a model and the test function and returns either <code>Heteroskedastic</code> or <code>Homoskedastic</code> based on the p-value to determine whether the null hypothesis is accepted or rejected:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>def het_test(model, test=het_breuschpagan):
+    lm, lm_pvalue, fvalue, f_pvalue = (
+        het_breuschpagan(model.resid,
+                         sm.add_constant(
+                             model.fittedvalues)
+                        ))
+   
+    return "Heteroskedastic" if f_pvalue &lt; 0.05 else "Homoskedastic"</code></pre>
+</div>
+<ol>
+<li>Start with the Breusch-Pagan Lagrange multiplier test to diagnose the residuals. In statsmodels, you will use the <code>het_breuschpagan</code> function, which takes <code>resid</code>, the model's residual, and <code>exog_het</code>, where you provide the original data (explanatory variables) related to the heteroskedasticity in the residual:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>het_test(model, test=het_breuschpagan)
+&gt;&gt; 'Homoskedastic'</code></pre>
+</div>
+<p>This result indicates that the residual is homoskedastic, with a constant variance (stable).</p>
+<ol>
+<li>A very similar test is White's Lagrange multiplier test. In statsmodels, you will use the <code>het_white</code> function, which has the same two parameters that you used with <code>het_breuschpagan</code>:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>het_test(model, test=het_white)
+&gt;&gt; 'Homoskedastic'</code></pre>
+</div>
+<p>Both tests indicate that the residuals of the autoregressive model have constant variance (homoskedastic). Both tests estimate the auxiliary regression against the squared residuals and all the explanatory variables.</p>
+<p>Keep in mind that both normality and homoskedasticity are some of the tests you may need to conduct on the residuals as you diagnose your model. Another essential test is testing for autocorrelation, which is discussed in the following recipe, <em>Testing for autocorrelation in time series data</em>.</p>
+</section>
+<section id="applying-box-cox-transform" class="level4" data-number="10.7.2.3">
+<h4 data-number="10.7.2.3">Applying Box-Cox transform</h4>
+<p>Box-Cox transformation can be a useful tool, and it's good to be familiar with. Box-Cox transforms a non-normally distributed dataset into a normally distributed one. At the same time, it stabilizes the variance, making the data homoskedastic. To gain a better understanding of the effect of Box-Cox transformation, you will use the Air Passengers dataset, which contains both trend and seasonality:</p>
+<ol>
+<li>Start by importing the <code>boxcox</code> function from the SciPy library:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from scipy.stats import boxcox</code></pre>
+</div>
+<ol>
+<li>Recall, from the introduction section of this recipe and <em>Figure 9.22</em>, there is a lambda parameter used to determine which transformation to apply (logarithm or power transform). Use the <code>boxcox</code> function with the default parameter value for <code>lmbda</code>, which is <code>None</code>. Just provide the dataset to satisfy the required <code>x</code> parameter:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>xt, lmbda = boxcox(airp_df['passengers'])
+xts = pd.Series(xt, index=airp_df.index)</code></pre>
+</div>
+By not providing a value to <code>lmbda</code> and keeping it at <code>None</code>, the function will find the optimal lambda (
+<figure>
+<img style="width:2rem" src="../media/file143.png" width="31" height="43"/>
+</figure>
+) value. From the introduction of this recipe, you'll remember lambda is spelled <code>lmbda</code> in the <code>boxcox</code> implementation. The function returns two values captured by <code>xt</code> for the transformed data and <code>lmda</code> for the optimal lambda value found.
+<p>A histogram can visually show the impact of the transformation:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>fig, ax = plt.subplots(1, 2, figsize=(16,5))
+airp_df.hist(ax=ax[0])
+ax[0].set_title('Original Time Series')
+xts.hist(ax=ax[1])
+ax[1].set_title('Box-Cox Transformed');</code></pre>
+</div>
+<p>This should produce the following two plots:</p>
+<figure>
+<img src="../media/file144.png" alt="Figure 9.26: Box-Cox transformation and effect on the distribution" width="2550" height="884"/><figcaption aria-hidden="true">Figure 9.26: Box-Cox transformation and effect on the distribution</figcaption>
+</figure>
+<p>The second histogram shows that the data was transformed, and the overall distribution changed. It would be interesting to examine the dataset as a time series plot.</p>
+<p>Plot both datasets to compare before and after the transformation:</p>
+<div class="C1-SHCodePACKT">
+<pre><code>fig, ax = plt.subplots(1, 2, figsize=(16,5))
+airp_df.plot(ax=ax[0])
+ax[0].set_title('Original Time Series')
+xts.plot(ax=ax[1])
+ax[1].set_title('Box-Cox Transformed');</code></pre>
+</div>
+<p>This should produce the following two plots:</p>
+<figure>
+<img src="../media/file145.png" alt="Figure 9.27: Box-Cox transformation and overall effect on time series data" width="2580" height="886"/><figcaption aria-hidden="true">Figure 9.27: Box-Cox transformation and overall effect on time series data</figcaption>
+</figure>
+<p>Notice how the seasonal effect on the transformed dataset looks more stable than before.</p>
+<ol>
+<li>Finally, build two simple autoregressive models to compare the effect on the residuals before and after the transformation:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>fig, ax = plt.subplots(1, 2, figsize=(16,5))
+model_airp.resid.plot(ax=ax[0])
+ax[0].set_title('Residuals Plot - Regular Time Series')
+model_bx.resid.plot(ax=ax[1])
+ax[1].set_title('Residual Plot - Box-Cox Transformed');</code></pre>
+</div>
+<p>This should produce the following two plots:</p>
+<figure>
+<img src="../media/file146.png" alt="Figure 9.28: Box-Cox transformation and effect on residuals" width="2592" height="884"/><figcaption aria-hidden="true">Figure 9.28: Box-Cox transformation and effect on residuals</figcaption>
+</figure>
+</section>
+</section>
+<section id="how-it-works-36" class="level3" data-number="10.7.3">
+<h3 data-number="10.7.3">How it works…</h3>
+<p>Box-Cox allows us to make the data both normal and homoskedastic and is part of a family of power transforms that includes log transform and square root transform. Box-Cox is a powerful transform because it supports both root and log transforms, and others are made possible by changing the lambda values.</p>
+<blockquote>
+<p>One thing to point out is that the <code>boxcox</code> function requires the data to be positive.</p>
+</blockquote>
+</section>
+<section id="theres-more...-7" class="level3" data-number="10.7.4">
+<h3 data-number="10.7.4">There's more...</h3>
+<p>The AutoReg model comes with two useful methods: diagnostic_summary() and plot_diagnostics(). They will save you time from having to write additional code to test the model's residuals for normality, homoskedasticity, and autocorrelation.</p>
+<p>The following code shows how you can get the diagnostic summary for <code>model_bx</code>:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>print(model_bx.diagnostic_summary())</code></pre>
+</div>
+<p>This should display the results from the Ljung-Box test for autocorrelation and the homoskedasticity test against the model's residuals.</p>
+<figure>
+<img src="../media/file147.png" alt="Figure 9.29: diagnostic_summary for autocorrelation" width="722" height="746"/><figcaption aria-hidden="true">Figure 9.29: diagnostic_summary for autocorrelation</figcaption>
+</figure>
+<p>To get the visual summary, you can use the following code:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>model_bx.plot_diagnostics(); plt.show()</code></pre>
+</div>
+<p>The <code>.plot_diagnostics() </code>function will show four plots so you can examine the model's residuals. Mainly, the plots will show whether the residuals are normally distributed from the Q-Q plot and histogram. Additionally, the <strong>autocorrelation function plot</strong> (<strong>ACF</strong>) will allow you to examine for autocorrelation. You will examine ACF plots in more detail in the <em>Plotting ACF and PACF</em> recipe in <em>Chapter 10</em>, <em>Building Univariate Time Series Models Using Statistical Methods</em>.</p>
+<figure>
+<img src="../media/file148.png" alt="Figure 9.30: Output from the plot_diagnostics() method" width="1974" height="920"/><figcaption aria-hidden="true">Figure 9.30: Output from the plot_diagnostics() method</figcaption>
+</figure>
+</section>
+<section id="see-also-42" class="level3" data-number="10.7.5">
+<h3 data-number="10.7.5">See also</h3>
+<p>To learn more about the <code>boxcox</code> function, visit the official SciPy documentation here: <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html">https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html</a>.</p>
+</section>
+</section>
+<section id="testing-for-autocorrelation-in-time-series-data" class="level2" data-number="10.8">
+<h2 data-number="10.8">Testing for autocorrelation in time series data</h2>
+<p><strong>Autocorrelation</strong> is like statistical correlation (think <strong>Pearson correlation</strong> from high school), which measures the strength of a linear relationship between two variables, except that we measure the linear relationship between <em>time series values separated by a lag</em>. In other words, we are comparing a variable with its lagged version of itself.</p>
+<p>In this recipe, you will perform a <strong>Ljung-Box test</strong> to check for autocorrelations up to a specified lag and whether they are significantly far off from 0. <em>The null hypothesis for the Ljung-Box test states that the previous lags are not correlated with the current period</em>. In other words, you are testing for the absence of autocorrelation.</p>
+<p>When running the test using <code>acorr_ljungbox</code> from statsmodels, you need to provide a lag value. The test will run for all lags up to the specified lag (maximum lag).</p>
+<p>The autocorrelation test is another helpful test for model diagnostics. As discussed in the previous recipe, <em>Applying power transformations</em>, there are assumptions that you need to test against the model's residuals. For example, when testing for autocorrelation on the residuals, the expectation is that there should be no autocorrelation between the residuals. This ensures that the model has captured all the necessary information. The presence of autocorrelation in the residuals can indicate that the model missed an opportunity to capture critical information and will need to be evaluated.</p>
+<section id="getting-ready-32" class="level3" data-number="10.8.1">
+<h3 data-number="10.8.1">Getting ready</h3>
+<p>You can download the Jupyter notebooks and datasets needed from the GitHub repository. Please refer to the <em>Technical requirements</em> section of this chapter.</p>
+<p>You will be using <code>acorr_ljungbox</code> from the statsmodels library.</p>
+</section>
+<section id="how-to-do-it-38" class="level3" data-number="10.8.2">
+<h3 data-number="10.8.2">How to do it…</h3>
+<p>You will use the CO2 dataset stored in the <code>co2_df</code> DataFrame:</p>
+<ol>
+<li>Load <code>acorr_ljungbox</code> from the statsmodels library:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>from statsmodels.stats.diagnostic import acorr_ljungbox</code></pre>
+</div>
+<ol>
+<li>Since the data is not stationary (review the <em>Detecting time series stationarity</em> recipe), you will perform a log transform this time (log differencing):</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>co2_diff= np.log(co2_df).diff().dropna()</code></pre>
+</div>
+<ol>
+<li>Run the Ljung-Box test. Start with <code>lags=10</code>:</li>
+</ol>
+<div class="C1-SHCodePACKT">
+<pre><code>acorr_ljungbox(co2_diff, lags=10, return_df=True)</code></pre>
+</div>
+<p>This should print the results for the first 10 lags.</p>
+<figure>
+<img src="../media/file149.png" alt="Figure 9.31: The first 10 lags for the autocorrelation test" width="468" height="658"/><figcaption aria-hidden="true">Figure 9.31: The first 10 lags for the autocorrelation test</figcaption>
+</figure>
+<p>This shows that the test statistic for all lags up to lag 10 are significant (<em>p-value &lt; 0.05</em>), so you can reject the null hypothesis. Rejecting the null hypothesis means you reject the claim that there is no autocorrelation.</p>
+</section>
+<section id="how-it-works-37" class="level3" data-number="10.8.3">
+<h3 data-number="10.8.3">How it works…</h3>
+<p><code>acorr_ljungbox</code> is a function that accumulates autocorrelation up until the lag specified. Therefore, it is helpful to determine whether the structure is worth modeling in the first place.</p>
+</section>
+<section id="theres-more...-8" class="level3" data-number="10.8.4">
+<h3 data-number="10.8.4">There's more...</h3>
+<p>Let's use the Ljung-Box test against the residual from <code>model_bx</code> that was created in the <em>Applying power transformations</em> recipe:</p>
+<div class="C0-SHCodePACKT">
+<pre><code>acorr_ljungbox(model_bx.resid, return_df=True, lags=10)</code></pre>
+</div>
+<p>This should print the results for the first 10 lags:</p>
+<figure>
+<img src="../media/file150.png" alt="Figure 9.32: The first 10 lags for the autocorrelation test against residuals" width="444" height="642"/><figcaption aria-hidden="true">Figure 9.32: The first 10 lags for the autocorrelation test against residuals</figcaption>
+</figure>
+<p>From the preceding example, the p-values are less than 0.05, so you reject the null hypothesis, and there is autocorrelation.</p>
+</section>
+<section id="see-also-43" class="level3" data-number="10.8.5">
+<h3 data-number="10.8.5">See also</h3>
+<p>To learn more about the <code>acorr_ljungbox</code> function, visit the official documentation here: <a href="https://www.statsmodels.org/dev/generated/statsmodels.stats.diagnostic.acorr_ljungbox.html">https://www.statsmodels.org/dev/generated/statsmodels.stats.diagnostic.acorr_ljungbox.html</a>.</p>
+</section>
+</section>
+</section>
+</div>
+</div>
+</body>
+</html>

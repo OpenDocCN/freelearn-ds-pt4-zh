@@ -1,0 +1,698 @@
+<html><head></head><body><div id="sbo-rt-content"><div id="_idContainer395" class="Content">
+			<p class="chapter-number">8</p>
+		</div>
+		<div id="_idContainer396" class="Content">
+			<h1 id="_idParaDest-204">8. <a id="_idTextAnchor203"/>Hyperparameter Tuning</h1>
+		</div>
+		<div id="_idContainer425" class="Content">
+			<p class="callout-heading">Overview</p>
+			<p class="callout">In this chapter, each hyperparameter tuning strategy will be first broken down into its key steps before any high-level scikit-learn implementations are demonstrated. This is to ensure that you fully understand the concept behind each of the strategies before jumping to the more automated methods.</p>
+			<p class="callout">By the end of this chapter, you will be able to find further predictive performance improvements via the systematic evaluation of estimators with different hyperparameters. You will successfully deploy manual, grid, and random search strategies to find the optimal hyperparameters. You will be able to parameterize <strong class="bold">k-nearest neighbors</strong> (<strong class="bold">k-NN</strong>), <strong class="bold">support vector machines</strong> (<strong class="bold">SVMs</strong>), ridge regression, and random forest classifiers to optimize model performance.</p>
+			<h1 id="_idParaDest-205"><a id="_idTextAnchor204"/>Introduction</h1>
+			<p>In previous chapters, we discussed several methods to arrive at a model that performs well. These include transforming the data via preprocessing, feature engineering and scaling, or simply choosing an appropriate estimator (algorithm) type from the large set of possible estimators made available to the users of scikit-learn.</p>
+			<p>Depending on which estimator you eventually select, there may be settings that can be adjusted to improve overall predictive performance. These settings are known as hyperparameters, and deriving the best hyperparameters is known as tuning or optimizing. Properly tuning your hyperparameters can result in performance improvements well into the double-digit percentages, so it is well worth doing in any modeling exercise. </p>
+			<p>This chapter will discuss the concept of hyperparameter tuning and will present some simple strategies that you can use to help find the best hyperparameters for your estimators. </p>
+			<p>In previous chapters, we have seen some exercises that use a range of estimators, but we haven't conducted any hyperparameter tuning. After reading this chapter, we recommend you revisit these exercises, apply the techniques taught, and see if you can improve the results.</p>
+			<h1 id="_idParaDest-206"><a id="_idTextAnchor205"/>What Are Hyperparameters?</h1>
+			<p>Hyperparameters can be thought of as a set of dials and switches for each estimator that change how the estimator works to explain relationships in the data. </p>
+			<p>Have a look at <em class="italic">Figure 8.1</em>:</p>
+			<div>
+				<div id="_idContainer397" class="IMG---Figure">
+					<img src="Images/B15019_08_01.jpg" alt="Figure 8.1: How hyperparameters work&#13;&#10;" width="1294" height="531"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.1: How hyperparameters work</p>
+			<p>If you read from left to right in the preceding figure, you can see that during the tuning process we change the value of the hyperparameter, which results in a change to the estimator. This in turn causes a change in model performance. Our objective is to find hyperparameterization that leads to the best model performance. This will be the <em class="italic">optimal</em> hyperparameterization. </p>
+			<p>Estimators can have hyperparameters of varying quantities and types, which means that sometimes you can be faced with a very large number of possible hyperparameterizations to choose for an estimator. </p>
+			<p>For instance, scikit-learn's implementation of the SVM classifier (<strong class="source-inline">sklearn.svm.SVC</strong>), which you will be introduced to later in the chapter, is an estimator that has multiple possible hyperparameterizations. We will test out only a small subset of these, namely using a linear kernel or a polynomial kernel of degree 2, 3, or 4.</p>
+			<p>Some of these hyperparameters are continuous in nature, while others are discrete, and the presence of continuous hyperparameters means that the number of possible hyperparameterizations is theoretically infinite. Of course, when it comes to producing a model with good predictive performance, some hyperparameterizations are much better than others, and it is your job as a data scientist to find them.</p>
+			<p>In the next section, we will be looking at setting these hyperparameters in more detail. But first, some clarification of terms.</p>
+			<h2 id="_idParaDest-207"><a id="_idTextAnchor206"/>Difference between Hyperparameters and Statistical Model Parameters</h2>
+			<p>In your reading on data science, particularly in the area of statistics, you will come across terms such as "model parameters," "parameter estimation," and "(non)-parametric models." These terms relate to the parameters that feature in the mathematical formulation of models. The simplest example is that of the single variable linear model with no intercept term that takes the following form:</p>
+			<div>
+				<div id="_idContainer398" class="IMG---Figure">
+					<img src="Images/B15019_08_02.jpg" alt="Figure 8.2: Equation for a single variable linear model&#13;&#10;" width="1586" height="72"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.2: Equation for a single variable linear model</p>
+			<p>Here, 𝛽 is the statistical model parameter, and if this formulation is chosen, it is the data scientist's job to use data to estimate what value it takes. This could be achieved using <strong class="bold">Ordinary Least Squares</strong> (<strong class="bold">OLS</strong>) regression modeling, or it could be achieved through a method called median regression.</p>
+			<p>Hyperparameters are different in that they are external to the mathematical form. An example of a hyperparameter in this case is the way in which 𝛽 will be estimated (OLS, or median regression). In some cases, hyperparameters can change the algorithm completely (that is, generating a completely different mathematical form). You will see examples of this occurring throughout this chapter.</p>
+			<p>In the next section, you will be looking at how to set a hyperparameter.</p>
+			<h2 id="_idParaDest-208"><a id="_idTextAnchor207"/>Setting Hyperparameters</h2>
+			<p>In <em class="italic">Chapter 7</em>, <em class="italic">The Generalization of Machine Learning Models</em>, you were introduced to the k-NN model for classification and you saw how varying k, the number of nearest neighbors, resulted in changes in model performance with respect to the prediction of class labels. Here, k is a hyperparameter, and the act of manually trying different values of k is a simple form of hyperparameter tuning. </p>
+			<p>Each time you initialize a scikit-learn estimator, it will take on a hyperparameterization as determined by the values you set for its arguments. If you specify no values, then the estimator will take on a default hyperparameterization. If you would like to see how the hyperparameters have been set for your estimator, and what hyperparameters you can adjust, simply print the output of the <strong class="source-inline">estimator.get_params()</strong> method. </p>
+			<p>For instance, say we initialize a k-NN estimator without specifying any arguments (empty brackets). To see the default hyperparameterization, we can run:</p>
+			<p class="source-code">from sklearn import neighbors</p>
+			<p class="source-code"># initialize with default hyperparameters</p>
+			<p class="source-code">knn = neighbors.KNeighborsClassifier()</p>
+			<p class="source-code"># examine the defaults</p>
+			<p class="source-code">print(knn.get_params())</p>
+			<p>You should get the following output:</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 5, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p>A dictionary of all the hyperparameters is now printed to the screen, revealing their default settings. Notice <strong class="source-inline">k</strong>, our number of nearest neighbors, is set to <strong class="source-inline">5</strong>.</p>
+			<p>To get more information as to what these parameters mean, how they can be changed, and what their likely effect may be, you can run the following command and view the help file for the estimator in question.</p>
+			<p>For our k-NN estimator:</p>
+			<p class="source-code">?knn</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer399" class="IMG---Figure">
+					<img src="Images/B15019_08_03.jpg" alt="Figure 8.3: Help file for the k-NN estimator&#13;&#10;" width="922" height="592"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.3: Help file for the k-NN estimator</p>
+			<p>If you look closely at the help file, you will see the default hyperparameterization for the estimator under the <strong class="source-inline">String form</strong> heading, along with an explanation of what each hyperparameter means under the <strong class="source-inline">Parameters</strong> heading.</p>
+			<p>Coming back to our example, if we want to change the hyperparameterization from <strong class="source-inline">k = 5</strong> to <strong class="source-inline">k = 15</strong>, just re-initialize the estimator and set the <strong class="source-inline">n_neighbors</strong> argument to <strong class="source-inline">15</strong>, which will override the default:</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">initialize with k = 15 and all other hyperparameters as default</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">knn = neighbors.KNeighborsClassifier(n_neighbors=15)</p>
+			<p class="source-code"># examine</p>
+			<p class="source-code">print(knn.get_params())</p>
+			<p>You should get the following output:</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 15, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p>You may have noticed that k is not the only hyperparameter available for k-NN classifiers. Setting multiple hyperparameters is as easy as specifying the relevant arguments. For example, let's increase the number of neighbors from <strong class="source-inline">5</strong> to <strong class="source-inline">15</strong> and force the algorithm to take the distance of points in the neighborhood, rather than a simple majority vote, into account when training. For more information, see the description for the <strong class="source-inline">weights</strong> argument in the help file (<strong class="source-inline">?knn</strong>):</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">initialize with k = 15, weights = distance and all other </p>
+			<p class="source-code">hyperparameters as default </p>
+			<p class="source-code">"""</p>
+			<p class="source-code">knn = neighbors.KNeighborsClassifier(n_neighbors=15, \</p>
+			<p class="source-code">                                     weights='distance')</p>
+			<p class="source-code"># examine</p>
+			<p class="source-code">print(knn.get_params())</p>
+			<p>The output will be as follows:</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 15, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'distance'}</p>
+			<p>In the output, you can see <strong class="source-inline">n_neighbors</strong> (<strong class="source-inline">k</strong>) is now set to <strong class="source-inline">15</strong>, and <strong class="source-inline">weights</strong> is now set to <strong class="source-inline">distance</strong>, rather than <strong class="source-inline">uniform</strong>.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The code for this section can be found at <a href="https://packt.live/2tN5CH1">https://packt.live/2tN5CH1</a>.</p>
+			<h2 id="_idParaDest-209"><a id="_idTextAnchor208"/>A Note on Defaults</h2>
+			<p>Generally, efforts have been made by the developers of machine learning libraries to set sensible default hyperparameters for estimators. That said, for certain datasets, significant performance improvements may be achieved through tuning.</p>
+			<h1 id="_idParaDest-210"><a id="_idTextAnchor209"/>Finding the Best Hyperparameterization</h1>
+			<p>The best hyperparameterization depends on your overall objective in building a machine learning model in the first place. In most cases, this is to find the model that has the highest predictive performance on unseen data, as measured by its ability to correctly label data points (classification) or predict a number (regression). </p>
+			<p>The prediction of unseen data can be simulated using hold-out test sets or cross-validation, the former being the method used in this chapter. Performance is evaluated differently in each case, for instance, <strong class="bold">Mean Squared Error</strong> (<strong class="bold">MSE</strong>) for regression and accuracy for classification. We seek to reduce the MSE or increase the accuracy of our predictions.</p>
+			<p>Let's implement manual hyperparameterization in the following exercise.</p>
+			<h2 id="_idParaDest-211"><a id="_idTextAnchor210"/>Exercise 8.01: Manual Hyperparameter Tuning for a k-NN Classifier</h2>
+			<p>In this exercise, we will manually tune a k-NN classifier, which was covered in <em class="italic">Chapter 7, The Generalization of Machine Learning Models</em>, our goal being to predict incidences of malignant or benign breast cancer based on cell measurements sourced from the affected breast sample.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The dataset to be used in this exercise can be found on our GitHub repository at <a href="https://packt.live/36dsxIF">https://packt.live/36dsxIF</a>.</p>
+			<p>These are the important attributes of the dataset:</p>
+			<ul>
+				<li>ID number</li>
+				<li>Diagnosis (M = malignant, B = benign)</li>
+				<li>3-32)</li>
+			</ul>
+			<p>10 real-valued features are computed for each cell nucleus as follows:</p>
+			<ul>
+				<li>Radius (mean of distances from the center to points on the perimeter)</li>
+				<li>Texture (standard deviation of grayscale values)</li>
+				<li>Perimeter</li>
+				<li>Area</li>
+				<li>Smoothness (local variation in radius lengths)</li>
+				<li>Compactness (perimeter^2 / area - 1.0)</li>
+				<li>Concavity (severity of concave portions of the contour)</li>
+				<li>Concave points (number of concave portions of the contour)</li>
+				<li>Symmetry</li>
+				<li>Fractal dimension (refers to the complexity of the tissue architecture; "coastline approximation" - 1)<p class="callout-heading">Note</p><p class="callout">Details on the attributes of the dataset can be found at <a href="https://packt.live/30HzGQ6">https://packt.live/30HzGQ6</a>.</p></li>
+			</ul>
+			<p>The following steps will help you complete this exercise:</p>
+			<ol>
+				<li>Create a new notebook in Google Colab.</li>
+				<li>Next, import <strong class="source-inline">neighbors</strong>, <strong class="source-inline">datasets</strong>, and <strong class="source-inline">model_selection</strong> from scikit-learn:<p class="source-code">from sklearn import neighbors, datasets, model_selection</p></li>
+				<li>Load the data. We will call this object <strong class="source-inline">cancer</strong>, and isolate the target <strong class="source-inline">y</strong>, and the features, <strong class="source-inline">X</strong>:<p class="source-code"># dataset</p><p class="source-code">cancer = datasets.load_breast_cancer()</p><p class="source-code"># target</p><p class="source-code">y = cancer.target</p><p class="source-code"># features</p><p class="source-code">X = cancer.data</p></li>
+				<li>Initialize a k-NN classifier with its default hyperparameterization:<p class="source-code"># no arguments specified</p><p class="source-code">knn = neighbors.KNeighborsClassifier()</p></li>
+				<li>Feed this classifier into a 10-fold cross-validation (<strong class="source-inline">cv</strong>), calculating the precision score for each fold. Assume that maximizing precision (the proportion of true positives in all positive classifications) is the primary objective of this exercise:<p class="source-code"># 10 folds, scored on precision</p><p class="source-code">cv = model_selection.cross_val_score(knn, X, y, cv=10,\</p><p class="source-code">                                     scoring='precision')</p></li>
+				<li>Printing <strong class="source-inline">cv</strong> shows the precision score calculated for each fold:<p class="source-code"># precision scores</p><p class="source-code">print(cv)</p><p>You will see the following output:</p><p class="source-code">[0.91666667 0.85       0.91666667 0.94736842 0.94594595 </p><p class="source-code"> 0.94444444 0.97222222 0.92105263 0.96969697 0.97142857]</p></li>
+				<li>Calculate and print the mean precision score for all folds. This will give us an idea of the overall performance of the model, as shown in the following code snippet:<p class="source-code"># average over all folds</p><p class="source-code">print(round(cv.mean(), 2))</p><p>You should get the following output:</p><p class="source-code">0.94</p><p>You should see the mean score is close to 94%. Can this be improved upon? </p></li>
+				<li>Run everything again, this time setting hyperparameter <strong class="source-inline">k</strong> to <strong class="source-inline">15</strong>. You can see that the result is actually marginally worse (1% lower):<p class="source-code"># k = 15</p><p class="source-code">knn = neighbors.KNeighborsClassifier(n_neighbors=15)</p><p class="source-code">cv = model_selection.cross_val_score(knn, X, y, cv=10, \</p><p class="source-code">                                     scoring='precision')</p><p class="source-code">print(round(cv.mean(), 2))</p><p>The output will be as follows:</p><p class="source-code">0.93</p></li>
+				<li>Try again with <strong class="source-inline">k</strong> = <strong class="source-inline">7</strong>, <strong class="source-inline">3</strong>, and <strong class="source-inline">1</strong>. In this case, it seems reasonable that the default value of 5 is the best option. To avoid repetition, you may like to define and call a Python function as follows:<p class="source-code">def evaluate_knn(k):</p><p class="source-code">    knn = neighbors.KNeighborsClassifier(n_neighbors=k)</p><p class="source-code">    cv = model_selection.cross_val_score(knn, X, y, cv=10, \</p><p class="source-code">                                         scoring='precision')</p><p class="source-code">    print(round(cv.mean(), 2))</p><p class="source-code">evaluate_knn(k=7)</p><p class="source-code">evaluate_knn(k=3)</p><p class="source-code">evaluate_knn(k=1)</p><p>The output will be as follows:</p><p class="source-code">0.93</p><p class="source-code">0.93</p><p class="source-code">0.92</p><p>Nothing beats 94%.</p></li>
+				<li>Let's alter a second hyperparameter. Setting <strong class="source-inline">k = 5</strong>, what happens if we change the k-NN weighing system to depend on <strong class="source-inline">distance</strong> rather than having <strong class="source-inline">uniform</strong> weights? Run all code again, this time with the following hyperparameterization:<p class="source-code"># k =5, weights evaluated using distance</p><p class="source-code">knn = neighbors.KNeighborsClassifier(n_neighbors=5, \</p><p class="source-code">                                     weights='distance')</p><p class="source-code">cv = model_selection.cross_val_score(knn, X, y, cv=10, \</p><p class="source-code">                                     scoring='precision')</p><p class="source-code">print(round(cv.mean(), 2))</p><p>Did performance improve?</p><p>You should see no further improvement on the default hyperparameterization because the output is:</p><p class="source-code">0.93</p></li>
+			</ol>
+			<p>We therefore conclude that the default hyperparameterization is the optimal one in this case.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">To access the source code for this specific section, please refer to <a href="https://packt.live/322lWk4">https://packt.live/322lWk4</a>.</p>
+			<p class="callout">You can also run this example online at <a href="https://packt.live/3gbOyfU">https://packt.live/3gbOyfU</a>.</p>
+			<h2 id="_idParaDest-212"><a id="_idTextAnchor211"/>Advantages and Disadvantages of a Manual Search</h2>
+			<p>Of all the strategies for hyperparameter tuning, the manual process gives you the most control. As you go through the process, you can get a feel for how your estimators might perform under different hyperparameterizations, and this means you can adjust them in line with your expectations without having to try a large number of possibilities unnecessarily. However, this strategy is feasible only when there is a small number of possibilities you would like to try. When the number of possibilities exceeds about five, this strategy becomes too labor-intensive to be practical. </p>
+			<p>In the following sections, we will introduce two strategies to better deal with this situation.</p>
+			<h1 id="_idParaDest-213"><a id="_idTextAnchor212"/>Tuning Using Grid Search</h1>
+			<p>In the context of machine learning, grid search refers to a strategy of systematically testing out every hyperparameterization from a pre-defined set of possibilities for your chosen estimator. You decide the criteria used to evaluate performance, and once the search is complete, you may manually examine the results and choose the best hyperparameterization, or let your computer automatically choose it for you. </p>
+			<p>The overall objective is to try and find an optimal hyperparameterization that leads to improved performance when predicting unseen data.</p>
+			<p>Before we get to the implementations of grid search in scikit-learn, let's first demonstrate the strategy using simple Python <strong class="source-inline">for</strong> loops. </p>
+			<h2 id="_idParaDest-214"><a id="_idTextAnchor213"/>Simple Demonstration of the Grid Search Strategy</h2>
+			<p>In the following demonstration of the grid search strategy, we will use the breast cancer prediction dataset we saw in <em class="italic">Exercise 8.01</em>, <em class="italic">Manual Hyperparameter Tuning for a k-NN Classifier</em>, where we manually tuned the hyperparameters of the k-NN classifier to optimize for the precision of cancer predictions. </p>
+			<p>This time, instead of manually fitting models with different values of <strong class="source-inline">k</strong> we just define the <strong class="source-inline">k</strong> values we would like to try, that is, <strong class="source-inline">k = 1, 3, 5, 7</strong> in a Python dictionary. This dictionary will be the grid we will search through to find the optimal hyperparameterization.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The code for this section can be found at <a href="https://packt.live/2U1Y0Li">https://packt.live/2U1Y0Li</a>.</p>
+			<p>The code will be as follows:</p>
+			<p class="source-code">from sklearn import neighbors, datasets, model_selection</p>
+			<p class="source-code"># load data</p>
+			<p class="source-code">cancer = datasets.load_breast_cancer()</p>
+			<p class="source-code"># target</p>
+			<p class="source-code">y = cancer.target</p>
+			<p class="source-code"># features</p>
+			<p class="source-code">X = cancer.data</p>
+			<p class="source-code"># hyperparameter grid</p>
+			<p class="source-code">grid = {'k': [1, 3, 5, 7]}</p>
+			<p>In the code snippet, we have used a dictionary <strong class="source-inline">{}</strong> and set the <strong class="source-inline">k</strong> values in a Python dictionary.</p>
+			<p>In the next part of the code snippet, to conduct the search, we iterate through the grid, fitting a model for each value of <strong class="source-inline">k</strong>, each time evaluating the model through 10-fold cross-validation. </p>
+			<p>At the end of each iteration, we extract, format, and report back the mean precision score after cross-validation via the <strong class="source-inline">print</strong> method:</p>
+			<p class="source-code"># for every value of k in the grid</p>
+			<p class="source-code">for k in grid['k']:</p>
+			<p class="source-code">    # initialize the knn estimator</p>
+			<p class="source-code">    knn = neighbors.KNeighborsClassifier(n_neighbors=k)</p>
+			<p class="source-code">    # conduct a 10-fold cross-validation</p>
+			<p class="source-code">    cv = model_selection.cross_val_score(knn, X, y, cv=10, \</p>
+			<p class="source-code">                                         scoring='precision')</p>
+			<p class="source-code">    # calculate the average precision value over all folds</p>
+			<p class="source-code">    cv_mean = round(cv.mean(), 3)</p>
+			<p class="source-code">    # report the result</p>
+			<p class="source-code">    print('With k = {}, mean precision = {}'.format(k, cv_mean))</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer400" class="IMG---Figure">
+					<img src="Images/B15019_08_04.jpg" alt="Figure 8.4: Average precisions for all folds&#13;&#10;" width="1133" height="179"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.4: Average precisions for all folds</p>
+			<p>We can see from the output that <strong class="source-inline">k = 5</strong> is the best hyperparameterization found, with a mean precision score of roughly 94%. Increasing <strong class="source-inline">k</strong> to <strong class="source-inline">7</strong> didn't significantly improve performance. It is important to note that the only parameter we are changing here is k and that each time the k-NN estimator is initialized, it is done with the remaining hyperparameters set to their default values.</p>
+			<p>To make this point clear, we can run the same loop, this time just printing the hyperparameterization that will be tried:</p>
+			<p class="source-code"># for every value of k in the grid </p>
+			<p class="source-code">for k in grid['k']:</p>
+			<p class="source-code">    # initialize the knn estimator</p>
+			<p class="source-code">    knn = neighbors.KNeighborsClassifier(n_neighbors=k)</p>
+			<p class="source-code">    # print the hyperparameterization</p>
+			<p class="source-code">    print(knn.get_params())</p>
+			<p>The output will be as follows:</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 1, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski',</p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 3, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 5, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 7, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p>You can see from the output that the only parameter we are changing is k; everything else remains the same in each iteration.</p>
+			<p>Simple, single-loop structures are fine for a grid search of a single hyperparameter, but what if we would like to try a second one? Remember that for k-NN we also have weights that can take values <strong class="source-inline">uniform</strong> or <strong class="source-inline">distance</strong>, the choice of which influences how k-NN learns how to classify points.</p>
+			<p>To proceed, all we need to do is create a dictionary containing both the values of k and the weight functions we would like to try as separate key/value pairs:</p>
+			<p class="source-code"># hyperparameter grid</p>
+			<p class="source-code">grid = {'k': [1, 3, 5, 7],\</p>
+			<p class="source-code">        'weight_function': ['uniform', 'distance']}</p>
+			<p class="source-code"># for every value of k in the grid</p>
+			<p class="source-code">for k in grid['k']:</p>
+			<p class="source-code">    # and every possible weight_function in the grid </p>
+			<p class="source-code">    for weight_function in grid['weight_function']:</p>
+			<p class="source-code">        # initialize the knn estimator</p>
+			<p class="source-code">        knn = neighbors.KNeighborsClassifier\</p>
+			<p class="source-code">              (n_neighbors=k, \</p>
+			<p class="source-code">               weights=weight_function)</p>
+			<p class="source-code">        # conduct a 10-fold cross-validation</p>
+			<p class="source-code">        cv = model_selection.cross_val_score(knn, X, y, cv=10, \</p>
+			<p class="source-code">                                             scoring='precision')</p>
+			<p class="source-code">        # calculate the average precision value over all folds</p>
+			<p class="source-code">        cv_mean = round(cv.mean(), 3)</p>
+			<p class="source-code">        # report the result</p>
+			<p class="source-code">        print('With k = {} and weight function = {}, '\</p>
+			<p class="source-code">              'mean precision = {}'\</p>
+			<p class="source-code">              .format(k, weight_function, cv_mean))</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer401" class="IMG---Figure">
+					<img src="Images/B15019_08_05.jpg" alt="Figure 8.5: Average precision values for all folds for different values of k&#13;&#10;" width="948" height="267"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.5: Average precision values for all folds for different values of k</p>
+			<p>You can see that when <strong class="source-inline">k = 5</strong>, the weight function is not based on distance and all the other hyperparameters are kept as their default values, and the mean precision comes out highest. As we discussed earlier, if you would like to see the full set of hyperparameterizations evaluated for k-NN, just add <strong class="source-inline">print(knn.get_params())</strong> inside the <strong class="source-inline">for</strong> loop after the estimator is initialized:</p>
+			<p class="source-code"># for every value of k in the grid</p>
+			<p class="source-code">for k in grid['k']:</p>
+			<p class="source-code">    # and every possible weight_function in the grid </p>
+			<p class="source-code">    for weight_function in grid['weight_function']:</p>
+			<p class="source-code">        # initialize the knn estimator</p>
+			<p class="source-code">        knn = neighbors.KNeighborsClassifier\</p>
+			<p class="source-code">              (n_neighbors=k, \</p>
+			<p class="source-code">               weights=weight_function)</p>
+			<p class="source-code">        # print the hyperparameterizations</p>
+			<p class="source-code">        print(knn.get_params())</p>
+			<p>The output will be as follows:</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 1, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 1, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'distance'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 3, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 3, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'distance'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 5, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 5, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'distance'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 7, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'uniform'}</p>
+			<p class="source-code">{'algorithm': 'auto', 'leaf_size': 30, 'metric': 'minkowski', </p>
+			<p class="source-code"> 'metric_params': None, 'n_jobs': None, 'n_neighbors': 7, </p>
+			<p class="source-code"> 'p': 2, 'weights': 'distance'}</p>
+			<p>This implementation, while great for demonstrating how the grid search process works, may not practical when trying to evaluate estimators that have <strong class="source-inline">3</strong>, <strong class="source-inline">4</strong>, or even <strong class="source-inline">10</strong> different types of hyperparameters, each with a multitude of possible settings.</p>
+			<p>To carry on in this way will mean writing and keeping track of multiple <strong class="source-inline">for</strong> loops, which can be tedious. Thankfully, <strong class="source-inline">scikit-learn</strong>'s <strong class="source-inline">model_selection</strong> module gives us a method called <strong class="source-inline">GridSearchCV</strong> that is much more user-friendly. We will be looking at this in the topic ahead.</p>
+			<h1 id="_idParaDest-215"><a id="_idTextAnchor214"/>GridSearchCV</h1>
+			<p><strong class="source-inline">GridsearchCV</strong> is a method of tuning wherein the model can be built by evaluating the combination of parameters mentioned in a grid. In the following figure, we will see how <strong class="source-inline">GridSearchCV</strong> is different from manual search and look at grid search in a muchdetailed way in a table format.</p>
+			<h2 id="_idParaDest-216"><a id="_idTextAnchor215"/>Tuning using GridSearchCV</h2>
+			<p>We can conduct a grid search much more easily in practice by leveraging <strong class="source-inline">model_selection.GridSearchCV</strong>. </p>
+			<p>For the sake of comparison, we will use the same breast cancer dataset and k-NN classifier as before:</p>
+			<p class="source-code">from sklearn import model_selection, datasets, neighbors</p>
+			<p class="source-code"># load the data</p>
+			<p class="source-code">cancer = datasets.load_breast_cancer()</p>
+			<p class="source-code"># target</p>
+			<p class="source-code">y = cancer.target</p>
+			<p class="source-code"># features</p>
+			<p class="source-code">X = cancer.data</p>
+			<p>The next thing we need to do after loading the data is to initialize the class of the estimator we would like to evaluate under different hyperparameterizations:</p>
+			<p class="source-code"># initialize the estimator</p>
+			<p class="source-code">knn = neighbors.KNeighborsClassifier()</p>
+			<p>We then define the grid:</p>
+			<p class="source-code"># grid contains k and the weight function</p>
+			<p class="source-code">grid = {'n_neighbors': [1, 3, 5, 7],\</p>
+			<p class="source-code">        'weights': ['uniform', 'distance']}</p>
+			<p>To set up the search, we pass the freshly initialized estimator and our grid of hyperparameters to <strong class="source-inline">model_selection.GridSearchCV()</strong>. We must also specify a scoring metric, which is the method that will be used to evaluate the performance of the various hyperparameterizations tried during the search. </p>
+			<p>The last thing to do is set the number splits to be used using cross-validation via the <strong class="source-inline">cv</strong> argument. We will set this to <strong class="source-inline">10</strong>, thereby conducting 10-fold cross-validation:</p>
+			<p class="source-code">"""</p>
+			<p class="source-code"> set up the grid search with scoring on precision and </p>
+			<p class="source-code">number of folds = 10</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">gscv = model_selection.GridSearchCV(estimator=knn, \</p>
+			<p class="source-code">                                    param_grid=grid, \</p>
+			<p class="source-code">                                    scoring='precision', cv=10)</p>
+			<p>The last step is to feed data to this object via its <strong class="source-inline">fit()</strong> method. Once this has been done, the grid search process will be kick-started:</p>
+			<p class="source-code"># start the search</p>
+			<p class="source-code">gscv.fit(X, y)</p>
+			<p>By default, information relating to the search will be printed to the screen, allowing you to see the exact estimator parameterizations that will be evaluated for the k-NN estimator:</p>
+			<div>
+				<div id="_idContainer402" class="IMG---Figure">
+					<img src="Images/B15019_08_06.jpg" alt="Figure 8.6: Estimator parameterizations for the k-NN estimator&#13;&#10;" width="1035" height="338"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.6: Estimator parameterizations for the k-NN estimator</p>
+			<p>Once the search is complete, we can examine the results by accessing and printing the <strong class="source-inline">cv_results_</strong> attribute. <strong class="source-inline">cv_results_</strong> is a dictionary containing helpful information regarding model performance under each hyperparameterization, such as the mean test-set value of your scoring metric (<strong class="source-inline">mean_test_score</strong>, the lower the better), the complete list of hyperparameterizations tried (<strong class="source-inline">params</strong>), and the model ranks as they relate to the <strong class="source-inline">mean_test_score</strong> (<strong class="source-inline">rank_test_score</strong>). </p>
+			<p>The best model found will have rank = 1, the second-best model will have rank = 2, and so on, as you can see in <em class="italic">Figure 8.8</em>. The model fitting times are reported through <strong class="source-inline">mean_fit_time</strong>. </p>
+			<p>Although not usually a consideration for smaller datasets, this value can be important because in some cases you may find that a marginal increase in model performance through a certain hyperparameterization is associated with a significant increase in model fit time, which, depending on the computing resources you have available, may render that hyperparameterization infeasible because it will take too long to fit:</p>
+			<p class="source-code"># view the results</p>
+			<p class="source-code">print(gscv.cv_results_)</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer403" class="IMG---Figure">
+					<img src="Images/B15019_08_07.jpg" alt="Figure 8.7: GridsearchCV results&#13;&#10;" width="928" height="315"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.7: GridsearchCV results</p>
+			<p>The model ranks can be seen in the following image:</p>
+			<div>
+				<div id="_idContainer404" class="IMG---Figure">
+					<img src="Images/B15019_08_08.jpg" alt="Figure 8.8: Model ranks&#13;&#10;" width="938" height="428"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.8: Model ranks</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">For the purpose of presentation, the output has been truncated. You can see the complete output here: <a href="https://packt.live/2uD12uP">https://packt.live/2uD12uP</a>.</p>
+			<p>In the output, it is worth noting that this dictionary can be easily transformed into a pandas DataFrame, which makes information much clearer to read and allows us to selectively display the metrics we are interested in. </p>
+			<p>For example, say we are only interested in each hyperparameterization (<strong class="source-inline">params</strong>) and mean cross-validated test score (<strong class="source-inline">mean_test_score</strong>) for the top five high - performing models:</p>
+			<p class="source-code">import pandas as pd</p>
+			<p class="source-code"># convert the results dictionary to a dataframe</p>
+			<p class="source-code">results = pd.DataFrame(gscv.cv_results_)</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">select just the hyperparameterizations tried, </p>
+			<p class="source-code">the mean test scores, order by score and show the top 5 models</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">print(results.loc[:,['params','mean_test_score']]\</p>
+			<p class="source-code">      .sort_values('mean_test_score', ascending=False).head(5))</p>
+			<p>Running this code produces the following output:</p>
+			<div>
+				<div id="_idContainer405" class="IMG---Figure">
+					<img src="Images/B15019_08_09.jpg" alt="Figure 8.9: mean_test_score for top 5 models&#13;&#10;" width="910" height="196"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.9: mean_test_score for top 5 models</p>
+			<p>We can also use pandas to produce visualizations of the result as follows:</p>
+			<p class="source-code"># visualise the result</p>
+			<p class="source-code">results.loc[:,['params','mean_test_score']]\</p>
+			<p class="source-code">       .plot.barh(x = 'params')</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer406" class="IMG---Figure">
+					<img src="Images/B15019_08_10.jpg" alt="Figure 8.10: Using pandas to visualize the output&#13;&#10;" width="1041" height="407"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.10: Using pandas to visualize the output</p>
+			<p>When you look at the preceding figure, you see that the best hyperparameterization found is where <strong class="source-inline">n_neighbors = 5</strong> and <strong class="source-inline">weights = 'uniform'</strong>, because this results in the highest mean test score (precision).</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The code for this section can be found at <a href="https://packt.live/2uD12uP">https://packt.live/2uD12uP</a>.</p>
+			<h3 id="_idParaDest-217"><a id="_idTextAnchor216"/>Support Vector Machine (SVM) Classifiers</h3>
+			<p>The <strong class="bold">SVM</strong> classifier is basically a supervised machine learning model. It is a commonly used class of estimator that can be used for both binary and multi-class classification. It is known to perform well in cases where the data is limited, hence it is a reliable model. It is relatively fast to train compared to highly iterative or ensemble methods such as artificial neural networks or random forests, which makes it a good option if there is a limit on your computer's processing power.</p>
+			<p>It makes its predictions by leveraging a special mathematical formulation known as a kernel function. This function can take several forms with some functions, such as the polynomial kernel function with a degree (squared, cubed, and so on), that have their own adjustable parameters.</p>
+			<p>SVMs have been shown to perform well in the context of image classification, which you will see in the following exercise.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">For more information on support vector machines, see <a href="https://packt.live/37iDytw">https://packt.live/37iDytw</a> and also refer to <a href="https://packt.live/38xaPkC">https://packt.live/38xaPkC</a>.</p>
+			<h2 id="_idParaDest-218"><a id="_idTextAnchor217"/>Exercise 8.02: Grid Search Hyperparameter Tuning for an SVM</h2>
+			<p>In this exercise, we will employ a class of estimator called an SVM classifier and tune its hyperparameters using a grid search strategy. </p>
+			<p>The supervised learning objective we will focus on here is the classification of handwritten digits (0-9) based solely on images. The dataset we will use contains 1,797 labeled images of handwritten digits.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The dataset to be used in this exercise can be found on our GitHub repository at <a href="https://packt.live/2vdbHg9">https://packt.live/2vdbHg9</a>.</p>
+			<p class="callout">Details on the attributes of the dataset can be found on the original dataset's URL: <a href="https://packt.live/36cX35b">https://packt.live/36cX35b</a>.</p>
+			<ol>
+				<li value="1">Create a new notebook in Google Colab.</li>
+				<li>Import <strong class="source-inline">datasets</strong>, <strong class="source-inline">svm</strong>, and <strong class="source-inline">model_selection</strong> from scikit-learn:<p class="source-code">from sklearn import datasets, svm, model_selection</p></li>
+				<li>Load the data. We will call this object images, and then we'll isolate the target <strong class="source-inline">y</strong> and the features <strong class="source-inline">X</strong>. In the training step, the SVM classifier will learn how <strong class="source-inline">y</strong> relates to <strong class="source-inline">X</strong> and will therefore be able to predict new <strong class="source-inline">y</strong> values when given new <strong class="source-inline">X</strong> values:<p class="source-code"># load data</p><p class="source-code">digits = datasets.load_digits()</p><p class="source-code"># target</p><p class="source-code">y = digits.target</p><p class="source-code"># features</p><p class="source-code">X = digits.data</p></li>
+				<li>Initialize the estimator as a multi-class SVM classifier and set the <strong class="source-inline">gamma</strong> argument to <strong class="source-inline">scale</strong>:<p class="source-code"># support vector machine classifier</p><p class="source-code">clr = svm.SVC(gamma='scale')</p><p class="callout-heading">Note</p><p class="callout">For more information on the gamma argument, go to <a href="https://packt.live/2Ga2l79">https://packt.live/2Ga2l79</a>.</p></li>
+				<li>Define our grid to cover four distinct hyperparameterizations of the classifier with a linear kernel and with a polynomial kernel of degrees <strong class="source-inline">2</strong>, <strong class="source-inline">3,</strong> and <strong class="source-inline">4</strong>. We want to see which of the four hyperparameterizations leads to more accurate predictions:<p class="source-code"># hyperparameter grid. contains linear and polynomial kernels</p><p class="source-code">grid = [{'kernel': ['linear']},\</p><p class="source-code">        {'kernel': ['poly'], 'degree': [2, 3, 4]}]</p></li>
+				<li>Set up grid search k-fold cross-validation with <strong class="source-inline">10</strong> folds and a scoring measure of accuracy. Make sure it has our <strong class="source-inline">grid</strong> and <strong class="source-inline">estimator</strong> objects as inputs:<p class="source-code">"""</p><p class="source-code">setting up the grid search to score on accuracy and </p><p class="source-code">evaluate over 10 folds</p><p class="source-code">"""</p><p class="source-code">cv_spec = model_selection.GridSearchCV\</p><p class="source-code">          (estimator=clr, param_grid=grid, \</p><p class="source-code">           scoring='accuracy', cv=10)</p></li>
+				<li>Start the search by providing data to the <strong class="source-inline">.fit()</strong> method. Details of the process, including the hyperparameterizations tried and the scoring method selected, will be printed to the screen:<p class="source-code"># start the grid search</p><p class="source-code">cv_spec.fit(X, y)</p><p>You should see the following output:</p><div id="_idContainer407" class="IMG---Figure"><img src="Images/B15019_08_11.jpg" alt="Figure 8.11: Grid Search using the .fit() method&#13;&#10;" width="772" height="254"/></div><p class="figure-caption">Figure 8.11: Grid Search using the .fit() method</p></li>
+				<li>To examine all of the results, simply print <strong class="source-inline">cv_spec.cv_results_</strong> to the screen. You will see that the results are structured as a dictionary, allowing you to access the information you require using the keys:<p class="source-code"># what is the available information</p><p class="source-code">print(cv_spec.cv_results_.keys())</p><p>You will see the following information:</p><div id="_idContainer408" class="IMG---Figure"><img src="Images/B15019_08_12.jpg" alt="Figure 8.12: Results as a dictionary&#13;&#10;" width="989" height="92"/></div><p class="figure-caption">Figure 8.12: Results as a dictionary</p></li>
+				<li>For this exercise, we are primarily concerned with the test-set performance of each distinct hyperparameterization. You can see the first hyperparameterization through <strong class="source-inline">cv_spec.cv_results_['mean_test_score']</strong>, and the second through <strong class="source-inline">cv_spec.cv_results_['params']</strong>. <p>Let's convert the results dictionary to a <strong class="source-inline">pandas</strong> DataFrame and find the best hyperparameterization:</p><p class="source-code">import pandas as pd</p><p class="source-code"># convert the dictionary of results to a pandas dataframe</p><p class="source-code">results = pd.DataFrame(cv_spec.cv_results_)</p><p class="source-code"># show hyperparameterizations</p><p class="source-code">print(results.loc[:,['params','mean_test_score']]\</p><p class="source-code">      .sort_values('mean_test_score', ascending=False))</p><p>You will see the following results:</p><div id="_idContainer409" class="IMG---Figure"><img src="Images/B15019_08_13.jpg" alt="Figure 8.13: Parameterization results&#13;&#10;" width="597" height="120"/></div><p class="figure-caption">Figure 8.13: Parameterization results</p><p class="callout-heading">Note</p><p class="callout">You may get slightly different results. However, the values you obtain should largely agree with those in the preceding output.</p></li>
+				<li>It is best practice to visualize any results you produce. <strong class="source-inline">pandas</strong> makes this easy. Run the following code to produce a visualization:<p class="source-code"># visualize the result</p><p class="source-code">(results.loc[:,['params','mean_test_score']]\</p><p class="source-code">        .sort_values('mean_test_score', ascending=True)\</p><p class="source-code">        .plot.barh(x='params', xlim=(0.8)))</p><p>The output will be as follows:</p><div id="_idContainer410" class="IMG---Figure"><img src="Images/B15019_08_14.jpg" alt="Figure 8.14: Using pandas to visualize the results&#13;&#10;" width="954" height="459"/></div></li>
+			</ol>
+			<p class="figure-caption">Figure 8.14: Using pandas to visualize the results</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">To access the source code for this specific section, please refer to <a href="https://packt.live/36At2MO">https://packt.live/36At2MO</a>.</p>
+			<p class="callout">You can also run this example online at <a href="https://packt.live/2YdQsGq">https://packt.live/2YdQsGq</a>.</p>
+			<p>We can see that an SVM classifier with a third-degree polynomial kernel function has the highest accuracy of all the hyperparameterizations evaluated in our search. Feel free to add more hyperparameterizations to the grid and see if you can improve on the score.</p>
+			<h2 id="_idParaDest-219"><a id="_idTextAnchor218"/>Advantages and Disadvantages of Grid Search</h2>
+			<p>The primary advantage of the grid search compared to a manual search is that it is an automated process that one can simply set and forget. Additionally, you have the power to dictate the exact hyperparameterizations evaluated, which can be a good thing when you have prior knowledge of what kind of hyperparameterizations might work well in your context. It is also easy to understand exactly what will happen during the search thanks to the explicit definitions of the grid.</p>
+			<p>The major drawback of the grid search strategy is that it is computationally very expensive; that is, when the number of hyperparameterizations to try increases substantially, processing times can be very slow. Also, when you define your grid, you may inadvertently omit an hyperparameterization that would in fact be optimal. If it is not specified in your grid, it will never be tried</p>
+			<p>To overcome these drawbacks, we will be looking at random search in the next section.</p>
+			<h1 id="_idParaDest-220"><a id="_idTextAnchor219"/>Random Search</h1>
+			<p>Instead of searching through every hyperparameterizations in a pre-defined set, as is the case with a grid search, in a random search we sample from a distribution of possibilities by assuming each hyperparameter to be a random variable. Before we go through the process in depth, it will be helpful to briefly review what random variables are and what we mean by a distribution. </p>
+			<h2 id="_idParaDest-221"><a id="_idTextAnchor220"/>Random Variables and Their Distributions</h2>
+			<p>A random variable is non-constant (its value can change) and its variability can be described in terms of distribution. There are many different types of distributions, but each falls into one of two broad categories: discrete and continuous. We use discrete distributions to describe random variables whose values can take only whole numbers, such as counts.</p>
+			<p>An example is the count of visitors to a theme park in a day, or the number of attempted shots it takes a golfer to get a hole-in-one. </p>
+			<p>We use continuous distributions to describe random variables whose values lie along a continuum made up of infinitely small increments. Examples include human height or weight, or outside air temperature. Distributions often have parameters that control their shape.</p>
+			<p>Discrete distributions can be described mathematically using what's called a probability mass function, which defines the exact probability of the random variable taking a certain value. Common notation for the left-hand side of this function is <strong class="source-inline">P(X=x)</strong>, which in plain English means that the probability that the random variable <strong class="source-inline">X</strong> equals a certain value <strong class="source-inline">x</strong> is <strong class="source-inline">P</strong>. Remember that probabilities range between <strong class="source-inline">0</strong> (impossible) and <strong class="source-inline">1</strong> (certain).</p>
+			<p>By definition, the summation of each <strong class="source-inline">P(X=x)</strong> for all possible <strong class="source-inline">x</strong>'s will be equal to 1, or if expressed another way, the probability that <strong class="source-inline">X</strong> will take any value is 1. A simple example of this kind of distribution is the discrete uniform distribution, where the random variable <strong class="source-inline">X</strong> will take only one of a finite range of values and the probability of it taking any particular value is the same for all values, hence the term uniform. </p>
+			<p>For example, if there are 10 possible values the probability that <strong class="source-inline">X</strong> is any particular value is exactly 1/10. If there were 6 possible values, as in the case of a standard 6-sided die, the probability would be 1/6, and so on. The probability mass function for the discrete uniform distribution is:</p>
+			<div>
+				<div id="_idContainer411" class="IMG---Figure">
+					<img src="Images/B15019_08_15.jpg" alt="Figure 8.15: Probability mass function for the discrete uniform distribution&#13;&#10;" width="1665" height="156"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.15: Probability mass function for the discrete uniform distribution</p>
+			<p>The following code will allow us to see the form of this distribution with 10 possible values of X.  </p>
+			<p>First, we create a list of all the possible values <strong class="source-inline">X</strong> can take:</p>
+			<p class="source-code"># list of all xs</p>
+			<p class="source-code">X = list(range(1, 11))</p>
+			<p class="source-code">print(X)</p>
+			<p>The output will be as follows:</p>
+			<p class="source-code"> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]</p>
+			<p>We then calculate the probability that <strong class="source-inline">X</strong> will take up any value of <strong class="source-inline">x (P(X=x))</strong>:</p>
+			<p class="source-code"># pmf, 1/n * n = 1</p>
+			<p class="source-code">p_X_x = [1/len(X)] * len(X)</p>
+			<p class="source-code"># sums to 1</p>
+			<p class="source-code">print(p_X_x)</p>
+			<p>As discussed, the summation of probabilities will equal 1, and this is the case with any distribution. We now have everything we need to visualize the distribution:</p>
+			<p class="source-code">import matplotlib.pyplot as plt</p>
+			<p class="source-code">plt.bar(X, p_X_x)</p>
+			<p class="source-code">plt.xlabel('X')</p>
+			<p class="source-code">plt.ylabel('P(X=x)')</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer412" class="IMG---Figure">
+					<img src="Images/B15019_08_16.jpg" alt="Figure 8.16: Visualizing the bar chart&#13;&#10;" width="868" height="461"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.16: Visualizing the bar chart</p>
+			<p>In the visual output, we see that the probability of <strong class="source-inline">X</strong> being a specific whole number between 1 and 10 is equal to 1/10.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">Other discrete distributions you commonly see include the binomial, negative binomial, geometric, and Poisson distributions, all of which we encourage you to investigate. Type these terms into a search engine to find out more.</p>
+			<p>Distributions of continuous random variables are a bit more challenging in that we cannot calculate an exact <strong class="source-inline">P(X=x)</strong> directly because <strong class="source-inline">X</strong> lies on a continuum. We can, however, use integration to approximate probabilities between a range of values, but this is beyond the scope of this book. The relationship between <strong class="source-inline">X</strong> and probability is described using a probability density function, <strong class="source-inline">P(X)</strong>. Perhaps the most well-known continuous distribution is the normal distribution, which visually takes the form of a bell. </p>
+			<p>The normal distribution has two parameters that describe its shape, mean (<strong class="source-inline">𝜇</strong>) and variance (<strong class="source-inline">𝜎</strong><span class="superscript">2</span>). The probability density function for the normal distribution is:</p>
+			<div>
+				<div id="_idContainer413" class="IMG---Figure">
+					<img src="Images/B15019_08_17.jpg" alt="Figure 8.17: Probability density function for the normal distribution&#13;&#10;" width="1665" height="289"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.17: Probability density function for the normal distribution</p>
+			<p>The following code shows two normal distributions with the same mean (<strong class="source-inline">𝜇</strong><strong class="source-inline"> = 0</strong>) but different variance parameters (<strong class="source-inline">𝜎</strong><strong class="source-inline">2 = 1</strong> and <strong class="source-inline">𝜎</strong><strong class="source-inline">2 = 2.25</strong>). Let's first generate 100 evenly spaced values from <strong class="source-inline">-10</strong> to <strong class="source-inline">10</strong> using NumPy's <strong class="source-inline">.linspace</strong> method:</p>
+			<p class="source-code">import numpy as np</p>
+			<p class="source-code"># range of xs</p>
+			<p class="source-code">x = np.linspace(-10, 10, 100)</p>
+			<p>We then generate the approximate <strong class="source-inline">X</strong> probabilities for both normal distributions. </p>
+			<p>Using <strong class="source-inline">scipy.stats</strong> is a good way to work with distributions, and its <strong class="source-inline">pdf</strong> method allows us to easily visualize the shape of probability density functions:</p>
+			<p class="source-code">import scipy.stats as stats</p>
+			<p class="source-code"># first normal distribution with mean = 0, variance = 1</p>
+			<p class="source-code">p_X_1 = stats.norm.pdf(x=x, loc=0.0, scale=1.0**2)</p>
+			<p class="source-code"># second normal distribution with mean = 0, variance = 2.25</p>
+			<p class="source-code">p_X_2 = stats.norm.pdf(x=x, loc=0.0, scale=1.5**2)</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">In this case, <strong class="source-inline">loc</strong> corresponds to 𝜇, while <strong class="source-inline">scale</strong> corresponds to the standard deviation, which is the square root of <strong class="source-inline">𝜎</strong><strong class="source-inline">2</strong>, hence why we square the inputs. </p>
+			<p>We then visualize the result. Notice that <strong class="source-inline">𝜎</strong><strong class="source-inline">2</strong> controls how fat the distribution is and therefore how variable the random variable is:</p>
+			<p class="source-code">plt.plot(x,p_X_1, color='blue')</p>
+			<p class="source-code">plt.plot(x, p_X_2, color='orange')</p>
+			<p class="source-code">plt.xlabel('X')</p>
+			<p class="source-code">plt.ylabel('P(X)')</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer414" class="IMG---Figure">
+					<img src="Images/B15019_08_18.jpg" alt="Figure 8.18: Visualizing the normal distribution&#13;&#10;" width="835" height="439"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.18: Visualizing the normal distribution</p>
+			<p>Other discrete distributions you commonly see include the gamma, exponential, and beta distributions, which we encourage you to investigate.</p>
+			<p class="callout-heading">Note </p>
+			<p class="callout">The code for this section can be found at <a href="https://packt.live/38Mfyzm">https://packt.live/38Mfyzm</a>.</p>
+			<h2 id="_idParaDest-222"><a id="_idTextAnchor221"/>Simple Demonstration of the Random Search Process</h2>
+			<p>Again, before we get to the scikit-learn implementation of random search parameter tuning, we will step through the process using simple Python tools. Up until this point, we have only been using classification problems to demonstrate tuning concepts, but now we will look at a regression problem. Can we find a model that's able to predict the progression of diabetes in patients based on characteristics such as BMI and age? </p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The original dataset can be found at <a href="https://packt.live/2O4XN6v">https://packt.live/2O4XN6v</a>.</p>
+			<p class="callout">The code for this section can be found at <a href="https://packt.live/3aOudvK">https://packt.live/3aOudvK</a>.</p>
+			<p>We first load the data:</p>
+			<p class="source-code">from sklearn import datasets, linear_model, model_selection</p>
+			<p class="source-code"># load the data</p>
+			<p class="source-code">diabetes = datasets.load_diabetes()</p>
+			<p class="source-code"># target</p>
+			<p class="source-code">y = diabetes.target</p>
+			<p class="source-code"># features</p>
+			<p class="source-code">X = diabetes.data</p>
+			<p>To get a feel for the data, we can examine the disease progression for the first patient:</p>
+			<p class="source-code"># the first patient has index 0</p>
+			<p class="source-code">print(y[0])</p>
+			<p>The output will be as follows:</p>
+			<p class="source-code"> 151.0</p>
+			<p>Let's now examine their characteristics:</p>
+			<p class="source-code"># let's look at the first patients data</p>
+			<p class="source-code">print(dict(zip(diabetes.feature_names, X[0])))</p>
+			<p>We should see the following:</p>
+			<div>
+				<div id="_idContainer415" class="IMG---Figure">
+					<img src="Images/B15019_08_19.jpg" alt="Figure 8.19: Dictionary for patient characteristics&#13;&#10;" width="1047" height="74"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.19: Dictionary for patient characteristics</p>
+			<p>For this scenario, we will try a technique called ridge regression, which will fit a linear model to the data. Ridge regression is a special method that allows us to directly employ regularization to help mitigate the problem of overfitting. Ridge regression has one key hyperparameter, 𝛼, which controls the level of regularization in the model fit. If 𝛼 is set to 1, no regularization will be employed, which is actually a special case in which a ridge regression model fit will be exactly equal to the fit of an OLS' linear regression model. Increase the value of 𝛼 and you increase the degree of regularization. </p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">We covered ridge regression in <em class="italic">Chapter 7</em>, <em class="italic">The Generalization of Machine Learning Models</em>.</p>
+			<p class="callout">For more information on ridge regression and regularization, see <a href="https://packt.live/2NR3GUq">https://packt.live/2NR3GUq</a>.</p>
+			<p>In the context of random search parameter tuning, we assume 𝛼 is a random variable and it is up to us to specify a likely distribution. </p>
+			<p>For this example, we will assume alpha follows a gamma distribution. This distribution takes two parameters, k and 𝜃, which control the shape and scale of the distribution respectively.</p>
+			<p>For ridge regression, we believe the optimal 𝛼 to be somewhere near 1, becoming less likely as you move away from 1. A parameterization of the gamma distribution that reflects this idea is where k and 𝜃 are both equal to 1. To visualize the form of this distribution, we can run the following:</p>
+			<p class="source-code">import numpy as np</p>
+			<p class="source-code">from scipy import stats</p>
+			<p class="source-code">import matplotlib.pyplot as plt</p>
+			<p class="source-code"># values of alpha</p>
+			<p class="source-code">x = np.linspace(1, 20, 100)</p>
+			<p class="source-code"># probabilities</p>
+			<p class="source-code">p_X = stats.gamma.pdf(x=x, a=1, loc=1, scale=2)</p>
+			<p class="source-code">plt.plot(x,p_X)</p>
+			<p class="source-code">plt.xlabel('alpha')</p>
+			<p class="source-code">plt.ylabel('P(alpha)')</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer416" class="IMG---Figure">
+					<img src="Images/B15019_08_20.jpg" alt="Figure 8.20: Visualization of probabilities&#13;&#10;" width="968" height="433"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.20: Visualization of probabilities</p>
+			<p>In the graph, you can see how probability decays sharply for smaller values of 𝛼, then decays more slowly for larger values.</p>
+			<p>The next step in the random search process is to sample n values from the chosen distribution. In this example, we will draw 100 𝛼 values. Remember that the probability of drawing out a particular value of 𝛼 is related to its probability as defined by this distribution:</p>
+			<p class="source-code"># n sample values</p>
+			<p class="source-code">n_iter = 100</p>
+			<p class="source-code"># sample from the gamma distribution</p>
+			<p class="source-code">samples = stats.gamma.rvs(a=1, loc=1, scale=2, \</p>
+			<p class="source-code">                          size=n_iter, random_state=100)</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">We set a random state to ensure reproducible results.</p>
+			<p>Plotting a histogram of the sample, as shown in the following figure, reveals a shape that approximately conforms to the distribution that we have sampled from. Note that as your sample sizes increases, the more the histogram conforms to the distribution:</p>
+			<p class="source-code"># visualize the sample distribution</p>
+			<p class="source-code">plt.hist(samples)</p>
+			<p class="source-code">plt.xlabel('alpha')</p>
+			<p class="source-code">plt.ylabel('sample count')</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer417" class="IMG---Figure">
+					<img src="Images/B15019_08_21.jpg" alt="Figure 8.21: Visualization of the sample distribution&#13;&#10;" width="922" height="458"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.21: Visualization of the sample distribution</p>
+			<p>A model will then be fitted for each value of 𝛼 sampled and assessed for performance. As we have seen with the other approaches to hyperparameter tuning in this chapter, performance will be assessed using k-fold cross-validation (with <strong class="source-inline">k =10</strong>) but because we are dealing with a regression problem, the performance metric will be the test-set negative MSE. </p>
+			<p>Using this metric means larger values are better. We will store the results in a dictionary with each 𝛼 value as the key and the corresponding cross-validated negative MSE as the value:</p>
+			<p class="source-code"># we will store the results inside a dictionary</p>
+			<p class="source-code">result = {}</p>
+			<p class="source-code"># for each sample</p>
+			<p class="source-code">for sample in samples:</p>
+			<p class="source-code">    """</p>
+			<p class="source-code">    initialize a ridge regression estimator with alpha set </p>
+			<p class="source-code">    to the sample value</p>
+			<p class="source-code">    """</p>
+			<p class="source-code">    reg = linear_model.Ridge(alpha=sample)</p>
+			<p class="source-code">    """</p>
+			<p class="source-code">    conduct a 10-fold cross validation scoring on </p>
+			<p class="source-code">    negative mean squared error</p>
+			<p class="source-code">    """</p>
+			<p class="source-code">    cv = model_selection.cross_val_score\</p>
+			<p class="source-code">         (reg, X, y, cv=10, \</p>
+			<p class="source-code">          scoring='neg_mean_squared_error')</p>
+			<p class="source-code">    # retain the result in the dictionary</p>
+			<p class="source-code">    result[sample] = [cv.mean()]</p>
+			<p>Instead of examining the raw dictionary of results, we will convert it to a pandas DataFrame, transpose it, and give the columns names. Sorting by descending negative mean squared error reveals that the optimal level of regularization for this problem is actually when 𝛼 is approximately 1, meaning that we did not find evidence to suggest regularization is necessary for this problem and that the OLS linear model will suffice:</p>
+			<p class="source-code">import pandas as pd</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">convert the result dictionary to a pandas dataframe, </p>
+			<p class="source-code">transpose and reset the index</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">df_result = pd.DataFrame(result).T.reset_index()</p>
+			<p class="source-code"># give the columns sensible names</p>
+			<p class="source-code">df_result.columns = ['alpha', 'mean_neg_mean_squared_error']</p>
+			<p class="source-code">print(df_result.sort_values('mean_neg_mean_squared_error', \</p>
+			<p class="source-code">                            ascending=False).head())</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer418" class="IMG---Figure">
+					<img src="Images/B15019_08_22.jpg" alt="Figure 8.22: Output for the random search process&#13;&#10;" width="1134" height="233"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.22: Output for the random search process</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The results will be different, depending on the data used.</p>
+			<p>It is always beneficial to visualize results where possible. Plotting 𝛼 by negative mean squared error as a scatter plot makes it clear that venturing away from 𝛼 = 1 does not result in improvements in predictive performance:</p>
+			<p class="source-code">plt.scatter(df_result.alpha, \</p>
+			<p class="source-code">            df_result.mean_neg_mean_squared_error)</p>
+			<p class="source-code">plt.xlabel('alpha')</p>
+			<p class="source-code">plt.ylabel('-MSE')</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer419" class="IMG---Figure">
+					<img src="Images/B15019_08_23.jpg" alt="Figure 8.23: Plotting the scatter plot&#13;&#10;" width="880" height="432"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.23: Plotting the scatter plot</p>
+			<p>The fact that we found the optimal 𝛼 to be 1 (its default value) is a special case in hyperparameter tuning in that the optimal hyperparameterization is the default one.</p>
+			<h2 id="_idParaDest-223"><a id="_idTextAnchor222"/>Tuning Using RandomizedSearchCV</h2>
+			<p>In practice, we can use the <strong class="source-inline">RandomizedSearchCV</strong> method inside scikit-learn's <strong class="source-inline">model_selection</strong> module to conduct the search. All you need to do is pass in your estimator, the hyperparameters you wish to tune along with their distributions, the number of samples you would like to sample from each distribution, and the metric by which you would like to assess model performance. These correspond to the <strong class="source-inline">param_distributions</strong>, <strong class="source-inline">n_iter</strong>, and <strong class="source-inline">scoring</strong> arguments respectively. For the sake of demonstration, let's conduct the search we completed earlier using <strong class="source-inline">RandomizedSearchCV</strong>. First, we load the data and initialize our ridge regression estimator:</p>
+			<p class="source-code">from sklearn import datasets, model_selection, linear_model</p>
+			<p class="source-code"># load the data</p>
+			<p class="source-code">diabetes = datasets.load_diabetes()</p>
+			<p class="source-code"># target</p>
+			<p class="source-code">y = diabetes.target</p>
+			<p class="source-code"># features</p>
+			<p class="source-code">X = diabetes.data</p>
+			<p class="source-code"># initialise the ridge regression</p>
+			<p class="source-code">reg = linear_model.Ridge()</p>
+			<p>We then specify that the hyperparameter we would like to tune is <strong class="source-inline">alpha</strong> and that we would like 𝛼 to be distributed <strong class="source-inline">gamma</strong>, with <strong class="source-inline">k = 1</strong> and <strong class="source-inline">𝜃</strong><strong class="source-inline"> = 1</strong>:</p>
+			<p class="source-code">from scipy import stats</p>
+			<p class="source-code"># alpha ~ gamma(1,1)</p>
+			<p class="source-code">param_dist = {'alpha': stats.gamma(a=1, loc=1, scale=2)}</p>
+			<p>Next, we set up and run the random search process, which will sample 100 values from our <strong class="source-inline">gamma(1,1)</strong> distribution, fit the ridge regression, and evaluate its performance using cross-validation scored on the negative mean squared error metric:</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">set up the random search to sample 100 values and </p>
+			<p class="source-code">score on negative mean squared error</p>
+			<p class="source-code">"""</p>
+			<p class="source-code">rscv = model_selection.RandomizedSearchCV\</p>
+			<p class="source-code">       (estimator=reg, param_distributions=param_dist, \</p>
+			<p class="source-code">        n_iter=100, scoring='neg_mean_squared_error')</p>
+			<p class="source-code"># start the search</p>
+			<p class="source-code">rscv.fit(X,y)</p>
+			<p>After completing the search, we can extract the results and generate a pandas DataFrame, as we have done previously. Sorting by <strong class="source-inline">rank_test_score</strong> and viewing the first five rows aligns with our conclusion that alpha should be set to 1 and regularization does not seem to be required for this problem:</p>
+			<p class="source-code">import pandas as pd</p>
+			<p class="source-code"># convert the results dictionary to a pandas data frame</p>
+			<p class="source-code">results = pd.DataFrame(rscv.cv_results_)</p>
+			<p class="source-code"># show the top 5 hyperparamaterizations</p>
+			<p class="source-code">print(results.loc[:,['params','rank_test_score']]\</p>
+			<p class="source-code">      .sort_values('rank_test_score').head(5))</p>
+			<p>The output will be as follows:</p>
+			<div>
+				<div id="_idContainer420" class="IMG---Figure">
+					<img src="Images/B15019_08_24.jpg" alt="Figure 8.24: Output for tuning using RandomizedSearchCV&#13;&#10;" width="1251" height="241"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.24: Output for tuning using RandomizedSearchCV</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The preceding results may vary, depending on the data.</p>
+			<h2 id="_idParaDest-224"><a id="_idTextAnchor223"/>Exercise 8.03: Random Search Hyperparameter Tuning for a Random Forest Classifier</h2>
+			<p>In this exercise, we will revisit the handwritten digit classification problem, this time using a random forest classifier with hyperparameters tuned using a random search strategy. The random forest is a popular method used for both single-class and multi-class classification problems. It learns by growing <strong class="source-inline">n</strong> simple tree models that each progressively split the dataset into areas that best separate the points of different classes. </p>
+			<p>The final model produced can be thought of as the average of each of the n tree models. In this way, the random forest is an <strong class="source-inline">ensemble</strong> method. The parameters we will tune in this exercise are <strong class="source-inline">criterion</strong> and <strong class="source-inline">max_features</strong>. </p>
+			<p><strong class="source-inline">criterion</strong> refers to the way in which each split is evaluated from a class purity perspective (the purer the splits, the better) and <strong class="source-inline">max_features</strong> is the maximum number of features the random forest can use when finding the best splits.</p>
+			<p>The following steps will help you complete the exercise.</p>
+			<ol>
+				<li value="1">Create a new notebook in Google Colab.</li>
+				<li>Import the data and isolate the features <strong class="source-inline">X</strong> and the target <strong class="source-inline">y</strong>:<p class="source-code">from sklearn import datasets</p><p class="source-code"># import data</p><p class="source-code">digits = datasets.load_digits()</p><p class="source-code"># target</p><p class="source-code">y = digits.target</p><p class="source-code"># features</p><p class="source-code">X = digits.data</p></li>
+				<li>Initialize the random forest classifier estimator. We will set the <strong class="source-inline">n_estimators</strong> hyperparameter to <strong class="source-inline">100</strong>, which means the predictions of the final model will essentially be an average of <strong class="source-inline">100</strong> simple tree models. Note the use of a random state to ensure the reproducibility of results:<p class="source-code">from sklearn import ensemble</p><p class="source-code"># an ensemble of 100 estimators</p><p class="source-code">rfc = ensemble.RandomForestClassifier(n_estimators=100, \</p><p class="source-code">                                      random_state=100)</p></li>
+				<li>One of the parameters we will be tuning is <strong class="source-inline">max_features</strong>. Let's find out the maximum value this could take:<p class="source-code"># how many features do we have in our dataset?</p><p class="source-code">n_features = X.shape[1]</p><p class="source-code">print(n_features)</p><p>You should see that we have 64 features:</p><p class="source-code">64</p><p>Now that we know the maximum value of <strong class="source-inline">max_features</strong> we are free to define our hyperparameter inputs to the randomized search process. At this point, we have no reason to believe any particular value of <strong class="source-inline">max_features</strong> is more optimal. </p></li>
+				<li>Set a discrete uniform distribution covering the range <strong class="source-inline">1</strong> to <strong class="source-inline">64</strong>. Remember the probability mass function, <strong class="source-inline">P(X=x) = 1/n</strong>, for this distribution, so <strong class="source-inline">P(X=x) = 1/64</strong> in our case. Because <strong class="source-inline">criterion</strong> has only two discrete options, this will also be sampled as a discrete uniform distribution with <strong class="source-inline">P(X=x) = ½</strong>:<p class="source-code">from scipy import stats</p><p class="source-code">"""</p><p class="source-code">we would like to smaple from criterion and </p><p class="source-code">max_features as discrete uniform distributions</p><p class="source-code">"""</p><p class="source-code">param_dist = {'criterion': ['gini', 'entropy'],\</p><p class="source-code">              'max_features': stats.randint(low=1, \</p><p class="source-code">                                            high=n_features)}</p></li>
+				<li>We now have everything we need to set up the randomized search process. As before, we will use accuracy as the metric of model evaluation. Note the use of a random state:<p class="source-code">from sklearn import model_selection</p><p class="source-code">"""</p><p class="source-code">setting up the random search sampling 50 times and </p><p class="source-code">conducting 5-fold cross-validation</p><p class="source-code">"""</p><p class="source-code">rscv = model_selection.RandomizedSearchCV\</p><p class="source-code">       (estimator=rfc, param_distributions=param_dist, \</p><p class="source-code">        n_iter=50, cv=5, scoring='accuracy' , random_state=100)</p></li>
+				<li>Let's kick off the process with the. <strong class="source-inline">fit</strong> method. Please note that both fitting random forests and cross-validation are computationally expensive processes due to their internal processes of iteration. Generating a result may take some time:<p class="source-code"># start the process</p><p class="source-code">rscv.fit(X,y)</p><p>You should see the following:</p><div id="_idContainer421" class="IMG---Figure"><img src="Images/B15019_08_25.jpg" alt="Figure 8.25: RandomizedSearchCV results&#13;&#10;" width="1568" height="801"/></div><p class="figure-caption">Figure 8.25: RandomizedSearchCV results</p></li>
+				<li>Next, you need to examine the results. Create a <strong class="source-inline">pandas</strong> DataFrame from the <strong class="source-inline">results</strong> attribute, order by the <strong class="source-inline">rank_test_score</strong>, and look at the top five model hyperparameterizations. Note that because the random search draws samples of hyperparameterizations at random, it is possible to have duplication. We remove the duplicate entries from the DataFrame:<p class="source-code">import pandas as pd</p><p class="source-code"># convert the dictionary of results to a pandas dataframe</p><p class="source-code">results = pd.DataFrame(rscv.cv_results_)</p><p class="source-code"># removing duplication</p><p class="source-code">distinct_results = results.loc[:,['params',\</p><p class="source-code">                                  'mean_test_score']]</p><p class="source-code"># convert the params dictionaries to string data types</p><p class="source-code">distinct_results.loc[:,'params'] = distinct_results.loc\</p><p class="source-code">                                   [:,'params'].astype('str')</p><p class="source-code"># remove duplicates</p><p class="source-code">distinct_results.drop_duplicates(inplace=True)</p><p class="source-code"># look at the top 5 best hyperparamaterizations</p><p class="source-code">distinct_results.sort_values('mean_test_score', \</p><p class="source-code">                             ascending=False).head(5)</p><p>You should get the following output:</p><div id="_idContainer422" class="IMG---Figure"><img src="Images/B15019_08_26.jpg" alt="Figure 8.26: Top five hyperparameterizations&#13;&#10;" width="649" height="143"/></div><p class="figure-caption">Figure 8.26: Top five hyperparameterizations</p><p class="callout-heading">Note</p><p class="callout">You may get slightly different results. However, the values you obtain should largely agree with those in the preceding output.</p></li>
+				<li>The last step is to visualize the result. Including every parameterization will result in a cluttered plot, so we will filter on parameterizations that resulted in a mean test score &gt; 0.93:<p class="source-code"># top performing models</p><p class="source-code">distinct_results[distinct_results.mean_test_score &gt; 0.93]\</p><p class="source-code">                 .sort_values('mean_test_score')\</p><p class="source-code">                 .plot.barh(x='params', xlim=(0.9))</p><p>The output will be as follows:</p><div id="_idContainer423" class="IMG---Figure"><img src="Images/B15019_08_27.jpg" alt="Figure 8.27: Visualizing the test scores of the top-performing models&#13;&#10;" width="1529" height="639"/></div></li>
+			</ol>
+			<p class="figure-caption">Figure 8.27: Visualizing the test scores of the top-performing models</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">To access the source code for this specific section, please refer to <a href="https://packt.live/2uDVct8">https://packt.live/2uDVct8</a>.</p>
+			<p class="callout">You can also run this example online at <a href="https://packt.live/3gbQMvw">https://packt.live/3gbQMvw</a>.</p>
+			<p>We have found the best hyperparameterization to be a random forest classifier using the <strong class="source-inline">gini</strong> criterion with the maximum features set to 4.</p>
+			<h2 id="_idParaDest-225"><a id="_idTextAnchor224"/>Advantages and Disadvantages of a Random Search</h2>
+			<p>Because a random search takes a finite sample from a range of possible hyperparameterizations (<strong class="source-inline">n_iter</strong> in <strong class="source-inline">model_selection.RandomizedSearchCV</strong>), it is feasible to expand the range of your hyperparameter search beyond what would be practical with a grid search. This is because a grid search has to try everything in the range, and setting a large range of values may be too slow to process. Searching this wider range gives you the chance of discovering a truly optimal solution. </p>
+			<p>Compared to the manual and grid search strategies, you do sacrifice a level of control to obtain this benefit. The other consideration is that setting up random search is a bit more involved than other options in that you have to specify distributions. There is always a chance of getting this wrong. That said, if you are unsure about what distributions to use, stick with discrete or continuous uniform for the respective variable types as this will assign an equal probability of selection to all options. </p>
+			<h2 id="_idParaDest-226"><a id="_idTextAnchor225"/>Activity 8.01: Is the Mushroom Poisonous?</h2>
+			<p>Imagine you are a data scientist working for the biology department at your local university. Your colleague who is a mycologist (a biologist who specializes in fungi) has requested that you help her develop a machine learning model capable of discerning whether a particular mushroom species is poisonous or not given attributes relating to its appearance.</p>
+			<p>The objective of this activity is to employ the grid and randomized search strategies to find an optimal model for this purpose.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The dataset to be used in this exercise can be found on our GitHub repository at <a href="https://packt.live/38zdhaB">https://packt.live/38zdhaB</a>.</p>
+			<p class="callout">Details on the attributes of the dataset can be found on the original dataset site: <a href="https://packt.live/36j0jfA">https://packt.live/36j0jfA</a>.</p>
+			<ol>
+				<li value="1">Load the data into Python using the <strong class="source-inline">pandas.read_csv()</strong> method, calling the object <strong class="source-inline">mushrooms</strong>.<p>Hint: The dataset is in CSV format and has no header. Set <strong class="source-inline">header=None</strong> in <strong class="source-inline">pandas.read_csv()</strong>.</p></li>
+				<li>Separate the target, <strong class="source-inline">y</strong> and features, <strong class="source-inline">X</strong> from the dataset.<p>Hint: The target can be found in the first column (<strong class="source-inline">mushrooms.iloc[:,0]</strong>) and the features in the remaining columns (<strong class="source-inline">mushrooms.iloc[:,1:]</strong>).</p></li>
+				<li>Recode the target, <strong class="source-inline">y</strong>, so that poisonous mushrooms are represented as <strong class="source-inline">1</strong> and edible mushrooms as <strong class="source-inline">0</strong>.</li>
+				<li>Transform the columns of the feature set <strong class="source-inline">X</strong> into a <strong class="source-inline">numpy</strong> array with a binary representation. This is known as one-hot encoding.<p>Hint: Use <strong class="source-inline">preprocessing.OneHotEncoder()</strong> to transform <strong class="source-inline">X</strong>.</p></li>
+				<li>Conduct both a grid and random search to find an optimal hyperparameterization for a random forest classifier. Use accuracy as your method of model evaluation. Make sure that when you initialize the classifier and when you conduct your random search, <strong class="source-inline">random_state = 100</strong>.<p>For the grid search, use the following:</p><p class="source-code">{'criterion': ['gini', 'entropy'],\</p><p class="source-code"> 'max_features': [2, 4, 6, 8, 10, 12, 14]}</p><p>For the randomized search, use the following:</p><p class="source-code">{'criterion': ['gini', 'entropy'],\</p><p class="source-code"> 'max_features': stats.randint(low=1, high=max_features)}</p></li>
+				<li>Plot the mean test score versus hyperparameterization for the top 10 models found using random search.<p>You should see a plot similar to the following:</p></li>
+			</ol>
+			<p> </p>
+			<div>
+				<div id="_idContainer424" class="IMG---Figure">
+					<img src="Images/B15019_08_28.jpg" alt="Figure 8.28: Mean test score plot&#13;&#10;" width="759" height="322"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.28: Mean test score plot</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The solution to the activity can be found here: <a href="https://packt.live/2GbJloz">https://packt.live/2GbJloz</a>.</p>
+			<h1 id="_idParaDest-227"><a id="_idTextAnchor226"/>Summary</h1>
+			<p>In this chapter, we have covered three strategies for hyperparameter tuning based on searching for estimator hyperparameterizations that improve performance. </p>
+			<p>The manual search is the most hands-on of the three but gives you a unique feel for the process. It is suitable for situations where the estimator in question is simple (a low number of hyperparameters).</p>
+			<p>The grid search is an automated method that is the most systematic of the three but can be very computationally intensive to run when the range of possible hyperparameterizations increases.</p>
+			<p>The random search, while the most complicated to set up, is based on sampling from distributions of hyperparameters, which allows you to expand the search range, thereby giving you the chance to discover a good solution that you may miss with the grid or manual search options. </p>
+			<p>In the next chapter, we will be looking at how to visualize results, summarize models, and articulate feature importance and weights.</p>
+		</div>
+		<div>
+			<div id="_idContainer426" class="Content">
+			</div>
+		</div>
+	</div></body></html>

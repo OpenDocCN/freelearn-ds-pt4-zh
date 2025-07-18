@@ -1,0 +1,559 @@
+<html><head></head><body><div id="sbo-rt-content"><div id="_idContainer043">
+			<h1 id="_idParaDest-117"><em class="italic"><a id="_idTextAnchor123"/>Chapter 5</em>: Installing Pachyderm on a Cloud Platform</h1>
+			<p>In the previous chapter, you learned the process for installing Pachyderm locally to get started quickly and test Pachyderm on your computer.</p>
+			<p>Production use cases require additional compute resources and scalability that can be efficiently achieved using cloud platforms and managed Kubernetes platform services provided by the popular cloud vendors. Pachyderm can run on a Kubernetes cluster, irrespective of whether it is deployed manually on cloud instances or as a managed Kubernetes service. We will discuss the most popular and easy-to-configure methods on cloud providers.</p>
+			<p>This chapter walks you through the cloud-based installation of Pachyderm and explains the software requirements needed to run a Pachyderm cluster in production. This chapter will cover the installation on the following most popular cloud platforms: Amazon <strong class="bold">Elastic Kubernetes Service</strong> (<strong class="bold">EKS</strong>), <strong class="bold">Google Kubernetes Engine</strong> (<strong class="bold">GKE</strong>), and Microsoft <strong class="bold">Azure Kubernetes Service</strong> (<strong class="bold">AKS</strong>).</p>
+			<p>In this chapter, we're going to cover the following main topics:</p>
+			<ul>
+				<li><a id="_idTextAnchor124"/>Installing the required tools</li>
+				<li>Deploying Pachyderm on Amazon EKS</li>
+				<li>Deploying Pachyderm on GKE</li>
+				<li>Deploying Pachyderm on Microsoft AKS</li>
+				<li>Accessing the Pachyderm console</li>
+			</ul>
+			<h1 id="_idParaDest-118"><a id="_idTextAnchor125"/>Technical requirements</h1>
+			<p>If you are on macOS, verify that you have an up-to-date version of macOS. If you are using Linux, you must be on 64-bit versions of recent distributions of CentOS, Fedora, or Ubuntu. If you are on Windows, run all the commands described in this section from <strong class="bold">Windows Subsystem for Linux</strong> (<strong class="bold">WSL</strong>). You should have the following tools installed from the previous chapters:</p>
+			<ul>
+				<li>Homebrew (macOS only)</li>
+				<li>The Kubernetes <strong class="bold">Command-Line Interface</strong> (<strong class="bold">CLI</strong>) – <strong class="source-inline">kubectl</strong></li>
+				<li>Helm</li>
+				<li>Pachyderm CLI – <strong class="source-inline">pachctl</strong></li>
+				<li>WSL (Windows only)</li>
+			</ul>
+			<p>We will need to install the following tools:</p>
+			<ul>
+				<li><strong class="bold">The Amazon Web Services</strong> (<strong class="bold">AWS</strong>) CLI – <strong class="source-inline">aws</strong></li>
+				<li><strong class="bold">The Amazon Identity and Access Management</strong> (<strong class="bold">AWS IAM</strong>) authenticator for Kubernetes</li>
+				<li>The EKS command-line tool – <strong class="source-inline">eksctl</strong></li>
+				<li>The Google Cloud SDK – <strong class="source-inline">gcloud</strong></li>
+				<li>The Azure CLI – <strong class="source-inline">az</strong></li>
+				<li>A JSON processor – <strong class="source-inline">jq</strong></li>
+			</ul>
+			<p>We will go into the specifics regarding the installation and configuration of these tools as we go through this chapter. If you already know how to do this, you can go ahead and set them up now. </p>
+			<h1 id="_idParaDest-119"><a id="_idTextAnchor126"/>Installing the required tools</h1>
+			<p>In this section, we <a id="_idIndexMarker466"/>will cover the installation of the system tools that we will use to prepare our environment before deploying a Kubernetes cluster and installing Pachyderm on cloud platforms. </p>
+			<h2 id="_idParaDest-120"><a id="_idTextAnchor127"/>Installing the AWS Command Line Interface to manage AWS</h2>
+			<p>The AWS Command Line Interface, <strong class="source-inline">aws-cli</strong>, is required to execute commands in your AWS account. For additional information, you can refer to the AWS Command Line Interface official <a id="_idIndexMarker467"/>documentation at <a href="https://docs.aws.amazon.com/cli/latest/userguide/">https://docs.aws.amazon.com/cli/latest/userguide/</a>. Let's install <strong class="source-inline">aws-cli</strong> on your computer: </p>
+			<ol>
+				<li>Execute the<a id="_idIndexMarker468"/> following commands to install <strong class="source-inline">aws-cli</strong> version 2 on your computer:</li>
+			</ol>
+			<p>If you are using macOS:</p>
+			<p class="source-code"><strong class="bold">$ curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"</strong></p>
+			<p class="source-code"><strong class="bold">$ sudo installer -pkg AWSCLIV2.pkg -target</strong></p>
+			<p>If you are on Linux (x86) or WSL on Windows:</p>
+			<p class="source-code"><strong class="bold">$ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"</strong></p>
+			<p class="source-code"><strong class="bold">$ unzip awscliv2.zip</strong></p>
+			<p class="source-code"><strong class="bold">$ sudo ./aws/install</strong></p>
+			<ol>
+				<li value="2">Execute the following command to verify the successful installation of the AWS CLI:<p class="source-code"><strong class="bold">$ aws --version</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">aws-cli/2.4.7 Python/3.8.8 Linux/5.11.0-41-generic exe/x86_64.ubuntu.20 prompt/off</p>
+			<ol>
+				<li value="3">Execute the following command to configure the AWS CLI and enter your <strong class="bold">AWS access key</strong> and <strong class="bold">secret access key</strong> when asked. The AWS CLI saves the information used here in a credentials file located under <strong class="source-inline">~/.aws/credentials</strong> to be used when you run the command later:<p class="source-code"><strong class="bold">$ aws configure</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">AWS Access Key ID [None<a id="_idTextAnchor128"/>]: YOURACCESSKEYHERE</p>
+			<p class="source-code">AWS Secret Access Key [None]: YOURSECRETACCESSKEYHERE</p>
+			<p class="source-code">Default region name [None]: us-east-1</p>
+			<p class="source-code">Default output format [None]: json</p>
+			<ol>
+				<li value="4">To<a id="_idIndexMarker469"/> use a different account than what you have configured in the credentials file, you can set the environment variable, which will be used until the end of your current shell session. Use the following variables temporarily to set a user configuration if needed:<p class="source-code"><strong class="bold">$ export AWS_ACCESS_KEY_ID=YOURACCESSKEY2HERE</strong></p><p class="source-code"><strong class="bold">$ export AWS_SECRET_ACCESS_KEY=YOURSECRETACCESS2KEYHERE </strong></p><p class="source-code"><strong class="bold">$ export AWS_DEFAULT_REGION=us-west-2</strong></p></li>
+			</ol>
+			<p>Now that you have installed the AWS Command Line Interface on your computer, let's install the AWS IAM authenticator for Kubernet<a id="_idTextAnchor129"/>es.</p>
+			<h2 id="_idParaDest-121"><a id="_idTextAnchor130"/>Installing the AWS IAM authenticator for Kubernetes</h2>
+			<p>Amazon EKS leverages AWS IAM to provide access to the Kubernetes clusters created through EKS. To be<a id="_idIndexMarker470"/> able to make the <strong class="source-inline">kubectl</strong> command work <a id="_idIndexMarker471"/>with Amazon EKS IAM roles, the Amazon IAM authenticator for Kubernetes needs to be installed. Let's install the IAM authenticator on your computer: </p>
+			<ol>
+				<li value="1">Execute the following commands to install <strong class="source-inline">aws-iam-authenticator</strong>:</li>
+			</ol>
+			<p>If you are using macOS:</p>
+			<p class="source-code"><strong class="bold">$ brew install aws-iam-authenticator</strong></p>
+			<p>If you are using Linux (x86) or WSL on Windows:</p>
+			<p class="source-code"><strong class="bold">$ curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/aws-iam-authenticator</strong></p>
+			<p class="source-code"><strong class="bold">$ chmod +x ./aws-iam-authenticator</strong></p>
+			<p class="source-code"><strong class="bold">$ mkdir -p $HOME/bin &amp;&amp; cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator &amp;&amp; export PATH=$PATH:$HOME/bin</strong></p>
+			<p class="source-code"><strong class="bold">$ echo 'export PATH=$PATH:$HOME/bin' &gt;&gt; ~/.bashrc</strong></p>
+			<ol>
+				<li value="2">Verify<a id="_idIndexMarker472"/> its version <a id="_idIndexMarker473"/>and make sure that <strong class="source-inline">aws-iam-authenticator</strong> is installed:<p class="source-code"><strong class="bold">$ aws-iam-authenticator version</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows. To be able to perform the following recipes, the <strong class="source-inline">aws-iam-authenticator</strong> version should be <strong class="source-inline">0.5.0</strong> or later:</p>
+			<p class="source-code">{"Version":"v0.5.0","Commit":"1cfe2a90f68381eacd7b6dcfa2 bf689e76eb8b4b"}</p>
+			<p>Now you have installed <strong class="source-inline">aws-iam-authenticator</strong> on your computer. </p>
+			<h2 id="_idParaDest-122"><a id="_idTextAnchor131"/>Installing eksctl to manage Amazon EKS</h2>
+			<p>Amazon EKS <a id="_idIndexMarker474"/>is a managed Kubernetes service on Amazon EC2. To manage <a id="_idIndexMarker475"/>Amazon EKS over the terminal<a id="_idIndexMarker476"/> and execute commands, the official CLI for Amazon EKS, <strong class="source-inline">eksctl</strong>, is used. For additional information, you can refer to the AWS <strong class="source-inline">eksctl</strong> official <a id="_idIndexMarker477"/>documentation at <a href="https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html">https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html</a>. Let's install <strong class="source-inline">eksctl</strong> on your computer: </p>
+			<ol>
+				<li value="1">Execute<a id="_idIndexMarker478"/> the following commands to install <strong class="source-inline">eksctl</strong> on your computer:</li>
+			</ol>
+			<p>If you are using macOS:</p>
+			<p class="source-code"><strong class="bold">$ brew tap weaveworks/tap</strong></p>
+			<p class="source-code"><strong class="bold">$ brew install weaveworks/tap/eksctl</strong></p>
+			<p>If you are using Linux (x86) or WSL on Windows:</p>
+			<p class="source-code"><strong class="bold">$ curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp</strong></p>
+			<p class="source-code"><strong class="bold">$ sudo mv /tmp/eksctl /usr/local/bin</strong></p>
+			<ol>
+				<li value="2">Verify<a id="_idIndexMarker479"/> its version and make sure that <strong class="source-inline">eksctl</strong> is installed:<p class="source-code"><strong class="bold">$ eksctl version</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">0.77.0</p>
+			<p>To be able to perform the following steps, the <strong class="source-inline">eksctl</strong> version should be <strong class="source-inline">0.77.0</strong> or later. Now you have installed <strong class="source-inline">eksctl</strong> to manage Amazon EKS on your computer. </p>
+			<h2 id="_idParaDest-123"><a id="_idTextAnchor132"/>Installing the Google Cloud SDK to manage Google Cloud</h2>
+			<p>The Google Cloud SDK, <strong class="source-inline">gcloud</strong>, is <a id="_idIndexMarker480"/>required to execute commands in your Google Cloud account. The following instructions assume that you have an active <a id="_idIndexMarker481"/>GCP account with billing enabled. If you don't have an account already, go to <a href="https://console.cloud.google.com">https://console.cloud.google.com</a> and create an account. Let's install <strong class="source-inline">gcloud</strong> on your computer: </p>
+			<ol>
+				<li value="1">Execute the following<a id="_idIndexMarker482"/> commands to install <strong class="source-inline">gcloud</strong> on your computer:</li>
+			</ol>
+			<p>If you are using macOS:</p>
+			<p class="source-code"><strong class="bold">$ brew tap weaveworks/tap</strong></p>
+			<p class="source-code"><strong class="bold">$ brew install weaveworks/tap/eksctl</strong></p>
+			<p>If you are using Linux (x86) or WSL on Windows:</p>
+			<p class="source-code"><strong class="bold">$ curl https://sdk.cloud.google.com | bash</strong></p>
+			<ol>
+				<li value="2">Restart your shell by executing the following command:<p class="source-code"><strong class="bold">$ exec -l $SHELL</strong></p></li>
+				<li>Verify its version and make sure <strong class="source-inline">gcloud</strong> is installed:<p class="source-code"><strong class="bold">$ gcloud version</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows. To be able to perform the following recipes, the Google Cloud SDK version should be <strong class="source-inline">339.0.0</strong> or later:</p>
+			<p class="source-code">Google Cloud SDK 367.0.0</p>
+			<p class="source-code">bq 2.0.72</p>
+			<p class="source-code">core 2021.12.10</p>
+			<p class="source-code">gsutil 5.5</p>
+			<ol>
+				<li value="4">Execute the following command to initialize the SDK and follow the instructions:<p class="source-code"><strong class="bold">$ gcloud init</strong></p></li>
+				<li>Execute the following command to set a default zone for future deployments. In our example, the compute zone is set to <strong class="source-inline">us-central1-a</strong>:<p class="source-code"><strong class="bold">$ gcloud config set compute/zone us-central1-a</strong></p></li>
+			</ol>
+			<p>Now you have installed <strong class="source-inline">gcloud</strong> to manage GKE on your computer. </p>
+			<h2 id="_idParaDest-124"><a id="_idTextAnchor133"/>Installing the Azure CLI to manage Microsoft Azure</h2>
+			<p>The Azure CLI, <strong class="source-inline">az</strong>, is required to execute commands in your Microsoft Azure account. The following instructions<a id="_idIndexMarker483"/> assume that you have an active Azure account with billing enabled. If you don't have an account<a id="_idIndexMarker484"/> already, go to <a href="https://portal.azure.com">https://portal.azure.com</a> and create an <a id="_idIndexMarker485"/>account. Let's install the Azure CLI on your computer: </p>
+			<ol>
+				<li value="1">Execute the following commands to install <strong class="source-inline">gcloud</strong> on your computer:</li>
+			</ol>
+			<p>If you are using macOS:</p>
+			<p class="source-code"><strong class="bold">$ brew update &amp;&amp; brew install azure-cli</strong></p>
+			<p class="source-code"><strong class="bold">$ brew install jq</strong></p>
+			<p>If you are using Linux (x86) or WSL on Windows:</p>
+			<p class="source-code"><strong class="bold">$ curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash</strong></p>
+			<p class="source-code"><strong class="bold">$ sudo apt-get install jq</strong></p>
+			<ol>
+				<li value="2">Verify its version and make sure the Azure CLI is installed:<p class="source-code"><strong class="bold">$ az version</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows. To be able to perform the following steps, the Azure CLI version should be <strong class="source-inline">2.0.1</strong> or later:</p>
+			<p class="source-code">{</p>
+			<p class="source-code">  "azure-cli": "2.31.0",</p>
+			<p class="source-code">  "azure-cli-core": "2.31.0",</p>
+			<p class="source-code">  "azure-cli-telemetry": "1.0.6",</p>
+			<p class="source-code">  "extensions": {}</p>
+			<p class="source-code">}</p>
+			<ol>
+				<li value="3">Execute the following command to initialize the Azure CLI and follow the instructions:<p class="source-code"><strong class="bold">$ az login</strong></p></li>
+				<li>Execute<a id="_idIndexMarker486"/> the following command to create a <a id="_idIndexMarker487"/>resource group with a unique name and set a default zone for future deployments. In our example, the compute zone is set to <strong class="source-inline">centralus</strong>:<p class="source-code"><strong class="bold">$ az group create --name="pachyderm-group" --location=centralus</strong></p></li>
+			</ol>
+			<p>Now you have installed the Azure CLI to manage AKS on your computer. </p>
+			<h1 id="_idParaDest-125"><a id="_idTextAnchor134"/>Deploying Pachyderm on Amazon EKS</h1>
+			<p>Kubernetes<a id="_idIndexMarker488"/> is an open source container orchestration platform and, by itself, is a large topic to cover. In this section, we take the topic of containerization from<a id="_idIndexMarker489"/> a data scientist's perspective and will only focus on running our workload, Pachyderm, on the most common <a id="_idIndexMarker490"/>managed platforms available in the market. There are various ways and tools to provision and manage the life cycle of production-grade Kubernetes clusters on the AWS cloud platform, such as <strong class="source-inline">kOps</strong>, <strong class="source-inline">kubespray</strong>, <strong class="source-inline">k3s</strong>, Terraform, and others. For additional configuration details, you can refer to Kubernetes' official documentation<a id="_idIndexMarker491"/> at <a href="https://kubernetes.io/docs/setup/production-environment/">https://kubernetes.io/docs/setup/production-environment/</a>. Let's learn the simplest way to get the services required by Pachyderm up and running on AWS's managed Kuberne<a id="_idTextAnchor135"/>tes service, Amazon EKS. </p>
+			<h2 id="_idParaDest-126"><a id="_idTextAnchor136"/>Preparing an Amazon EKS cluster to run Pachyderm</h2>
+			<p>Follow <a id="_idIndexMarker492"/>these steps to <a id="_idIndexMarker493"/>provision an Amazon EKS cluster using <strong class="source-inline">eksctl</strong>. Initially developed as a third-party open source tool, <strong class="source-inline">eksctl</strong> is now the official tool for deploying and managing EKS clusters via a CLI. You will need to have the AWS CLI and the AWS IAM authenticator for Kubernetes installed and their credentials configured. If you have a cluster, you can skip these instructions and jump to the <em class="italic">Deploying Pachyderm on Amazon EKS</em> section. Also, you can refer to the Amazon EKS official<a id="_idIndexMarker494"/> documentation at <a href="https://eksctl.io/introduction/">https://eksctl.io/introduction/</a>: </p>
+			<ol>
+				<li value="1">Execute <a id="_idIndexMarker495"/>the following command to simply deploy an EKS cluster with default parameters. This<a id="_idIndexMarker496"/> command will generate a cluster with two <strong class="source-inline">m5.large</strong> worker nodes using the official <a id="_idIndexMarker497"/>AWS EKS <strong class="bold">Amazon Machine Image</strong> (<strong class="bold">AMI</strong>):<p class="source-code"><strong class="bold">$ eksctl create cluster</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should return output similar to this:</p>
+			<p class="source-code">...</p>
+			<p class="source-code">kubectl command should work with "/home/norton/.kube/config", try 'kubectl get nodes'</p>
+			<p class="source-code">[✔]  EKS cluster "exciting-badger-1620255089" in "us-east-1" region is ready</p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">To customize the EKS cluster configuration, you can pass additional parameters to <strong class="source-inline">eksctl</strong> as follows:</p>
+			<p class="callout"><strong class="source-inline">eksctl create cluster --name &lt;name&gt; --version &lt;version&gt; \</strong></p>
+			<p class="callout"><strong class="source-inline">--nodegroup-name &lt;name&gt; --node-type &lt;vm-flavor&gt; \</strong></p>
+			<p class="callout"><strong class="source-inline">--nodes &lt;number-of-nodes&gt; --nodes-min &lt;min-number-nodes&gt; \</strong></p>
+			<p class="callout"><strong class="source-inline">--nodes-max &lt;max-number-nodes&gt; --node-ami auto</strong></p>
+			<ol>
+				<li value="2">Verify the cluster deployment by executing the following command:<p class="source-code"><strong class="bold">$ kubectl cluster-info &amp;&amp; kubectl get nodes</strong></p></li>
+			</ol>
+			<p>The output of <a id="_idIndexMarker498"/>the<a id="_idIndexMarker499"/> preceding command should look as follows:</p>
+			<p class="source-code">Kubernetes control plane is running at https://ABCD.gr7.us-east-1.eks.amazonaws.com</p>
+			<p class="source-code">CoreDNS is running at https://ABCD.gr7.us-east-1.eks.amazonaws.com/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy</p>
+			<p class="source-code">To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.</p>
+			<p class="source-code">NAME                             STATUS   ROLES    AGE    VERSION</p>
+			<p class="source-code">ip-192-168-17-133.ec2.internal   Ready    &lt;none&gt;   21m    v1.21.5-eks-bc4871b </p>
+			<p class="source-code">ip-192-168-63-179.ec2.internal   Ready    &lt;none&gt;   21m    v1.21.5-eks-bc4871b</p>
+			<p>Now, your Amazon EKS cluster is provisioned and ready to deploy Pachyderm.</p>
+			<h2 id="_idParaDest-127"><a id="_idTextAnchor137"/>Creating an S3 object storage bucket </h2>
+			<p>Pachyderm <a id="_idIndexMarker500"/>uses S3-compliant <a id="_idIndexMarker501"/>object storage to store data. Follow these steps to create an S3 object storage bucket: </p>
+			<ol>
+				<li value="1">Generate variables that will be used to create your S3 bucket and pass it to <strong class="source-inline">pachctl</strong> to store your Pachyderm data later. Make sure to use a unique bucket name. In our example, we will use <strong class="source-inline">s3.pachyderm</strong> as our bucket name with a capacity of 200 GB and located in the same region as our EKS cluster, <strong class="source-inline">us-east-1</strong>: <p class="source-code"><strong class="bold">$ export S3_BUCKET_NAME=s3.pachyderm</strong></p><p class="source-code"><strong class="bold">$ export EBS_STORAGE_SIZE=200</strong></p><p class="source-code"><strong class="bold">$ export AWS_REGION=us-east-1</strong></p></li>
+				<li>In order<a id="_idIndexMarker502"/> for <a id="_idIndexMarker503"/>Pachyderm to store pipeline data, a dedicated S3 bucket is required. Execute the following command to create an S3 bucket with the parameters defined by your variables:<p class="source-code"><strong class="bold">$ aws s3api create-bucket --bucket ${S3_BUCKET_NAME} \</strong></p><p class="source-code"><strong class="bold">--region ${AWS_REGION}</strong></p></li>
+				<li>Execute the following command to confirm the creation of the bucket:<p class="source-code"><strong class="bold">$ aws s3api list-buckets --query 'Buckets[].Name'</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">[</p>
+			<p class="source-code">    "s3.pachyderm",</p>
+			<p class="source-code">]</p>
+			<p>Now that we have an S3 bucket created, we are rea<a id="_idTextAnchor138"/>dy to deploy Pachyderm on Amazon EKS.</p>
+			<h1 id="_idParaDest-128"><a id="_idTextAnchor139"/>Deploying the cluster</h1>
+			<p>When <a id="_idIndexMarker504"/>you start learning Pachyderm, it is recommended to run experiments in a small local cluster. We have previously covered the local deployment of Pachyderm in <a href="B17085_04_Final_SB_Epub.xhtml#_idTextAnchor096"><em class="italic">Chapter 4</em></a>, <em class="italic">Installing Pachyderm Locally</em>. In this chapter, we focus on a scalable production-grade deployment of Pachyderm using IAM roles on Amazon EKS clusters.  </p>
+			<p>Follow these steps to <a id="_idIndexMarker505"/>install Pachyderm on your Amazon EKS cluster:</p>
+			<ol>
+				<li value="1">The AWS IAM role assigned to your EKS cluster needs to have access to the S3 bucket you <a id="_idIndexMarker506"/>created during the <em class="italic">Creating an S3 object storage bucket</em> section. As shown in the following screenshot, log in to your AWS Management Console and go to the EKS dashboard as follows:</li>
+			</ol>
+			<div>
+				<div id="_idContainer038" class="IMG---Figure">
+					<img src="Images/B17085_05_001.jpg" alt="Figure 5.1 – Amazon EKS Clusters dashboard&#13;&#10;" width="1076" height="340"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.1 – Amazon EKS Clusters dashboard</p>
+			<ol>
+				<li value="2">Click on the cluster. Locate the EC2 instance in the cluster. Find the IAM role on the <strong class="bold">Instance</strong> description page. Click on <strong class="bold">IAM Role</strong>: </li>
+			</ol>
+			<div>
+				<div id="_idContainer039" class="IMG---Figure">
+					<img src="Images/B17085_05_002.jpg" alt="Figure 5.2 – IAM role assigned to EC2 instances&#13;&#10;" width="551" height="263"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.2 – IAM role assigned to EC2 instances</p>
+			<ol>
+				<li value="3">Replace the <strong class="source-inline">&lt;s3-bucket&gt;</strong> placeholder below with your bucket name. Click on <strong class="bold">Add inline policy</strong> to create a <a id="_idIndexMarker507"/>new inline <a id="_idIndexMarker508"/>policy similar to the following code:<p class="source-code">{</p><p class="source-code">    "Statement": [</p><p class="source-code">        {</p><p class="source-code">            "Effect": "Allow",</p><p class="source-code">            "Action": [</p><p class="source-code">                "s3:PutObject",</p><p class="source-code">                "s3:GetObject",</p><p class="source-code">                "s3:ListBucket",</p><p class="source-code">                "s3:DeleteObject"</p><p class="source-code">            ],</p><p class="source-code">            "Resource": [</p><p class="source-code">                "arn:aws:s3:::&lt;s3-bucket&gt;",</p><p class="source-code">                "arn:aws:s3:::*/*"</p><p class="source-code">            ]</p><p class="source-code">        }</p><p class="source-code">    ]</p><p class="source-code">}</p></li>
+				<li>Switch to the <strong class="bold">Trust relationships</strong> tab and click on the <strong class="bold">Edit trust relationship</strong> button. Confirm that the trust relationship is similar to the following, otherwise, make <a id="_idIndexMarker509"/>the changes and click on the <strong class="bold">Update Trust Policy</strong> button to update:<p class="source-code">{</p><p class="source-code">  "Version": "2012-10-17",</p><p class="source-code">  "Statement": [</p><p class="source-code">    {</p><p class="source-code">      "Effect": "Allow",</p><p class="source-code">      "Principal": {</p><p class="source-code">        "Service": "ec2.amazonaws.com"</p><p class="source-code">      },</p><p class="source-code">      "Action": "sts:AssumeRole"</p><p class="source-code">    }</p><p class="source-code">  ]</p><p class="source-code">}</p></li>
+				<li>Now, execute<a id="_idIndexMarker510"/> the following command to add the Pachyderm Helm Chart repos to your local repository:<p class="source-code">$ helm repo add pach https://helm.pachyderm.com  </p></li>
+			</ol>
+			<ol>
+				<li value="6">Execute the following command to get the latest Chart information from the Chart repository:<p class="source-code">$ helm repo update</p></li>
+				<li>For a <a id="_idIndexMarker511"/>quick deployment, replace the Amazon S3 bucket name, access key ID, and secret key below and execute the command to deploy the latest version of Pachyderm on your cluster without the console:<p class="source-code">$ helm install pachd pach/pachyderm \ </p><p class="source-code">--set deployTarget=AMAZON \</p><p class="source-code">--set pachd.storage.amazon.bucket="AWS_S3_BUCKET" \</p><p class="source-code">--set pachd.storage.amazon.id="AWS_ACCESS_KEY" \</p><p class="source-code">--set pachd.storage.amazon.secret="AWS_SECRET" \</p><p class="source-code">--set pachd.storage.amazon.region="us-east-1"</p><p class="source-code">--set pachd.externalService.enabled=true</p></li>
+			</ol>
+			<p>If you have<a id="_idIndexMarker512"/> an enterprise key and would like to deploy it with Pachyderm's console user interface, execute the following command:</p>
+			<p class="source-code">$ helm install pachd pach/pachyderm \ </p>
+			<p class="source-code">--set deployTarget=AMAZON \</p>
+			<p class="source-code">--set pachd.storage.amazon.bucket="AWS_S3_BUCKET" \</p>
+			<p class="source-code">--set pachd.storage.amazon.id="AWS_ACCESS_KEY" \</p>
+			<p class="source-code">--set pachd.storage.amazon.secret="AWS_SECRET" \</p>
+			<p class="source-code">--set pachd.storage.amazon.region="us-east-1" \</p>
+			<p class="source-code">--set pachd.enterpriseLicenseKey=$(cat license.txt) \</p>
+			<p class="source-code">--set console.enabled=true</p>
+			<p>Once the console is deployed successfully, follow the instructions under the <em class="italic">Accessing the Pachyderm console</em> section<a id="_idIndexMarker513"/> to <a id="_idIndexMarker514"/>access the console.</p>
+			<p>The commands return the following output:</p>
+			<div>
+				<div id="_idContainer040" class="IMG---Figure">
+					<img src="Images/B17085_05_003.jpg" alt="Figure 5.3 – Pachyderm Helm Chart getting deployed on Kubernetes&#13;&#10;" width="522" height="127"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.3 – Pachyderm Helm Chart getting deployed on Kubernetes</p>
+			<p class="callout-heading">Optional: Customizing Installation Parameters </p>
+			<p class="callout">You can also download <a id="_idIndexMarker515"/>and customize the <strong class="source-inline">values.yaml</strong> file in the Helm Chart repository, <a href="https://github.com/pachyderm/pachyderm/tree/master/etc/helm/pachyderm">https://github.com/pachyderm/pachyderm/tree/master/etc/helm/pachyderm</a>, to further optimize the components needed to run Pachyderm. </p>
+			<p class="callout">Execute the following command to create a local copy of the <strong class="source-inline">values.yaml</strong> file:</p>
+			<p class="callout"><strong class="source-inline">$ wget https://raw.githubusercontent.com/pachyderm/pachyderm/master/etc/helm/pachyderm/values.yaml</strong></p>
+			<p class="callout">Once customized, you can use the same YAML file and install your Helm Chart by executing the following command instead: </p>
+			<p class="callout"><strong class="source-inline">$ helm install pachyderm -f values.yaml pach/pachyderm</strong></p>
+			<ol>
+				<li value="8">A Kubernetes Deployment is a controller that rolls out a ReplicaSet of Pods based on the<a id="_idIndexMarker516"/> requirements defined in your <strong class="source-inline">manifest</strong> file. A ReplicaSet is a group of instances of the same service. Execute<a id="_idIndexMarker517"/> the following command to verify the state of Deployments created during the installation:<p class="source-code">$ kubectl get deployments</p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<div>
+				<div id="_idContainer041" class="IMG---Figure">
+					<img src="Images/B17085_05_004.jpg" alt="Figure 5.4 – List of Pachyderm Deployment objects&#13;&#10;" width="446" height="60"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.4 – List of Pachyderm Deployment objects</p>
+			<ol>
+				<li value="9">Execute the following command to verify a successful installation and see the Pods created as part of the Deployments:<p class="source-code">$ kubectl get pods</p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<div>
+				<div id="_idContainer042" class="IMG---Figure">
+					<img src="Images/B17085_05_005.jpg" alt="Figure 5.5 – List of Pachyderm Pods&#13;&#10;" width="626" height="102"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.5 – List of Pachyderm Pods</p>
+			<ol>
+				<li value="10">Execute the<a id="_idIndexMarker518"/> following command to verify the persistent volumes created as part of the Deployment:<p class="source-code"><strong class="bold">$ kubectl get pv</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                         STORAGECLASS         REASON   AGE</p>
+			<p class="source-code">pvc-cab1f435-02fb-42df-85d9-d49f6151b281   200Gi      RWO             Delete           Bound    default/etcd-storage-etcd-0   etcd-storage-class            81m</p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">When Pachyderm is deployed using the <strong class="source-inline">--dynamic-etcd-nodes</strong> flag, it creates an <strong class="source-inline">etcd</strong> deployment to manage administrative metadata. Block storage used by <strong class="source-inline">etcd</strong> Pods is provisioned using the default AWS StorageClass, <strong class="source-inline">gp2</strong>. To use a different StorageClass during deployment, you will need to deploy an Amazon EBS CSI driver to your cluster and update the <strong class="source-inline">etcd.storageclass</strong> parameter to <strong class="source-inline">gp3</strong> during the Helm Chart deployment.</p>
+			<ol>
+				<li value="11">Execute the <a id="_idIndexMarker519"/>following command to verify the successful installation of Pachyderm:<p class="source-code">$ pachctl version</p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code"><strong class="bold">COMPONENT           VERSION</strong></p>
+			<p class="source-code"><strong class="bold">pachctl             2.0.0</strong></p>
+			<p class="source-code"><strong class="bold">pachd               2.0.0</strong></p>
+			<p>Now that we have installed Pachyderm on our AWS EKS cluster, we are ready to create our first pipeline.</p>
+			<h2 id="_idParaDest-129"><a id="_idTextAnchor140"/>Deleting a Pachyderm deployment on Amazon EKS</h2>
+			<p>If you need<a id="_idIndexMarker520"/> to delete your Pachyderm deployment or start afresh, you can wipe out your environment and start over again from the <em class="italic">Preparing an EKS cluster to run Pachyderm</em> instructions. Let's perform the following steps to delete your existing Pachyderm deployment:</p>
+			<ol>
+				<li value="1">If you have used a different name for your Helm instance, execute the following command to find the Pachyderm instance name deployed using the Helm Chart:<p class="source-code">$ helm ls | grep pachyderm</p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code"><strong class="bold">pachd    default         1               2021-12-27 20:20:33.168535538 -0800 PST deployed        pachyderm-2.0.0    2.0.0</strong></p>
+			<ol>
+				<li value="2">Execute the following command using your Pachyderm instance name to remove Pachyderm components from your cluster:<p class="source-code">$ helm uninstall pachd</p></li>
+				<li>Execute<a id="_idIndexMarker521"/> the following command to retrieve the list of EKS clusters deployed and identify the name of your cluster:<p class="source-code"><strong class="bold">$ eksctl get cluster</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">2021-05-05 21:53:56 [ℹ]  eksctl version 0.47.0</p>
+			<p class="source-code">2021-05-05 21:53:56 [ℹ]  using region us-east-1</p>
+			<p class="source-code">NAME                            REGION          EKSCTL CREATED</p>
+			<p class="source-code">exciting-badger-1620255089      us-east-1       True</p>
+			<ol>
+				<li value="4">If you would like to remove the cluster completely, copy the name of your cluster from the preceding output and execute the following command after replacing the name to delete the Amazon EKS cluster. Note that all the other workloads on this cluster will also be destroyed:<p class="source-code"><strong class="bold">$ eksctl delete cluster --name &lt;name&gt;  </strong></p></li>
+			</ol>
+			<p>The output of the preceding command should complete similar to the following:</p>
+			<p class="source-code">...</p>
+			<p class="source-code">2021-05-05 22:00:54 [ℹ]  will delete stack "eksctl-exciting-badger-1620255089-cluster"</p>
+			<p class="source-code">2021-05-05 22:00:54 [✔]  all cluster resources were deleted</p>
+			<p>Now you have completely removed Pachyderm and your EKS cluster from your AWS account. </p>
+			<h1 id="_idParaDest-130"><a id="_idTextAnchor141"/>Deploying Pachyderm on GKE</h1>
+			<p>If you use<a id="_idIndexMarker522"/> Google Cloud, a managed <a id="_idIndexMarker523"/>Kubernetes service can be deployed<a id="_idIndexMarker524"/> on <strong class="bold">Google Cloud Platform</strong> (<strong class="bold">GCP</strong>) using automation and command-line tools with the help of <strong class="source-inline">kOps</strong>, <strong class="source-inline">kubespray</strong>, Terraform, and others. For additional configuration details, you can refer to Kubernetes' official documentation at <a href="https://kubernetes.io/docs/setup/production-environment/">https://kubernetes.io/docs/setup/production-environment/</a>. Let's learn the simplest way to get the services required by Pachyderm up and running on Google Cloud's managed Kubernetes service, GKE. </p>
+			<h2 id="_idParaDest-131"><a id="_idTextAnchor142"/>Preparing a GKE cluster to run Pachyderm</h2>
+			<p>Follow<a id="_idIndexMarker525"/> these steps to provision a<a id="_idIndexMarker526"/> GKE cluster using the Google Cloud SDK. You will need to have the Google Cloud SDK installed and its credentials configured. If you have a cluster, you can skip these instructions and jump to the <em class="italic">Deploying the cluster section</em>. Also, you can refer to the Google Cloud SDK <a id="_idIndexMarker527"/>official documentation at <a href="https://cloud.google.com/sdk/docs/install">https://cloud.google.com/sdk/docs/install</a>:</p>
+			<ol>
+				<li value="1">Execute the following command to deploy a GKE cluster with default parameters. This<a id="_idIndexMarker528"/> command will generate a three-node cluster with the recommended <strong class="source-inline">n2-standard-4</strong> instance type<a id="_idIndexMarker529"/> using a <strong class="bold">Container-Optimized OS</strong> (<strong class="bold">COS</strong>) with Docker in your default compute zone:<p class="source-code"><strong class="bold">$ gcloud container clusters create pachyderm-cluster \</strong></p><p class="source-code"><strong class="bold">--scopes compute-rw,storage-rw,service-management,service-control,logging-write,monitoring \</strong></p><p class="source-code"><strong class="bold">--machine-type n2-standard-4</strong></p></li>
+			</ol>
+			<p>The output<a id="_idIndexMarker530"/> of the preceding command should complete similar to the following:</p>
+			<p class="source-code">...</p>
+			<p class="source-code">kubeconfig entry generated for pachyderm-cluster.</p>
+			<p class="source-code">NAME               LOCATION       MASTER_VERSION    MASTER_IP      MACHINE_TYPE   NODE_VERSION      NUM_NODES  STATUS</p>
+			<p class="source-code">pachyderm-cluster  us-central1-a  1.18.16-gke.2100  35.238.200.52  n2-standard-4  1.18.16-gke.2100  1          RUNNING</p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">To simply customize the GKE cluster parameters, you can use the GCP console and the Kubernetes Engine creation wizard. After you configure the parameters on the wizard, click on the command-line button in the wizard to convert the configuration into a CLI command to use with the <strong class="source-inline">gcloud</strong> command.</p>
+			<ol>
+				<li value="2">Verify deployment of the cluster by executing the following command:<p class="source-code"><strong class="bold">$ kubectl cluster-info &amp;&amp; kubectl get nodes</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">Kubernetes control plane is running at https://&lt;IP_ADDRESS&gt;</p>
+			<p class="source-code">GLBCDefaultBackend is running at https://&lt;IP_ADDRESS&gt;/api/v1/namespaces/kube-system/services/default-http-backend:http/proxy</p>
+			<p class="source-code">KubeDNS is running at https://&lt;IP_ADDRESS&gt;/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy</p>
+			<p class="source-code">Metrics-server is running at https://&lt;IP_ADDRESS&gt;/api/v1/namespaces/kube-system/services/https:metrics-server:/proxy</p>
+			<p class="source-code">To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.</p>
+			<p class="source-code">NAME                                               STATUS    ROLES    AGE     VERSION</p>
+			<p class="source-code">gke-pachyderm-cluster-default-pool-26cf3a77-1vr1   Ready    &lt;none&gt;   12      v1.18.16-gke.2100</p>
+			<p class="source-code">gke-pachyderm-cluster-default-pool-26cf3a77-5sgs   Ready    &lt;none&gt;   12m     v1.18.16-gke.2100</p>
+			<p class="source-code">gke-pachyderm-cluster-default-pool-26cf3a77-lkr4   Ready    &lt;none&gt;   12m     v1.18.16-gke.2100</p>
+			<p>Now, your<a id="_idIndexMarker531"/> GKE cluster <a id="_idIndexMarker532"/>is provisioned and ready to deploy Pachyderm.</p>
+			<h2 id="_idParaDest-132"><a id="_idTextAnchor143"/>Creating a Google Cloud object storage bucket </h2>
+			<p>Pachyderm <a id="_idIndexMarker533"/>uses <a id="_idIndexMarker534"/>object storage to store data. Follow these steps to create a Google Cloud object storage bucket:</p>
+			<ol>
+				<li value="1">Generate variables that will be used to create your <strong class="bold">Google Cloud Storage</strong> (<strong class="bold">GCS</strong>) bucket and pass to <strong class="source-inline">pachctl</strong> to store your Pachyderm data later. Make sure to use a unique bucket name. In our example, we will use <strong class="source-inline">pachyderm-bucket</strong> as our bucket name with a capacity of 200 GB and located in the same region as our GKE cluster, <strong class="source-inline">us-central1</strong>: <p class="source-code"><strong class="bold">$ export GCS_BUCKET_NAME=pachyderm-bucket</strong></p><p class="source-code"><strong class="bold">$ export GKE_STORAGE_SIZE=200</strong></p></li>
+				<li>In order for <a id="_idIndexMarker535"/>Pachyderm to store pipeline data, a dedicated GCS bucket is required. Execute<a id="_idIndexMarker536"/> the following command to create a GCS bucket with the parameters defined by your variables:<p class="source-code"><strong class="bold">$ gsutil mb gs://${GCS_BUCKET_NAME}</strong></p></li>
+				<li>Execute the following command to confirm the creation of the bucket:<p class="source-code"><strong class="bold">$ gsutil ls</strong></p></li>
+			</ol>
+			<p>The output of the<a id="_idTextAnchor144"/> preceding command should look as follows:</p>
+			<p class="source-code">gs://pachyderm-bucket/</p>
+			<p>Now, you have a GCS bucket created <a id="_idTextAnchor145"/>to store Pachyderm data. We are ready to deploy Pachyderm on GKE.</p>
+			<h1 id="_idParaDest-133"><a id="_idTextAnchor146"/>Deploying the cluster</h1>
+			<p>When you start <a id="_idIndexMarker537"/>learning Pachyderm, it is suggested to run experiments in a small local cluster. We have previously covered the local deployment of Pachyderm in <a href="B17085_04_Final_SB_Epub.xhtml#_idTextAnchor096"><em class="italic">Chapter 4</em></a>, <em class="italic">Installing Pachyderm Locally</em>. In this chapter, we are going to focus on a scalable production-grade deployment of Pachyderm using IAM roles on GKE clusters.</p>
+			<p>Follow these<a id="_idIndexMarker538"/> steps to<a id="_idIndexMarker539"/> install Pachyderm on your GKE cluster:</p>
+			<ol>
+				<li value="1">If you don't already have a service account, execute the following command to create a service account:<p class="source-code"><strong class="bold">$ gcloud iam service-accounts create my-service-account --display-name=my-account</strong></p></li>
+				<li>Replace<a id="_idIndexMarker540"/> the following <strong class="source-inline">pachyderm-book</strong> in both <a id="_idIndexMarker541"/>places with your project name and add a storage admin role that is binding to your service account:<p class="source-code"><strong class="bold">$ gcloud projects add-iam-policy-binding \</strong></p><p class="source-code"><strong class="bold">pachyderm-book –role roles/owner --member \</strong></p><p class="source-code"><strong class="bold">serviceAccount:my-service-account@pachyderm-book.iam.gserviceaccount.com    </strong></p></li>
+				<li>Now, execute the following command to add Pachyderm Helm Chart repos to your local repository:<p class="source-code">$ helm repo add pach https://helm.pachyderm.com  </p></li>
+				<li>Execute the following command to get the latest Chart information from the Chart repository:<p class="source-code">$ helm repo update</p></li>
+				<li>For a quick deployment, replace the Google Cloud bucket name, and Google Cloud credentials, and execute the following command to deploy the latest version of Pachyderm on your cluster without the console:<p class="source-code">$ helm install pachd pach/pachyderm \ </p><p class="source-code">--set deployTarget=GOOGLE \</p><p class="source-code">--set pachd.storage.google.bucket="GOOGLE_BUCKET" \</p><p class="source-code">--set pachd.storage.google.cred="GOOGLE_CRED" \</p><p class="source-code">--set pachd.externalService.enabled=true</p></li>
+			</ol>
+			<p>If you have an enterprise key and would like to deploy it with Pachyderm's console user interface, execute the following command:</p>
+			<p class="source-code">$ helm install pachd pach/pachyderm \ </p>
+			<p class="source-code">--set deployTarget=GOOGLE \</p>
+			<p class="source-code">--set pachd.storage.google.bucket="GOOGLE_BUCKET" \</p>
+			<p class="source-code">--set pachd.storage.google.cred="GOOGLE_CRED" \</p>
+			<p class="source-code">--set pachd.enterpriseLicenseKey=$(cat license.txt) \</p>
+			<p class="source-code">--set console.enabled=true</p>
+			<p>Once the console is deployed successfully, follow the instructions under the <em class="italic">Accessing the Pachyderm console</em> section to access the console.</p>
+			<ol>
+				<li value="6">A Kubernetes<a id="_idIndexMarker542"/> Deployment is a controller that rolls <a id="_idIndexMarker543"/>out a ReplicaSet of Pods based on the requirements defined in your manifest file. Execute the following command to verify the state of Deployments created during installation:<p class="source-code"><strong class="bold">$ kubectl get deployments</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">NAME    READY   UP-TO-DATE   AVAILABLE   AGE</p>
+			<p class="source-code">dash    1/1     1            1           44s</p>
+			<p class="source-code">pachd   1/1     1            1           45s </p>
+			<ol>
+				<li value="7">Execute the following command to verify a successful installation and see the Pods created as part of the Deployments:<p class="source-code"><strong class="bold">$ kubectl get Pods</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">NAME                    READY  STATUS   RESTARTS  AGE</p>
+			<p class="source-code">dash-cf6f47d7d-xpvvp    2/2    Running  0         104s</p>
+			<p class="source-code">etcd-0                  1/1    Running  0         104s</p>
+			<p class="source-code">pachd-6c99f6fb7-dnjhn   1/1    Running  0         104s</p>
+			<ol>
+				<li value="8">Execute the following command to verify the persistent volumes created as part of the Deployment:<p class="source-code"><strong class="bold">$ kubectl get pv</strong></p></li>
+			</ol>
+			<p>The<a id="_idIndexMarker544"/> output <a id="_idIndexMarker545"/>of the preceding command should look as follows:</p>
+			<p class="source-code">NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                         STORAGECLASS         REASON   AGE</p>
+			<p class="source-code">pvc-c4eac147-8571-4ccb-8cd0-7c1cb68a627d 200Gi      RWO            Delete           Bound    default/etcd-storage-etcd-0   etcd-storage-class            3m4s</p>
+			<ol>
+				<li value="9">Execute the following command to verify the successful installation of Pachyderm:<p class="source-code"><strong class="bold">$ pachctl version</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">COMPONENT           VERSION</p>
+			<p class="source-code">pachctl             2.0.0</p>
+			<p class="source-code">pachd               2.0.0</p>
+			<p>Now we have installed Pachyderm on your GKE cluster, you are ready to create your first pipeline.</p>
+			<h2 id="_idParaDest-134"><a id="_idTextAnchor147"/>Deleting a Pachyderm deployment on GKE</h2>
+			<p>If you <a id="_idIndexMarker546"/>need to delete your deployment and start afresh, you can wipe out your environment and start over again using the <em class="italic">Preparing a GKE cluster to run Pachyderm</em> instructions. Let's perform the following steps to delete your existing Pachyderm deployment:</p>
+			<ol>
+				<li value="1">If you have used a different name for your Helm instance, execute the following command to find the Pachyderm instance name deployed using the Helm Chart:<p class="source-code">$ helm ls | grep pachyderm</p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code"><strong class="bold">pachd    default         1               2021-12-27 20:20:33.168535538 -0800 PST deployed        pachyderm-2.0.0    2.0.0</strong></p>
+			<ol>
+				<li value="2">Execute the following command using your Pachyderm instance name to remove the Pachyderm components from your cluster:<p class="source-code">$ helm uninstall pachd</p></li>
+				<li>Execute <a id="_idIndexMarker547"/>the following command to retrieve the list of GKE clusters deployed and identify the name of your cluster:<p class="source-code"><strong class="bold">$ gcloud container clusters list</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">NAME               LOCATION       MASTER_VERSION    MASTER_IP      MACHINE_TYPE   NODE_VERSION      NUM_NODES  STATUS</p>
+			<p class="source-code">pachyderm-cluster  us-central1-a  1.18.16-gke.2100  35.238.200.52  n2-standard-2  1.18.16-gke.2100  3          RUNNING</p>
+			<ol>
+				<li value="4">If you would like to remove the cluster completely, copy the name of your cluster from the preceding output and execute the following command after replacing the name to delete the GKE cluster. Note that all the other workloads on this cluster will also be destroyed:<p class="source-code"><strong class="bold">$ gcloud container clusters delete &lt;name&gt; </strong></p></li>
+			</ol>
+			<p>The output of the <a id="_idIndexMarker548"/>preceding command should complete similar to the following:</p>
+			<p class="source-code">...</p>
+			<p class="source-code">Deleting cluster pachyderm-cluster...done.</p>
+			<p class="source-code">Deleted [https://container.googleapis.com/v1/projects/pachydermbook/zones/us-central1-a/clusters/pachyderm-cluster]. </p>
+			<p>Now you have completely removed Pachyderm and your Kubernetes cluster from your GCP account.</p>
+			<h1 id="_idParaDest-135"><a id="_idTextAnchor148"/>Deploying Pachyderm on Microsoft AKS</h1>
+			<p>If you use<a id="_idIndexMarker549"/> Microsoft Azure, a managed Kubernetes service can be deployed on the Azure platform using automation<a id="_idIndexMarker550"/> and command-line tools with the help of <strong class="source-inline">kOps</strong>, <strong class="source-inline">kubespray</strong>, Terraform, and others. For additional configuration details, you can refer to Kubernetes' official documentation at <a href="https://kubernetes.io/docs/setup/production-environment/">https://kubernetes.io/docs/setup/production-environment/</a>. Let's learn the simplest way to get the services required by Pachyderm up and running on AKS. </p>
+			<h2 id="_idParaDest-136"><a id="_idTextAnchor149"/>Preparing an AKS cluster to run Pachyderm</h2>
+			<p>Follow<a id="_idIndexMarker551"/> these steps to provision an AKS cluster using the Azure CLI. You will need to have the Azure CLI installed and its <a id="_idIndexMarker552"/>credentials configured. If you have a cluster, you can skip these instructions and jump to the <em class="italic">Deploying Pachyderm on Microsoft AKS</em> section. Also, you can refer to the Azure CLI official <a id="_idIndexMarker553"/>documentation at <a href="https://docs.microsoft.com/en-us/cli/azure/">https://docs.microsoft.com/en-us/cli/azure/</a>: </p>
+			<ol>
+				<li value="1">Execute the following command in your previously specified <strong class="source-inline">resource-group</strong> to deploy an AKS cluster with default parameters. This command will generate a three-node cluster with the recommended <strong class="source-inline">Standard_DS4_v2</strong> instance type in your default compute zone:<p class="source-code"><strong class="bold">$ az aks create --resource-group pachyderm-group --name pachyderm-cluster --generate-ssh-keys --node-vm-size Standard_DS4_v2</strong></p></li>
+			</ol>
+			<p>The <a id="_idIndexMarker554"/>output of <a id="_idIndexMarker555"/>the preceding command should complete similar to the following:</p>
+			<p class="source-code">...</p>
+			<p class="source-code">   "privateFqdn": null,</p>
+			<p class="source-code">  "provisioningState": "Succeeded",</p>
+			<p class="source-code">  "resourceGroup": "pachyderm-group",</p>
+			<p class="source-code">  "servicePrincipalProfile": {</p>
+			<p class="source-code">    "clientId": "msi",</p>
+			<p class="source-code">    "secret": null</p>
+			<p class="source-code">  },...</p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">If you don't remember your resource group name, you can use the <strong class="source-inline">az group list</strong> command to list the previously created resource groups. </p>
+			<ol>
+				<li value="2">Execute the following command to connect to your cluster:<p class="source-code"><strong class="bold">$ az aks get-credentials --resource-group pachyderm-group --name pachyderm-cluster</strong></p></li>
+				<li>Verify the cluster deployment by executing the following command:<p class="source-code"><strong class="bold">$ kubectl get nodes</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">NAME                                STATUS   ROLES   AGE     VERSION</p>
+			<p class="source-code">aks-nodepool1-34139531-vmss000000   Ready    agent   5m57s   v1.19.9</p>
+			<p class="source-code">aks-nodepool1-34139531-vmss000001   Ready    agent   5m58s   v1.19.9</p>
+			<p class="source-code">aks-nodepool1-34139531-vmss000002   Ready    agent   5m58s   v1.19.9</p>
+			<p>Now<a id="_idIndexMarker556"/> your<a id="_idIndexMarker557"/> AKS cluster is provisioned and ready to deploy Pachyderm.</p>
+			<h2 id="_idParaDest-137"><a id="_idTextAnchor150"/>Creating an Azure storage container </h2>
+			<p>Pachyderm<a id="_idIndexMarker558"/> uses blob storage to store data and block storage for metadata. It is recommended to use SSDs rather than the Standard HDD-based slower storage option. </p>
+			<p>Follow these <a id="_idIndexMarker559"/>steps to create a Premium LRS Block blobs storage container: </p>
+			<ol>
+				<li value="1">Generate variables that will be used to create your Azure Block blobs storage and pass to <strong class="source-inline">pachctl</strong> to store your Pachyderm data later. Make sure to use a unique storage account and container name. In our example, we will use <strong class="source-inline">pachydermstorageaccount</strong> as our <strong class="source-inline">STORAGE_ACCOUNT</strong>, <strong class="source-inline">pachydermblobcontainer</strong> as our <strong class="source-inline">CONTAINER_NAME</strong>, and it will be located in the <strong class="source-inline">centralus</strong> region: <p class="source-code"><strong class="bold">$ export RESOURCE_GROUP=pachyderm-group</strong></p><p class="source-code"><strong class="bold">$ export STORAGE_ACCOUNT=pachydermstorageaccount</strong></p><p class="source-code"><strong class="bold">$ export CONTAINER_NAME=pachydermblobcontainer</strong></p><p class="source-code"><strong class="bold">$ export AZURE_STORAGE_SIZE=200</strong></p></li>
+				<li>Execute the following command to your Azure storage account with the parameters defined by your variables:<p class="source-code"><strong class="bold">$ az storage account create \</strong></p><p class="source-code"><strong class="bold">  </strong><strong class="bold">--resource-group="${RESOURCE_GROUP}" \</strong></p><p class="source-code"><strong class="bold">  --location="centralus" \</strong></p><p class="source-code"><strong class="bold">  --sku=Premium_LRS \</strong></p><p class="source-code"><strong class="bold">  --name="${STORAGE_ACCOUNT}" \</strong></p><p class="source-code"><strong class="bold">  --kind=BlockBlobStorage</strong></p></li>
+				<li>Execute<a id="_idIndexMarker560"/> the<a id="_idIndexMarker561"/> following command to confirm the creation of the bucket:<p class="source-code"><strong class="bold">$ az storage account list</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">...</p>
+			<p class="source-code">    "web": "https://pachydermstorageaccount.z19.web.core.windows.net/"</p>
+			<p class="source-code">  },</p>
+			<p class="source-code">  "primaryLocation": "centralus",</p>
+			<p class="source-code">  "privateEndpointConnections": [],</p>
+			<p class="source-code">  "provisioningState": "Succeeded",</p>
+			<p class="source-code">  "resourceGroup": "pachyderm-group",</p>
+			<p class="source-code">...</p>
+			<ol>
+				<li value="4">The deployment of Pachyderm will require a storage account key. Execute the following command to store the storage keys in a variable:<p class="source-code"><strong class="bold">$ STORAGE_KEY="$(az storage account keys list \</strong></p><p class="source-code"><strong class="bold">              --account-name="${STORAGE_ACCOUNT}" \</strong></p><p class="source-code"><strong class="bold">              --resource-group="${RESOURCE_GROUP}" \</strong></p><p class="source-code"><strong class="bold">              </strong><strong class="bold">--output=json \</strong></p><p class="source-code"><strong class="bold">              | jq '.[0].value' -r</strong></p><p class="source-code"><strong class="bold">            )"</strong></p></li>
+				<li>Execute<a id="_idIndexMarker562"/> the following command to create a data storage container in your storage account:<p class="source-code"><strong class="bold">$ az storage container create --name ${CONTAINER_NAME} \</strong></p><p class="source-code"><strong class="bold">          --account-name ${STORAGE_ACCOUNT} \</strong></p><p class="source-code"><strong class="bold">          --account-key "${STORAGE_KEY}"</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">{</p>
+			<p class="source-code">  "created": true</p>
+			<p class="source-code">}</p>
+			<p>Now, you <a id="_idIndexMarker563"/>have an Azure data storage container created in your Azure storage account to store Pachyderm data.</p>
+			<h1 id="_idParaDest-138"><a id="_idTextAnchor151"/>Deploying the cluster</h1>
+			<p>When <a id="_idIndexMarker564"/>you start learning Pachyderm, it is suggested to run experiments in a small local cluster. We have previously covered the local deployment of Pachyderm in <a href="B17085_04_Final_SB_Epub.xhtml#_idTextAnchor096"><em class="italic">Chapter 4</em></a>, <em class="italic">Installing Pachyderm Locally</em>. In this chapter, we are going to focus on a scalable production-grade deployment of Pachyderm on an AKS cluster.  </p>
+			<p>Follow these steps <a id="_idIndexMarker565"/>to install Pachyderm on your <a id="_idIndexMarker566"/>AKS cluster:</p>
+			<ol>
+				<li value="1">If you have not connected to your Kubernetes cluster, execute the following command to connect to your cluster:<p class="source-code"><strong class="bold">$ az aks get-credentials --resource-group pachyderm-group --name pachyderm-cluster</strong></p></li>
+				<li>For a <a id="_idIndexMarker567"/>quick deployment, replace the Azure storage container name, Azure storage<a id="_idIndexMarker568"/> account name, and AKS account key, and execute the following command to deploy the latest version of Pachyderm on your cluster without the console:<p class="source-code">$ helm install pachd pach/pachyderm \ </p><p class="source-code">--set deployTarget=MICROSOFT \</p><p class="source-code">--set pachd.storage.microsoft.container="CONTAINER_NAME" \</p><p class="source-code">--set pachd.storage.microsoft.id="AZURE_ID" \</p><p class="source-code">--set pachd.storage.microsoft.secret="AZURE_SECRET" \</p><p class="source-code">--set pachd.externalService.enabled=true</p></li>
+			</ol>
+			<p>If you have an enterprise key and you would like to deploy it with Pachyderm's console user interface, execute the following command:</p>
+			<p class="source-code">$ helm install pachd pach/pachyderm \ </p>
+			<p class="source-code">--set deployTarget=MICROSOFT \</p>
+			<p class="source-code">--set pachd.storage.microsoft.container="CONTAINER_NAME" \</p>
+			<p class="source-code">--set pachd.storage.microsoft.id="AZURE_ID" \</p>
+			<p class="source-code">--set pachd.storage.microsoft.secret="AZURE_SECRET" \</p>
+			<p class="source-code">--set pachd.enterpriseLicenseKey=$(cat license.txt) \</p>
+			<p class="source-code">--set console.enabled=true</p>
+			<p>Once the console is deployed successfully, follow the instructions under the <em class="italic">Accessing the Pachyderm console</em> section to access the console.</p>
+			<ol>
+				<li value="3">A Kubernetes Deployment is a controller that rolls out a ReplicaSet of Pods based on the requirements defined in your manifest file. Execute the following command to <a id="_idIndexMarker569"/>verify the state of Deployments created during the installation:<p class="source-code"><strong class="bold">$ kubectl get deployments</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">NAME    READY   UP-TO-DATE   AVAILABLE   AGE</p>
+			<p class="source-code">dash    1/1     1            1           39s</p>
+			<p class="source-code">pachd   1/1     1            1           39s </p>
+			<ol>
+				<li value="4">Execute<a id="_idIndexMarker570"/> the following command to verify a successful installation and see the Pods created as part of the Deployments:<p class="source-code"><strong class="bold">$ kubectl get pods</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">NAME                    READY   STATUS    RESTARTS   AGE</p>
+			<p class="source-code">dash-866fd997-z79jj     2/2     Running   0          54s</p>
+			<p class="source-code">etcd-0                  1/1     Running   0          54s</p>
+			<p class="source-code">pachd-8588c44f56-skmkl  1/1     Running   0          54 s</p>
+			<ol>
+				<li value="5">Execute the following command to verify the persistent volumes created as part of the Deployment:<p class="source-code"><strong class="bold">$ kubectl get pv</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                         STORAGECLASS   REASON   AGE</p>
+			<p class="source-code">pvc-9985a602-789d-40f3-9249-7445a9c15bc3   200Gi      RWO            Delete           Bound    default/etcd-storage-etcd-0   default                 89s</p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">When Pachyderm is deployed using the <strong class="source-inline">--dynamic-etcd-nodes</strong> flag, it creates an <strong class="source-inline">etcd</strong> deployment to manage administrative metadata. In Azure, block storage used by <strong class="source-inline">etcd</strong> Pods is provisioned using the <strong class="source-inline">default</strong> StorageClass. This Storage Class uses the <strong class="source-inline">azure-disk</strong> provisioner with <strong class="source-inline">StandardSSD_LRS</strong> volumes. To use a different StorageClass during the deployment, you can customize the <strong class="source-inline">values.yaml</strong> file and update the <strong class="source-inline">etcd.storageClass</strong> parameter prior to the deployment.</p>
+			<ol>
+				<li value="6">Execute the<a id="_idIndexMarker571"/> following command to verify the<a id="_idIndexMarker572"/> successful installation of Pachyderm:<p class="source-code"><strong class="bold">$ pachctl version</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">COMPONENT           VERSION</p>
+			<p class="source-code">pachctl             2.0.0</p>
+			<p class="source-code">pachd               2.0.0</p>
+			<p>Now that we have installed Pachyderm on your AKS cluster, you are ready to create your first pipeline.</p>
+			<h2 id="_idParaDest-139"><a id="_idTextAnchor152"/>Deleting a Pachyderm deployment on AKS</h2>
+			<p>If you<a id="_idIndexMarker573"/> need to delete your deployment or start afresh, you can wipe out your environment and start over again using the <em class="italic">Preparing an AKS cluster to run Pachyderm</em> instructions.  </p>
+			<p>Let's perform the following steps to delete your existing Pachyderm deployment:</p>
+			<ol>
+				<li value="1">If you have used a different name for your Helm instance, execute the following command to find the Pachyderm instance name deployed using the Helm Chart:<p class="source-code">$ helm ls | grep pachyderm</p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code"><strong class="bold">pachd    default         1               2021-12-27 20:20:33.168535538 -0800 PST deployed        </strong><strong class="bold">pachyderm-2.0.0    2.0.0</strong></p>
+			<ol>
+				<li value="2">Execute the following command using your Pachyderm instance name to remove Pachyderm components from your cluster:<p class="source-code">$ helm uninstall pachd</p></li>
+				<li>Execute the following command to retrieve the list of AKS clusters deployed and identify the name of your cluster:<p class="source-code"><strong class="bold">$ az aks list</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should look as follows:</p>
+			<p class="source-code">...</p>
+			<p class="source-code">    "location": "centralus",</p>
+			<p class="source-code">    "maxAgentPools": 100,</p>
+			<p class="source-code">    "name": "pachyderm-cluster",</p>
+			<p class="source-code">    "networkProfile": {</p>
+			<p class="source-code">…</p>
+			<ol>
+				<li value="4">If you would like to remove the cluster completely, copy the name of your cluster from the preceding output and execute the following command after replacing the name <a id="_idIndexMarker574"/>to delete the AKS cluster. Note that all the other workloads on this cluster will also be destroyed:<p class="source-code"><strong class="bold">$ az aks delete --name &lt;name&gt; --resource-group pachyderm-group</strong></p></li>
+			</ol>
+			<p>The output of the preceding command should complete similar to the following:</p>
+			<p class="source-code">...</p>
+			<p class="source-code">Deleting cluster pachyderm-cluster...done.</p>
+			<p class="source-code">Deleted [https://container.googleapis.com/v1/projects/pachydermbook/zones/us-central1-a/clusters/pachyderm-cluster]. </p>
+			<p>Now you have completely removed Pachyderm and your Kubernetes cluster from your AKS account.</p>
+			<h1 id="_idParaDest-140"><a id="_idTextAnchor153"/>Accessing the Pachyderm console </h1>
+			<p>Pachyderm Enterprise Edition <a id="_idIndexMarker575"/>offers a graphical user interface where you can see pipelines and repositories. Accessing the Pachyderm console using port forwarding was covered in <a href="B17085_04_Final_SB_Epub.xhtml#_idTextAnchor096"><em class="italic">Chapter 4</em></a>, <em class="italic">Installing Pachyderm Locally</em>. </p>
+			<p>In addition, for cloud deployments, you can deploy a Kubernetes ingress to access the Pachyderm console securely. For more information, refer to the official Pachyderm documentation.</p>
+			<h1 id="_idParaDest-141"><a id="_idTextAnchor154"/>Summary</h1>
+			<p>In this chapter, we learned the software prerequisites for getting Pachyderm up and running on managed Kubernetes services from major cloud providers including AWS, Google Cloud, and Microsoft Azure. </p>
+			<p>We acquired basic knowledge of cloud providers' command-line tools and learned how to install and operate them on your local machine to provide production-grade Kubernetes clusters. </p>
+			<p>We created an object storage bucket and also deployed highly available multi-node managed Kubernetes clusters using the most common configuration options. And finally, we deployed a Pachyderm instance.</p>
+			<p>In the next chapter, we will learn in detail about creating your first pipeline. You will learn a simple data science example and a pipeline creation workflow.</p>
+			<h1 id="_idParaDest-142"><a id="_idTextAnchor155"/>Further reading</h1>
+			<p>You can refer to the following links for more information on the topics covered in this chapter:</p>
+			<ul>
+				<li><em class="italic">Using the AWS CLI official documentation</em>: <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-using.html">https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-using.html</a></li>
+				<li><em class="italic">Getting started with the Google Cloud SDK official documentation</em>: <a href="https://cloud.google.com/sdk/docs/quickstart">https://cloud.google.com/sdk/docs/quickstart</a></li>
+				<li><em class="italic">Using the Azure CLI official documentation</em>: <a href="https://docs.microsoft.com/en-us/cli/azure/">https://docs.microsoft.com/en-us/cli/azure/</a></li>
+				<li><em class="italic">eksctl documentation</em>: <a href="https://eksctl.io/introduction/">https://eksctl.io/introduction/</a></li>
+				<li><em class="italic">eksctl advanced cluster deployment examples</em>: <a href="https://github.com/weaveworks/eksctl/tree/main/examples">https://github.com/weaveworks/eksctl/tree/main/examples</a></li>
+				<li><em class="italic">kOps documentation</em>: <a href="https://kubernetes.io/docs/setup/production-environment/tools/kops/">https://kubernetes.io/docs/setup/production-environment/tools/kops/</a> </li>
+				<li><em class="italic">Kubespray documentation</em>: <a href="https://kubernetes.io/docs/setup/production-environment/tools/kubespray/">https://kubernetes.io/docs/setup/production-environment/tools/kubespray/</a> </li>
+				<li><em class="italic">Kubernetes in production best practices</em>: <a href="https://www.packtpub.com/product/kubernetes-in-production-best-practices/9781800202450">https://www.packtpub.com/product/kubernetes-in-production-best-practices/9781800202450</a></li>
+				<li><em class="italic">Mastering Kubernetes – Third Edition</em>: <a href="https://www.packtpub.com/product/mastering-kubernetes-third-edition/9781839211256">https://www.packtpub.com/product/mastering-kubernetes-third-edition/9781839211256</a></li>
+			</ul>
+		</div>
+	</div></body></html>

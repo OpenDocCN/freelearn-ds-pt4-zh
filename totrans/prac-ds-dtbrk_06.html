@@ -1,0 +1,306 @@
+<html><head></head><body>
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer092">
+			<h1 id="_idParaDest-100" class="chapter-number"><a id="_idTextAnchor100"/>6</h1>
+			<h1 id="_idParaDest-101"><a id="_idTextAnchor101"/>Model Versioning and Webhooks</h1>
+			<p>In the previous chapter, we delved deep into the capabilities of <strong class="bold">Databricks AutoML</strong>, exploring its various components<a id="_idIndexMarker332"/> in detail. We gained a comprehensive understanding of how data science practitioners can harness the power of transparent “glass box” AutoML to kickstart their machine learning solutions seamlessly, especially when tackling complex <span class="No-Break">business challenges.</span></p>
+			<p>Furthermore, we put AutoML into action by automating<a id="_idIndexMarker333"/> the selection of a candidate model for our <strong class="bold">Bank Customer Churn</strong> prediction classification problem. To facilitate this process, we seamlessly integrated the robust MLflow features into our workflow. This integration allowed us to meticulously track every aspect of our model’s training, providing us with invaluable insights into its performance and enabling us to make data-driven decisions. Our journey also took us to the MLflow tracking server, where we logged and monitored the entire training process, ensuring that our Bank Customer Churn prediction project was executed with precision <span class="No-Break">and efficiency.</span></p>
+			<p>In this chapter, we will look<a id="_idIndexMarker334"/> into the next steps<a id="_idIndexMarker335"/> on how we can take a model from the <strong class="bold">MLflow tracking server</strong> and utilize the integrated <strong class="bold">MLflow Model Registry</strong> to manage the model <span class="No-Break">life cycle.</span></p>
+			<p>We will cover the <span class="No-Break">following topics:</span></p>
+			<ul>
+				<li>Understanding the need for the <span class="No-Break">Model Registry</span></li>
+				<li>Registering your candidate model to the Model Registry and <span class="No-Break">managing access</span></li>
+				<li>Managing the ML model life cycle using the <span class="No-Break">Model Registry</span></li>
+				<li>Diving into the <strong class="bold">Webhooks</strong> support in the <span class="No-Break">Model Registry</span></li>
+			</ul>
+			<h1 id="_idParaDest-102"><a id="_idTextAnchor102"/>Technical requirements</h1>
+			<p>Let’s go through the technical requirements for <span class="No-Break">this chapter:</span></p>
+			<ul>
+				<li>All the previous notebooks, already executed <span class="No-Break">as described</span></li>
+				<li>A Slack workspace where you have webhooks enabled for a <span class="No-Break">channel (</span><a href="https://api.slack.com/messaging/webhooks"><span class="No-Break">https://api.slack.com/messaging/webhooks</span></a><span class="No-Break">)</span></li>
+			</ul>
+			<h1 id="_idParaDest-103"><a id="_idTextAnchor103"/>Understanding the need for the Model Registry</h1>
+			<p>In traditional software engineering, the concept<a id="_idIndexMarker336"/> of a central code repository is well established and mature. However, in the realm of data science, the idea of a centralized model repository is still evolving. While it’s not accurate to say that no central repository for models exists – there are indeed other tools and platforms that offer similar functionalities – the challenges in model management are unique and often <span class="No-Break">more complex.</span></p>
+			<p>This is where Databricks’ integrated MLflow Model Registry shines, particularly in fostering collaboration among data <span class="No-Break">science teams.</span></p>
+			<p>Key features of the Model Registry<a id="_idIndexMarker337"/> include <span class="No-Break">the following:</span></p>
+			<ul>
+				<li><strong class="bold">Centralized discovery</strong>: The Model Registry serves as a centralized hub where models from various data science teams are registered. Each registered model has a lineage that traces back to the original run and the notebook version in which the model was trained, making it easier for teams <span class="No-Break">to collaborate.</span></li>
+				<li><strong class="bold">Life cycle management</strong>: Databricks provides both UI and API options for managing the life cycle of your models, streamlining the process of promoting a model from one stage <span class="No-Break">to another.</span></li>
+				<li><strong class="bold">Automated testing and deployment</strong>: The Model Registry allows you to deploy different versions of a model to various stages. You can also attach notes and perform tests on these models in an automated fashion, ensuring that only the most robust models make it <span class="No-Break">to production.</span></li>
+				<li><strong class="bold">Access control</strong>: Robust permissioning features govern who can access, modify, or deploy a registered model, thereby ensuring that only authorized individuals can interact<a id="_idIndexMarker338"/> with <span class="No-Break">your models.</span></li>
+			</ul>
+			<p>Now, let’s take a look at how you can register a model in the <span class="No-Break">Model Registry.</span></p>
+			<h1 id="_idParaDest-104"><a id="_idTextAnchor104"/>Registering your candidate model to the Model Registry and managing access</h1>
+			<p>You can either use the UI to register<a id="_idIndexMarker339"/> a candidate model to the integrated Model Registry<a id="_idIndexMarker340"/> or use the MLflow Model<a id="_idIndexMarker341"/> <span class="No-Break">Registry</span><span class="No-Break"><a id="_idIndexMarker342"/></span><span class="No-Break"> API.</span></p>
+			<p>Let’s take a look at the UI <span class="No-Break">option first:</span></p>
+			<ol>
+				<li>We will first navigate to the MLflow experiment created by our AutoML execution. We can navigate here by clicking on the <strong class="bold">Experiments</strong> tab in the left <span class="No-Break">navigation bar:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer075" class="IMG---Figure">
+					<img src="image/B17875_06_001.jpg" alt="Figure 6.1 – How to access the Experiments page" width="886" height="196"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.1 – How to access the Experiments page</p>
+			<ol>
+				<li value="2">Next, we<a id="_idIndexMarker343"/> select<a id="_idIndexMarker344"/> our<a id="_idIndexMarker345"/> experiment<a id="_idIndexMarker346"/> from <span class="No-Break">the list:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer076" class="IMG---Figure">
+					<img src="image/B17875_06_002.jpg" alt="Figure 6.2 – The experiment listed in the integrated MLflow tracking server created by AutoML" width="1419" height="128"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.2 – The experiment listed in the integrated MLflow tracking server created by AutoML</p>
+			<ol>
+				<li value="3">Now we have access<a id="_idIndexMarker347"/> to all the runs that were<a id="_idIndexMarker348"/> executed as part of our AutoML execution. Here, we can sort<a id="_idIndexMarker349"/> the runs in the UI to get<a id="_idIndexMarker350"/> the best <span class="No-Break">F1 score:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer077" class="IMG---Figure">
+					<img src="image/B17875_06_003.jpg" alt="Figure 6.3 – Various models and runs associated with the AutoML experiment sorted by F1 score" width="1517" height="279"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.3 – Various models and runs associated with the AutoML experiment sorted by F1 score</p>
+			<ol>
+				<li value="4">Next, we select the model that is listed as the first option in the list. In my case, this is the <strong class="source-inline">sklearn</strong> model based <span class="No-Break">on LightGBM:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer078" class="IMG---Figure">
+					<img src="image/B17875_06_004.jpg" alt="Figure 6.4 – How to look at and access the logged model for the best run" width="813" height="95"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.4 – How to look at and access the logged model for the best run</p>
+			<ol>
+				<li value="5">Now we will end up<a id="_idIndexMarker351"/> at the MLflow <strong class="bold">Run</strong> page for this specific model. This page must be looking familiar<a id="_idIndexMarker352"/> to you as, when<a id="_idIndexMarker353"/> you scroll down, you will see<a id="_idIndexMarker354"/> the artifacts, metrics, and hyperparameters all logged automatically as part of our run (we covered this in <span class="No-Break">previous chapters):</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer079" class="IMG---Figure">
+					<img src="image/B17875_06_005.jpg" alt="Figure 6.5 – The different artifacts automatically logged by AutoML for each experiment run" width="800" height="443"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.5 – The different artifacts automatically logged by AutoML for each experiment run</p>
+			<p class="list-inset">On the right side, you will see a button with the caption <span class="No-Break"><strong class="bold">Register Model</strong></span><span class="No-Break">:</span></p>
+			<div>
+				<div id="_idContainer080" class="IMG---Figure">
+					<img src="image/B17875_06_06.jpg" alt="Figure 6.6 – How to register a candidate model to the Model Registry 1" width="934" height="393"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.6 – How to register a candidate model to the Model Registry 1</p>
+			<ol>
+				<li value="6">If you are using<a id="_idIndexMarker355"/> the MLflow Model Registry <a id="_idIndexMarker356"/>for the first<a id="_idIndexMarker357"/> time, you can select <strong class="bold">Create New Model</strong> and give<a id="_idIndexMarker358"/> it a sensible name. In my case, I am giving it the name <strong class="source-inline">Churn Prediction Bank</strong>. Then, <span class="No-Break">hit </span><span class="No-Break"><strong class="bold">Register</strong></span><span class="No-Break">:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer081" class="IMG---Figure">
+					<img src="image/B17875_06_07.jpg" alt="Figure 6.7 – How to register a candidate model to the Model Registry 2" width="784" height="267"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.7 – How to register a candidate model to the Model Registry 2</p>
+			<p class="list-inset">At this point, your model<a id="_idIndexMarker359"/> is registered in the Model Registry<a id="_idIndexMarker360"/> and should<a id="_idIndexMarker361"/> be visible<a id="_idIndexMarker362"/> if you access the <span class="No-Break"><strong class="bold">Models</strong></span><span class="No-Break"> page.</span></p>
+			<ol>
+				<li value="7">You can access the <strong class="bold">Models</strong> page by clicking on the <strong class="bold">Models</strong> icon in the left-hand <span class="No-Break">navigation tab:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer082" class="IMG---Figure">
+					<img src="image/B17875_06_08.jpg" alt="Figure 6.8 – How to access the Model Registry" width="835" height="504"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.8 – How to access the Model Registry</p>
+			<ol>
+				<li value="8">Simply<a id="_idIndexMarker363"/> select<a id="_idIndexMarker364"/> the <strong class="bold">Churn Prediction Bank</strong> model<a id="_idIndexMarker365"/> from<a id="_idIndexMarker366"/> <span class="No-Break">the list:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer083" class="IMG---Figure">
+					<img src="image/B17875_06_09.jpg" alt="Figure 6.9 – The registered candidate model in the Model Registry" width="953" height="55"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.9 – The registered candidate model in the Model Registry</p>
+			<p class="list-inset">A couple of things to observe here are <span class="No-Break">as follows:</span></p>
+			<ul>
+				<li>The latest version says <strong class="bold">Version 1</strong>. This is because we created a new model entry in the registry. If we select an existing model from the dropdown in <em class="italic">Step 9</em>, then the version will say <strong class="bold">Version 2</strong> and <span class="No-Break">so on.</span></li>
+				<li>Upon clicking on <strong class="bold">Version 1</strong>, you will be taken to the details page of this version of the model and see that <strong class="bold">Source Run</strong> is listed as <strong class="bold">lightgbm</strong>, which is the same run that generated our best model. Also, the input and output schemas are inherited from the model signature in the source <span class="No-Break">run automatically.</span></li>
+			</ul>
+			<p class="list-inset">You can<a id="_idIndexMarker367"/> also set tags<a id="_idIndexMarker368"/> and add a description<a id="_idIndexMarker369"/> for your model<a id="_idIndexMarker370"/> in <span class="No-Break">the UI:</span></p>
+			<div>
+				<div id="_idContainer084" class="IMG---Figure">
+					<img src="image/B17875_06_10.jpg" alt="Figure 6.10 – The details of the registered version of the candidate model in the Model Registry" width="1058" height="164"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.10 – The details of the registered version of the candidate model in the Model Registry</p>
+			<p class="list-inset">By default, the stage is set to <strong class="bold">None</strong>. You can manage permissioning around who has permission to request transitioning your model from one stage to another using the built-in <span class="No-Break">access controls.</span></p>
+			<ol>
+				<li value="9">You can set permissions<a id="_idIndexMarker371"/> at the user<a id="_idIndexMarker372"/> or group level<a id="_idIndexMarker373"/> by clicking on the <strong class="bold">Permissions</strong> tab on the page<a id="_idIndexMarker374"/> we interacted with in <span class="No-Break"><em class="italic">Step 8</em></span></li>
+			</ol>
+			<div>
+				<div id="_idContainer085" class="IMG---Figure">
+					<img src="image/B17875_06_11.jpg" alt="Figure 6.11 – How to add governance around model access 1" width="1390" height="145"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.11 – How to add governance around model access 1</p>
+			<p class="list-inset">By default, the workspace admins and the original creator of the model have the <strong class="bold">Can </strong><span class="No-Break"><strong class="bold">Manage</strong></span><span class="No-Break"> permission:</span></p>
+			<div>
+				<div id="_idContainer086" class="IMG---Figure">
+					<img src="image/B17875_06_012.jpg" alt="Figure 6.12 – How to add governance around model access 2" width="887" height="528"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.12 – How to add governance around model access 2</p>
+			<p class="list-inset">You can also specify giving access<a id="_idIndexMarker375"/> or control over the model’s life cycle<a id="_idIndexMarker376"/> by stage. In Databricks MLflow’s Model Registry, each model version can be classified into one of three distinct life cycle stages: <strong class="bold">Staging</strong>, <strong class="bold">Production</strong>, or <strong class="bold">Archived</strong>. Notably, it is possible to have multiple model versions coexist within the same life cycle stage. This is particularly beneficial for scenarios such as A/B testing where parallel evaluation of different model versions is essential. However, this feature could present a challenge for organizations in managing and differentiating between multiple models at the same life <span class="No-Break">cycle stage.</span></p>
+			<p class="list-inset">To resolve this issue, MLflow offers a tagging<a id="_idIndexMarker377"/> mechanism. Tags <a id="_idIndexMarker378"/>can be applied to model<a id="_idIndexMarker379"/> versions to offer additional<a id="_idIndexMarker380"/> metadata, making it easier to identify, filter, and manage models within the same stage. If there are multiple model versions in the same stage, then by default, the most recent version of the model is loaded. However, it’s crucial to specify which model version you intend to load, particularly when multiple versions exist within the same stage. In <a href="B17875_07.xhtml#_idTextAnchor108"><span class="No-Break"><em class="italic">Chapter 7</em></span></a>, <em class="italic">Model Deployment Approaches</em>, we will delve deeper into various methods for deploying these staged models effectively. The user interface allows you to modify the stage of a model version, as illustrated in the <span class="No-Break">following image.</span></p>
+			<div>
+				<div id="_idContainer087" class="IMG---Figure">
+					<img src="image/B17875_06_013.jpg" alt="Figure 6.13 – Various options for model stage transition" width="619" height="271"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.13 – Various options for model stage transition</p>
+			<ol>
+				<li value="10">Click on <strong class="bold">Request transition to</strong>, then <strong class="bold">Staging</strong>. This action<a id="_idIndexMarker381"/> will send a notification to the owner of the model<a id="_idIndexMarker382"/> that we have requested it to be reviewed and requested its transition to staging. In our case, we will get this notification as we own the model ourselves. We can also add comments to our model <span class="No-Break">transition request:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer088" class="IMG---Figure">
+					<img src="image/B17875_06_014.jpg" alt="Figure 6.14 – Transitioning a model to staging" width="729" height="343"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.14 – Transitioning a model to staging</p>
+			<ol>
+				<li value="11">As the owner<a id="_idIndexMarker383"/> of the model, we can then read<a id="_idIndexMarker384"/> all the comments<a id="_idIndexMarker385"/> on the model and have the option<a id="_idIndexMarker386"/> to approve, reject, or cancel the request. On clicking <strong class="bold">Approve</strong>, our model is now transitioned into the <span class="No-Break"><strong class="bold">Staging</strong></span><span class="No-Break"> stage:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer089" class="IMG---Figure">
+					<img src="image/B17875_06_015.jpg" alt="Figure 6.15 – The documentation history and the ability to approve a model transition request" width="930" height="825"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.15 – The documentation history and the ability to approve a model transition request</p>
+			<p>All the aforementioned actions through the UI can be performed using the MLflow Python API when you want to create automated workflows for model training <span class="No-Break">and deployments.</span></p>
+			<p>Let’s now look at how you can programmatically register the model into the integrated Model Registry and then transition to staging. Go to the notebook associated with <span class="No-Break"><strong class="source-inline">Chapter 06</strong></span> and open it in the <span class="No-Break">Databricks workspace.</span></p>
+			<p>In the third code cell, we programmatically<a id="_idIndexMarker387"/> retrieve the most recently modified<a id="_idIndexMarker388"/> experiment. The goal<a id="_idIndexMarker389"/> is to extract the best-performing model<a id="_idIndexMarker390"/> from this experiment based on our chosen <span class="No-Break">evaluation metrics:</span></p>
+			<pre class="source-code">
+import mlflow# Initialize the Mlflow client
+client = mlflow.tracking.MlflowClient()
+# Fetch all available experiments
+experiments = client.search_experiments()
+# Sort the experiments by their last update time in descending order
+sorted_experiments = sorted(experiments, key=lambda x: x.last_update_time, reverse=True)
+# Retrieve the most recently updated experiment
+latest_experiment = sorted_experiments[0]
+# Output the name of the latest experiment
+print(f"The most recently updated experiment is named '{latest_experiment.name}'.")
+# Note: If you're specifically looking for the experiment related to AutoML for base model creation,
+# ensure that 'latest_experiment' corresponds to that experiment.</pre>
+			<p>In the fifth cell, we first initialize some parameters such as our existing username, <strong class="source-inline">experiment_name</strong>, which is the experiment’s name that’s associated with our AutoML, and the <strong class="source-inline">registry_model_name</strong>, which will be the model’s name in the Model Registry. In the earlier section, we already registered our candidate models using the UI in the registry under the name <strong class="bold">Bank Customer Churn</strong>. We will use the same model name here. We will also use the <strong class="source-inline">MlflowClient</strong> library imported from the <strong class="source-inline">mlflow.tracking</strong> package to access<a id="_idIndexMarker391"/> the best model based on <strong class="bold">F1 score</strong> by retrieving<a id="_idIndexMarker392"/> the <strong class="source-inline">run_id</strong> associated<a id="_idIndexMarker393"/> with the best model run<a id="_idIndexMarker394"/> from our MLflow <span class="No-Break">tracking server:</span></p>
+			<pre class="source-code">
+# Initialize the Databricks utilities to programmatically fetch the usernameusername = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
+# Retrieve the name of the latest experiment; assumed to have been set in earlier steps
+experiment_name = latest_experiment.name
+# Define the model name for the registry, specific to our use-case of Churn Prediction for a Bank
+registry_model_name = "Churn Prediction Bank"
+# Fetch the experiment details using its name
+experiment_details = client.get_experiment_by_name(experiment_name)
+# Search for runs within the experiment and sort them by validation F1 score in descending order
+sorted_runs = mlflow.search_runs(experiment_details.experiment_id).sort_values("metrics.val_f1_score", ascending=False)
+# Get the run ID of the best model based on the highest validation F1 score
+best_run_id = sorted_runs.loc[0, "run_id"]
+best_run_id
+# Note: The variable `best_run_id` now contains the run ID of the best model in the specified experiment</pre>
+			<p>To register the model associated with the best model training run, we need to provide the model URI (the path to the model in our tracking server) as input to the MLflow registry <strong class="source-inline">register_model</strong> API. The other parameter we need to pass is the model’s name under which we want the new version<a id="_idIndexMarker395"/> of the model retrieved from the model tracking<a id="_idIndexMarker396"/> server to register. Since, for the sake<a id="_idIndexMarker397"/> of simplicity, we are keeping the name<a id="_idIndexMarker398"/> the same as the model name we defined in the UI, the new model will be registered as <strong class="bold">version 2</strong> in the <span class="No-Break">Model Registry:</span></p>
+			<pre class="source-code">
+# Initialize the model's URI using the best run ID obtained from previous stepsmodel_uri = f"runs:/{best_run_id}/model"
+# Register the model in Mlflow's model registry under the specified name
+try:
+    model_details = mlflow.register_model(model_uri=model_uri, name=registry_model_name)
+    print(f"Successfully registered model '{registry_model_name}' with URI '{model_uri}'.")
+except mlflow.exceptions.MlflowException as e:
+    print(f"Failed to register model '{registry_model_name}': {str(e)}")
+model_details</pre>
+			<p>You can also use the <strong class="source-inline">MLflowClient</strong> object to update the description or set tags related to a model in the registry. In <strong class="source-inline">Command 9</strong> of the notebook, we demonstrate how you can use the <strong class="source-inline">MLflowClient</strong> object to call the <strong class="source-inline">update_registered_model</strong> and <span class="No-Break"><strong class="source-inline">update_model_version</strong></span><span class="No-Break"> methods:</span></p>
+			<pre class="source-code">
+# Update the metadata of an already registered modeltry:
+    client.update_registered_model(
+        name=model_details.name,
+        description="This model predicts whether a bank customer will churn or not."
+    )
+    print(f"Successfully updated the description for the registered model '{model_details.name}'.")
+except mlflow.exceptions.MlflowException as e:
+    print(f"Failed to update the registered model '{model_details.name}': {str(e)}")
+# Update the metadata for a specific version of the model
+try:
+    client.update_model_version(
+        name=model_details.name,
+        version=model_details.version,
+        description="This is a scikit-learn based model."
+    )
+    print(f"Successfully updated the description for version {model_details.version} of the model '{model_details.name}'.")
+except mlflow.exceptions.MlflowException as e:
+    print(f"Failed to update version {model_details.version} of the model '{model_details.name}': {str(e)}")</pre>
+			<p>In <strong class="source-inline">Command 11</strong> of the notebook, we demonstrate<a id="_idIndexMarker399"/> how you can use the <strong class="source-inline">transition_model_stage</strong> method using the <strong class="source-inline">MLflowClient</strong> object to transition<a id="_idIndexMarker400"/> the latest model version to the <strong class="source-inline">Staging</strong><strong class="source-inline"><a id="_idIndexMarker401"/></strong> stage. You can also archive the earlier model<a id="_idIndexMarker402"/> as we transition the new model <span class="No-Break">to </span><span class="No-Break"><strong class="source-inline">Staging</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+# Transition the model version to the 'Staging' stage in the model registrytry:
+    client.transition_model_version_stage(
+        name=model_details.name,
+        version=model_details.version,
+        stage="Staging",
+        archive_existing_versions=True  # Archives any existing versions in the 'Staging' stage
+    )
+    print(f"Successfully transitioned version {model_details.version} of the model '{model_details.name}' to 'Staging'.")
+except mlflow.exceptions.MlflowException as e:
+    print(f"Failed to transition version {model_details.version} of the model '{model_details.name}' to 'Staging': {str(e)}")</pre>
+			<p>Let’s now explore how to leverage<a id="_idIndexMarker403"/> the webhook events provided<a id="_idIndexMarker404"/> by the MLflow Model Registry to automate<a id="_idIndexMarker405"/> notifications. This will alert us whenever<a id="_idIndexMarker406"/> specific events related to models registered in the MLflow <span class="No-Break">registry occur.</span></p>
+			<h1 id="_idParaDest-105"><a id="_idTextAnchor105"/>Diving into the webhooks support in the Model Registry</h1>
+			<p>A webhook<a id="_idIndexMarker407"/> allows users to create custom<a id="_idIndexMarker408"/> callbacks to enable communication between web applications. Webhooks allow a system<a id="_idIndexMarker409"/> to push data into another system automatically when some <span class="No-Break">event occurs.</span></p>
+			<p>As an example, this could apply if you want to automatically trigger a notification on Slack when you detect a new transition request for a model in MLflow, or if you want to trigger a new model build when there is a new code commit in your version <span class="No-Break">control branch.</span></p>
+			<p>MLflow webhooks provide capabilities for end users to automatically listen to any events related to the Model Registry and trigger actions. The webhooks can be integrated with messaging systems such as Slack to send notifications or trigger CI/CD pipelines for automatically testing and deploying <span class="No-Break">ML models.</span></p>
+			<p>You can use webhooks<a id="_idIndexMarker410"/> using the Python client or Databricks<a id="_idIndexMarker411"/> <span class="No-Break">REST API.</span></p>
+			<p>There are two different types of webhooks that are supported by the MLflow Model Registry based on <span class="No-Break">the target:</span></p>
+			<ul>
+				<li><strong class="bold">Webhooks with HTTP endpoints</strong>: These are used when we want to send trigger events<a id="_idIndexMarker412"/> to an HTTP endpoint such <span class="No-Break">as Slack.</span></li>
+				<li><strong class="bold">Webhooks for Databricks Jobs</strong>: These are specifically used for sending trigger events<a id="_idIndexMarker413"/> to Databricks Jobs. This type of webhook is particularly useful for initiating automated tests on models that have been newly promoted to staging or production environments as part of your <span class="No-Break">CI/CD process.</span></li>
+			</ul>
+			<p>The following figure summarizes the workflow involving registering a model to the MLflow Model Registry, and how you can utilize MLflow webhooks to kick off Slack notifications and Databricks jobs to apply tags/comments or automate tests on the newly <span class="No-Break">deployed model:</span></p>
+			<div>
+				<div id="_idContainer090" class="IMG---Figure">
+					<img src="image/B17875_06_16.jpg" alt="Figure 6.16 – A typical workflow for model management using webhooks" width="1650" height="972"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.16 – A typical workflow for model management using webhooks</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">Courtesy <span class="No-Break">of Databricks</span></p>
+			<p>Once a model stage transition request is filed, the HTTP webhook can be used to notify the user/group of users who can review the request and <span class="No-Break"><em class="italic">approve</em></span><span class="No-Break"> it.</span></p>
+			<p>You can also set webhooks<a id="_idIndexMarker414"/> for a specific model or for all the models<a id="_idIndexMarker415"/> that are registered in a <span class="No-Break">particular registry.</span></p>
+			<p>You can read about the various<a id="_idIndexMarker416"/> supported webhook events <span class="No-Break">at </span><a href="https://docs.databricks.com/en/mlflow/model-registry-webhooks.html#webhook-events"><span class="No-Break">https://docs.databricks.com/en/mlflow/model-registry-webhooks.html#webhook-events</span></a><span class="No-Break">.</span></p>
+			<p>In the code example provided with this chapter, we are specifically using the following <span class="No-Break">two events:</span></p>
+			<ul>
+				<li><strong class="source-inline">MODEL_VERSION_CREATED</strong>: A new model version was created for the <span class="No-Break">associated model</span></li>
+				<li><strong class="source-inline">TRANSITION_REQUEST_CREATED</strong>: A user requested a model version’s stage to <span class="No-Break">be transitioned</span></li>
+			</ul>
+			<p>To demonstrate how you can establish automated alerting for model transitions via Slack, you must first secure a Slack webhook URL. The following steps guide you through the creation of a Slack app and subsequently allow you to set up an incoming webhook. For an exhaustive guide<a id="_idIndexMarker417"/> on this subject, please refer to the official Slack API documentation on webhooks <span class="No-Break">at </span><a href="https://api.slack.com/messaging/webhooks"><span class="No-Break">https://api.slack.com/messaging/webhooks</span></a><span class="No-Break">.</span></p>
+			<p>If you’re actively running the code from the <span class="No-Break"><strong class="source-inline">Chapter 06</strong></span> notebook, ensure<a id="_idIndexMarker418"/> that you have your Slack webhook<a id="_idIndexMarker419"/> URL at hand before proceeding to execute <span class="No-Break"><strong class="source-inline">Command 16</strong></span><span class="No-Break">.</span></p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">One thing to remember here is that the REST endpoints we are going to hit for creating a new registry webhook, deleting webhooks, listing webhooks, and more are only available on Databricks and not on the open source MLflow. You can read more about the<a id="_idIndexMarker420"/> Databricks REST API specification for MLflow <span class="No-Break">at </span><a href="https://docs.databricks.com/dev-tools/api/latest/mlflow.html#operation/get-registered-model"><span class="No-Break">https://docs.databricks.com/dev-tools/api/latest/mlflow.html#operation/get-registered-model</span></a><span class="No-Break">.</span></p>
+			<p>Let's proceed with our review of the notebook located in the <span class="No-Break"><strong class="source-inline">Chapter 06</strong></span> folder. We'll now delve into the details of utilizing webhooks to automatically send notifications to a Slack channel when specific events occur within the model registry concerning your <span class="No-Break">registered model</span></p>
+			<ol>
+				<li>In <strong class="source-inline">Command 15</strong>, we specified a code block that provides utility functions to interact with MLflow’s REST API. It initializes an MLflow client and fetches host and token credentials for authentication. The <strong class="source-inline">mlflow_call_endpoint</strong> function is designed to make HTTP calls to a specified MLflow API endpoint using either <strong class="source-inline">GET</strong> or other HTTP methods. It accepts an API endpoint, an HTTP method, and an optional JSON payload as arguments, and returns a JSON response as a dictionary. The script also handles exceptions, printing an error message if the API <span class="No-Break">call fails:</span><pre class="source-code">
+from mlflow.utils.rest_utils import http_requestimport jsondef get_mlflow_client():    """Returns an initialized MLflowClient object."""    return mlflow.tracking.client.MlflowClient()def get_host_creds(client):    """Fetches host and token credentials."""    return client._tracking_client.store.get_host_creds()def mlflow_call_endpoint(endpoint, method, body='{}'):    """Calls an MLflow REST API endpoint.    Parameters:        endpoint (str): The endpoint to call.        method (str): HTTP method ('GET' or other HTTP methods).        body (str): JSON-formatted request payload.    Returns:        dict: JSON response as a dictionary.    """    host_creds = get_host_creds(get_mlflow_client())    try:        if method == 'GET':            response = http_request(                host_creds=host_creds,                endpoint=f"/api/2.0/mlflow/{endpoint}",                method=method,                params=json.loads(body)            )        else:            response = http_request(                host_creds=host_creds,                endpoint=f"/api/2.0/mlflow/{endpoint}",                method=method,                json=json.loads(body)            )        return response.json()    except Exception as e:        print(f"Failed to call MLflow endpoint '{endpoint}': {str(e)}")        return Noneclient = get_mlflow_client()host_creds = get_host_creds(client)host = host_creds.hosttoken = host_creds.token</pre></li>				<li>In <strong class="source-inline">Command 16</strong>, assign the value<a id="_idIndexMarker421"/> of the <strong class="source-inline">slack_webhook</strong> variable to the webhook link for your <span class="No-Break">Slack</span><span class="No-Break"><a id="_idIndexMarker422"/></span><span class="No-Break"> channel:</span><pre class="source-code">
+slack_webhook = "https://hooks.slack.com/services/?????????/??????????/???????????????????????"</pre></li>				<li>Execute <strong class="source-inline">Command 17</strong> and <strong class="source-inline">Command 18</strong>. This will register new webhooks for the model we registered for our <strong class="bold">Customer Prediction Bank</strong> problem. We will be notified when a new model<a id="_idIndexMarker423"/> version is created or a transition request has been made for a <span class="No-Break">model version:</span><pre class="source-code">
+import jsontrigger_for_slack = json.dumps({  "model_name": registry_model_name,  "events": ["MODEL_VERSION_CREATED"],  "description": "Triggered when a new model version is created.",  "http_url_spec": {    "url": slack_webhook  }})mlflow_call_endpoint("registry-webhooks/create", method = "POST", body = trigger_for_slack)trigger_for_slack = json.dumps({  "model_name": registry_model_name,  "events": ["TRANSITION_REQUEST_CREATED"],  "description": "Triggered when a new transition request for a model has been made.",  "http_url_spec": {    "url": slack_webhook  }})mlflow_call_endpoint("registry-webhooks/create", method = "POST", body = trigger_for_slack)</pre></li>				<li>The <strong class="source-inline">http_url_spec</strong> parameter<a id="_idIndexMarker424"/> is where you provide the URL<a id="_idIndexMarker425"/> for the <span class="No-Break">HTTP webhook.</span></li>
+				<li>Now, after this point, if you go back to your model UI or request transitioning a model to a new stage, you will get notified <span class="No-Break">in Slack:</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer091" class="IMG---Figure">
+					<img src="image/B17875_06_17.jpg" alt="Figure 6.17 – Automated notification received on Slack channel using Slack webhook" width="945" height="66"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 6.17 – Automated notification received on Slack channel using Slack webhook</p>
+			<p>The notebook also demonstrates other REST API calls that can help you manage <span class="No-Break">the webhooks.</span></p>
+			<p>We’ve just seen an example of how you can use webhooks for HTTP endpoints. Similarly, we can set up a job registry webhook. This can be used to trigger certain Databricks jobs you may have for testing a model or retraining a <span class="No-Break">model version.</span></p>
+			<p>There are two parameters that you need to provide in job registry webhooks that are different from the HTTP registry webhooks: <strong class="source-inline">job_spec</strong> and <strong class="source-inline">workspace_url</strong>. You can kick off jobs in a workspace that is different from the one in the Model Registry. If you don’t define <strong class="source-inline">workspace_url</strong>, then by default, the job specification<a id="_idIndexMarker426"/> will be used to trigger a Databricks job in the same workspace<a id="_idIndexMarker427"/> as the <span class="No-Break">Model Registry.</span></p>
+			<h1 id="_idParaDest-106"><a id="_idTextAnchor106"/>Summary</h1>
+			<p>In this chapter, we covered how you can utilize the Databricks Model Registry to manage ML model versioning and life cycles. We also learned how you can manage ML model versioning using the MLflow Model Registry and transition models from one stage to another while managing access control. We then learned how you can use MLflow-supported webhook callbacks to set up automated Slack notifications to track changes around models in your <span class="No-Break">Model Registry.</span></p>
+			<p>In the next chapters, we will cover various model <span class="No-Break">deployment approaches.</span></p>
+			<h1 id="_idParaDest-107"><a id="_idTextAnchor107"/>Further reading</h1>
+			<p>The following are some links to further <span class="No-Break">your understanding:</span></p>
+			<ul>
+				<li>Databricks, <em class="italic">Databricks </em><span class="No-Break"><em class="italic">AutoML</em></span><span class="No-Break">: </span><a href="https://docs.databricks.com/applications/machine-learning/automl.html#databricks-automl"><span class="No-Break">https://docs.databricks.com/applications/machine-learning/automl.html#databricks-automl</span></a></li>
+				<li>Databricks, <em class="italic">Job registry webhook example </em><span class="No-Break"><em class="italic">workflow</em></span><span class="No-Break">: </span><a href="https://docs.databricks.com/applications/mlflow/model-registry-webhooks.html#job-registry-webhook-example-workflow"><span class="No-Break">https://docs.databricks.com/applications/mlflow/model-registry-webhooks.html#job-registry-webhook-example-workflow</span></a></li>
+				<li>Slack, <em class="italic">Sending messages using incoming </em><span class="No-Break"><em class="italic">Webhooks</em></span><span class="No-Break">: </span><a href="https://api.slack.com/messaging/webhooks#enable_webhook"><span class="No-Break">https://api.slack.com/messaging/webhooks#enable_webhook</span></a></li>
+			</ul>
+		</div>
+	</div>
+</div>
+</body></html>

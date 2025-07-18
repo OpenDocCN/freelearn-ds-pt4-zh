@@ -1,0 +1,545 @@
+<html><head></head><body><div id="sbo-rt-content"><div id="_idContainer026">
+			<h1 id="_idParaDest-54"><em class="italic"><a id="_idTextAnchor055"/>Chapter 3</em>: Pachyderm Pipeline Specification</h1>
+			<p>A <strong class="bold">Machine Learning</strong> (<strong class="bold">ML</strong>) pipeline is an automated workflow that enables you to execute the same code<a id="_idIndexMarker245"/> continuously against different combinations of data and parameters. A pipeline ensures that every cycle is automated and goes through the same sequence of steps. Like in many other technologies, in Pachyderm, an ML pipeline is defined by a single configuration file called the pipeline specification, or the pipeline spec. </p>
+			<p>The <strong class="bold">Pachyderm pipeline specification</strong> is the most important configuration in Pachyderm as it defines<a id="_idIndexMarker246"/> what your pipeline does, how often it runs, how the work is spread across Pachyderm workers, and where to output the result.</p>
+			<p>This chapter is intended as a pipeline specification reference and will walk you through all the parameters you can specify for your pipeline. To do this, we will cover the following topics:</p>
+			<ul>
+				<li>Pipeline specification overview</li>
+				<li>Understanding inputs</li>
+				<li>Exploring informational parameters</li>
+				<li>Exploring transformation </li>
+				<li>Optimizing your pipeline</li>
+				<li>Exploring service parameters</li>
+				<li>Exploring output parameters</li>
+			</ul>
+			<h1 id="_idParaDest-55"><a id="_idTextAnchor056"/>Pipeline specification overview </h1>
+			<p>Typically, when you conduct an ML experiment, it involves multiple sequential steps. In the simplest scenario, your pipeline<a id="_idIndexMarker247"/> takes input from an input repository, applies your transformation code, and outputs the result in the output repository. For example, you may have a set of images to apply a monochrome filter to and then output the result in an output repository that goes by the same name<a id="_idIndexMarker248"/> as the pipeline. This workflow performs<a id="_idIndexMarker249"/> only one operation and can be called a <strong class="bold">one-step pipeline</strong>, or one-step workflow. A diagram for such<a id="_idIndexMarker250"/> a pipeline would look like this:</p>
+			<div>
+				<div id="_idContainer024" class="IMG---Figure">
+					<img src="Images/B17085_03_001.jpg" alt="Figure 3.1 – One-step workflow&#13;&#10;" width="1117" height="263"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 3.1 – One-step workflow</p>
+			<p>The specification for this simple pipeline, in YAML format, would look like this:</p>
+			<p class="source-code">---</p>
+			<p class="source-code">pipeline:</p>
+			<p class="source-code">  name: apply-photo-filter</p>
+			<p class="source-code">transform:</p>
+			<p class="source-code">  cmd:</p>
+			<p class="source-code">  - python3</p>
+			<p class="source-code">  - "/photo-filter.py"</p>
+			<p class="source-code">  image: myregistry/filter</p>
+			<p class="source-code">input:</p>
+			<p class="source-code">  pfs:</p>
+			<p class="source-code">    repo: photos</p>
+			<p class="source-code">    glob: "/"</p>
+			<p>This is the simplest pipeline specification that you can create. It must include the following parameters:</p>
+			<ul>
+				<li><strong class="source-inline">name</strong>: A descriptive name for your pipeline. Often, the name of the pipeline describes<a id="_idIndexMarker251"/> a step in your ML workflow. For example, if this pipeline applies a photo filter to your images, you can call it <strong class="source-inline">apply-photo-filter</strong>. Alternatively, if it validates your model, you could call it <strong class="source-inline">cross-validation</strong>.</li>
+				<li><strong class="source-inline">transform</strong>: This parameter includes<a id="_idIndexMarker252"/> your transformation code, which can be specified as a reference to a file or directly inline. We will discuss this parameter in more detail in the next section.</li>
+				<li><strong class="source-inline">input</strong>: This parameter refers to an existing<a id="_idIndexMarker253"/> input repository where the files for the pipeline are located. <strong class="source-inline">input</strong> is a filesystem inside your pipeline worker under the <strong class="source-inline">pfs/</strong> directory. For example, if your repository is called <strong class="source-inline">photos</strong>, it is stored under <strong class="source-inline">pfs/photos</strong> on your pipeline worker. Output repositories are created automatically by the pipeline and stored under <strong class="source-inline">pfs/out</strong>. All output repositories have the same name as the pipeline. For example, if your pipeline is called <strong class="source-inline">apply-photo-filter</strong>, the output repository will be stored as <strong class="source-inline">apply-photo-filter</strong> in <strong class="source-inline">pfs/out/</strong>.</li>
+			</ul>
+			<p>This is a very simple example of a pipeline. In a more realistic use case, you would likely have more than one pipeline step. In a typical ML pipeline, you need to perform pre-processing, training, and cross-validation steps, among others. When you have multiple<a id="_idIndexMarker254"/> pipelines chained together, this is called a <strong class="bold">multi-step workflow</strong>. For example, if you are creating an NLP pipeline, your pipeline may have the following structure:</p>
+			<div>
+				<div id="_idContainer025" class="IMG---Figure">
+					<img src="Images/B17085_03_002.jpg" alt="Figure 3.2 – Multi-step workflow&#13;&#10;" width="1445" height="557"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 3.2 – Multi-step workflow</p>
+			<p>In the preceding diagram, each pipeline has a pipeline specification with a name, input repository, transformation code, and other parameters defined.</p>
+			<p>All pipeline<a id="_idIndexMarker255"/> specifications must be written in <strong class="bold">YAML Ain't Markup Language</strong> (<strong class="bold">YAML</strong>) or <strong class="bold">JavaScript Object Notation</strong> (<strong class="bold">JSON</strong>) format. These formats<a id="_idIndexMarker256"/> are easy for people to read and write and are widely used in various configuration files in the industry. It<a id="_idIndexMarker257"/> is easier to write in than <strong class="bold">Extensible Markup Language</strong> (<strong class="bold">XML</strong>) or other similar formats.</p>
+			<p>Now that we have reviewed the minimum pipeline specification and have looked at a more realistic example, let's review the other parameters that you can specify.</p>
+			<h1 id="_idParaDest-56"><a id="_idTextAnchor057"/>Understanding inputs</h1>
+			<p>We described <a id="_idIndexMarker258"/>inputs in <a href="B17085_02_Final_SB_Epub.xhtml#_idTextAnchor037"><em class="italic">Chapter 2</em></a>, <em class="italic">Pachyderm Basics</em>, in detail by providing examples. Therefore, in this section, we'll just mention that inputs define the type of your pipeline. You can specify the following types of Pachyderm inputs:</p>
+			<ul>
+				<li><strong class="bold">PFS</strong> is a generic parameter<a id="_idIndexMarker259"/> that defines a standard pipeline and inputs in all multi-input pipelines.</li>
+				<li><strong class="bold">Cross</strong> is an input that creates<a id="_idIndexMarker260"/> a cross-product of the datums from two input repositories. The resulting output will include all possible combinations of all datums from the input repositories.</li>
+				<li><strong class="bold">Union</strong> is an input that adds datums<a id="_idIndexMarker261"/> from one repository to the datums in another repository. </li>
+				<li><strong class="bold">Join</strong> is an input that matches datums<a id="_idIndexMarker262"/> with a specific naming pattern.</li>
+				<li><strong class="bold">Spout</strong> is an input that consumes<a id="_idIndexMarker263"/> data from a third-party source and adds it to the Pachyderm filesystem for further processing. </li>
+				<li><strong class="bold">Group</strong> is an input that combines<a id="_idIndexMarker264"/> datums from multiple repositories based on a configured naming pattern.</li>
+				<li><strong class="bold">Cron</strong> is a pipeline that runs<a id="_idIndexMarker265"/> according to a specified time interval.</li>
+				<li><strong class="bold">Git</strong> is an input that enables<a id="_idIndexMarker266"/> you to ingest data from a Git repository.</li>
+			</ul>
+			<p>For all inputs except for Cron and Git, you can define a <strong class="source-inline">pfs</strong> parameter that defines the input.</p>
+			<h2 id="_idParaDest-57"><a id="_idTextAnchor058"/>pfs</h2>
+			<p>The <strong class="source-inline">pfs</strong> parameter, which <a id="_idIndexMarker267"/>stands for <strong class="bold">Pachyderm File System</strong>, defines the input and all its attributes, such<a id="_idIndexMarker268"/> as name, repository, branch, and others. A simple Pachyderm pipeline takes only one input, while the multi-input pipelines take multiple <strong class="source-inline">pfs</strong> inputs. You need to define one or multiple <strong class="source-inline">pfs</strong> inputs for all pipelines, except for Cron and Git.</p>
+			<p>Here are the sub-parameters<a id="_idIndexMarker269"/> of the <strong class="source-inline">pfs</strong> input:</p>
+			<ul>
+				<li><strong class="source-inline">name</strong>: The name of your pipeline.</li>
+				<li><strong class="source-inline">repo</strong>: A Pachyderm input repository where the data is stored.</li>
+				<li><strong class="source-inline">branch</strong>: A branch in the Pachyderm input repository where the data is stored. Often, this will be the <strong class="source-inline">master</strong> branch.</li>
+				<li><strong class="source-inline">glob</strong>: A parameter that defines how to break the data into chunks for processing. You can read more about the <strong class="source-inline">glob</strong> parameter in the <em class="italic">Datums</em> section of <a href="B17085_02_Final_SB_Epub.xhtml#_idTextAnchor037"><em class="italic">Chapter 2</em></a>, <em class="italic">Pachyderm Basics</em>.</li>
+				<li><strong class="source-inline">lazy</strong>: A parameter that enables slower, less aggressive data downloading on a pipeline. The <strong class="source-inline">lazy</strong> parameter is useful when you need to look into a subset of your data.</li>
+				<li><strong class="source-inline">s3</strong>: This parameter defines whether to include an S3 gateway sidecar on the pipeline. When you integrate<a id="_idIndexMarker270"/> with third-party applications through the S3 gateway, this ensures that the pipeline's provenance is preserved.</li>
+			</ul>
+			<p>You can read more about the types of pipelines and inputs and view example pipelines in <a href="B17085_02_Final_SB_Epub.xhtml#_idTextAnchor037"><em class="italic">Chapter 2</em></a>, <em class="italic">Pachyderm Basics</em>. The next section describes informational parameters that you can define for your pipeline.</p>
+			<h1 id="_idParaDest-58"><a id="_idTextAnchor059"/>Exploring informational parameters</h1>
+			<p>Pipeline informational parameters<a id="_idIndexMarker271"/> define basic information about the pipeline. Out of all of them, only the <strong class="source-inline">name</strong> parameter is required in any pipeline specification. All other parameters are optional and can be omitted. Let's look at these parameters in more detail.</p>
+			<h2 id="_idParaDest-59"><a id="_idTextAnchor060"/>name</h2>
+			<p>The <strong class="source-inline">name</strong> parameter is the descriptive<a id="_idIndexMarker272"/> name of your pipeline. Typically, you want to name a pipeline after the type of <a id="_idIndexMarker273"/>transformation it performs. For example, if your pipeline performs image classification, you may want to call it <strong class="source-inline">image-classification</strong>. A pipeline name must consist of alphanumeric characters, dashes, and underscores, and cannot exceed 63 symbols. </p>
+			<p>The following is an example of the <strong class="source-inline">name</strong> parameter in YAML format:</p>
+			<p class="source-code">---</p>
+			<p class="source-code">pipeline:</p>
+			<p class="source-code">  name: image-classification</p>
+			<p>The following<a id="_idIndexMarker274"/> is an example of the <strong class="source-inline">name</strong> parameter <a id="_idIndexMarker275"/>in JSON format:</p>
+			<p class="source-code">{</p>
+			<p class="source-code">  "pipeline": {</p>
+			<p class="source-code">    "name": "image-classification"</p>
+			<p class="source-code">  },</p>
+			<p>Next, let's look at the <strong class="source-inline">description</strong> parameter.</p>
+			<h2 id="_idParaDest-60"><a id="_idTextAnchor061"/>description</h2>
+			<p>The <strong class="source-inline">description</strong> parameter provides additional<a id="_idIndexMarker276"/> information about the pipeline. Although it is an optional parameter, it is good practice to add a short description to your pipeline. For example, if your <a id="_idIndexMarker277"/>pipeline performs image classification, you can add the following description: <em class="italic">A pipeline that performs image classification by using scikit-learn</em>.</p>
+			<p>The following is an example of the <strong class="source-inline">description</strong> parameter in YAML format:</p>
+			<p class="source-code">description: A pipeline that performs image classification by using scikit-learn.</p>
+			<p>The following is an example of the <strong class="source-inline">description</strong> parameter in JSON format:</p>
+			<p class="source-code">"description": "A pipeline that performs image classification by using scikit-learn.",</p>
+			<p>Next, let's learn about <strong class="source-inline">metadata</strong>.</p>
+			<h2 id="_idParaDest-61"><a id="_idTextAnchor062"/>metadata</h2>
+			<p>The <strong class="source-inline">metadata</strong> parameter <a id="_idIndexMarker278"/>enables you to specify Kubernetes<a id="_idIndexMarker279"/> labels or annotations. Labels are typically used to group Kubernetes objects into some sort of category and help simplify the management of those objects. Labels can be queried to display objects of the same type.</p>
+			<p>Annotations, on the other hand, can be used to specify any random key-value pairs that are not defined within Kubernetes and could be used by external applications. You can use annotations to<a id="_idIndexMarker280"/> define the type of service, but things such as <strong class="bold">Identity Access Management</strong> (<strong class="bold">IAM</strong>) roles should be specified through <strong class="source-inline">pach_patch</strong> or <strong class="source-inline">pach_spec</strong> instead. Multiple labels<a id="_idIndexMarker281"/> and annotations can be specified in each pipeline specification.</p>
+			<p>Here is an <a id="_idIndexMarker282"/>example of how to specify annotations in YAML format:</p>
+			<p class="source-code">metadata:</p>
+			<p class="source-code">  annotations:</p>
+			<p class="source-code">    annotation: data</p>
+			<p>The following example shows how to specify annotations in JSON format:</p>
+			<p class="source-code">"metadata": {</p>
+			<p class="source-code">    "annotations": {</p>
+			<p class="source-code">        "annotation": "data"</p>
+			<p class="source-code">    }</p>
+			<p class="source-code">  },</p>
+			<p>The following example shows how to specify labels in YAML format:</p>
+			<p class="source-code">metadata:</p>
+			<p class="source-code">  labels:</p>
+			<p class="source-code">    label: object</p>
+			<p>Finally, the following example shows how to specify labels in JSON format:</p>
+			<p class="source-code">"metadata": {</p>
+			<p class="source-code">     "labels": {</p>
+			<p class="source-code">        "label": "object"</p>
+			<p class="source-code">    }</p>
+			<p class="source-code">  },</p>
+			<p>Now that we've learned<a id="_idIndexMarker283"/> about <a id="_idIndexMarker284"/>the informational parameters, let's look at the <strong class="source-inline">transformation</strong> section of the Pachyderm pipeline.</p>
+			<h1 id="_idParaDest-62"><a id="_idTextAnchor063"/>Exploring transformation</h1>
+			<p>The <strong class="source-inline">transformation</strong> section is where you define your pipeline transformation code. It is the core<a id="_idIndexMarker285"/> of your pipeline's functionality. Most pipelines, unless they are a connector between two pipelines or a pipeline that exports results outside of Pachyderm, must have a <strong class="source-inline">transformation</strong> section.</p>
+			<p>The most important parameters of a transformation section – and the ones that are most commonly used – are <strong class="source-inline">image</strong> and <strong class="source-inline">cmd</strong> or <strong class="source-inline">stdin</strong>, <strong class="source-inline">env</strong>, and <strong class="source-inline">secrets</strong>.</p>
+			<p>Let's look at these parameters in more detail.</p>
+			<h2 id="_idParaDest-63"><a id="_idTextAnchor064"/>image</h2>
+			<p>The <strong class="source-inline">image</strong> parameter defines<a id="_idIndexMarker286"/> a Docker image that your pipeline will run. A Docker image contains information about the environment <a id="_idIndexMarker287"/>in your pipeline container. For example, if you are running Python code, you will need to have some version of Python in your pipeline image. There are many publicly available containers that you can use for your pipeline. </p>
+			<p>You can also include your scripts in that container. Unless your code is just a Bash script that can be specified through the <strong class="source-inline">stdin</strong> parameter inline, you will likely need to build your own Docker image, include your code in that image, and store it in a public or private container registry. Docker images are built from a <strong class="source-inline">Dockerfile</strong>, which describes the container environment and what you can run in the container. You can read<a id="_idIndexMarker288"/> more about Docker images at <a href="https://docs.docker.com/">https://docs.docker.com/</a>. </p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">Do not use the Docker <strong class="source-inline">CMD</strong> instruction; instead, use <strong class="source-inline">RUN</strong>. The <strong class="source-inline">CMD</strong> instruction will fail.</p>
+			<p>The following code shows how to specify a Docker <strong class="source-inline">image</strong> in YAML format:</p>
+			<p class="source-code">metadata:</p>
+			<p class="source-code">  labels:</p>
+			<p class="source-code">    label: object</p>
+			<p>The following code shows how to specify a Docker <strong class="source-inline">image</strong> in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    "image": "my-image",</p>
+			<p>However, just specifying a Docker<a id="_idIndexMarker289"/> image is not enough. You must <a id="_idIndexMarker290"/>define what to run, either through the <strong class="source-inline">cmd</strong> or <strong class="source-inline">stdin</strong> parameter.</p>
+			<h3>cmd </h3>
+			<p>The <strong class="source-inline">cmd</strong> parameter defines <a id="_idIndexMarker291"/>the code that the pipeline will run against your data. There is a lot of flexibility<a id="_idIndexMarker292"/> around what you can put in the <strong class="source-inline">cmd</strong> line. Typically, you want to specify the type of command <a id="_idIndexMarker293"/>you want to run, such as <strong class="source-inline">python</strong>, or set it to run<a id="_idIndexMarker294"/> a command-line shell, such as <strong class="bold">Bourne Shell</strong> (<strong class="source-inline">sh</strong>) or <strong class="bold">Bourne Again Shell</strong> (<strong class="source-inline">bash</strong>), and then specify the list<a id="_idIndexMarker295"/> of commands that you want to run in the <strong class="source-inline">stdin</strong> parameter. </p>
+			<p>There is no difference or preference between the two approaches. The only difference is that if you specify a file in the <strong class="source-inline">cmd</strong> parameter, you will need to build a Docker image and include that file in the image.</p>
+			<p>For example, if you have a Python 3 file that contains the code that you want to run against your data, you can specify it like this in YAML format:</p>
+			<p class="source-code">cmd:</p>
+			<p class="source-code">  - python3</p>
+			<p class="source-code">  - "/test.py"</p>
+			<p>Alternatively, you can specify labels in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    "cmd": [ "python3", "/test.py" ],</p>
+			<p>However, if you want to specify your commands inline in the <strong class="source-inline">stdin</strong> parameter, just have the format specified in the <strong class="source-inline">cmd</strong> parameter like this, in YAML format:</p>
+			<p class="source-code">cmd:</p>
+			<p class="source-code">  - python3</p>
+			<p>You can do the same in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    "cmd": [ "python3" ],</p>
+			<p>See the <em class="italic">stdin</em> section for examples of how you can specify your inline code.</p>
+			<p>Your <strong class="source-inline">cmd</strong> field can get even more complex than that, however. For example, you can specify a script inside the <strong class="source-inline">cmd</strong> parameter.</p>
+			<p>The following text<a id="_idIndexMarker296"/> is an example of the syntax you can <a id="_idIndexMarker297"/>use in the <strong class="source-inline">cmd</strong> field in YAML format:</p>
+			<p class="source-code">transform:</p>
+			<p class="source-code">  image: my-image</p>
+			<p class="source-code">  cmd:</p>
+			<p class="source-code">  - tree</p>
+			<p class="source-code">  - "/pfs"</p>
+			<p class="source-code">  - "&amp;&amp;"</p>
+			<p class="source-code">  - python</p>
+			<p class="source-code">  - my-script.py</p>
+			<p class="source-code">  - "--outdir"</p>
+			<p class="source-code">  - "/pfs/out"</p>
+			<p class="source-code">  - "--input"</p>
+			<p class="source-code">  - "/pfs/data "</p>
+			<p>The following <a id="_idIndexMarker298"/>text is an example of the syntax you can use in the <strong class="source-inline">cmd</strong> field <a id="_idIndexMarker299"/>in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    "image": "my-image",</p>
+			<p class="source-code">    "cmd": ["tree", </p>
+			<p class="source-code">        "/pfs", </p>
+			<p class="source-code">        "&amp;&amp;", </p>
+			<p class="source-code">        "python",</p>
+			<p class="source-code">        "my-script.py", </p>
+			<p class="source-code">        "--outdir", "/pfs/out",</p>
+			<p class="source-code">              "--input", "/pfs/data "] </p>
+			<p class="source-code">  },</p>
+			<p>Next, let's review the <strong class="source-inline">stdin</strong> parameter.</p>
+			<h2 id="_idParaDest-64"><a id="_idTextAnchor065"/>stdin</h2>
+			<p>The <strong class="source-inline">stdin</strong> parameter is <a id="_idIndexMarker300"/>similar to the UNIX standard input (<strong class="source-inline">stdin</strong>), and it enables communication<a id="_idIndexMarker301"/> between the Pachyderm environment and the pipeline worker. This means that you can put a code in the format specified in the <strong class="source-inline">cmd</strong> command inline in the <strong class="source-inline">stdin</strong> field. You could also specify paths to your code files as well, similar to the <strong class="source-inline">cmd</strong> parameter.</p>
+			<p>This method does not require you to build a Docker image and allows you to configure your pipeline entirely through the pipeline specification. If you are unfamiliar with the Docker image-building process, this approach may feel more appealing. However, for more complex pipelines, you likely want to save your scripts in files, build Docker images, and use them in your pipeline.</p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">stdin</strong> field in YAML format:</p>
+			<p class="source-code">transform:</p>
+			<p class="source-code">  cmd:</p>
+			<p class="source-code">  - bash</p>
+			<p class="source-code">  stdin:</p>
+			<p class="source-code">  - for f in /pfs/data/*</p>
+			<p class="source-code">  - do</p>
+			<p class="source-code">  - filename=$(basename "$f")</p>
+			<p class="source-code">  - cp /pfs/data/* pfs/out/mypipeline/*</p>
+			<p class="source-code">  - done</p>
+			<p>The following is an example of the syntax you can use in the <strong class="source-inline">stdin</strong> field in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    "cmd": ["bash"],</p>
+			<p class="source-code">    "stdin": [</p>
+			<p class="source-code">        "for f in /pfs/data/*",</p>
+			<p class="source-code">        "do",</p>
+			<p class="source-code">        "filename=$(basename \"$f\")",</p>
+			<p class="source-code">        "cp /pfs/data/* pfs/out/mypipeline/*",</p>
+			<p class="source-code">        "done"]</p>
+			<p class="source-code">  },</p>
+			<p>Because the preceding<a id="_idIndexMarker302"/> examples do not reference <a id="_idIndexMarker303"/>any files, you do not need to build a specific Docker image for them and include the file in there.</p>
+			<p>However, if you do reference any files or any environment prerequisites that are even slightly more complex than Bash, you likely need a Docker image. For example, if you have a <strong class="source-inline">my-script.py</strong> file that contains your code, you need to build a Docker image that will include that script, and you must reference it in your pipeline specification.</p>
+			<h2 id="_idParaDest-65"><a id="_idTextAnchor066"/>err_cmd</h2>
+			<p>The <strong class="source-inline">err_cmd</strong> parameter enables you to define how Pachyderm handles failed datums and ultimately allows<a id="_idIndexMarker304"/> you to treat failed datums as <a id="_idIndexMarker305"/>non-critical errors, allowing a job with failed datums to succeed and trigger the next job only with the healthy datums. <strong class="source-inline">err_cmd</strong> does not write any data to the output repo. The <strong class="source-inline">err_cmd</strong> field is often used in combination with the <strong class="source-inline">err_stdin</strong> field, where you specify the actual error code, though you could also refer to a file with your error code. If you want your pipeline to succeed even when the job contains failed datums, you can simply set <strong class="source-inline">"err_cmd": true</strong>.</p>
+			<p>The following is the syntax you can use in the <strong class="source-inline">err_cmd</strong> field in YAML format:</p>
+			<p class="source-code">transform:</p>
+			<p class="source-code">  ...</p>
+			<p class="source-code">  err_cmd:</p>
+			<p class="source-code">  - bash</p>
+			<p class="source-code">  - "/my-error-code.sh"</p>
+			<p>The following is the syntax you can use in the <strong class="source-inline">err_cmd</strong> field in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "err_cmd": [ "bash", "/my-error-code.sh"],</p>
+			<p>We will look at an example of how to use <strong class="source-inline">err_cmd</strong> in combination with <strong class="source-inline">err_stdin</strong> in the next section.</p>
+			<h2 id="_idParaDest-66"><a id="_idTextAnchor067"/>err_stdin</h2>
+			<p>The <strong class="source-inline">err_stdin</strong> parameter is used in combination with the <strong class="source-inline">err_cmd</strong> parameter to specify the error code<a id="_idIndexMarker306"/> to run against failed datums. Similar <a id="_idIndexMarker307"/>to the <strong class="source-inline">stdin</strong> parameter, you can specify inline code to handle failed datums. For example, you may want to check if a datum is in a specific directory, and if it is, mark the datum as failed. Typically, you can just write a simple Bash script with an <strong class="source-inline">if… then</strong> condition to handle this.</p>
+			<p>The following code shows the syntax you can use in <strong class="source-inline">err_stdin</strong> with the <strong class="source-inline">err_cmd</strong> field in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    err_cmd:</p>
+			<p class="source-code">    - bash</p>
+			<p class="source-code">    err_stdin:</p>
+			<p class="source-code">    - if</p>
+			<p class="source-code">    - "[-a /pfs/repo1]"</p>
+			<p class="source-code">    - then</p>
+			<p class="source-code">    - exit 0</p>
+			<p class="source-code">    - fi</p>
+			<p class="source-code">    - exit 1</p>
+			<p>The following code shows<a id="_idIndexMarker308"/> the syntax you can <a id="_idIndexMarker309"/>use in <strong class="source-inline">err_stdin</strong> with the <strong class="source-inline">err_cmd</strong> field in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "err_cmd": [</p>
+			<p class="source-code">      "bash"</p>
+			<p class="source-code">    ],</p>
+			<p class="source-code">    "err_stdin": [</p>
+			<p class="source-code">      "if",</p>
+			<p class="source-code">      "[-a /pfs/repo1]",</p>
+			<p class="source-code">      "then",</p>
+			<p class="source-code">      "exit 0",</p>
+			<p class="source-code">      "fi",</p>
+			<p class="source-code">      "exit 1"</p>
+			<p class="source-code">    ]</p>
+			<p>Next, let's learn about the <strong class="source-inline">env</strong> parameter.</p>
+			<h2 id="_idParaDest-67"><a id="_idTextAnchor068"/>env</h2>
+			<p>The <strong class="source-inline">env</strong> parameter enables you to specify Pachyderm the environment variables and arbitrary variables<a id="_idIndexMarker310"/> that you need to communicate <a id="_idIndexMarker311"/>with other third-party tools. These parameters may include paths to directories and files, hostnames and ports, secret access keys, various identifiers, and many others. </p>
+			<p>Pachyderm variables can be included as well. For example, you can use the <strong class="source-inline">LOG_LEVEL</strong> environment variable to specify the verbosity of your log messages for <strong class="source-inline">pachd</strong>. As another example, you can also specify an AWS region and a bucket in the <strong class="source-inline">env</strong> field.</p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">env</strong> field in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    env:</p>
+			<p class="source-code">        AWS_REGION: us-west-2</p>
+			<p class="source-code">        S3_BUCKET: s3://my-bucket/</p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">env</strong> field in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "env": {</p>
+			<p class="source-code">             "AWS_REGION": "us-west-2",</p>
+			<p class="source-code">             "S3_BUCKET": "s3://my-bucket/"</p>
+			<p class="source-code">         }</p>
+			<p class="source-code">  },</p>
+			<p>For a complete list<a id="_idIndexMarker312"/> of Pachyderm variables, see the Pachyderm documentation at <a href="https://docs.pachyderm.com/latest/deploy-manage/deploy/environment-variables/">https://docs.pachyderm.com/latest/deploy-manage/deploy/environment-variables/</a>.</p>
+			<h2 id="_idParaDest-68"><a id="_idTextAnchor069"/>secrets</h2>
+			<p>The <strong class="source-inline">secrets</strong> field enables<a id="_idIndexMarker313"/> you to specify Kubernetes secrets, which include sensitive information. This can include passwords <a id="_idIndexMarker314"/>or SSH public keys. You need to define a secret by either using the <strong class="source-inline">env_var</strong> and <strong class="source-inline">key</strong> parameters or the <strong class="source-inline">mount_point</strong> parameter.</p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">name</strong> and <strong class="source-inline">mount_path</strong> fields to set the path to the <strong class="source-inline">secrets</strong> file in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    secrets:</p>
+			<p class="source-code">        name: my-ssh-key</p>
+			<p class="source-code">        mount_path: "/path/to/file"</p>
+			<p>The following code shows how to specify these parameters in JSON format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "secrets": {</p>
+			<p class="source-code">        "name": "my-ssh-key",</p>
+			<p class="source-code">        "mount_path": "/path/to/file"</p>
+			<p class="source-code">    }</p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">env_var</strong> and <strong class="source-inline">key</strong> parameters to set secrets in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    secrets:</p>
+			<p class="source-code">        name: my-ssh-key</p>
+			<p class="source-code">        env_var: MY_KEY</p>
+			<p class="source-code">        key: "mykey"</p>
+			<p>Here is <a id="_idIndexMarker315"/>how to do the same<a id="_idIndexMarker316"/> in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "secrets": {</p>
+			<p class="source-code">        "name": "my-ssh-key",</p>
+			<p class="source-code">        "env_var": "MY_KEY",</p>
+			<p class="source-code">        "key": "my_key"</p>
+			<p class="source-code">    }</p>
+			<p>Next, let's learn about <strong class="source-inline">image_pull_secrets</strong>.</p>
+			<h2 id="_idParaDest-69"><a id="_idTextAnchor070"/>image_pull_secrets</h2>
+			<p>The <strong class="source-inline">image_pull_secrets</strong> parameter enables you to configure your Pachyderm pipeline to pull images<a id="_idIndexMarker317"/> from a private <a id="_idIndexMarker318"/>Docker registry. To specify this parameter, you need to create a Kubernetes secret with<a id="_idIndexMarker319"/> a Docker config, as described in the Kubernetes documentation at https://kubernetes.io/docs/concepts/containers/images/#creating-a-secret-with-a-docker-config, and then specify the secret in the pipeline specification under the <strong class="source-inline">image_pull_secrets</strong> parameter. You will need to use a full path to the Docker image for the pipeline to pull the image correctly.</p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">image_pull_secrets</strong> parameter to enable the pipeline to pull images from a private Docker registry in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    image: my-private-docker-registry.com/my-project/my-image:latest</p>
+			<p class="source-code">    image_pull_secrets:</p>
+			<p class="source-code">      - my-secret</p>
+			<p>This is how you would write the same in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "image": "my-private-docker-registry.com/my-project/my-image",        </p>
+			<p class="source-code">    "image_pull_secrets": ["my-secret"]</p>
+			<p>The next parameter<a id="_idIndexMarker320"/> that we <a id="_idIndexMarker321"/>will review is <strong class="source-inline">accept_return_code</strong>.</p>
+			<h2 id="_idParaDest-70"><a id="_idTextAnchor071"/>accept_return_code</h2>
+			<p>The <strong class="source-inline">accept_return_code</strong> parameter enables you to specify an array of integers that define error<a id="_idIndexMarker322"/> codes that your pipeline will still be considered successful with. You can use this functionality in cases where <a id="_idIndexMarker323"/>you want your code to succeed, even if some part of it failed. This parameter is similar to the <strong class="source-inline">err_cmd</strong> functionality. </p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">accept_return_code</strong> parameter to specify error codes in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    accept_return_code:</p>
+			<p class="source-code">    - 256</p>
+			<p>Here is the same example in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "accept_return_code": [256]</p>
+			<p>The next parameter we will look at is <strong class="source-inline">debug</strong>.</p>
+			<h2 id="_idParaDest-71"><a id="_idTextAnchor072"/>debug</h2>
+			<p>The <strong class="source-inline">debug</strong> parameter enables you to set the verbosity of the pipeline's logging output. Basic logging<a id="_idIndexMarker324"/> is enabled by default, but if you'd like to <a id="_idIndexMarker325"/>include more detailed messaging, set this parameter to <strong class="source-inline">true</strong>. By default, this parameter is set to <strong class="source-inline">false</strong>.</p>
+			<p>Here is how you can enable debug logging for your pipeline in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    debug: true</p>
+			<p>This is how you would enable debug logging for your pipeline in JSON format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "debug": true</p>
+			<p>Next, let's learn how to use the <strong class="source-inline">user</strong> parameter.</p>
+			<h2 id="_idParaDest-72"><a id="_idTextAnchor073"/>user</h2>
+			<p>The <strong class="source-inline">user</strong> parameter enables you to define<a id="_idIndexMarker326"/> a user and a group that runs the container's code. This parameter is similar to the Docker <strong class="source-inline">USER</strong> directive, and you can also define it through <strong class="source-inline">Dockerfile</strong>. By default, Pachyderm <a id="_idIndexMarker327"/>checks what's in your <strong class="source-inline">Dockerfile</strong> first and sets this value for the <strong class="source-inline">user</strong> parameter in the pipeline specification. If nothing is specified in your <strong class="source-inline">Dockerfile</strong> and the pipeline specification, the default parameter is used, which is <strong class="source-inline">root</strong>. The only time that you must explicitly specify a user in the pipeline specification is when you deploy Pachyderm with the <strong class="source-inline">--no-expose-docker-socket</strong> parameter.</p>
+			<p>You can read<a id="_idIndexMarker328"/> more about the Docker <strong class="source-inline">USER</strong> parameter at <a href="https://docs.docker.com/engine/reference/builder/#user">https://docs.docker.com/engine/reference/builder/#user</a>. </p>
+			<p>Here is how you can specify <strong class="source-inline">user</strong> in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    user: test-user</p>
+			<p>Here is how you can<a id="_idIndexMarker329"/> specify <strong class="source-inline">user</strong> in JSON <a id="_idIndexMarker330"/>format:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "user": "test-user"</p>
+			<p>Now, let's learn about the <strong class="source-inline">working_dir</strong> parameter.</p>
+			<h2 id="_idParaDest-73"><a id="_idTextAnchor074"/>working_dir</h2>
+			<p>The <strong class="source-inline">working_dir</strong> parameter enables<a id="_idIndexMarker331"/> you to specify a <a id="_idIndexMarker332"/>working directory for your pipeline container. This parameter is similar to the Docker <strong class="source-inline">WORKDIR</strong> directive, and you can also define it through <strong class="source-inline">Dockerfile</strong>. By default, Pachyderm checks what's in your <strong class="source-inline">Dockerfile</strong> first and sets this value for the <strong class="source-inline">working_dir</strong> parameter in the pipeline specification. If nothing is specified in <strong class="source-inline">Dockerfile</strong> and the pipeline specification, the default parameter is used, which is the root directory (<strong class="source-inline">/</strong>) or the directory that the Docker image inherits from the base image. The only time that you must explicitly specify a working directory in the pipeline specification is when you deploy Pachyderm with the <strong class="source-inline">--no-expose-docker-socket</strong> parameter.</p>
+			<p>You can read more<a id="_idIndexMarker333"/> about the Docker <strong class="source-inline">Workdir</strong> parameter at <a href="https://docs.docker.com/engine/reference/builder/#workdir">https://docs.docker.com/engine/reference/builder/#workdir</a>. </p>
+			<p>Here is how you can specify <strong class="source-inline">workdir</strong> in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    working_dir: /usr/src/test</p>
+			<p>The same parameter<a id="_idIndexMarker334"/> in JSON format<a id="_idIndexMarker335"/> would look like this:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "working_dir": "/usr/src/test"</p>
+			<p>Next, we'll look at the <strong class="source-inline">dockerfile</strong> parameter.</p>
+			<h2 id="_idParaDest-74"><a id="_idTextAnchor075"/>dockerfile</h2>
+			<p>The <strong class="source-inline">dockerfile</strong> parameter enables you to specify a path to the location of the <strong class="source-inline">Dockerfile</strong><a id="_idIndexMarker336"/> for your pipeline. This is useful when <a id="_idIndexMarker337"/>you use Pachyderm's <strong class="source-inline">pachctl update-pipeline –build -f &lt;pipeline-spec&gt;</strong> to build new Docker images for your pipeline. By default, Pachyderm will look for a <strong class="source-inline">Dockerfile</strong> in the same directory as the pipeline specification. But with the <strong class="source-inline">dockerfile</strong> parameter, you can set any path for it.</p>
+			<p>Here is how you can specify a path to Dockerfile in YAML format:</p>
+			<p class="source-code">transform:    </p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    dockerfile: /path/to/dockerfile</p>
+			<p>You can do the same in JSON format like this:</p>
+			<p class="source-code">"transform": {</p>
+			<p class="source-code">    ...</p>
+			<p class="source-code">    "dockerfile": "/path/to/dockerfile "</p>
+			<p>In this section, we learned about all the parameters that you can specify for your transformation code. In the next section, we will review how to control pipeline worker performance and assign resource limits to optimize your pipeline.  </p>
+			<h1 id="_idParaDest-75"><a id="_idTextAnchor076"/>Optimizing your pipeline</h1>
+			<p>This section will walk you through the pipeline specification parameters that may help you optimize your pipeline<a id="_idIndexMarker338"/> to perform better. Because Pachyderm runs on top of Kubernetes, it is a highly scalable system that can help you use your underlying hardware resources wisely.</p>
+			<p>One of the biggest advantages of Pachyderm is that you can specify resources for each pipeline individually, as well as defining how many workers your pipeline will spin off for each run and what their behavior will be when they are idle and waiting for new work to come.  </p>
+			<p>If you are just testing Pachyderm to understand whether or not it would work for your use case, the optimization parameters may not be as important. But if you are working on implementing an enterprise-level data science platform with multiple pipelines and massive <a id="_idIndexMarker339"/>amounts of data being injected into Pachyderm, knowing how to optimize your pipeline becomes a priority.</p>
+			<p>You must understand the concept of Pachyderm datums before you proceed. Datums play a major role in pipeline scalability. If you have not read <a href="B17085_02_Final_SB_Epub.xhtml#_idTextAnchor037"><em class="italic">Chapter 2</em></a>, <em class="italic">Pachyderm Basics,</em> yet, you may want to read it before you continue. </p>
+			<h2 id="_idParaDest-76"><a id="_idTextAnchor077"/>parallelism_spec</h2>
+			<p><strong class="source-inline">parallelism_spec</strong> defines<a id="_idIndexMarker340"/> the number of workers to spin off for your<a id="_idIndexMarker341"/> pipeline. You can specify either a <strong class="source-inline">coefficient</strong> or <strong class="source-inline">constant</strong> policy. By default, Pachyderm deploys one worker per pipeline with a <strong class="source-inline">constant</strong> policy of <strong class="source-inline">1</strong>. </p>
+			<p>The <strong class="source-inline">coefficient</strong> policy means that Pachyderm will create several workers proportional to the specified coefficient. For example, if you have 50 nodes in your Kubernetes cluster and set the <strong class="source-inline">coefficient</strong> policy to <strong class="source-inline">1</strong>, Pachyderm will use all 50 nodes for this cluster. If you use the <strong class="source-inline">coefficient</strong> policy, your pipeline needs access to the Kubernetes administrative nodes. If you are running Pachyderm on a hosted version of Kubernetes, such as on the AWS or GKE platform, you may not have access to these, and the pipeline will constantly restart. In that case, you will have to use the <strong class="source-inline">constant</strong> policy instead. </p>
+			<p>The <strong class="source-inline">constant</strong> policy enables you to specify the exact number of worker nodes for your pipeline, such as 3, 25, or 100. These workers will run in this pipeline infinitely. However, if you want your cluster to spin them down when idle, you can set the <strong class="source-inline">standby:true</strong> parameter so that your cluster resizes dynamically based on the workload. </p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">parallelism_spec</strong> parameter to specify the <strong class="source-inline">coefficient</strong> policy in YAML format:</p>
+			<p class="source-code">parallelism_spec:</p>
+			<p class="source-code">  coefficient: '1'</p>
+			<p>The following code shows the syntax you can use in the <strong class="source-inline">parallelism_spec</strong> parameter to specify the <strong class="source-inline">coefficient</strong> policy in JSON format:</p>
+			<p class="source-code">"parallelism_spec": {</p>
+			<p class="source-code">    "coefficient": "1"</p>
+			<p class="source-code">  },</p>
+			<p>This is how you can define the <strong class="source-inline">parallelism_spec</strong> parameter to specify the <strong class="source-inline">constant</strong> policy in YAML format:</p>
+			<p class="source-code">parallelism_spec: until_success</p>
+			<p>The following code<a id="_idIndexMarker342"/> shows how to use the <strong class="source-inline">parallelism_spec</strong> parameter<a id="_idIndexMarker343"/> to specify the <strong class="source-inline">constant</strong> policy in JSON format:</p>
+			<p class="source-code">"parallelism_spec": "until_success"</p>
+			<p>Next, let's learn how to use <strong class="source-inline">reprocess_spec</strong>.</p>
+			<h2 id="_idParaDest-77"><a id="_idTextAnchor078"/>reprocess_spec</h2>
+			<p><strong class="source-inline">reprocess_spec</strong> enables you to force your pipeline to reprocess all datums. By default, Pachyderm<a id="_idIndexMarker344"/> skips reprocessing successful<a id="_idIndexMarker345"/> datums, but if your pipeline interacts with an external application or system, you may want to reprocess all the datums. This behavior protects the pipeline from connection and other errors.</p>
+			<p>The following is the syntax you can use in <strong class="source-inline">reprocess_spec</strong> in YAML format:</p>
+			<p class="source-code">reprocess_spec:</p>
+			<p class="source-code">  constant: '1'</p>
+			<p>The following<a id="_idIndexMarker346"/> is the syntax you can use in <strong class="source-inline">reprocess_spec</strong> in JSON<a id="_idIndexMarker347"/> format:</p>
+			<p class="source-code">"parallelism_spec": {</p>
+			<p class="source-code">    "constant": "1"</p>
+			<p class="source-code">}</p>
+			<p>Next, we'll learn how to use <strong class="source-inline">cache_size</strong>.</p>
+			<h2 id="_idParaDest-78"><a id="_idTextAnchor079"/>cache_size</h2>
+			<p>The <strong class="source-inline">cache_size</strong> parameter enables you to define the amount of cache memory for the user and storage<a id="_idIndexMarker348"/> container. Pachyderm pre-downloads<a id="_idIndexMarker349"/> the data before processing it and increasing <strong class="source-inline">cache_size</strong> may help increase the download speed. The default value is 64M, and you can increase this as needed to cache your datums. This is a fine-tuning parameter and should only be used once you have optimized your pipeline through <strong class="source-inline">glob</strong> and <strong class="source-inline">parallelism_spec</strong>. </p>
+			<p>The following is an example of the syntax you can use in the <strong class="source-inline">cache_size</strong> parameter to increase the cache's size in YAML format:</p>
+			<p class="source-code">cache_size: 1G </p>
+			<p>In JSON format, the same parameter would look like this:</p>
+			<p class="source-code">"cache_size": "1G",</p>
+			<p>Now, let's review the <strong class="source-inline">max_queue_size</strong> parameter.</p>
+			<h2 id="_idParaDest-79"><a id="_idTextAnchor080"/>max_queue_size</h2>
+			<p>The <strong class="source-inline">max_queue_size</strong> parameter defines how many datums the pipeline can download<a id="_idIndexMarker350"/> at the same time. You can use <strong class="source-inline">max_queue_size</strong> to make<a id="_idIndexMarker351"/> the pipeline pre-download the next datum while the other datums are being processed. By default, Pachyderm sets <strong class="source-inline">max_queue_size</strong> to <strong class="source-inline">1</strong>, meaning that only one datum can be downloaded at a time. This is a fine-tuning parameter that can improve the download speed of datums into the worker if the download time is significantly longer than the processing time. However, you should only adjust this parameter once you have configured the correct <strong class="source-inline">glob</strong> and <strong class="source-inline">paralellism_spec</strong>.</p>
+			<p>The following code shows how to use the <strong class="source-inline">max_queue_size</strong> parameter to increase the cache's size in YAML format:</p>
+			<p class="source-code">max_queue_size: 5 </p>
+			<p>The same key-value<a id="_idIndexMarker352"/> pair in JSON format looks<a id="_idIndexMarker353"/> as follows:</p>
+			<p class="source-code">"max_queue_size": "5",</p>
+			<p>Next, we'll learn about <strong class="source-inline">chunk_spec</strong>.</p>
+			<h2 id="_idParaDest-80"><a id="_idTextAnchor081"/>chunk_spec</h2>
+			<p>The <strong class="source-inline">chunk_spec</strong> parameter defines<a id="_idIndexMarker354"/> how many datums to send to each worker for processing. By default, this<a id="_idIndexMarker355"/> parameter is set to <strong class="source-inline">1</strong>. A chunk of data can be set to <strong class="source-inline">number</strong> (number of datums) or <strong class="source-inline">size_bytes</strong>. For example, if you set <strong class="source-inline">chunk_spec</strong> in <strong class="source-inline">number</strong> (number of datums) to <strong class="source-inline">3</strong>, each worker will get a chunk of three datums at a time. </p>
+			<p>With <strong class="source-inline">size_bytes</strong>, you can make evenly sized datums if the runtime of a datum is proportional to its size. If this is not the case, use the <strong class="source-inline">number</strong> parameter instead.</p>
+			<p>The following code shows how to set <strong class="source-inline">number</strong> in the <strong class="source-inline">chunk_spec</strong> parameter to make the workers process this number of datums at a time in YAML format:</p>
+			<p class="source-code">chunk_spec:</p>
+			<p class="source-code">  number: '10'</p>
+			<p>Here's how you can set <strong class="source-inline">number</strong> in the <strong class="source-inline">chunk_spec</strong> parameter to make the workers process this number of datums at a time in JSON format:</p>
+			<p class="source-code">"chunk_spec": {</p>
+			<p class="source-code">    "number": "10"</p>
+			<p class="source-code">  },</p>
+			<p>The following code shows how to set <strong class="source-inline">size_bytes</strong> ( of datums) in the <strong class="source-inline">chunk_spec</strong> parameter to make the workers process this number of datums at a time in YAML format:</p>
+			<p class="source-code">chunk_spec:</p>
+			<p class="source-code">  size_bytes: '1210'</p>
+			<p>If you prefer to write in JSON format, setting <strong class="source-inline">size_bytes</strong> in the <strong class="source-inline">chunk_spec</strong> parameter<a id="_idIndexMarker356"/> to make the workers process this number<a id="_idIndexMarker357"/> of datums at a time would look like this:</p>
+			<p class="source-code">"chunk_spec": {</p>
+			<p class="source-code">    "size_bytes": "1210"</p>
+			<p class="source-code">  },</p>
+			<p>Next, we will learn how to set resource limits.</p>
+			<h2 id="_idParaDest-81"><a id="_idTextAnchor082"/>resource_limits</h2>
+			<p>The <strong class="source-inline">resource_limits</strong> parameter enables you to restrict the amount of <strong class="bold">Central Processing Unit</strong> (<strong class="bold">CPU</strong>), <strong class="bold">Graphics Processing Unit</strong> (<strong class="bold">GPU</strong>), and memory resources that your pipeline<a id="_idIndexMarker358"/> worker can use. You can specify <strong class="source-inline">type</strong> for your GPU resources. The pipeline worker cannot use<a id="_idIndexMarker359"/> more resources than the limit you specify. The <strong class="source-inline">resource_request</strong> parameter is similar, but the worker can go over the requested amount of resources if they are available. You<a id="_idIndexMarker360"/> can read more about <strong class="source-inline">resource_limits</strong> and <strong class="source-inline">resource_requests</strong> in the Kubernetes<a id="_idIndexMarker361"/> documentation at <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits</a>.</p>
+			<p>The following code shows how to set the <strong class="source-inline">resource_limits</strong> parameter to limit Pachyderm worker resources in YAML format:</p>
+			<p class="source-code">resource_limits:</p>
+			<p class="source-code">  cpu: 1</p>
+			<p class="source-code">  gpu:</p>
+			<p class="source-code">    type: nvidia.com/gpu</p>
+			<p class="source-code">    number: 1</p>
+			<p class="source-code">    memory: 16G</p>
+			<p>The following code shows how to set the <strong class="source-inline">resource_limits</strong> parameter to limit Pachyderm worker resources in JSON format:</p>
+			<p class="source-code">"resource_limits": {</p>
+			<p class="source-code">    "cpu": 1,</p>
+			<p class="source-code">    "gpu": {</p>
+			<p class="source-code">        "type": "nvidia.com/gpu",</p>
+			<p class="source-code">        "number": 1,</p>
+			<p class="source-code">    "memory": "16G"</p>
+			<p class="source-code">    }</p>
+			<p class="source-code">  },</p>
+			<p>If you need to set a specific flavor<a id="_idIndexMarker362"/> of cloud resource, such as TPU in Google Kubernetes Engine, you can<a id="_idIndexMarker363"/> do so by configuring <strong class="source-inline">pod_patch</strong>. See the upcoming <em class="italic">pod_patch</em> section for more information.</p>
+			<h2 id="_idParaDest-82"><a id="_idTextAnchor083"/>resource_requests</h2>
+			<p>The <strong class="source-inline">resource_requests</strong> parameter<a id="_idIndexMarker364"/> specifies the number of resources that a pipeline worker requests<a id="_idIndexMarker365"/> to process a unit of work. Unlike the <strong class="source-inline">resource_limits</strong> parameter, if more resources are available, the worker can use them. The syntax for this parameter is the same as for <strong class="source-inline">resource_limits</strong>.</p>
+			<h2 id="_idParaDest-83"><a id="_idTextAnchor084"/>sidecar_resource_limits</h2>
+			<p>This parameter<a id="_idIndexMarker366"/> is similar to <strong class="source-inline">resource_limits</strong> and defines the resource for the pipeline sidecar<a id="_idIndexMarker367"/> container. For some example syntax, see the <em class="italic">resource_limits</em> section.</p>
+			<h2 id="_idParaDest-84"><a id="_idTextAnchor085"/>scheduling_spec</h2>
+			<p>The <strong class="source-inline">scheduling_spec</strong> parameter enables<a id="_idIndexMarker368"/> you to specify which Pods to run your pipeline code on based<a id="_idIndexMarker369"/> on a specified <strong class="source-inline">node_selector</strong> or <strong class="source-inline">priority_class</strong>. <strong class="source-inline">node_selectore</strong> enables you to specify a specific group of nodes that have the same label, called <strong class="source-inline">nodeSelector</strong>, while <strong class="source-inline">priority_class</strong> enables you to schedule the pipeline on a group of nodes that matches a Kubernetes <strong class="source-inline">PriorityClass</strong>. The <strong class="source-inline">scheduling_spec</strong> parameter is typically used to schedule pipelines on specific workers because of the resources<a id="_idIndexMarker370"/> they provide. For more information<a id="_idIndexMarker371"/> about these properties, see https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector and <a href="https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass">https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass</a>.</p>
+			<p>The following code shows how to define <strong class="source-inline">nodeSelector</strong> in YAML format:</p>
+			<p class="source-code">scheduling_spec:</p>
+			<p class="source-code">  node_selector:</p>
+			<p class="source-code">    kubernetes.io/my-hostname: my-node</p>
+			<p>The following code shows <a id="_idIndexMarker372"/>how to define <strong class="source-inline">nodeSelector</strong> in JSON format:</p>
+			<p class="source-code">"scheduling_spec": {</p>
+			<p class="source-code">      "node_selector": {"kubernetes.io/my-hostname": "my-node"</p>
+			<p class="source-code">      }</p>
+			<p class="source-code">    }, </p>
+			<p>To define the <strong class="source-inline">PriorityClass</strong> parameter in YAML format, use the following code:</p>
+			<p class="source-code">scheduling_spec:</p>
+			<p class="source-code">  priority_class: high-priority</p>
+			<p class="source-code">    kubernetes.io/my-hostname: my-node</p>
+			<p>Or, if you prefer<a id="_idIndexMarker373"/> to write in JSON<a id="_idIndexMarker374"/> format, set <strong class="source-inline">PriorityClass</strong> like this:</p>
+			<p class="source-code">"scheduling_spec": {</p>
+			<p class="source-code">      "priority_class": "high-priority"</p>
+			<p class="source-code">      }</p>
+			<p>Next, we'll learn how to set a timeout for a job.</p>
+			<h2 id="_idParaDest-85"><a id="_idTextAnchor086"/>job_timeout</h2>
+			<p>The <strong class="source-inline">job_timeout</strong> parameter<a id="_idIndexMarker375"/> enables you to set a timeout for a Pachyderm job run. This means that if your job does not finish within<a id="_idIndexMarker376"/> the specified period, it will fail. By default, this parameter is disabled. You can set it to your preferred time value.</p>
+			<p>The following code shows how to define a <strong class="source-inline">job_timeout</strong> in YAML format:</p>
+			<p class="source-code">job_timeout: 10m</p>
+			<p>Here is the same example in JSON format:</p>
+			<p class="source-code">"job_timeout": "10m"</p>
+			<p>Next, we'll learn about <strong class="source-inline">datum_timeout</strong>.</p>
+			<h2 id="_idParaDest-86"><a id="_idTextAnchor087"/>datum_timeout</h2>
+			<p>The <strong class="source-inline">datum_timeout</strong> timeout<a id="_idIndexMarker377"/> is similar to <strong class="source-inline">job_timeout</strong>, except that the timeout is set at the datum<a id="_idIndexMarker378"/> level of granularity. The syntax is the same.</p>
+			<h2 id="_idParaDest-87"><a id="_idTextAnchor088"/>datum_tries</h2>
+			<p>The <strong class="source-inline">datum_tries</strong> parameter defines how many times Pachyderm will try to rerun a pipeline on a failed<a id="_idIndexMarker379"/> datum. By default, this parameter<a id="_idIndexMarker380"/> is set to <strong class="source-inline">3</strong>. If you want your pipeline to run only once and not try to process the failed datums again, set this value to <strong class="source-inline">1</strong>.</p>
+			<p>The following code shows how to define the <strong class="source-inline">job_tries</strong> parameter in YAML format:</p>
+			<p class="source-code">datum_tries: 1</p>
+			<p>If you prefer to write in JSON format, you can use the following code instead:</p>
+			<p class="source-code">"datum_tries": "1"</p>
+			<p>In this section, we learned how to achieve optimal performance by fine-tuning our pipeline specification. In the next section, you will learn how to configure some of the service parameters that assist in pipeline operations.</p>
+			<h1 id="_idParaDest-88"><a id="_idTextAnchor089"/>Exploring service parameters</h1>
+			<p>Now, let's look at service parameters. Service parameters include the parameters that let you collect<a id="_idIndexMarker381"/> statistics about your data, as well as patch your pipeline's Kubernetes configuration. </p>
+			<h2 id="_idParaDest-89"><a id="_idTextAnchor090"/>enable_stats</h2>
+			<p>The <strong class="source-inline">enable_stats</strong> parameter, as its name suggests, enables pipeline statistics logging. By default, this parameter is disabled. For debugging purposes, it is recommended<a id="_idIndexMarker382"/> that you set this parameter to <strong class="source-inline">true</strong>. Once you enable<a id="_idIndexMarker383"/> statistics collection, the statistics are saved in the <strong class="source-inline">stats</strong> folder. You cannot disable statistics collection.</p>
+			<p>The following code shows how to define the <strong class="source-inline">enable_stats</strong> parameter in YAML format:</p>
+			<p class="source-code">enable_stats: true</p>
+			<p>The following code shows how to define the <strong class="source-inline">enable_stats</strong> parameter in JSON format:</p>
+			<p class="source-code">"enable_stats": true,</p>
+			<p>Next, we'll learn about <strong class="source-inline">pod_patch</strong>.</p>
+			<h2 id="_idParaDest-90"><a id="_idTextAnchor091"/>pod_patch </h2>
+			<p>The <strong class="source-inline">pod_patch</strong> parameter enables<a id="_idIndexMarker384"/> you to rewrite any field in your<a id="_idIndexMarker385"/> pipeline Pods. This can be useful for many things, but one example is mounting a volume in your pipeline. To create a <strong class="source-inline">pod_patch</strong>, you would typically use a JSON patch builder, convert it into a one-liner, and add it to your pipeline specification.</p>
+			<p>The following code shows how to define the <strong class="source-inline">pod_patch</strong> parameter in YAML format:</p>
+			<p class="source-code">pod_patch: '[{"op": "add","path": "spec/initContainers/0/resources/limits/my-volume"}]'</p>
+			<p>The same in JSON format looks like this:</p>
+			<p class="source-code">"pod_patch": "[{\"op\": \"add\",\"path\": \"spec/initContainers/0/resources/limits/my-volume\"}]"</p>
+			<p>This is all you need to know about service parameters. In the next section, we will look at some parameters that enable you to configure the output branch and write your pipeline results to external storage.</p>
+			<h1 id="_idParaDest-91"><a id="_idTextAnchor092"/>Exploring output parameters</h1>
+			<p>Output parameters<a id="_idIndexMarker386"/> enable you to configure what happens to your processed data after the result lands in the output repository. You can set it up to be placed in an external S3 repository or configure an egress.</p>
+			<h3>s3_out</h3>
+			<p>The <strong class="source-inline">s3_out</strong> parameter enables your Pachyderm pipeline to write output to an S3 repository instead<a id="_idIndexMarker387"/> of the standard <strong class="source-inline">pfs/out</strong>. This parameter<a id="_idIndexMarker388"/> requires a Boolean value. To access the output repository, you would have to use an S3 protocol address, such as <strong class="source-inline">s3://&lt;output-repo&gt;</strong>. The output repository will still be eponymous to your pipeline's name.</p>
+			<p>The following code shows how to define an <strong class="source-inline">s3_out</strong> parameter in YAML format:</p>
+			<p class="source-code">s3_out: true</p>
+			<p>Here's how to do<a id="_idIndexMarker389"/> the same<a id="_idIndexMarker390"/> in JSON format:</p>
+			<p class="source-code">"s3_out": true</p>
+			<p>Now, let's learn about <strong class="source-inline">egress</strong>.</p>
+			<h3>egress</h3>
+			<p>The <strong class="source-inline">egress</strong> parameter enables<a id="_idIndexMarker391"/> you to specify an external location for your output data. Pachyderm<a id="_idIndexMarker392"/> supports Amazon S3 (the <strong class="source-inline">s3://</strong> protocol), Google Cloud Storage (the <strong class="source-inline">gs://</strong> protocol), and Azure Blob Storage (the <strong class="source-inline">wasb://</strong> protocol).</p>
+			<p>The following code shows how to define an <strong class="source-inline">egress</strong> parameter in YAML format:</p>
+			<p class="source-code">egress:</p>
+			<p class="source-code">  URL: gs://mystorage/mydir</p>
+			<p>Here's the same example but in JSON format:</p>
+			<p class="source-code">"egress": {</p>
+			<p class="source-code">        "URL": "gs://mystorage/mydir"</p>
+			<p class="source-code">  },</p>
+			<p>Next, let's learn about how to configure an output branch in Pachyderm.</p>
+			<h3>output_branch</h3>
+			<p>The <strong class="source-inline">output_branch</strong> parameter enables you to write your results into a branch in an output repository<a id="_idIndexMarker393"/> that is different from the default <strong class="source-inline">master</strong> branch. You may<a id="_idIndexMarker394"/> want to do this if you want to create an experiment or a development output that you don't want the downstream pipeline to pick up.</p>
+			<p>The following code shows how to define the <strong class="source-inline">output_branch</strong> parameter in YAML format:</p>
+			<p class="source-code">output_branch: test</p>
+			<p>The following code shows how to define the <strong class="source-inline">output_branch</strong> parameter in JSON format:</p>
+			<p class="source-code">"output_branch": "test",</p>
+			<p>This concludes our overview of the Pachyderm pipeline specification.</p>
+			<h1 id="_idParaDest-92"><a id="_idTextAnchor093"/>Summary</h1>
+			<p>In this chapter, we learned about all the parameters you can specify in a Pachyderm pipeline, how to optimize it, and how to configure the transformation section. The pipeline specification is the most important configuration attribute of your pipeline as you will use it to create your pipeline. As you have learned, the pipeline specification provides a lot of flexibility regarding performance optimization. While it may be tricky to find the right parameters for your type of data right away, Pachyderm provides a lot of fine-tuning options that can help you achieve the best performance for your ML workflow. </p>
+			<p>In the next chapter, you will learn how to install Pachyderm on your local computer.</p>
+			<h1 id="_idParaDest-93"><a id="_idTextAnchor094"/>Further reading</h1>
+			<p>To learn more about the topics that were covered in this chapter, take a look at the following resources:</p>
+			<ul>
+				<li><em class="italic">Pachyderm Environment Variables</em>: <a href="https://docs.pachyderm.com/latest/deploy-manage/deploy/environment-variables/">https://docs.pachyderm.com/latest/deploy-manage/deploy/environment-variables/</a></li>
+				<li><em class="italic">Kubernetes Concepts</em>: <a href="https://kubernetes.io/docs/concepts/">https://kubernetes.io/docs/concepts/</a></li>
+				<li><em class="italic">Pachyderm Pipeline Specification</em>: <a href="https://docs.pachyderm.com/latest/reference/pipeline_spec/">https://docs.pachyderm.com/latest/reference/pipeline_spec/</a> </li>
+			</ul>
+		</div>
+	</div></body></html>

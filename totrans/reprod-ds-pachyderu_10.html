@@ -1,0 +1,786 @@
+<html><head></head><body><div id="sbo-rt-content"><div id="_idContainer074">
+			<h1 id="_idParaDest-171"><em class="italic"><a id="_idTextAnchor184"/>Chapter <a id="_idTextAnchor185"/>8</em>: Creating an End-to-End Machine Learning Workflow</h1>
+			<p>In previous chapters, we learned about Pachyderm basics and how to install Pachyderm locally and on a cloud platform. We've deployed our first pipeline, learned how to update a pipeline, and performed some fundamental Pachyderm operations, such as splitting. I hope by now you are convinced that Pachyderm is an extremely versatile tool that gives you a lot of flexibility and power in managing your machine learning pipelines. To make it even more obvious, we will deploy a much more complex example than the ones that we have deployed so far. We hope this chapter will be especially fun for you to work on and will expand your understanding of data infrastructure quirks even more.</p>
+			<p>In this chapter, we will deploy a multistep <strong class="bold">Natural Language Processing</strong> (<strong class="bold">NLP</strong>) workflow that will demonstrate how to use Pachyderm at scale. </p>
+			<p>This chapter includes the following topics:</p>
+			<ul>
+				<li>NLP example overview</li>
+				<li>Creating repositories and pipelines</li>
+				<li>Creating an NER pipeline</li>
+				<li>Retraining an NER model</li>
+			</ul>
+			<h1 id="_idParaDest-172"><a id="_idTextAnchor186"/>Technical requirements</h1>
+			<p>This chapter requires you to have the following components installed and configured.</p>
+			<p>For a local macOS installation, you need the following:</p>
+			<ul>
+				<li>macOS Mojave, Catalina, Big Sur, or later</li>
+				<li>Docker Desktop for Mac 10.14</li>
+				<li><strong class="source-inline">minikube</strong> v1.9.0 or later</li>
+				<li><strong class="source-inline">pachctl</strong> 2.0.0 or later</li>
+				<li>Pachyderm 2.0.0 or later</li>
+			</ul>
+			<p>For a local Windows installation, you need the following:</p>
+			<ul>
+				<li>Windows Pro 64-bit v10 or later</li>
+				<li><strong class="bold">Windows Subsystem for Linux</strong> (<strong class="bold">WSL</strong>) 2 or later</li>
+				<li>Microsoft PowerShell v6.2.1 or later</li>
+				<li>Hyper-V </li>
+				<li><strong class="source-inline">minikube</strong> v1.9.0 or later</li>
+				<li><strong class="source-inline">pachctl</strong> 2.0.0 or later</li>
+				<li>Pachyderm 2.0.0 or later</li>
+			</ul>
+			<p>For an <strong class="bold">Amazon Elastic Kubernetes Service</strong> (<strong class="bold">Amazon EKS</strong>) installation, you need the following:</p>
+			<ul>
+				<li><strong class="source-inline">kubectl</strong> v.18 or later</li>
+				<li><strong class="source-inline">eksctl</strong></li>
+				<li><strong class="source-inline">aws-iam-authenticator</strong></li>
+				<li><strong class="source-inline">pachctl</strong> 2.0.0 or later</li>
+				<li>Pachyderm 2.0.0 or later</li>
+			</ul>
+			<p>For a Microsoft Azure cloud installation, you need the following:</p>
+			<ul>
+				<li><strong class="source-inline">kubectl</strong> v.18 or later</li>
+				<li>Azure CLI</li>
+				<li><strong class="source-inline">pachctl</strong> 2.0.0 or later</li>
+				<li>Pachyderm 2.0.0 or later</li>
+				<li><strong class="source-inline">jq</strong> 1.5 or later</li>
+			</ul>
+			<p>For a <strong class="bold">Google Kubernetes Engine</strong> (<strong class="bold">GKE</strong>) cloud installation, you need the following:</p>
+			<ul>
+				<li>Google Cloud SDK v124.0.0 or later</li>
+				<li><strong class="source-inline">kubectl</strong> v.18 or later</li>
+				<li><strong class="source-inline">pachctl</strong> 2.0.0 or later</li>
+				<li>Pachyderm 2.0.0 or later</li>
+			</ul>
+			<p>The minimum virtual hardware requirements for a cloud or local virtual machine are as follows:</p>
+			<ul>
+				<li><strong class="bold">Number of CPUs</strong>: 4</li>
+				<li><strong class="bold">Memory</strong>: 8,192 MB</li>
+				<li><strong class="bold">Disk</strong>: 20 GB</li>
+			</ul>
+			<p>Now that we know the technical requirements needed to accomplish the tasks in this chapter, we can deploy a Pachyderm instance with sufficient resources to run the example described in this chapter.</p>
+			<h2 id="_idParaDest-173"><a id="_idTextAnchor187"/>Adjusting virtual machine parameters</h2>
+			<p>To run the example described in this section, you must make sure that the virtual machine that runs <a id="_idIndexMarker683"/>Pachyderm has enough memory and CPU to accommodate the pipeline requirements. This applies to both cloud and local environments. </p>
+			<p>If you are running Pachyderm on a cloud platform, make sure that you have deployed Kubernetes on a virtual machine flavor that adheres to the minimum hardware requirements listed in the <em class="italic">Technical requirements</em> section for this chapter. Then, redeploy your Pachyderm cluster as described in <a href="B17085_05_Final_SB_Epub.xhtml#_idTextAnchor123"><em class="italic">Chapter 5</em></a>, <em class="italic">Installing Pachyderm on a Cloud Platform</em>.</p>
+			<p>If you are running Pachyderm in <strong class="source-inline">minikube</strong> on your local computer, make sure that the <strong class="source-inline">minikube</strong> virtual machine is large enough. If you have a <strong class="source-inline">minikube</strong> machine deployed as described in <a href="B17085_04_Final_SB_Epub.xhtml#_idTextAnchor096"><em class="italic">Chapter 4</em></a>, <em class="italic">Installing Pachyderm Locally</em>, you need to delete it and deploy a new <strong class="source-inline">minikube</strong> virtual machine with a larger CPU and memory.  </p>
+			<p>To do so, complete the following steps: </p>
+			<ol>
+				<li>Uninstall the old Pachyderm cluster:<p class="source-code"><strong class="bold">helm uninstall pachd</strong></p></li>
+			</ol>
+			<p>The system response is as follows:</p>
+			<p class="source-code">release "pachd" uninstalled</p>
+			<ol>
+				<li value="2">Delete the existing <strong class="source-inline">minikube</strong> virtual machine:<p class="source-code"><strong class="bold">minikube delete</strong></p></li>
+			</ol>
+			<p>You should see the following system response:</p>
+			<p class="source-code">Deleting "minikube" in docker ...</p>
+			<p class="source-code">Deleting container "minikube" ...</p>
+			<p class="source-code">…</p>
+			<ol>
+				<li value="3">After your old <a id="_idIndexMarker684"/>machine is deleted, start a new virtual machine with the following parameters:<p class="source-code"><strong class="bold">minikube start --cpus 4 --memory 8192</strong></p></li>
+			</ol>
+			<p>This command returns the following response:</p>
+			<p class="source-code">…</p>
+			<p class="source-code">Starting control plane node minikube in cluster minikube</p>
+			<p class="source-code">Creating docker container (CPUs=4, Memory=8192MB) ...</p>
+			<p class="source-code">…</p>
+			<p class="source-code">Done! kubectl is now configured to use "minikube" cluster and "default" namespace by default</p>
+			<ol>
+				<li value="4">Now, redeploy your Pachyderm cluster as described in <a href="B17085_04_Final_SB_Epub.xhtml#_idTextAnchor096"><em class="italic">Chapter 4</em></a>, <em class="italic">Installing Pachyderm Locally</em>. For simplicity, here are the commands that you need to run:<p class="source-code"><strong class="bold">helm install --set deployTarget=LOCAL pachd ./pachyderm</strong></p></li>
+			</ol>
+			<p>You should see the following system response:</p>
+			<p class="source-code">NAME: pachd</p>
+			<p class="source-code">LAST DEPLOYED: Thu Aug 19 13:03:36 2021</p>
+			<p class="source-code">NAMESPACE: default</p>
+			<p class="source-code">STATUS: deployed</p>
+			<p class="source-code">REVISION: 1</p>
+			<p class="source-code">...</p>
+			<ol>
+				<li value="5">Run the <a id="_idIndexMarker685"/>following commands to connect to <strong class="source-inline">pachd</strong>:<p class="source-code"><strong class="bold">pachctl config import-kube local --overwrite</strong></p><p class="source-code"><strong class="bold">pachctl config set active-context local</strong></p></li>
+			</ol>
+			<p>Now that we have Pachyderm deployed with enough resources to run the example in this chapter, let's review the NLP pipeline that we will create.</p>
+			<h1 id="_idParaDest-174"><a id="_idTextAnchor188"/>NLP example overview</h1>
+			<p>In this section, we will review the end-to-end machine learning workflow that will help us understand how to schedule it in Pachyderm.</p>
+			<p>To demonstrate <a id="_idIndexMarker686"/>this functionality, we will create an NLP pipeline that will perform various text optimizations against the <em class="italic">The Legend of Sleepy Hollow</em> short story book written by <em class="italic">Washington Irving</em>.</p>
+			<p>But first, let's review what NLP is and the typical stages that are involved in NLP.</p>
+			<h2 id="_idParaDest-175"><a id="_idTextAnchor189"/>Introduction to NLP</h2>
+			<p>NLP is a machine <a id="_idIndexMarker687"/>learning technique that enables you to analyze natural text, namely speech or written text. This branch of artificial intelligence has existed for many years, but with the advancement of computer and internet technologies, it has found new implementations.</p>
+			<p>So, how can you use NLP in your business or academic research? There are many ways, but the most common ones include the following:</p>
+			<ul>
+				<li><strong class="bold">Speech recognition</strong>: Technology <a id="_idIndexMarker688"/>that enables computers to understand human voice and speech.</li>
+				<li><strong class="bold">Chatbots</strong>: Software <a id="_idIndexMarker689"/>that can answer questions and learn from provided answers. Older chatbots were based on rules defined by standard software engineering techniques, meaning that they could not evolve and could only produce mediocre responses. Newer bots are much more advanced.</li>
+				<li><strong class="bold">Machine translation</strong>: Technology that automates the task of translating text and <a id="_idIndexMarker690"/>speech from one language to another. The most common example is, of course, Google Translate. </li>
+				<li><strong class="bold">Text extraction, summarization, and classification</strong>: A very needed technique <a id="_idIndexMarker691"/>in our world <a id="_idIndexMarker692"/>of information overload. NLP <a id="_idIndexMarker693"/>enables you to create pipelines that provide insights about a text, such as a summary of a research paper or information about the keywords used on a page.</li>
+				<li><strong class="bold">Sentiment analysis</strong>: A famous technique that helps classify information by its positive <a id="_idIndexMarker694"/>or negative tone. The most famous implementation of this technology is the Gmail email classifier that sorts your email into three categories: <strong class="bold">Primary</strong>, <strong class="bold">Promotions</strong>, and <strong class="bold">Social</strong> emails. </li>
+			</ul>
+			<p>These are <a id="_idIndexMarker695"/>the main examples of NLP. However, this list is not complete. NLP is also used in bioinformatics to analyze genetic data, in finance for understanding market events and trends, in healthcare to understand patient information, and in many other areas.</p>
+			<p>Now that we know the areas in which NLP is applicable, let's review the main phases that are involved in building an NLP pipeline.</p>
+			<h2 id="_idParaDest-176"><a id="_idTextAnchor190"/>Learning the NLP phases</h2>
+			<p>As we discussed in the previous section, NLP is used to solve a variety of text- and speech-related <a id="_idIndexMarker696"/>tasks. Like with other areas of machine learning, when you need to solve an NLP problem, you need to build a pipeline. There are a few definitions of an NLP pipeline, but typically, phases of an NLP pipeline include the following:</p>
+			<ul>
+				<li><strong class="bold">Text preprocessing or</strong> <strong class="bold">cleaning</strong>: This stage includes operations such as word and sentence segmentation, tokenization, removal of stop words and punctuation, converting words to lowercase, and lemmatization or stemming.</li>
+				<li><strong class="bold">Structure analysis</strong>: This stage goes deeper into analyzing what the text is about. It includes <a id="_idIndexMarker697"/>operations such as <strong class="bold">Part-of-Speech</strong> (<strong class="bold">POS</strong>) tagging, dependency parsing, and chunking.</li>
+				<li><strong class="bold">Feature extraction</strong>: This stage deals with answering specific questions about your data <a id="_idIndexMarker698"/>and finding relationships between <a id="_idIndexMarker699"/>your text entities. It might include tasks such as <strong class="bold">Named Entity Recognition</strong> (<strong class="bold">NER</strong>) and <strong class="bold">Named Entity Disambiguation</strong> (<strong class="bold">NED</strong>) or <strong class="bold">linking</strong> and <a id="_idIndexMarker700"/>sentiment analysis.</li>
+				<li><strong class="bold">Modeling</strong>: This stage is where you train your model on training data and test it to further put it into a production environment. </li>
+			</ul>
+			<p>Depending on what your use case is, your pipeline might include all or some of these stages and they might also be in a different order.</p>
+			<p>The following diagram demonstrates an example NLP pipeline:</p>
+			<p class="figure-caption"><img src="Images/B17085_08_001.png" alt="Figure 8.1 – NLP pipeline&#13;&#10;" width="662" height="458"/></p>
+			<p class="figure-caption">Figure 8.1 – NLP pipeline</p>
+			<p>Now that <a id="_idIndexMarker701"/>we know the phases of an NLP pipeline, let's look more closely at the example that we will implement.</p>
+			<h2 id="_idParaDest-177"><a id="_idTextAnchor191"/>Reviewing the NLP example</h2>
+			<p>In our example, we will be using the text of <em class="italic">The Legend of Sleepy Hollow</em> by <em class="italic">Washington Irving</em> and in the end, we will create and train an NER pipeline that will help us to answer <a id="_idIndexMarker702"/>the question of who the main characters in the book are. To create this multistep workflow, we will need to create the following pipelines:</p>
+			<ul>
+				<li><strong class="bold">Data cleaning pipeline</strong>: This pipeline will download the text from a provided URL and clean it of any HTML tags, headings, and other irrelevant content. Then, it tokenizes the text, removes stop words and punctuation, and then does stemming and lemmatization.</li>
+				<li><strong class="bold">POS tagging pipeline</strong>: This pipeline will add POS tags to the cleaned text from the previous pipeline based on the position of the words in the sentences and context.</li>
+				<li><strong class="bold">NER pipeline</strong>: This <a id="_idIndexMarker703"/>pipeline will run a pretrained model against our text and attempt to label the results with the correct entities.</li>
+				<li><strong class="bold">NER training pipeline</strong>: This pipeline will train a new NER model based on provided training data to correct the results of the first NER pipeline.</li>
+				<li><strong class="bold">Improved NER pipeline</strong>: This pipeline will run the new NER model against our text and output the list of characters in the story to a text file.</li>
+			</ul>
+			<p>Here is a diagram of our full NLP pipeline workflow:</p>
+			<p class="figure-caption"> </p>
+			<div>
+				<div id="_idContainer069" class="IMG---Figure">
+					<img src="Images/B17085_08_002.jpg" alt="Figure 8.2 – Pachyderm NLP pipeline&#10;" width="560" height="840"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.2 – Pachyderm NLP pipeline</p>
+			<p>Now that <a id="_idIndexMarker704"/>we have reviewed the pipeline steps, let's create all the needed repositories and pipelines step by step. </p>
+			<h1 id="_idParaDest-178"><a id="_idTextAnchor192"/>Creating repositories and pipelines</h1>
+			<p>In this section, we will create all the pipelines that we reviewed in the previous section. The six-step workflow <a id="_idIndexMarker705"/>will clean the data, apply POS tagging, perform NER, train a new custom mode based on the provided data, run the improved pipeline, and output the results to the final repo.</p>
+			<p>The first step is to create the data cleaning pipeline that will strip the text from the elements we won't need for further processing. </p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">You need to download all files for this example from <a href="https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/tree/main/Chapter08-End-to-End-Machine-Learning-Workflow">https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/tree/main/Chapter08-End-to-End-Machine-Learning-Workflow</a>. The Docker image is stored at <a href="https://hub.docker.com/repository/docker/svekars/nlp-example">https://hub.docker.com/repository/docker/svekars/nlp-example</a>. </p>
+			<h2 id="_idParaDest-179"><a id="_idTextAnchor193"/>Creating the data cleaning pipeline</h2>
+			<p>Data cleaning <a id="_idIndexMarker706"/>is typically performed before any other types of tasks. For this pipeline, we have created a Python script that uses the <strong class="bold">Natural Language Toolkit</strong> (<strong class="bold">NLTK</strong>) platform to perform the data cleaning task. NLTK is an open <a id="_idIndexMarker707"/>source set of libraries that enables you to complete a variety of NLP-related tasks, including tokenization, stemming, removing stop words, and lemmatization. </p>
+			<p>Here is the pipeline specification that we will use for this pipeline:</p>
+			<p class="source-code">---</p>
+			<p class="source-code"> pipeline:</p>
+			<p class="source-code">   name: data-clean</p>
+			<p class="source-code"> description: A pipeline that tokenizes the text.</p>
+			<p class="source-code"> input:</p>
+			<p class="source-code">   pfs:</p>
+			<p class="source-code">     glob: "/data.txt"</p>
+			<p class="source-code">     repo: data</p>
+			<p class="source-code"> transform:</p>
+			<p class="source-code">   cmd:</p>
+			<p class="source-code">   - python3</p>
+			<p class="source-code">   - "/data-clean.py"</p>
+			<p class="source-code">   image: svekars/nlp-example:1.0</p>
+			<p>This pipeline performs the following:</p>
+			<ul>
+				<li>Takes a URL provided in the <strong class="source-inline">data.txt</strong> file from the <strong class="source-inline">data</strong> repository</li>
+				<li>Uses the <strong class="source-inline">svekars/nlp-example:1.0</strong> image</li>
+				<li>Runs the <strong class="source-inline">data-clean.py</strong> script added to the <strong class="source-inline">svekars/nlp-example:1.0</strong> image</li>
+			</ul>
+			<p>You might have <a id="_idIndexMarker708"/>noticed that the glob pattern used in the pipeline specification uses only one file—<strong class="source-inline">data.txt</strong>. This is a file where we will have a URL to the <em class="italic">The Legend of Sleepy Hollow</em> text located at the <em class="italic">Project Gutenberg: Free eBooks</em> website. To access the website, go to <a href="https://gutenberg.org">https://gutenberg.org</a>.</p>
+			<p>Now that we've reviewed the pipeline, let's look closer at what our script does. Here is a list of the components that we will be importing in the <strong class="source-inline">data-clean.py</strong> script:</p>
+			<p class="source-code">from bs4 import BeautifulSoup</p>
+			<p class="source-code">from urllib.request import urlopen</p>
+			<p class="source-code">import nltk</p>
+			<p class="source-code">from nltk.corpus import stopwords</p>
+			<p class="source-code">from nltk.tokenize import word_tokenize</p>
+			<p class="source-code">from nltk.stem.porter import PorterStemmer</p>
+			<p class="source-code">nltk.download('wordnet')</p>
+			<p class="source-code">from nltk.stem import WordNetLemmatizer</p>
+			<p>We need <strong class="source-inline">BeautifulSoup</strong> to parse the HTML file with our text. We use <strong class="source-inline">urlopen</strong> to open the URL inside of the <strong class="source-inline">data.txt</strong> file. We need NLTK with <strong class="source-inline">stopwords</strong>, <strong class="source-inline">word_tokenize</strong>, <strong class="source-inline">PorterStemmer</strong>, <strong class="source-inline">WordNet</strong>, and <strong class="source-inline">WordNetLemmatizer</strong> to perform various NLP operations.</p>
+			<p>The first part of code opens the <strong class="source-inline">data.txt</strong> file that we have placed in the data repository, reads the file, and uses the <strong class="source-inline">BeautifulSoup</strong> HTML parser to parse the text. In the <strong class="source-inline">paragraphs</strong> line, we strip the text from all other HTML elements but the <strong class="source-inline">&lt;p&gt;</strong> HTML tag: </p>
+			<p class="source-code">with open('/pfs/data/data.txt', "r", encoding='utf-8') as f:</p>
+			<p class="source-code">    data=f.read().replace('\n', '')</p>
+			<p class="source-code">url = urlopen(data).read()</p>
+			<p class="source-code">soup = BeautifulSoup(url, 'html.parser')</p>
+			<p class="source-code">content = soup.get_text(strip=True)</p>
+			<p class="source-code">paragraphs = soup.find_all('p')</p>
+			<p>The second <a id="_idIndexMarker709"/>part of the script saves the downloaded text to the text file in the output repository. We will need our downstream pipelines:</p>
+			<p class="source-code">f = open('pfs/out/text.txt', 'w', encoding='utf-8')</p>
+			<p class="source-code"> for i in paragraphs:</p>
+			<p class="source-code">     all_text = i.get_text()</p>
+			<p class="source-code">      f.writelines(all_text)</p>
+			<p class="source-code">f.close()</p>
+			<p>In the next part of the code, we use the <strong class="source-inline">word_tokenize</strong> NLTK method to break the text into individual tokens and save them into the <strong class="source-inline">tokens.txt</strong> file in the output repository:</p>
+			<p class="source-code">tokens = []</p>
+			<p class="source-code">for i in paragraphs:</p>
+			<p class="source-code">    tokens += word_tokenize(i.text)</p>
+			<p class="source-code">    with open('/pfs/out/tokens.txt', 'w', encoding='utf-8') as filehandle:</p>
+			<p class="source-code">        for item in tokens:</p>
+			<p class="source-code">            filehandle.write('%s\n' % item)</p>
+			<p>The next part of the code takes the tokenized text from previously, removes the stop words from it, and saves the result in the <strong class="source-inline">no_stopwords.txt</strong> file in the output repository. The <strong class="bold">stop words</strong> are the words that include articles, pronouns, and other commonly <a id="_idIndexMarker710"/>used words that don't add a lot of value to the text and can be ignored for research purposes to save processing time:</p>
+			<p class="source-code">stopwords = stopwords.words("english")</p>
+			<p class="source-code">no_stopwords = []</p>
+			<p class="source-code">for word in tokens:</p>
+			<p class="source-code">     if not word in stopwords:</p>
+			<p class="source-code">         no_stopwords.append(word)</p>
+			<p class="source-code">         appendFile = open('/pfs/out/no_stopwords.txt', 'a', encoding='utf-8')</p>
+			<p class="source-code">         appendFile.write(word)</p>
+			<p class="source-code">         appendFile.write("\n")</p>
+			<p class="source-code">         appendFile.close()</p>
+			<p>The next part of the code removes punctuation from the text that was already tokenized and stripped of stop words. The code saves the results into a separate file called <strong class="source-inline">no_punctuation.txt</strong>:</p>
+			<p class="source-code">no_punctuation = []</p>
+			<p class="source-code">for word in no_stopwords:</p>
+			<p class="source-code">      if word.isalpha():</p>
+			<p class="source-code">          no_punctuation.append(word)</p>
+			<p class="source-code">          appendFile = open('/pfs/out/no_punctuation.txt', 'a', encoding='utf-8')</p>
+			<p class="source-code">          appendFile.write(word)</p>
+			<p class="source-code">          appendFile.write("\n")</p>
+			<p class="source-code">          appendFile.close()</p>
+			<p>Next is stemming. <strong class="bold">Stemming</strong> is a <a id="_idIndexMarker711"/>technique that removes suffixes from words leaving only the word stem. For example, the words <strong class="source-inline">grouping</strong> and <strong class="source-inline">grouped</strong> would be reduced to just <strong class="source-inline">group</strong>. Sometimes, this technique might be considered too aggressive and lemmatization can be used instead. The stemmed output is saved to <strong class="source-inline">stemmed.txt</strong>:</p>
+			<p class="source-code">port_stem = PorterStemmer()</p>
+			<p class="source-code">stemmed = []</p>
+			<p class="source-code">for word in no_punctuation:</p>
+			<p class="source-code">    stemmed_word = port_stem.stem(word)</p>
+			<p class="source-code">    stemmed.append(stemmed_word)</p>
+			<p class="source-code">    appendFile = open('/pfs/out/stemmed.txt', 'a', encoding='utf-8')</p>
+			<p class="source-code">    appendFile.write(stemmed_word)</p>
+			<p class="source-code">    appendFile.write("\n")</p>
+			<p class="source-code">    appendFile.close()</p>
+			<p>The final part of this script is lemmatization, which uses NLTK's WordNet Lemmatizer database to <a id="_idIndexMarker712"/>perform lemmatization on the text that was tokenized and stripped of stop words and punctuation. This last piece of code saves the results to the <strong class="source-inline">lematized.txt</strong> file. We will use that file in our next pipeline:</p>
+			<p class="source-code">lemmatizer = WordNetLemmatizer()</p>
+			<p class="source-code">lemmatized = []</p>
+			<p class="source-code">for word in no_punctuation:</p>
+			<p class="source-code">    l_text = lemmatizer.lemmatize(word)</p>
+			<p class="source-code">    lemmatized.append(l_text)</p>
+			<p class="source-code">    appendFile = open('/pfs/out/lematized.txt', 'a', encoding='utf-8')</p>
+			<p class="source-code">    appendFile.write(l_text)</p>
+			<p class="source-code">    appendFile.write("\n")</p>
+			<p class="source-code">    appendFile.close()</p>
+			<p>Now that we know what our pipeline does, let's create it.</p>
+			<p>To create the <strong class="source-inline">data-clean.py</strong> pipeline, complete the following steps:</p>
+			<ol>
+				<li value="1">Open your terminal and verify that Pachyderm is up and running:<p class="source-code"><strong class="bold">pachctl version</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">COMPONENT           VERSION</p>
+			<p class="source-code">pachctl             2.0.0</p>
+			<p class="source-code">pachd               2.0.0</p>
+			<ol>
+				<li value="2">Create the data repo:<p class="source-code"><strong class="bold">pachctl create repo data</strong></p></li>
+				<li>Verify <a id="_idIndexMarker713"/>that that data repository was created:<p class="source-code">pachctl list repo</p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME CREATED   SIZE (MASTER) DESCRIPTION</p>
+			<p class="source-code">data 10 seconds ago ≤ 0B</p>
+			<ol>
+				<li value="4">From the directory where you have your <strong class="source-inline">data.txt</strong> file, put it into the data repository:<p class="source-code"><strong class="bold">pachctl put file -f data.txt data@master</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">data.txt 49.00b / 49.00 b [==============] 0s 0.00 b/s</p>
+			<p>This file has just one line—a link to the text of <em class="italic">The Legend of Sleepy Hollow</em> on the Gutenberg website: <a href="https://www.gutenberg.org/files/41/41-h/41-h.htm">https://www.gutenberg.org/files/41/41-h/41-h.htm</a>.</p>
+			<ol>
+				<li value="5">Check that the file was placed in the repository with the <strong class="source-inline">file</strong> type:<p class="source-code"><strong class="bold">pachctl list file data@master</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME      TYPE SIZE</p>
+			<p class="source-code">/data.txt file 49B</p>
+			<ol>
+				<li value="6">Create the <strong class="source-inline">data-clean</strong> pipeline:<p class="source-code"><strong class="bold">pachctl create pipeline -f data-clean.yaml</strong></p></li>
+			</ol>
+			<p>No output is returned.</p>
+			<ol>
+				<li value="7">Check that <a id="_idIndexMarker714"/>the pipeline was created and is starting or running:<p class="source-code"><strong class="bold">pachctl list pipeline</strong></p></li>
+			</ol>
+			<p>The system output is as follows:      </p>
+			<p class="source-code">NAME       VERSION INPUT          CREATED       STATE / LAST JOB DESCRIPTION</p>
+			<p class="source-code">data-clean 1       data:/data.txt 4 seconds ago running / -      A pipeline that tokenizes the text.</p>
+			<ol>
+				<li value="8">After a minute or so, the pipeline should finish running and upload the results to the output repository. Check the repository:<p class="source-code"><strong class="bold">pachctl list repo</strong></p></li>
+			</ol>
+			<p>You should see the following output:</p>
+			<p class="source-code">NAME       CREATED        SIZE (MASTER) DESCRIPTION</p>
+			<p class="source-code">data-clean 15 seconds ago ≤ 315.8KiB    Output repo for pipeline data-clean.</p>
+			<p class="source-code">data       1 minute ago ≤ 49B</p>
+			<p>As you can see, Pachyderm automatically created an output repository called <strong class="source-inline">data-clean</strong> and uploaded 315.8 KiB to the master branch of that repo.</p>
+			<ol>
+				<li value="9">Let's list the files in the repo:<p class="source-code"><strong class="bold">pachctl list file data-clean@master</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME                TYPE SIZE</p>
+			<p class="source-code">/lemmatized.txt     file 42.25KiB</p>
+			<p class="source-code">/no_punctuation.txt file 42.99KiB</p>
+			<p class="source-code">/no_stopwords.txt   file 47.88KiB</p>
+			<p class="source-code">/stemmed.txt        file 38.01KiB</p>
+			<p class="source-code">/text.txt           file 75.18KiB</p>
+			<p class="source-code">/tokens.txt         file 69.54KiB</p>
+			<ol>
+				<li value="10">You can see that the pipeline has uploaded six files into the output repository. We have <a id="_idIndexMarker715"/>deliberately saved them in separate files so that you can see the difference between them. You can view the contents of each file and compare them. For example, to open the <strong class="source-inline">lemmatized.txt</strong> file on macOS, run the following:<p class="source-code"><strong class="bold">pachctl get file data-clean@master:/lemmatized.txt | open -f</strong><strong class="bold">  -a  TextEdit.app</strong></p></li>
+			</ol>
+			<p>You should see the following output:</p>
+			<div>
+				<div id="_idContainer070" class="IMG---Figure">
+					<img src="Images/B17085_08_003.jpg" alt="Figure 8.3 – Lemmatized words&#13;&#10;" width="567" height="478"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.3 – Lemmatized words</p>
+			<p>In this <a id="_idIndexMarker716"/>section, we have created a pipeline that cleans our text. In the next section, we will create our next pipeline, which will apply POS tags to our lemmatized text. </p>
+			<h2 id="_idParaDest-180"><a id="_idTextAnchor194"/>Creating the POS tagging pipeline</h2>
+			<p>POS tagging is an NLP technique that labels each word with a relevant part of speech. This process <a id="_idIndexMarker717"/>is used in many NLP problems, such as text disambiguation and text-to-speech conversion. </p>
+			<p>For this task, we have used <strong class="bold">spaCy</strong>, a free <a id="_idIndexMarker718"/>library that performs POS tagging, NER, and other tasks. For example, say you have the following sentence:</p>
+			<p class="author-quote"><em class="italic">Whoever is happy will make others happy too.</em></p>
+			<p>Here is an example of what POS tagging with spaCy looks like:</p>
+			<div>
+				<div id="_idContainer071" class="IMG---Figure">
+					<img src="Images/Table_011.jpg" alt="Figure 8.4 – POS tagging example" width="1166" height="723"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.4 – POS tagging example</p>
+			<p>We will use <a id="_idIndexMarker719"/>spaCy to find POS tags in our lemmatized text from the <strong class="source-inline">data-clean</strong> pipeline.</p>
+			<p>Here is what our POS tagging pipeline specification will look like:</p>
+			<p class="source-code">---</p>
+			<p class="source-code">pipeline:</p>
+			<p class="source-code">   name: pos-tag</p>
+			<p class="source-code"> description: A pipeline that performs POS tagging.</p>
+			<p class="source-code"> input:</p>
+			<p class="source-code">   pfs:</p>
+			<p class="source-code">     glob: "/lemmatized.txt"</p>
+			<p class="source-code">     repo: data-clean</p>
+			<p class="source-code"> transform:</p>
+			<p class="source-code">   cmd:</p>
+			<p class="source-code">   - python3</p>
+			<p class="source-code">   - "/pos-tag.py"</p>
+			<p class="source-code">   image: svekars/nlp-example:1.0</p>
+			<p>This pipeline <a id="_idIndexMarker720"/>performs the following:</p>
+			<ul>
+				<li>Takes the <strong class="source-inline">lemmatized.txt</strong> file from the <strong class="source-inline">data-clean</strong> repository</li>
+				<li>Uses the <strong class="source-inline">svekars/nlp-example:1.0</strong> Docker image</li>
+				<li>Runs the <strong class="source-inline">pos-tag.py</strong> script against our lemmatized text</li>
+				<li>Outputs a table with all POS tags found in the text inthe <strong class="source-inline">pos_table.txt</strong> file, a file with the total number for each POS tag, to <strong class="source-inline">pos_number.txt</strong> and creates a dependency graph saved as a <strong class="source-inline">pos-tag-dependency.svg</strong> file</li>
+			</ul>
+			<p>Now that we have reviewed what the pipeline does, let's take a look at the <strong class="source-inline">pos-tag.py</strong> script. </p>
+			<p>The script imports the following components and libraries:</p>
+			<p class="source-code">import spacy</p>
+			<p class="source-code">import en_core_web_sm</p>
+			<p class="source-code">from spacy import displacy</p>
+			<p class="source-code">import IPython</p>
+			<p class="source-code">from pathlib import Path</p>
+			<p class="source-code">import spacy.attrs</p>
+			<p class="source-code">from contextlib import redirect_stdout</p>
+			<p>We need <strong class="source-inline">spacy</strong> and its modules to perform POS tagging, count them, and visualize the results. We import the <strong class="source-inline">en_core_web_sm</strong> pretrained spaCy model to do the tagging task. We need IPython as a spaCy dependency. Finally, we are using <strong class="source-inline">pathlib</strong> and <strong class="source-inline">redirect_stdout</strong> to save the results.</p>
+			<p>The first part <a id="_idIndexMarker721"/>of the code imports a pretrained spaCy model called <strong class="source-inline">en_core_web_sm</strong>. POS tagging requires you to use either a pretrained model or your own custom model. The <strong class="source-inline">en_core_web_sm</strong> model does a good job of tagging POSes. Therefore, we will just use it. Then, the script opens our <strong class="source-inline">lematized.txt</strong> file, tags all the words in the file, and prints out the result to the <strong class="source-inline">pos-table.txt</strong> file:</p>
+			<p class="source-code">sp = spacy.load('en_core_web_sm')</p>
+			<p class="source-code">textfile = sp(open('pfs/data-clean/lematized.txt', "r", encoding='utf-8').read())</p>
+			<p class="source-code">with open('/pfs/out/pos-table.txt', 'w') as f:</p>
+			<p class="source-code">     with redirect_stdout(f):</p>
+			<p class="source-code">         for word in textfile:</p>
+			<p class="source-code">             print(f'{word.text:{12}} {word.pos_:{10}} {word.tag_:{8}} {spacy.explain(word.tag_)}')</p>
+			<p>The next part of the code counts the number of each tag in the processed text and outputs the results to the <strong class="source-inline">pos-number.txt</strong> file:</p>
+			<p class="source-code">with open('/pfs/out/pos-number.txt', 'w') as file:</p>
+			<p class="source-code">     with redirect_stdout(file):</p>
+			<p class="source-code">         count_tags = textfile.count_by(spacy.attrs.IDS['POS'])</p>
+			<p class="source-code">         for i, count in count_tags.items():</p>
+			<p class="source-code">             tags = textfile.vocab[i].text</p>
+			<p class="source-code">             print(tags, count)</p>
+			<p>Finally, the last part of the script generates a dependency graph and saves it as an SVG image, <strong class="source-inline">pos-tag-dependency.svg</strong>:</p>
+			<p class="source-code"> image = displacy.render(textfile, style='dep', options={"compact": True, "distance": 70})</p>
+			<p class="source-code"> f = open('/pfs/out/pos-tag-dependency.svg', "w")</p>
+			<p class="source-code"> f.write(image)</p>
+			<p class="source-code"> f.close()</p>
+			<p>Now, let's create our pipeline.</p>
+			<p>To create <a id="_idIndexMarker722"/>a POS tagging pipeline, do the following: </p>
+			<ol>
+				<li value="1">Open your terminal and verify that Pachyderm is up and running:<p class="source-code"><strong class="bold">pachctl version</strong></p></li>
+			</ol>
+			<p>You should see the following output:</p>
+			<p class="source-code">COMPONENT           VERSION</p>
+			<p class="source-code">pachctl             2.0.0</p>
+			<p class="source-code">pachd               2.0.0</p>
+			<ol>
+				<li value="2">Create the POS tagging pipeline:<p class="source-code"><strong class="bold">pachctl create pipeline -f pos-tag.yaml</strong></p></li>
+			</ol>
+			<p>No system output is returned.</p>
+			<ol>
+				<li value="3">Check that the pipeline was created and is running:<p class="source-code"><strong class="bold">pachctl list pipeline</strong></p></li>
+			</ol>
+			<p>This is the output that this command returns:</p>
+			<p class="source-code">NAME       VERSION INPUT   CREATED       STATE / LAST JOB  DESCRIPTION</p>
+			<p class="source-code">pos-tag    1       data-clean:/lemmatized.txt 2 seconds ago running / -       A pipeline that performs POS tagging.</p>
+			<p class="source-code">data-clean 1       data:/data.txt             1 minute ago running / success A pipeline that tokenizes the text.</p>
+			<ol>
+				<li value="4">When the pipeline finishes running, check the output repository:<p class="source-code"><strong class="bold">pachctl list repo</strong></p></li>
+			</ol>
+			<p>This command returns the following output:</p>
+			<p class="source-code">NAME       CREATED           SIZE (MASTER) DESCRIPTION</p>
+			<p class="source-code">pos-tag    22 seconds ago  ≤ 10.82MiB    Output repo for pipeline pos-tag.</p>
+			<p class="source-code">data-clean 2 minutes ago  ≤ 315.8KiB    Output repo for pipeline data-clean.</p>
+			<p class="source-code">data       3 minutes ago ≤ 49B</p>
+			<p>Pachyderm has created an output repository called <strong class="source-inline">pos-tag</strong> and uploaded 10.82 MiB to the master branch of this repository.</p>
+			<ol>
+				<li value="5">Now, let's <a id="_idIndexMarker723"/>take a look at files that were uploaded to the output repo:<p class="source-code"><strong class="bold">pachctl list file pos-tag@master </strong></p></li>
+			</ol>
+			<p>This command returns the following system output:</p>
+			<p class="source-code">NAME                    TYPE SIZE</p>
+			<p class="source-code">/pos-number.txt         file 132B</p>
+			<p class="source-code">/pos-table.txt          file 564.1KiB</p>
+			<p class="source-code">/pos-tag-dependency.svg file 10.27MiB</p>
+			<ol>
+				<li value="6">  Let's take a look at the number of each tag we have in our text:<p class="source-code"><strong class="bold">pachctl get file pos-tag@master:/pos-number.txt </strong></p></li>
+			</ol>
+			<p>You should see the following output:</p>
+			<p class="source-code">ADP 154</p>
+			<p class="source-code">SPACE 6291</p>
+			<p class="source-code">NOUN 3110</p>
+			<p class="source-code">NUM 67</p>
+			<p class="source-code">ADJ 789</p>
+			<p class="source-code">PROPN 346</p>
+			<p class="source-code">VERB 1053</p>
+			<p class="source-code">ADV 374</p>
+			<p class="source-code">DET 98</p>
+			<p class="source-code">AUX 69</p>
+			<p class="source-code">PRON 130</p>
+			<p class="source-code">PART 9</p>
+			<p class="source-code">SCONJ 59</p>
+			<p class="source-code">CCONJ 15</p>
+			<p class="source-code">INTJ 7</p>
+			<p class="source-code">X 11 </p>
+			<ol>
+				<li value="7">Finally, let's <a id="_idIndexMarker724"/>take a look at the dependency graph. If you are on macOS, run the following:<p class="source-code"><strong class="bold">pachctl get file pos-tag@master:/pos-tag-dependency.svg &gt; pos-tag-dependency.svg | open -f pos-tag-dependency.svg -a "Google Chrome"</strong></p></li>
+			</ol>
+			<p>Google Chrome opens the file: </p>
+			<div>
+				<div id="_idContainer072" class="IMG---Figure">
+					<img src="Images/B17085_08_005.jpg" alt="" width="758" height="267"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.5 – POS dependency graph</p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">You might need to scroll down in your browser to see the graph. Because we ran POS tagging against the whole book, this graph is very long. You'll need to scroll horizontally to see it all.</p>
+			<p>In this section, we configured a POS tagging pipeline by using Pachyderm and spaCy, as well as <a id="_idIndexMarker725"/>visualizing it with a dependency graph. Next, we'll configure an NER pipeline that will help us find the main characters of the story.</p>
+			<h1 id="_idParaDest-181"><a id="_idTextAnchor195"/>Creating an NER pipeline</h1>
+			<p>NER is an information extraction technique that recognizes entities in text and puts them in <a id="_idIndexMarker726"/>certain categories, such as person, location, and organization. For example, say we have the following phrase: </p>
+			<p class="author-quote"><em class="italic">Snap Inc. Announces First Quarter 2021 Financial Results</em></p>
+			<p>If you use spaCy's <strong class="source-inline">en_core_web_lg</strong> against this phrase, you will get the following results:</p>
+			<p class="source-code"><strong class="bold">Snap Inc. - 0 - 9 - ORG - Companies, agencies, institutions, etc.</strong></p>
+			<p class="source-code"><strong class="bold">First Quarter 2021 - 20 - 38 - DATE - Absolute or relative dates or periods</strong></p>
+			<p>Name recognition can be useful in a variety of tasks. In this section, we will use it to retrieve the main characters of <em class="italic">The Legend of Sleepy Hollow</em>. </p>
+			<p>Here is what our NER pipeline specification will look like:</p>
+			<p class="source-code">---</p>
+			<p class="source-code"> pipeline:</p>
+			<p class="source-code">   name: ner</p>
+			<p class="source-code"> description: A NER pipeline</p>
+			<p class="source-code"> input:</p>
+			<p class="source-code">   pfs:</p>
+			<p class="source-code">     glob: "/text.txt"</p>
+			<p class="source-code">     repo: data-clean</p>
+			<p class="source-code"> transform:</p>
+			<p class="source-code">   cmd:</p>
+			<p class="source-code">   - python3</p>
+			<p class="source-code">   - "/ner.py"</p>
+			<p class="source-code">    image: svekars/nlp-example:1.0</p>
+			<p>This <a id="_idIndexMarker727"/>pipeline performs the following:</p>
+			<ul>
+				<li>Takes the original text of <em class="italic">The Legend of Sleepy Hollow</em> from the <strong class="source-inline">data-clean</strong> repository</li>
+				<li>Uses the <strong class="source-inline">svekars/nlp-example:1.0</strong> Docker image</li>
+				<li>Runs the <strong class="source-inline">ner.py</strong> script</li>
+				<li>Outputs the results to the <strong class="source-inline">ner</strong> repository</li>
+			</ul>
+			<p>Now, let's look at what the <strong class="source-inline">ner.py</strong> script does. Here is the list of components the script imports:</p>
+			<p class="source-code">import spacy</p>
+			<p class="source-code">from spacy import displacy</p>
+			<p class="source-code">from contextlib import redirect_stdout</p>
+			<p>We need <strong class="source-inline">spacy</strong> to perform NER and the <strong class="source-inline">displacy</strong> module to visualize the results. <strong class="source-inline">redirect_stdout</strong> is a handy way to redirect printed output to a file.</p>
+			<p>The rest of the code imports spaCy's pretrained model called <strong class="source-inline">en_core_web_lg</strong>. This model seems to perform better on NER tasks than its counterpart that we used in the POS tagging pipeline. Then, the script grabs the original text stored in the <strong class="source-inline">text.txt</strong> file in the <strong class="source-inline">data-clean</strong> repository and performs the NER task: </p>
+			<p class="source-code">sp = spacy.load("en_core_web_lg")</p>
+			<p class="source-code">def display_entities(text):</p>
+			<p class="source-code">     with open ('/pfs/out/ner-list.txt', 'w') as f:</p>
+			<p class="source-code">         with redirect_stdout(f):</p>
+			<p class="source-code">             if text.ents:</p>
+			<p class="source-code">                 for i in text.ents:</p>
+			<p class="source-code">                     print(i.text+' - '+str(i.start_char)+' - '+str(i.end_char)+' - '+i.label_+' - '+str(spacy.explain(i.label_)))</p>
+			<p class="source-code"> text = sp(open('/pfs/data-clean/text.txt', "r", encoding='utf-8').read())</p>
+			<p class="source-code"> display_entities(text)</p>
+			<p>Finally, the <a id="_idIndexMarker728"/>script visualizes the results with <strong class="source-inline">displacy</strong> and saves them in the HTML format:</p>
+			<p class="source-code"> with open ('/pfs/out/ner-labels.html', 'w') as f:</p>
+			<p class="source-code">      with redirect_stdout(f):</p>
+			<p class="source-code">          for i in text.ents:</p>
+			<p class="source-code">              html=displacy.render(text, style="ent", page=True)</p>
+			<p class="source-code">              print(html)</p>
+			<p>Now that we know what our script does, let's create the pipeline.</p>
+			<p>To create the NER pipeline, complete the following steps:</p>
+			<ol>
+				<li value="1">Open your terminal and verify that Pachyderm is up and running:<p class="source-code"><strong class="bold">pachctl version</strong></p></li>
+			</ol>
+			<p>This command returns the following output:</p>
+			<p class="source-code">COMPONENT           VERSION</p>
+			<p class="source-code">pachctl             2.0.0</p>
+			<p class="source-code">pachd               2.0.0</p>
+			<ol>
+				<li value="2">Create the POS tagging pipeline:<p class="source-code"><strong class="bold">pachctl create pipeline -f ner.yaml</strong></p></li>
+			</ol>
+			<p>No system output is returned.</p>
+			<ol>
+				<li value="3">Check that the pipeline was created and is starting or running:<p class="source-code"><strong class="bold">pachctl list pipeline</strong></p></li>
+			</ol>
+			<p>You should see the following output:</p>
+			<p class="source-code">NAME       VERSION INPUT                     CREATED           STATE / LAST JOB  DESCRIPTION</p>
+			<p class="source-code">ner        1       data-clean:/text.txt      5 seconds ago     running / running A NER pipeline</p>
+			<p class="source-code">pos-tag    1       data-clean:/lematized.txt 1 minutes ago running / success A pipeline that performs POS tagging.</p>
+			<p class="source-code">data-clean 1       data:/data.txt            2 minutes ago       running / success A pipeline that tokenizes the text.</p>
+			<ol>
+				<li value="4">When the <a id="_idIndexMarker729"/>pipeline finishes running, check the output repository:<p class="source-code"><strong class="bold">pachctl list repo</strong></p></li>
+			</ol>
+			<p>The command returns this system output:</p>
+			<p class="source-code">NAME       CREATED        SIZE (MASTER) DESCRIPTION</p>
+			<p class="source-code">ner        36 seconds ago ≤ 43.49MiB    Output repo for pipeline ner.</p>
+			<p class="source-code">pos-tag    2 minutes ago  ≤ 10.82MiB    Output repo for pipeline pos-tag.</p>
+			<p class="source-code">data-clean 3 minutes ago ≤ 315.8KiB    Output repo for pipeline data-clean.</p>
+			<p class="source-code">data       4 minutes ago ≤ 49B</p>
+			<p>Pachyderm has created an output repository called <strong class="source-inline">ner</strong> and uploaded 43.49 MiB to the master branch.</p>
+			<ol>
+				<li value="5">Let's take a look at the files that were uploaded to the output repo:<p class="source-code"><strong class="bold">pachctl list file ner@master </strong></p></li>
+			</ol>
+			<p>The following output is returned:</p>
+			<p class="source-code">NAME             TYPE SIZE</p>
+			<p class="source-code">/ner-labels.html file 43.47MiB</p>
+			<p class="source-code">/ner-list.txt    file 19.36KiB</p>
+			<p>This repository has two files. One is the list of all instances of entities found in the file and the other is the visualization for all the entities.</p>
+			<ol>
+				<li value="6">Print the <a id="_idIndexMarker730"/>first 10 lines of the <strong class="source-inline">ner-list.txt</strong> file to the terminal:<p class="source-code"><strong class="bold">pachctl get file ner@master:/ner-list.txt | awk 'FNR &lt;= 10'</strong></p></li>
+			</ol>
+			<p>This command returns the following output:</p>
+			<p class="source-code">one - 36 - 39 - CARDINAL - Numerals that do not fall under another type</p>
+			<p class="source-code">Hudson - 108 - 114 - LOC - Non-GPE locations, mountain ranges, bodies of water</p>
+			<p class="source-code">Dutch - 186 - 191 - NORP - Nationalities or religious or political groups</p>
+			<p class="source-code">the Tappan Zee - 203 - 217 - EVENT - Named hurricanes, battles, wars, sports events, etc.</p>
+			<p class="source-code">St. Nicholas - 303 - 315 - ORG - Companies, agencies, institutions, etc.</p>
+			<p class="source-code">Greensburgh - 417 - 428 - PERSON - People, including fictional</p>
+			<p class="source-code">Tarry Town - 498 - 508 - GPE - Countries, cities, states</p>
+			<p class="source-code">former days - 547 - 558 - DATE - Absolute or relative dates or periods</p>
+			<p class="source-code">about two miles - 891 - 906 - QUANTITY - Measurements, as of weight or distance</p>
+			<p class="source-code">first - 1330 - 1335 - ORDINAL - "first", "second", etc. NUM 67</p>
+			<p>As you can see, the NER model has identified many entities in the text. Let's open the HTML file to view all the entities. </p>
+			<ol>
+				<li value="7">Open the HTML file:<p class="source-code"><strong class="bold">pachctl get file ner@master:/ner-labels.html &gt; ner-labels.html | open -f ner-labels.html -a "Google Chrome"</strong></p></li>
+			</ol>
+			<p>The file <a id="_idIndexMarker731"/>will open in Google Chrome:</p>
+			<div>
+				<div id="_idContainer073" class="IMG---Figure">
+					<img src="Images/B17085_08_006.jpg" alt="Figure 8.6 – NER labels&#13;&#10;" width="839" height="329"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 8.6 – NER labels</p>
+			<p>You can see that the spaCy model has identified many entities in the text correctly. However, if you start browsing, you'll notice that it has skipped some of them. For example, it did not tag <em class="italic">Headless Horseman</em> as <strong class="bold">PERSON</strong> in some cases. This is a known accuracy problem of pretrained models. In the next section, we will correct this by retraining our model to use these entities.</p>
+			<h1 id="_idParaDest-182"><a id="_idTextAnchor196"/>Retraining an NER model</h1>
+			<p>Inaccuracy <a id="_idIndexMarker732"/>in NER pipeline results is a common problem. The only way to fix it is to retrain an existing model or train your own model completely from scratch. Training a model from scratch is a difficult and lengthy operation. In our case, we don't need to necessarily train a completely new model but instead, we can retrain the existing model to understand the missing context. To accomplish this task, we will put training data into the <strong class="source-inline">data-clean</strong> repository, create a training pipeline that will train on that data, save our model to an output repository, and then run the retrained model against our original text again.</p>
+			<p>In Pachyderm <a id="_idIndexMarker733"/>terms, this means that we will create two pipelines:</p>
+			<ul>
+				<li>The first pipeline, called <strong class="source-inline">retrain</strong>, will train our model and output the new model to the <strong class="source-inline">train</strong> output repository.</li>
+				<li>The second pipeline, called <strong class="source-inline">my-model</strong>, will use the new model to analyze our text and upload the results to the <strong class="source-inline">my-model</strong> repository.</li>
+			</ul>
+			<p>Now, let's create the retrain pipeline.</p>
+			<h2 id="_idParaDest-183"><a id="_idTextAnchor197"/>Creating the retrain pipeline</h2>
+			<p>For this <a id="_idIndexMarker734"/>pipeline, we will create the following pipeline specification:</p>
+			<p class="source-code">---</p>
+			<p class="source-code"> pipeline:</p>
+			<p class="source-code">   name: retrain</p>
+			<p class="source-code"> description: A pipeline that retrains the NER model.</p>
+			<p class="source-code"> input:</p>
+			<p class="source-code">   pfs:</p>
+			<p class="source-code">     glob: "/training-data.json"</p>
+			<p class="source-code">     repo: data</p>
+			<p class="source-code"> transform:</p>
+			<p class="source-code">   cmd:</p>
+			<p class="source-code">   - python3</p>
+			<p class="source-code">   - "/ner-improved.py"</p>
+			<p class="source-code">   image: svekars/nlp-example:1.0</p>
+			<p>This pipeline takes the <strong class="source-inline">training-data.json</strong> file that has our training data and runs the <strong class="source-inline">ner-improved.py</strong> script to improve the existing model. The results are saved to the <strong class="source-inline">retrain</strong> repository. For this example, we do not need a lot of training examples, but in a real-life use case, you would have to have hundreds of examples to improve the accuracy of your model. </p>
+			<p>Here is a list of the components the <strong class="source-inline">ner-improved.py</strong> script imports:</p>
+			<p class="source-code">import spacy</p>
+			<p class="source-code">import random</p>
+			<p class="source-code">from spacy.util import minibatch</p>
+			<p class="source-code">from spacy.training import Example</p>
+			<p class="source-code">from contextlib import redirect_stdout</p>
+			<p class="source-code">import simplejson as json</p>
+			<p>We need <strong class="source-inline">spacy</strong> with <strong class="source-inline">minibatch</strong> and <strong class="source-inline">Example.from_dict</strong> methods to train the model. We use <strong class="source-inline">random</strong> to shuffle the files into a different order for better training. The <strong class="source-inline">simplejson</strong> Python decoder is needed to read the training data file in the JSON format and <strong class="source-inline">redirect_stdout</strong> is needed to save the results in an output. </p>
+			<p>The next part <a id="_idIndexMarker735"/>of the script loads the spaCy model, reads the training data file, and opens a spaCy NER pipeline:</p>
+			<p class="source-code">nlp=spacy.load("en_core_web_lg")</p>
+			<p class="source-code">ner=nlp.get_pipe("ner")</p>
+			<p class="source-code">data = open("/pfs/data/training-data.json")</p>
+			<p class="source-code">data = json.loads(data.read())</p>
+			<p>This part of the code uses an optimizer, which performs the gradient descent calculation. Then, the script specifies that only the NER pipeline needs to be trained and all others should be ignored. The next <strong class="source-inline">for</strong> loop performs the actual training, updates the model, and prints the losses. We will train our model for 30 iterations: </p>
+			<p class="source-code"> optimizer = nlp.create_optimizer()</p>
+			<p class="source-code"> other_pipes = [p for p in nlp.pipe_names if p != "ner"]</p>
+			<p class="source-code"> with nlp.disable_pipes(*other_pipes):</p>
+			<p class="source-code">     for i in range(30):</p>
+			<p class="source-code">         random.shuffle(data)</p>
+			<p class="source-code">         losses = {}</p>
+			<p class="source-code">         for text, annotations in data:</p>
+			<p class="source-code">             doc = nlp.make_doc(text)</p>
+			<p class="source-code">             example = Example.from_dict(doc, annotations)</p>
+			<p class="source-code">             nlp.update([example], drop=0.1, sgd=optimizer, losses=losses)</p>
+			<p class="source-code">         print(losses)</p>
+			<p>The last part <a id="_idIndexMarker736"/>of the script tests the retrained pipeline against a test text and outputs the results to the <strong class="source-inline">ner-improved.txt</strong> text. The retrained model is saved using <strong class="source-inline">pickle.dump</strong> as in the <strong class="source-inline">ner-improved-model.p</strong> file directory in the <strong class="source-inline">output</strong> repository:</p>
+			<p class="source-code">test_text = 'Headless Horseman came to see Ichabod Crane.'</p>
+			<p class="source-code">doc = nlp(test_text)</p>
+			<p class="source-code">with open ('/pfs/out/ner-improved.txt', 'w') as f:</p>
+			<p class="source-code">    with redirect_stdout(f):</p>
+			<p class="source-code">        for i in doc.ents:</p>
+			<p class="source-code">            print(i.label_, " -- ", i.text)</p>
+			<p class="source-code">pickle.dump(nlp, open('/pfs/out/ner-improved-model.p', 'wb'))</p>
+			<p>Now, let's create the pipeline:</p>
+			<ol>
+				<li value="1">Open your terminal and verify that Pachyderm is up and running:<p class="source-code"><strong class="bold">pachctl version</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">  COMPONENT           VERSION</p>
+			<p class="source-code">pachctl             2.0.0</p>
+			<p class="source-code">pachd               2.0.0</p>
+			<ol>
+				<li value="2">Put <strong class="source-inline">training-data.json</strong> in the data repository:<p class="source-code"><strong class="bold">pachctl put file -f training-data.json data@master</strong></p></li>
+				<li>Create the retrain pipeline:<p class="source-code"><strong class="bold">pachctl create pipeline -f retrain.yaml</strong></p></li>
+			</ol>
+			<p>No system output is returned.</p>
+			<ol>
+				<li value="4">Check that <a id="_idIndexMarker737"/>the pipeline was created and is starting or running:<p class="source-code"><strong class="bold">pachctl list pipeline</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME       VERSION INPUT                     CREATED        STATE / LAST JOB  DESCRIPTION</p>
+			<p class="source-code">retrain    1       data:/training-data.json   About a minute ago running / success A pipeline that retrains the NER model.</p>
+			<p class="source-code">ner        1       data-clean:/text.txt       2 minutes ago      running / success A NER pipeline</p>
+			<p class="source-code">pos-tag    1       data-clean:/lemmatized.txt 3 minutes ago      running / success A pipeline that performs POS tagging.</p>
+			<p class="source-code">data-clean 1       data:/data.txt             5 minutes ago      running / success A pipeline that tokenizes the text.</p>
+			<ol>
+				<li value="5">After some time, check the output repository:<p class="source-code"><strong class="bold">pachctl list repo</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME       CREATED        SIZE (MASTER) DESCRIPTION</p>
+			<p class="source-code">retrain    About a minute ago ≤ 821.8MiB    Output repo for pipeline retrain.</p>
+			<p class="source-code">ner        2 minutes ago      ≤ 43.49MiB    Output repo for pipeline ner.</p>
+			<p class="source-code">pos-tag    3 minutes ago      ≤ 10.82MiB    Output repo for pipeline pos-tag.</p>
+			<p class="source-code">data-clean 5 minutes ago      ≤ 315.8KiB    Output repo for pipeline data-clean.</p>
+			<p class="source-code">data       6 minutes ago      ≤ 205B</p>
+			<p>As you can see, Pachyderm uploaded 816.7 MiB to the <strong class="source-inline">retrain</strong> repository. This is our retrained model that takes this much space.</p>
+			<ol>
+				<li value="6">List the <a id="_idIndexMarker738"/>files in the <strong class="source-inline">retrain</strong> repo:<p class="source-code"><strong class="bold">pachctl list file retrain@master </strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME                TYPE SIZE</p>
+			<p class="source-code">/ner-improved-model.p file 821.8MiB</p>
+			<p class="source-code">/ner-improved.txt   file 56B</p>
+			<ol>
+				<li value="7">Let's look at the <strong class="source-inline">ner-improved.txt</strong> file, which should have the results of running the retrained model against the test text:<p class="source-code"><strong class="bold">pachctl get file retrain@master:/ner-improved.txt</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">PERSON  --  Headless Horseman</p>
+			<p class="source-code">PERSON  --  Ichabod Crane </p>
+			<p>Great! <em class="italic">Headless Horseman</em> and <em class="italic">Ichabod Crane</em> are defined as <strong class="bold">PERSON</strong>.</p>
+			<p>Now that we have retrained our model, let's deploy our final pipeline, which will give us improved NER and output all the characters of the story into one file.</p>
+			<h2 id="_idParaDest-184"><a id="_idTextAnchor198"/>Deploying the retrained pipeline</h2>
+			<p>Our retrained <a id="_idIndexMarker739"/>pipeline needs to be a cross-pipeline to combine our new retrained model with our text: </p>
+			<p class="source-code">---</p>
+			<p class="source-code">  pipeline:</p>
+			<p class="source-code">    name: my-model</p>
+			<p class="source-code">  description: A retrained NER pipeline</p>
+			<p class="source-code">  input:</p>
+			<p class="source-code">    cross:</p>
+			<p class="source-code">    - pfs:</p>
+			<p class="source-code">        repo: data-clean</p>
+			<p class="source-code">        glob: "/text.txt"</p>
+			<p class="source-code">    - pfs:</p>
+			<p class="source-code">        repo: retrain</p>
+			<p class="source-code">        glob: "/ner-improved-model.p"</p>
+			<p class="source-code">  transform:</p>
+			<p class="source-code">    cmd:</p>
+			<p class="source-code">    - python3</p>
+			<p class="source-code">    - "/ner-my-model.py"</p>
+			<p class="source-code">    image: svekars/nlp-example:1.0</p>
+			<p>This pipeline will take the same <strong class="source-inline">text.txt</strong> file as in the original NER pipeline and create a cross-product of our retrained model with that text. It will output the results to the <strong class="source-inline">my-model</strong> repository. The resulting files will have an HTML file with better NER tagging and a text file with the list of characters in <em class="italic">The Legend of Sleepy Hollow</em>.</p>
+			<p><strong class="source-inline">ner-my-model.py</strong> is very similar to the original <strong class="source-inline">ner.py</strong> script with the following differences.</p>
+			<p>It loads our improved model by using <strong class="source-inline">pickle.load</strong> instead of the original spaCy model:</p>
+			<p class="source-code">nlp = pickle.load(open('/pfs/retrain/ner-improved-model.p', 'rb')))</p>
+			<p>It counts the total number of instances for each <strong class="bold">PERSON</strong> entity and saves them to the <strong class="source-inline">/pfs/out/person-label-count.txt</strong> file:</p>
+			<p class="source-code">with open ('/pfs/out/person-label-count.txt', 'w') as f:</p>
+			<p class="source-code">     with redirect_stdout(f):</p>
+			<p class="source-code">         person_label=[]</p>
+			<p class="source-code">         for i in text.ents:</p>
+			<p class="source-code">             if i.label_ =='PERSON':</p>
+			<p class="source-code">                 person_label.append(i.text)</p>
+			<p class="source-code">         count = Counter(person_label)</p>
+			<p class="source-code">         for key, counter in count.most_common():</p>
+			<p>It saves <a id="_idIndexMarker740"/>the HTML visualization to <strong class="source-inline">ner-improved-labels.html</strong>. It saves all entities to <strong class="source-inline">ner-improved-list.txt</strong> in the <strong class="source-inline">my-model</strong> repository.</p>
+			<p>Let's create our final pipeline:</p>
+			<ol>
+				<li value="1">Open your terminal and verify that Pachyderm is up and running:<p class="source-code"><strong class="bold">pachctl version</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">  COMPONENT           VERSION</p>
+			<p class="source-code">pachctl             2.0.0</p>
+			<p class="source-code">pachd               2.0.0</p>
+			<ol>
+				<li value="2">Create the <strong class="source-inline">my-model</strong> pipeline:<p class="source-code"><strong class="bold">pachctl create pipeline -f my-model.yaml</strong></p></li>
+			</ol>
+			<p>This command does not return any output.</p>
+			<ol>
+				<li value="3">Check that the pipeline was created and is starting or running:<p class="source-code"><strong class="bold">pachctl list pipeline</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME       VERSION INPUT                                                  CREATED        STATE / LAST JOB   DESCRIPTION</p>
+			<p class="source-code"><strong class="bold">my-model   1       (data-clean:/text.txt </strong><strong class="bold">⨯</strong><strong class="bold"> retrain:/ner-improved-model.p) 6 seconds ago  running / running A retrained NER pipeline</strong></p>
+			<p class="source-code"><strong class="bold">retrain    1       data:/training-data.json</strong><strong class="bold">                               9 minutes ago  running / success A pipeline that retrains the NER model.</strong></p>
+			<p class="source-code"><strong class="bold">ner        1       data-clean:/text.txt                                   10 minutes ago running / success A NER pipeline</strong></p>
+			<p class="source-code"><strong class="bold">pos-tag    1       data-clean:/lemmatized.txt                             11 minutes ago running / success A pipeline that performs POS tagging.</strong></p>
+			<p class="source-code"><strong class="bold">data-clean 1       data:/data.txt                                         13 minutes ago running / success A pipeline that tokenizes the text.</strong></p>
+			<p>Note that the <strong class="source-inline">my-model</strong> pipeline is starting. It is different from all other pipelines we've <a id="_idIndexMarker741"/>created for this example. Because we are saving our model in the <strong class="source-inline">retrain</strong> repository and we need to combine it with the text in the data repository, a standard pipeline won't be able to accomplish this. That's why we create a cross-pipeline that combines two inputs.</p>
+			<ol>
+				<li value="4">Let's check the output repository:<p class="source-code"><strong class="bold">pachctl list repo</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME       CREATED        SIZE (MASTER) DESCRIPTION</p>
+			<p class="source-code"><strong class="bold">my-model   About a minute ago ≤ 31.44MiB    Output repo for pipeline my-model.</strong></p>
+			<p class="source-code">retrain    10 minutes ago     ≤ 821.8MiB    Output repo for pipeline retrain.</p>
+			<p class="source-code">ner        11 minutes ago     ≤ 43.49MiB    Output repo for pipeline ner.</p>
+			<p class="source-code">pos-tag    12 minutes ago     ≤ 10.82MiB    Output repo for pipeline pos-tag.</p>
+			<p class="source-code">data-clean 14 minutes ago     ≤ 315.8KiB    Output repo for pipeline data-clean.</p>
+			<p class="source-code">data       15 minutes ago     ≤ 205B</p>
+			<p>Pachyderm uploaded 26.15 MiB to the <strong class="source-inline">my-model</strong> repository. This is the result of our computation.</p>
+			<ol>
+				<li value="5">List the <a id="_idIndexMarker742"/>files in the <strong class="source-inline">my-model</strong> repo:<p class="source-code"><strong class="bold">pachctl list file my-model@master </strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">NAME                      TYPE SIZE</p>
+			<p class="source-code">/ner-improved-labels.html file 26.14MiB</p>
+			<p class="source-code">/ner-improved-list.txt    file 13.43KiB</p>
+			<p class="source-code">/person-label-count.txt   file 654B </p>
+			<ol>
+				<li value="6">Let's look at the <strong class="source-inline">person-label-count.txt</strong> file, which should provide the total count for each unique <strong class="bold">PERSON</strong> instance:<p class="source-code"><strong class="bold">pachctl get file my-model@master:/person-label-count.txt | awk 'FNR &lt;= 15'</strong></p></li>
+			</ol>
+			<p>The system output is as follows:</p>
+			<p class="source-code">Ichabod: 35</p>
+			<p class="source-code">Brom Bones: 9</p>
+			<p class="source-code">Ichabod Crane: 8</p>
+			<p class="source-code">Van Tassel: 5</p>
+			<p class="source-code">Hans Van: 5</p>
+			<p class="source-code">Galloping Hessian: 4</p>
+			<p class="source-code">André: 4</p>
+			<p class="source-code">Headless Horseman: 3</p>
+			<p class="source-code">Brom: 3</p>
+			<p class="source-code">Hans Van Ripper: 3</p>
+			<p class="source-code">Brouwer: 3</p>
+			<p class="source-code">Tarry Town: 2</p>
+			<p class="source-code">Cotton Mather: 2</p>
+			<p class="source-code">Mather: 2</p>
+			<p class="source-code">Baltus Van: 2</p>
+			<p>As you can see, the output is still not entirely accurate because we see instances of <em class="italic">Ichabod</em> and <em class="italic">Ichabod Crane</em> separately. If we provide more training data, we can improve these results. However, you already see the most often-listed characters in this list and can understand that <em class="italic">Ichabod Crane</em> is likely the main character of the story.</p>
+			<ol>
+				<li value="7">Open the <a id="_idIndexMarker743"/>HTML file to view the highlighted version of the results:<p class="source-code"><strong class="bold">pachctl get file my-model@master:/ner-improved-labels.html &gt; ner-improved-labels.html | open -f ner-labels.html -a "Google Chrome"</strong></p></li>
+			</ol>
+			<p>This concludes our experiment with the spaCy NER model. You can add more training data to see how the accuracy will improve with more training examples.</p>
+			<p>Now let's clean up our cluster. </p>
+			<h2 id="_idParaDest-185"><a id="_idTextAnchor199"/>Cleaning up</h2>
+			<p>After you are <a id="_idIndexMarker744"/>done experimenting, you might want to clean up your cluster so that you start your next experiment with a fresh install. To clean up the environment, do the following:</p>
+			<ol>
+				<li value="1">Delete all pipelines and repositories:<p class="source-code"><strong class="bold">pachctl delete pipeline –all &amp;&amp; pachctl delete repo --all</strong></p></li>
+				<li>Verify that no repositories and pipelines exist in your cluster:<p class="source-code"><strong class="bold">pachctl list repo &amp;&amp; pachctl list pipeline</strong></p></li>
+			</ol>
+			<p>You <a id="_idIndexMarker745"/>should see the following output:</p>
+			<p class="source-code">NAME CREATED SIZE (MASTER) DESCRIPTION</p>
+			<p class="source-code">NAME VERSION INPUT CREATED STATE / LAST JOB DESCRIPTION</p>
+			<p>You have successfully cleaned up your cluster.</p>
+			<h1 id="_idParaDest-186"><a id="_idTextAnchor200"/>Summary</h1>
+			<p>In this chapter, we have learned how to build a complex machine learning workflow with the NER pipeline example. We have learned how to clean the data with the NTLK library, how to do POS tagging, and finally, how to retrain a spaCy model inside Pachyderm and output results for preview. You can do much more and tweak this example further to achieve better accuracy of NER by adding more training data and tweaking the model training parameters. </p>
+			<p>In the next chapter, we will learn how to do hyperparameter tuning in Pachyderm on an example of housing price prediction.</p>
+			<h1 id="_idParaDest-187"><a id="_idTextAnchor201"/>Further reading</h1>
+			<ul>
+				<li>NLTK documentation: <a href="https://www.nltk.org/">https://www.nltk.org/</a></li>
+				<li>spaCy documentation: <a href="https://spacy.io/api/doc">https://spacy.io/api/doc</a></li>
+				<li><em class="italic">The Legend of Sleepy Hollow</em> on the Gutenberg project website: <a href="https://www.gutenberg.org/files/41/41-h/41-h.htm">https://www.gutenberg.org/files/41/41-h/41-h.htm</a></li>
+			</ul>
+		</div>
+	</div></body></html>

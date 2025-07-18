@@ -1,0 +1,404 @@
+<html><head></head><body>
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer179" class="IMG---Figure">
+			<h1 id="_idParaDest-229" class="chapter-number"><a id="_idTextAnchor394"/>10</h1>
+			<h1 id="_idParaDest-230"><a id="_idTextAnchor395"/>Supervised Machine Learning on Network Data</h1>
+			<p>In previous chapters, we spent a lot of time exploring how to collect text data from the internet, transform it into network data, visualize networks, and analyze networks. We were able to use centralities and various network metrics for additional contextual awareness about individual nodes’ placement and influence in networks, and we used community detection algorithms to identify the various communities that exist in <span class="No-Break">a network.</span></p>
+			<p>In this chapter, we are going to begin an exploration of how network data can be useful in <strong class="bold">machine learning</strong> (<strong class="bold">ML</strong>). As this is a data science and network science book, I expect that many readers will be familiar with ML, but I’ll give a very <span class="No-Break">quick explanation.</span></p>
+			<p>This chapter is composed of the <span class="No-Break">following sections:</span></p>
+			<ul>
+				<li><span class="No-Break">Introducing ML</span></li>
+				<li>Beginning <span class="No-Break">with ML</span></li>
+				<li>Data preparation and <span class="No-Break">feature engineering</span></li>
+				<li>Selecting <span class="No-Break">a model</span></li>
+				<li>Preparing <span class="No-Break">the data</span></li>
+				<li>Training and validating <span class="No-Break">the model</span></li>
+				<li><span class="No-Break">Model insights</span></li>
+				<li>Other <span class="No-Break">use cases</span></li>
+			</ul>
+			<h1 id="_idParaDest-231"><a id="_idTextAnchor396"/>Technical requirements</h1>
+			<p>In this chapter, we will be using the Python libraries NetworkX, pandas, and scikit-learn. These libraries should be installed by now, so they should be ready for your use. If they are not installed, you can install Python libraries with <span class="No-Break">the following:</span></p>
+			<pre class="source-code">
+pip install &lt;library name&gt;</pre>
+			<p>For instance, to install NetworkX, you would <span class="No-Break">do this:</span></p>
+			<pre class="source-code">
+pip install networkx</pre>
+			<p>In <a href="B17105_04.xhtml#_idTextAnchor158"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, we also introduced a <strong class="source-inline">draw_graph()</strong> function that uses both NetworkX and <strong class="source-inline">scikit-network</strong>. You will need that code any time that we do network visualization. Keep <span class="No-Break">it handy!</span></p>
+			<p>The code for this chapter is on <span class="No-Break">GitHub: </span><a href="https://github.com/PacktPublishing/Network-Science-with-Python"><span class="No-Break">https://github.com/PacktPublishing/Network-Science-with-Python</span></a><span class="No-Break">.</span></p>
+			<h1 id="_idParaDest-232"><a id="_idTextAnchor397"/>Introducing ML</h1>
+			<p>ML is a<a id="_idIndexMarker694"/> set of techniques that enable computers to learn from patterns and behavior in data. It is often said that there are three different kinds of ML: <strong class="bold">Supervised</strong>, <strong class="bold">Unsupervised</strong>, and <span class="No-Break"><strong class="bold">Reinforcement</strong></span><span class="No-Break"> learning.</span></p>
+			<p>In<a id="_idIndexMarker695"/> supervised ML, an answer – called a <strong class="bold">label</strong> – is<a id="_idIndexMarker696"/> provided with the data to allow for an ML model to learn the patterns that will allow it to predict the correct answer. To put it simply, you give the model data <em class="italic">and</em> an answer, and it figures out how to <span class="No-Break">predict correctly.</span></p>
+			<p>In <a id="_idIndexMarker697"/>unsupervised ML, no answer is provided to the model. The <a id="_idIndexMarker698"/>goal is usually to find clusters of similar pieces of data. For instance, you could use clustering to identify the different types of news articles present in a dataset of news articles, or to find topics that exist in a corpus of text. This is similar to what we have done with <span class="No-Break">community detection.</span></p>
+			<p>In<a id="_idIndexMarker699"/> reinforcement learning, a <a id="_idIndexMarker700"/>model is given a goal and it gradually learns how to get to this goal. In many reinforcement learning demos, you’ll see a model play pong or another video game, or learn <span class="No-Break">to walk.</span></p>
+			<p>These are ultra-simplistic descriptions of the types of ML, and there are more variations (<strong class="bold">semi-supervised</strong> and so on). ML is a rich topic, so I encourage you to find books if this chapter interests you. For me, it pushed NLP into <span class="No-Break">an obse<a id="_idTextAnchor398"/>ssion.</span></p>
+			<h1 id="_idParaDest-233"><a id="_idTextAnchor399"/>Beginning with ML</h1>
+			<p>There are <a id="_idIndexMarker701"/>many guides and books on how to do sentiment analysis using NLP. There are very few guides and books that give a step-by-step demonstration of how to convert graph data into a format that can be used for classification with ML. In this chapter, you will see how to use graph data for <span class="No-Break">ML classification.</span></p>
+			<p>For this exercise, I created a little game I’m calling “Spot the Revolutionary.” As with the last two chapters, we will be using the networkx <em class="italic">Les Miserables</em> network as it contains enough nodes and communities to be interesting. In previous chapters, I pointed out that the revolutionary community was densely connected. As a reminder, this is what it <span class="No-Break">looks like:</span></p>
+			<div>
+				<div id="_idContainer160" class="IMG---Figure">
+					<img src="image/B17105_10_001.jpg" alt="Figure 10.1 – Les Miserables Les Amis de l’ABC network" width="770" height="526"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.1 – Les Miserables Les Amis de l’ABC network</p>
+			<p>Each member of the community is connected with each other member, for the most part. There are no connections with <span class="No-Break">outside people.</span></p>
+			<p>Other parts of the network <span class="No-Break">look different.</span></p>
+			<div>
+				<div id="_idContainer161" class="IMG---Figure">
+					<img src="image/B17105_10_002.jpg" alt="Figure 10.2 – Les Miserables whole network" width="992" height="660"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.2 – Les Miserables whole network</p>
+			<p>Even a visual inspection shows<a id="_idIndexMarker702"/> that in different parts of the network, nodes are are connecteded differently. The structure is different. In some places, connectivity resembles a star. In others, it resembles a mesh. Network metrics will give us these values, and ML models will be able to use them <span class="No-Break">for prediction.</span></p>
+			<p>We are going to use these metrics to play a game of “Spot the Revolutionary.” This will <span class="No-Break">be fun.</span></p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">I will not be explaining ML in much depth, only giving a preview of its capabilities. If you are interested in data science or software engineering, I strongly recommend that you spend some time learning about ML. It is not only for academics, mathematicians, and scientists. It gets complicated, so a foundation in mathematics and statistics is strongly recommended, but you should feel free to explore <span class="No-Break">the topic.</span></p>
+			<p>This chapter will not be a mathematics lesson. All work will be done via code. I’m going to show one example of using network data for classification. This is not the only use case. This is not at all the only use case for using network data with ML. I will also be showing only one model (Random Forest), not all <span class="No-Break">available models.</span></p>
+			<p>I’m also going to show <a id="_idIndexMarker703"/>that sometimes incorrect predictions can be as insightful as correct ones and how there are sometimes useful insights in <span class="No-Break">model predictions.</span></p>
+			<p>I’m going to show the workflow to go from graph data to prediction and insights so that you can use this in your own experiments. You don’t need a graph <strong class="bold">neural network</strong> (<strong class="bold">NN</strong>) for everything. This is totally possible with simpler models, and they can give good <span class="No-Break">insights, too.</span></p>
+			<p>Enough disclaimers. <span class="No-Break">Let<a id="_idTextAnchor400"/>’s go.</span></p>
+			<h1 id="_idParaDest-234"><a id="_idTextAnchor401"/>Data preparation and feature engineering</h1>
+			<p>Before we can use ML, we first need to collect our data and convert it into a format that the model can use. We <a id="_idIndexMarker704"/>can’t just feed the graph G to Random Forest and call it a day. We could feed a graph’s adjacency matrix and a set of labels to Random Forest and it’d work, but I want to showcase some feature engineering that we <span class="No-Break">can do.</span></p>
+			<p>Feature engineering <a id="_idIndexMarker705"/>is using domain knowledge to create additional features (most call them columns) that will be useful for our models. For instance, looking at the networks from the previous section, if we want to be able to spot the revolutionaries, then we may want to give our model additional data such as each node’s number of degrees (connections), betweenness centrality, closeness centrality, page rank, clustering, <span class="No-Break">and triangles:</span></p>
+			<ol>
+				<li>Let’s start by first building our network. This should be easy by now, as we have done this <span class="No-Break">several times:</span><pre class="source-code">
+import networkx as nx</pre><pre class="source-code">
+import pandas as pd</pre><pre class="source-code">
+G = nx.les_miserables_graph()</pre><pre class="source-code">
+df = nx.to_pandas_edgelist(G)[['source', 'target']] # dropping 'weight'</pre><pre class="source-code">
+G = nx.from_pandas_edgelist(df)</pre></li>
+			</ol>
+			<p>We took these steps in previous chapters, but as a reminder, the <em class="italic">Les Miserables</em> graph comes with edge weights, and I don’t want those. The first line loads the graph. The second line creates an edge list from the graph, dropping the edge weights. And the third line rebuilds the graph from the edge list, <span class="No-Break">without weights.</span></p>
+			<ol>
+				<li value="2">We should <a id="_idIndexMarker706"/>now have a useful graph. Let’s take <span class="No-Break">a look:</span><pre class="source-code">
+draw_graph(G)</pre></li>
+			</ol>
+			<p>That produces the <span class="No-Break">following graph:</span></p>
+			<div>
+				<div id="_idContainer162" class="IMG---Figure">
+					<img src="image/B17105_10_003.jpg" alt="Figure 10.3 – Les Miserables graph without node names" width="1440" height="1044"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.3 – Les Miserables graph without node names</p>
+			<p>Looks good! I can clearly see that there are several different clusters of nodes in this network and that other parts of the network are <span class="No-Break">more sparse.</span></p>
+			<p>But how do we convert this crazy tangled knot into something that an ML model can use? Well, we looked at centralities and other measures in previous chapters. So, we already have <a id="_idIndexMarker707"/>the foundation that we will use here. I’m going to create several DataFrames with the data that I want and then merge them together for use as <span class="No-Break">trai<a id="_idTextAnchor402"/>ning data.</span></p>
+			<h2 id="_idParaDest-235"><a id="_idTextAnchor403"/>Degrees</h2>
+			<p>The <strong class="bold">degrees</strong> are <a id="_idIndexMarker708"/>simply the number of connections that a node has with other nodes. We’ll grab <span class="No-Break">that first:</span></p>
+			<pre class="source-code">
+degree_df = pd.DataFrame(G.degree)
+degree_df.columns = ['person', 'degrees']
+degree_df.set_index('person', inplace=True)
+degree_df.head()</pre>
+			<p>We get the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer163" class="IMG---Figure">
+					<img src="image/B17105_10_004.jpg" alt="Figure 10.4 – Les Miserables feature engineering: degrees" width="326" height="364"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.4 – Les Miserables feature engineering: degrees</p>
+			<p>Let’s move on to the <a id="_idTextAnchor404"/><span class="No-Break">next step.</span></p>
+			<h2 id="_idParaDest-236"><a id="_idTextAnchor405"/>Clustering</h2>
+			<p>Next, we’ll grab<a id="_idIndexMarker709"/> the clustering coefficient, which tells us how densely connected the nodes are around a given node. A value of 1.0 means that every node is connected to every other node. 0.0 means that no neighbor nodes are connected to other <span class="No-Break">neighbor nodes.</span></p>
+			<p>Let’s <span class="No-Break">capture clustering:</span></p>
+			<pre class="source-code">
+clustering_df = pd.DataFrame(nx.clustering(G), index=[0]).T
+clustering_df.columns = ['clustering']
+clustering_df.head()</pre>
+			<p>This gives us the <span class="No-Break">clustering output:</span></p>
+			<div>
+				<div id="_idContainer164" class="IMG---Figure">
+					<img src="image/B17105_10_005.jpg" alt="Figure 10.5 – Les Miserables feature engineering: clustering" width="344" height="320"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.5 – Les Miserables feature engineering: clustering</p>
+			<p>This tells us that <strong class="bold">MlleBaptistine</strong> and <strong class="bold">MmeMagloire</strong> both are part of densely connected communities, meaning that these two also know the same people. <strong class="bold">Napoleon</strong> doesn’t have any overlap with other people, and neither <span class="No-Break">does </span><span class="No-Break"><strong class="bold">Cou<a id="_idTextAnchor406"/>ntessDeLo</strong></span><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-237"><a id="_idTextAnchor407"/>Triangles</h2>
+			<p><strong class="bold">Triangles</strong> are<a id="_idIndexMarker710"/> similar to clustering. Clustering has to do with how many triangles are found around a given node compared to the number of possible triangles. <strong class="source-inline">triangle_df</strong> is a count of how many triangles a given node is a part of. If a node is part of many different triangles, it is connected with many nodes in <span class="No-Break">a network:</span></p>
+			<pre class="source-code">
+triangle_df = pd.DataFrame(nx.triangles(G), index=[0]).T
+triangle_df.columns = ['triangles']
+triangle_df.head()</pre>
+			<p>This gives us <span class="No-Break">the following:</span></p>
+			<div>
+				<div id="_idContainer165" class="IMG---Figure">
+					<img src="image/B17105_10_006.jpg" alt="Figure 10.6 – Les Miserables feature engineering: triangles" width="326" height="302"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.6 – Les Miserables feature engineering: triangles</p>
+			<p>This is another way of understanding the connectedness of the nodes around a node. These nodes are people, so it is a way of understanding the connectedness of peopleto other people. Notice that the results are similar but not identical <span class="No-Break">to c<a id="_idTextAnchor408"/>lustering.</span></p>
+			<h2 id="_idParaDest-238"><a id="_idTextAnchor409"/>Betweenness centrality</h2>
+			<p><strong class="bold">Betweenness centrality</strong> has<a id="_idIndexMarker711"/> to do with a node’s placement between other nodes. As a reminder, in a hypothetical situation where there are three people (<em class="italic">A</em>, <em class="italic">B</em>, and <em class="italic">C</em>), and if <em class="italic">B</em> sits between <em class="italic">A</em> and <em class="italic">C</em>, then all information passing from <em class="italic">A</em> to <em class="italic">C</em> flows through person <em class="italic">B</em>, putting them in an important and influential position. That’s just one example of the usefulness of betweenness centrality. We can get this information by using the <span class="No-Break">following code:</span></p>
+			<pre class="source-code">
+betw_cent_df = pd.DataFrame(nx.betweenness_centrality(G), index=[0]).T
+betw_cent_df.columns = ['betw_cent']
+betw_cent_df.head()</pre>
+			<p>This gives us the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer166" class="IMG---Figure">
+					<img src="image/B17105_10_007.jpg" alt="Figure 10.7 – Les Miserables feature engineering: betweenness centrality" width="332" height="307"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.7 – Les Miserables feature engineering: betweenness <a id="_idTextAnchor410"/>centrality</p>
+			<h2 id="_idParaDest-239"><a id="_idTextAnchor411"/>Closeness centrality</h2>
+			<p><strong class="bold">Closeness centrality</strong> has <a id="_idIndexMarker712"/>to do with how close a given node is to all other nodes in a network. It has to do with the shortest path. As such, closeness centrality is computationally very slow for large networks. However, it will work just fine for the <em class="italic">Les Miserables</em> network, as this is a very <span class="No-Break">small network:</span></p>
+			<pre class="source-code">
+close_cent_df = pd.DataFrame(nx.closeness_centrality(G), index=[0]).T
+close_cent_df.columns = ['close_cent']
+close_cent_df.head()</pre>
+			<div>
+				<div id="_idContainer167" class="IMG---Figure">
+					<img src="image/B17105_10_008.jpg" alt="Figure 10.8 – Les Miserables feature engineering: closeness centrality" width="350" height="296"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.8 – Les Miserables feature engineering: closeness <a id="_idTextAnchor412"/>centrality</p>
+			<h2 id="_idParaDest-240"><a id="_idTextAnchor413"/>PageRank</h2>
+			<p>Finally, the <strong class="bold">PageRank</strong> algorithm <a id="_idIndexMarker713"/>was created by the founders of Google and is similar to other centrality measures in that it is useful for gauging the importance of a node in a network. Also, as betweenness centrality and closeness centrality become impractically slow as networks become large, <strong class="source-inline">pagerank</strong> remains useful even on large networks. As such, it is very commonly used to <span class="No-Break">gauge importance:</span></p>
+			<pre class="source-code">
+pr_df = pd.DataFrame(nx.pagerank(G), index=[0]).T
+pr_df.columns = ['pagerank']
+pr_df.head()</pre>
+			<p>This<a id="_idIndexMarker714"/> gives us <span class="No-Break"><em class="italic">Figure 10</em></span><span class="No-Break"><em class="italic">.9</em></span><span class="No-Break">.</span></p>
+			<div>
+				<div id="_idContainer168" class="IMG---Figure">
+					<img src="image/B17105_10_009.jpg" alt="Figure 10.9 – Les Miserables feature engineering: pagerank" width="363" height="299"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.9 – Les Miserables feature engineerin<a id="_idTextAnchor414"/>g: pagerank</p>
+			<h2 id="_idParaDest-241"><a id="_idTextAnchor415"/>Adjacency matrix</h2>
+			<p>Finally, we<a id="_idIndexMarker715"/> can include the <strong class="bold">adjacency matrix</strong> in our training data so that our models can use neighbor nodes as features for making predictions. For instance, let’s say that you have 10 friends but one of them is a criminal, and every person that friend introduces you to is also a criminal. You will probably learn over time that you shouldn’t associate with that friend or their friends. Your other friends do not have that problem. In your head, you’ve already begun to make judgments about that person and who they <span class="No-Break">associate with.</span></p>
+			<p>If we left the adjacency matrix out, the model would attempt to learn from the other features, but it’d have no contextual awareness of neighboring nodes. In the game of “Spot the Revolutionary,” it would use the centralities, clustering, degrees, and other features only, as it’d have no way of learning from <span class="No-Break">anything else.</span></p>
+			<p>We’re going to use the <a id="_idIndexMarker716"/>adjacency matrix. It feels almost like leakage (where the answer is hidden in another feature) because like often attracts like in a social network, but that also shows the usefulness of using network data with ML. You can drop the adjacency matrix if you feel that it is cheating. I <span class="No-Break">do not:</span></p>
+			<pre class="source-code">
+adj_df = nx.to_pandas_adjacency(G)
+adj_df.columns = ['adj_' + c.lower() for c in adj_df.columns]
+adj_df.head()</pre>
+			<p>This code outputs the <span class="No-Break">following DataFrame:</span></p>
+			<div>
+				<div id="_idContainer169" class="IMG---Figure">
+					<img src="image/B17105_10_010.jpg" alt="Figure 10.10 – Les Miserables feature engineering: adjacency matrix" width="1650" height="568"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.10 – Les Miserables feature engineering: adja<a id="_idTextAnchor416"/>cency matrix</p>
+			<h2 id="_idParaDest-242"><a id="_idTextAnchor417"/>Merging DataFrames</h2>
+			<p>Now that <a id="_idIndexMarker717"/>we have all of these useful features, it’s time to merge the DataFrames together. This is simple, but requires a few steps, as demonstrated in the <span class="No-Break">following code:</span></p>
+			<pre class="source-code">
+clf_df = pd.DataFrame()
+clf_df = degree_df.merge(clustering_df, left_index=True, right_index=True)
+clf_df = clf_df.merge(triangle_df, left_index=True, right_index=True)
+clf_df = clf_df.merge(betw_cent_df, left_index=True, right_index=True)
+clf_df = clf_df.merge(close_cent_df, left_index=True, right_index=True)
+clf_df = clf_df.merge(pr_df, left_index=True, right_index=True)
+clf_df = clf_df.merge(adj_df, left_index=True, right_index=True)
+clf_df.head(10)</pre>
+			<p>In the <a id="_idIndexMarker718"/>first step, I created an empty DataFrame just so that I could rerun the Jupyter cell over and over without creating duplicate columns with weird names. It just saves work and aggravation. Then, I sequentially merge the DataFrames into <strong class="source-inline">clf_df</strong>, based on the DataFrame indexes. The DataFrame indexes are character names from Les Miserables. This just makes sure that each row from each DataFrame is joined <span class="No-Break">together correctly.</span></p>
+			<div>
+				<div id="_idContainer170" class="IMG---Figure">
+					<img src="image/B17105_10_011.jpg" alt="Figure 10.11 – Les Miserables feature engineering: combined training data" width="1650" height="589"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.11 – Les Miserables feature engineering: combined <a id="_idTextAnchor418"/>training data</p>
+			<h2 id="_idParaDest-243"><a id="_idTextAnchor419"/>Adding labels</h2>
+			<p>Finally, we <a id="_idIndexMarker719"/>need to add labels for the revolutionaries. I have done the work of quickly looking up the names of the members of Les Amis de l’ABC (Friends of the ABC), which is the name of the group of revolutionaries. First, I will add the members to a Python list, and then I’ll do a spot check to make sure that I’ve spelled their <span class="No-Break">names correctly:</span></p>
+			<pre class="source-code">
+revolutionaries = ['Bossuet', 'Enjolras', 'Bahorel', 'Gavroche', 'Grantaire',
+                   'Prouvaire', 'Courfeyrac', 'Feuilly', 'Mabeuf', 'Marius', 'Combeferre']
+# spot check
+clf_df[clf_df.index.isin(revolutionaries)]</pre>
+			<p>This produces <a id="_idIndexMarker720"/>the <span class="No-Break">following DataFrame:</span></p>
+			<div>
+				<div id="_idContainer171" class="IMG---Figure">
+					<img src="image/B17105_10_012.jpg" alt="Figure 10.12 – Les Misérables feature engineering: Friends of the ABC members" width="1650" height="651"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.12 – Les Misérables feature engineering: Friends of the ABC members</p>
+			<p>This looks perfect. The list had 11 names, and the DataFrame has 11 rows. To create training data for supervised ML, we need to add a <strong class="bold">label</strong> field so that the model will be able to learn to predict an answer correctly. We’re going to use the same Python list as previously, and we’re going to give each of these members a label <span class="No-Break">of </span><span class="No-Break"><strong class="source-inline">1</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+clf_df['label'] = clf_df.index.isin(revolutionaries).astype(int)</pre>
+			<p>It’s that easy. Let’s take a quick look at the DataFrame just to make sure we have labels. I’ll sort on the index so that we can see a few <strong class="source-inline">1</strong> labels in <span class="No-Break">the data:</span></p>
+			<pre class="source-code">
+clf_df[['label']].sort_index().head(10)</pre>
+			<p>This outputs <span class="No-Break">the following:</span></p>
+			<div>
+				<div id="_idContainer172" class="IMG---Figure">
+					<img src="image/B17105_10_013.jpg" alt="Figure 10.13 – Les Miserables feature engineering: label spot check" width="246" height="576"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.13 – Les Miserables feature engineering: label spot check</p>
+			<p>Perfect. We<a id="_idIndexMarker721"/> have nodes, and they each have a label. A label of <strong class="bold">1</strong> means that they are a member of Friends of the ABC, and a label of <strong class="bold">0</strong> means that they are not. With that, our training data is <a id="_idTextAnchor420"/>ready <span class="No-Break">for use.</span></p>
+			<h1 id="_idParaDest-244"><a id="_idTextAnchor421"/>Selecting a model</h1>
+			<p>For<a id="_idIndexMarker722"/> this exercise, my goal is to simply show you how network data may be useful in ML, not to go into great detail about ML. There are many, many, many thick books on the subject. This is a book about how NLP and networks can be used together to understand the hidden strings that exist around us and the influence that they have on us. So, I am going to speed past the discussion on how different models work. For this exercise, we are going to use one very useful and powerful model that often works well enough. This <a id="_idIndexMarker723"/>model is called <span class="No-Break"><strong class="bold">Random Forest</strong></span><span class="No-Break">.</span></p>
+			<p>Random Forest can take both numeric and categorical data as input. Our chosen features should work very well for this exercise. Random Forest is also easy to set up and experiment with, and it’s also very easy to learn what the model found most useful <span class="No-Break">for predictions.</span></p>
+			<p>Other<a id="_idIndexMarker724"/> models would work. I <a id="_idIndexMarker725"/>attempted to use <strong class="bold">k-nearest neighbors</strong> and had nearly the same level of success, and I’m sure that <strong class="bold">Logistic regression</strong> would <a id="_idIndexMarker726"/>have also worked well after some additional <a id="_idIndexMarker727"/>preprocessing. <strong class="bold">XGBoost</strong> and <strong class="bold">SVM</strong>s would have also worked. Some of you might also be tempted to use an NN. Please <a id="_idIndexMarker728"/>feel free. I chose to not use an NN, as the setup is more difficult and the training time is typically longer, for an occasional tiny boost to accuracy that may also just be a fluke. Experiment with models! It’s a good way to learn, even when you are lea<a id="_idTextAnchor422"/>rning what <em class="italic">not</em> <span class="No-Break">to do.</span></p>
+			<h1 id="_idParaDest-245"><a id="_idTextAnchor423"/>Preparing the data</h1>
+			<p>We <a id="_idIndexMarker729"/>should do a few more data checks. Most importantly, let’s check the balance between classes in the <span class="No-Break">training data:</span></p>
+			<ol>
+				<li value="1">Start with the <span class="No-Break">following code:</span><pre class="source-code">
+clf_df['label'].value_counts()</pre><pre class="source-code">
+…</pre><pre class="source-code">
+0    66</pre><pre class="source-code">
+1    11</pre><pre class="source-code">
+Name: label, dtype: int64</pre></li>
+			</ol>
+			<p>The data is imbalanced, but not <span class="No-Break">too badly.</span></p>
+			<ol>
+				<li value="2">Let’s get this in percentage form, just to make this a little easier <span class="No-Break">to understand:</span><pre class="source-code">
+clf_df['label'].value_counts(normalize=True)</pre><pre class="source-code">
+…</pre><pre class="source-code">
+0    0.857143</pre><pre class="source-code">
+1    0.142857</pre><pre class="source-code">
+Name: label, dtype: float64</pre></li>
+			</ol>
+			<p>It looks like we have about an 86/14 balance between the classes. Not awful. Keep this in mind, because the model should be able to predict with about 86% accuracy just based on the imbalance alone. It won’t be an impressive model at all if it only <span class="No-Break">hits 86%.</span></p>
+			<ol>
+				<li value="3">Next, we <a id="_idIndexMarker730"/>need to cut up our data for our model. We will use the features as our <strong class="source-inline">X</strong> data, and the answers as our <strong class="source-inline">y</strong> data. As the label was added last, this will <span class="No-Break">be simple:</span><pre class="source-code">
+X_cols = clf_df.columns[0:-1]</pre><pre class="source-code">
+X = clf_df[X_cols]</pre><pre class="source-code">
+y = clf_df['label'].values</pre></li>
+			</ol>
+			<p><strong class="source-inline">X_cols</strong> is every column except for the last one, which is the label. <strong class="source-inline">X</strong> is a DataFrame containing only <strong class="source-inline">X_cols</strong> fields, and <strong class="source-inline">y</strong> is an array of our answers. Don’t take my word for it. Let’s do a <span class="No-Break">spot check.</span></p>
+			<ol>
+				<li value="4">Run <span class="No-Break">this code:</span><pre class="source-code">
+X.head()</pre></li>
+			</ol>
+			<p>This will show <span class="No-Break">a DataFrame.</span></p>
+			<ol>
+				<li value="5">Scroll all the way to the right on the DataFrame. If you don’t see the <strong class="bold">label</strong> column, we are good <span class="No-Break">to go:</span><pre class="source-code">
+y[0:5]</pre></li>
+			</ol>
+			<p>This will show the first five labels in <strong class="source-inline">y</strong>. This is an array. We are <span class="No-Break">all set.</span></p>
+			<p>Finally, we need to split the data into training data and test data. The training data will be used to train the model, and the test data is completely unknown to the model. We do not care about the model accuracy on the training data. Remember that. We do not care about the model accuracy or any performance metrics about the training data. We only care about how the model does on unseen data. That will tell us how well it generalizes and how well it will work in the wild. Yes, I understand that this model will not be useful in the wild, but that is <span class="No-Break">the idea.</span></p>
+			<ol>
+				<li value="6">We will split the data using the <strong class="source-inline">scikit-learn</strong> <span class="No-Break"><strong class="source-inline">train_test_split</strong></span><span class="No-Break"> function:</span><pre class="source-code">
+from sklearn.model_selection import train_test_split</pre><pre class="source-code">
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1337, test_size=0.4)</pre></li>
+			</ol>
+			<p>Since we <a id="_idIndexMarker731"/>have so little training data, and since there are so few members of Friends of the ABC, I set <strong class="source-inline">test_size</strong> to <strong class="source-inline">0.4</strong>, which is twice as high as the default. If there were less imbalance, I would have reduced this to <strong class="source-inline">0.3</strong> or <strong class="source-inline">0.2</strong>. If I really wanted the model to have as much training data as possible and I was comfortable that it would do well enough, I might even experiment with <strong class="source-inline">0.1</strong>. But for this exercise, I went with <strong class="source-inline">0.4</strong>. That’s <span class="No-Break">my reasoning.</span></p>
+			<p>This function does a 60/40 split of the data, putting 60% of the data into <strong class="source-inline">X_train</strong> and <strong class="source-inline">y_train</strong>, and the other 40% into <strong class="source-inline">X_test</strong> and <strong class="source-inline">y_test</strong>. This sets aside 40% of the data as unseen data that the model will not be aware of. If the model does well against this 40% unseen data, then it’s a <span class="No-Break">decent model.</span></p>
+			<p>We are now ready to train our model a<a id="_idTextAnchor424"/>nd see how well <span class="No-Break">it does!</span></p>
+			<h1 id="_idParaDest-246"><a id="_idTextAnchor425"/>Training and validating the model</h1>
+			<p>Model training <a id="_idIndexMarker732"/>gets the most attention when people talk about ML but it is usually the easiest step, once the data has been collected and prepared. A lot of time and energy can and should be spent on optimizing your models, via <strong class="bold">hyperparameter tuning</strong>. Whichever<a id="_idIndexMarker733"/> model you are interested in learning about and using, do<a id="_idIndexMarker734"/> some research on how to tune the model, and any additional steps required for <span class="No-Break">data preparation.</span></p>
+			<p>With this simple network, the default Random Forest model was already optimal. I ran through several checks, and the default model did well enough. Here’s <span class="No-Break">the code:</span></p>
+			<pre class="source-code">
+from sklearn.ensemble import RandomForestClassifier
+clf = RandomForestClassifier(random_state=1337, n_jobs=-1, n_estimators=100)
+clf.fit(X_train, y_train)
+train_acc = clf.score(X_train, y_train)
+test_acc = clf.score(X_test, y_test)
+print('train_acc: {} - test_acc: {}'.format(train_acc, test_acc))</pre>
+			<p>We are <a id="_idIndexMarker735"/>using a Random Forest classifier, so we first need to import the model from the <strong class="source-inline">sklearn.ensemble</strong> module. Random Forest uses an ensemble of decision trees to make its predictions. Each ensemble is trained on different features from <a id="_idIndexMarker736"/>the training data, and then a final prediction <span class="No-Break">is made.</span></p>
+			<p>Set <strong class="source-inline">random_state</strong> to whatever number you like. I like <strong class="source-inline">1337</strong>, as an old hacker joke. It’s <em class="italic">1337</em>, <em class="italic">leet</em>, <em class="italic">elite</em>. Setting <strong class="source-inline">n_jobs</strong> to <strong class="source-inline">-1</strong> ensures that all CPUs will be used in training the model. Setting <strong class="source-inline">n_estimators</strong> to <strong class="source-inline">100</strong> will allow for 100 ensembles of decision trees. The number of estimators can be experimented with. Increasing it can be helpful, but in this case, it <span class="No-Break">was not.</span></p>
+			<p>Finally, I collect and print the training accuracy and test accuracy. How are <span class="No-Break">our scores?</span></p>
+			<pre class="source-code">
+<strong class="bold">train_acc: 1.0 - test_acc: 0.9354838709677419</strong></pre>
+			<p>Not bad results on the test set. This set is unseen data, so we want it to be high. As mentioned before, due to class imbalance, the model should at least get 86% accuracy simply due to 86% of the labels being in the majority class. 93.5% is not bad. However, you should be <a id="_idIndexMarker737"/>aware of <strong class="bold">underfitting</strong> and <strong class="bold">overfitting</strong>. If both <a id="_idIndexMarker738"/>your train and test accuracy are very low, the model is likely underfitting the data, and you likely need more data. However, if the training accuracy is much higher than the test set accuracy, this can be a sign of overfitting, and this model appears to be overfitting. However, with as little data as we have, and for the sake of this experiment, good enough is good <span class="No-Break">enough today.</span></p>
+			<p>It is important that you know that model accuracy is never enough. It doesn’t tell you nearly enough about how the model is doing, especially how it is doing with the minority class. We should take a look at the confusion matrix and classification report to learn more. To use both of these, we should first place the predictions for <strong class="source-inline">X_test</strong> into <span class="No-Break">a variable:</span></p>
+			<pre class="source-code">
+predictions = clf.predict(X_test)
+predictions
+…
+<strong class="bold">array([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,1, 0, 0, 1, 0, 0, 1, 0, 1])</strong></pre>
+			<p>Great. We have an array of predictions. Next, let’s import the <strong class="source-inline">confusion_matrix</strong> and <span class="No-Break"><strong class="source-inline">classification_report</strong></span><span class="No-Break"> functions:</span></p>
+			<pre class="source-code">
+from sklearn.metrics import confusion_matrix, classification_report, plot_confusion_matrix</pre>
+			<p>We can use <a id="_idIndexMarker739"/>both by feeding both of them the <strong class="source-inline">X_test</strong> data as well as the predictions <a id="_idIndexMarker740"/>made against <strong class="source-inline">X_test</strong>. First, let’s look at the <span class="No-Break">confusion matrix:</span></p>
+			<pre class="source-code">
+confusion_matrix(y_test, predictions)
+ …
+array([[26,  2],
+             [ 0,  3]], dtype=int64)</pre>
+			<p>If this isn’t clear enough, we can also <span class="No-Break">visualize it:</span></p>
+			<pre class="source-code">
+plot_confusion_matrix(clf, X_test, y_test)</pre>
+			<p>This produces the <span class="No-Break">following matrix.</span></p>
+			<div>
+				<div id="_idContainer173" class="IMG---Figure">
+					<img src="image/B17105_10_014.jpg" alt="Figure 10.14 – Model confusion matrix" width="302" height="260"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.14 – Model confusion matrix</p>
+			<p>The <a id="_idIndexMarker741"/>confusion matrix shows how well a model predicts by classes. The <a id="_idIndexMarker742"/>figure depicts this well. The <em class="italic">y-a</em>xis shows the true label of either <strong class="bold">0</strong> or <strong class="bold">1</strong>, and the <em class="italic">x-a</em>xis shows the predicted label of either <strong class="bold">0</strong> or <strong class="bold">1</strong>. I can see that 26 of the characters were correctly predicted to not be members of Friends of the ABC (revolutionaries). Our model correctly predicted three of the members of Friends of the ABC, but it also predicted that two of the non-members were members. We should look into that! Sometimes the misses can help us find problems in the data, or they’ll shine a light on an <span class="No-Break">interesting insight.</span></p>
+			<p>I also find it extremely helpful to take a look at the <span class="No-Break">classification report:</span></p>
+			<pre class="source-code">
+report = classification_report(y_test, predictions)
+print(report)</pre>
+			<p>We get the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer174" class="IMG---Figure">
+					<img src="image/B17105_10_015.jpg" alt="Figure 10.15 – Model classification report" width="837" height="280"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.15 – Model classification report</p>
+			<p>This<a id="_idIndexMarker743"/> report clearly shows us that the model does very well at predicting <a id="_idIndexMarker744"/>non-members of Friends of the ABC, but it does less well at predicting the revolutionaries. Why is that? What is it getting tripped up by? Looking at the networks, the model should have been able to learn that there is a clear difference in the structure of different groups of people, especially comparing the community of Friends of the ABC against everyone else. What gives?! Let’s build a simple DataFrame <span class="No-Break">to check:</span></p>
+			<pre class="source-code">
+check_df = X_test.copy()
+check_df['label'] = y_test
+check_df['prediction'] = predictions
+check_df = check_df[['label', 'prediction']]
+check_df.head()</pre>
+			<p>We get the <span class="No-Break">following DataFrame:</span></p>
+			<div>
+				<div id="_idContainer175" class="IMG---Figure">
+					<img src="image/B17105_10_016.jpg" alt="Figure 10.16 – DataFrame for prediction checks" width="448" height="301"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.16 – DataFrame for prediction checks</p>
+			<p>Now let’s <a id="_idIndexMarker745"/>create<a id="_idIndexMarker746"/> a mask to look up all rows where the label does not match <span class="No-Break">the prediction:</span></p>
+			<pre class="source-code">
+mask = check_df['label'] != check_df['prediction']
+check_df[mask]</pre>
+			<p>That gives us <span class="No-Break"><em class="italic">Figure 10</em></span><span class="No-Break"><em class="italic">.17</em></span><span class="No-Break">.</span></p>
+			<div>
+				<div id="_idContainer176" class="IMG---Figure">
+					<img src="image/B17105_10_017.jpg" alt="Figure 10.17 – DataFrame of missed predictions" width="424" height="152"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.17 – DataFrame of missed predictions</p>
+			<p>OK, now we can see what the model got wrong, but why? To save you some time, I looked into both of these characters. Joly actually <em class="italic">is</em> a member of Friends of the ABC, and Madame Hucheloup runs a cafe where members of Friends of the ABC regularly meet. She was the proprietress of the Corinthe Tavern, the meeting place and last defense of the members! Because she was connected with members of the group, the model predicted that she also was one <span class="No-Break">of them.</span></p>
+			<p>To be fair, I bet a<a id="_idIndexMarker747"/> human <a id="_idIndexMarker748"/>might have made the same judgment about Madame Hucheloup! To me, this is a <span class="No-Break">beautiful misclassification!</span></p>
+			<p>The next steps would be to definitely give Joly a correct label and retrain the model. I would leave Madame Hucheloup as is, as she is not a member, but if I were counter-insurgency, I would keep an eye <span class="No-Break">on her.</span></p>
+			<p>In short, the model did very well, in my opinion, and<a id="_idTextAnchor426"/> it did so entirely using <span class="No-Break">graph data.</span></p>
+			<h1 id="_idParaDest-247"><a id="_idTextAnchor427"/>Model insights</h1>
+			<p>To me, the <a id="_idIndexMarker749"/>model insights are more exciting than building and using the models for prediction. I enjoy learning about the world around me, and ML models (and networks) allow me to understand the world in a way that my eyes do not. We cannot see all of the lines that connect us as people, and we cannot easily understand influence based on how the people around us are strategically placed in the social networks that exist in real life. These models can help with that! Networks can provide the structure to extract contextual awareness of information flow and influence. ML can tell us which of these pieces of information is most useful in understanding something. Sometimes, ML can cut right through the noise and get right to the signals that affect <span class="No-Break">our lives.</span></p>
+			<p>With the model that we just built, one insight is that the book <em class="italic">Les Miserables</em> has different characters by type in different network structures. Revolutionaries are close to each other and tightly connected. Students are also densely connected, and I’m surprised and pleased that the model did not false out on a lot of students. Other characters in the book have very few connections, and their neighbors are sparsely connected. I think it’s beautiful that the author put so much work into defining the social network that exists in this story. It can give a new appreciation for the creation of <span class="No-Break">the story.</span></p>
+			<p>But what features were most important to the model that helped it make its predictions so well? Let’s take a look. Random Forest makes this very easy <span class="No-Break">for us!</span></p>
+			<p>You can get to<a id="_idIndexMarker750"/> the <strong class="bold">feature importances</strong> very easily by <span class="No-Break">doing this:</span></p>
+			<pre class="source-code">
+clf.feature_importances_</pre>
+			<p>But this data<a id="_idIndexMarker751"/> is not very useful in this format. It is much more useful if you put the feature importances into a DataFrame, as they can then be sorted <span class="No-Break">and visualized:</span></p>
+			<pre class="source-code">
+importance_df = pd.DataFrame(clf.feature_importances_, index=X_test.columns)
+importance_df.columns = ['value']
+importance_df.sort_values('value', ascending=False, inplace=True)
+importance_df.head()</pre>
+			<p>We get <span class="No-Break">this DataFrame:</span></p>
+			<div>
+				<div id="_idContainer177" class="IMG---Figure">
+					<img src="image/B17105_10_018.jpg" alt="Figure 10.18 – DataFrame for feature importances" width="327" height="569"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.18 – DataFrame for feature importances</p>
+			<p>These are the<a id="_idIndexMarker752"/> importances in numerical format. This shows the 10 features that the model found most useful in making predictions. Notably, a character’s connection to Bossuet and Enjolras was a good indicator of whether a character was a revolutionary or not. Out of the network features, triangles was the only one to make the top 10. The rest of the important features came from the adjacency matrix. Let’s visualize this as a bar chart so that we can see more, as well as the level <span class="No-Break">of importance:</span></p>
+			<pre class="source-code">
+import matplotlib.pyplot as plt
+importance_df[0:20].plot.barh(figsize=(10,8)).invert_yaxis()</pre>
+			<p>We get the <span class="No-Break">following plot:</span></p>
+			<div>
+				<div id="_idContainer178" class="IMG---Figure">
+					<img src="image/B17105_10_019.jpg" alt="Figure 10.19 – Horizontal bar chart of feature importances" width="1506" height="924"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.19 – Horizontal bar chart of feature importances</p>
+			<p>Much better. This<a id="_idIndexMarker753"/> is much easier to look at, and it shows exactly how useful the model found each <span class="No-Break">individual feature.</span></p>
+			<p>As a side note, you can use feature importances to aggressively identify features that you can cut out of your training data, making for leaner models. I often create a baseline Random Forest model to assist in aggressive feature selection. Aggressive feature selection is what I call it when I ruthlessly cut data that I do not need before training models. For this model, I did not do aggressive feature selection. I used<a id="_idTextAnchor428"/> all of the data that I <span class="No-Break">pulled together.</span></p>
+			<h1 id="_idParaDest-248"><a id="_idTextAnchor429"/>Other use cases</h1>
+			<p>While this <a id="_idIndexMarker754"/>may be interesting, most of us don’t hunt revolutionaries as part of our day jobs. So, what good is this? Well, there are lots of uses for doing predictions against networks. Lately, graph ML has gotten a lot of interest, but most articles and books tend to showcase models built by other people (not how to build them from scratch), or use NNs. This is fine, but it’s complicated, and not <span class="No-Break">always practical.</span></p>
+			<p>This approach that I showed is lightweight and practical. If you have network data, you could do <span class="No-Break">something similar.</span></p>
+			<p>But what <a id="_idIndexMarker755"/>other use cases are there? For me, the ones I’m most interested in are bot detection, and the detection of artificial amplification. How would we do that? For bot detection, you may want to look at features such as the age of the account in days, the number of posts made over time (real people tend to slowly learn how to use a social network before becoming active), and so on. For artificial amplification, you might look at how many followers an account picks up for each tweet that they make. For instance, if an account came online a week ago, made 2 posts, and picked up 20 million followers, what caused that kind of growth? Organic growth is much slower. Perhaps they brought followers from another social network. Perhaps their account was pushed by hundreds <span class="No-Break">of blogs.</span></p>
+			<p>What other use cases can you think of? Be creative. You know what networks are now, and you know how to build them and work with them. What would<a id="_idTextAnchor430"/> you like to predict or <span class="No-Break">better understand?</span></p>
+			<h1 id="_idParaDest-249"><a id="_idTextAnchor431"/>Summary</h1>
+			<p>We did it! We made it to the end of another chapter. I truly hope you found this chapter especially interesting because there are so few sources that explain how to do this from scratch. One of the reasons I decided to write this book is because I was hoping that ideas like this would take off. So, I hope this chapter grabbed your attention and sparked <span class="No-Break">your creativity.</span></p>
+			<p>In this chapter, we transformed an actual network into training data that we could use for machine learning. This was a simplified example, but the steps will work for any network. In the end, we created a model that was able to identify members of Friends of the ABC revolutionary group, though it was a very simple model and not suitable for <span class="No-Break">anything real-world.</span></p>
+			<p>The next chapter is going to be very similar to this one, but we will be using unsupervised ML to identify nodes that are similar to other nodes. Very likely, unsupervised ML will also identify members of Friends of the ABC, but it will likely also bring out other <span class="No-Break">interesting insights.</span></p>
+		</div>
+	</div>
+</div>
+</body></html>

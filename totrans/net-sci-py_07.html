@@ -1,0 +1,788 @@
+<html><head></head><body>
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer123" class="IMG---Figure">
+			<h1 id="_idParaDest-171" class="chapter-number"><a id="_idTextAnchor261"/>7</h1>
+			<h1 id="_idParaDest-172"><a id="_idTextAnchor262"/>Whole Network Analysis</h1>
+			<p><a id="_idTextAnchor263"/>In previous chapters, we spent a lot of time covering how networks can be constructed using text and how cleanup can be done on networks. In this chapter, we are moving on <a id="_idIndexMarker469"/>to <strong class="bold">whole network analysis</strong>. For the sake of simplicity, I will call it <strong class="bold">WNA</strong>. WNA is done to get the lay of the land, to understand the denseness of a network, which nodes are most important in various ways, which communities exist, and so forth. I’m going to cover material that I have found useful, which is a bit different from what is found in most <strong class="bold">social network analysis</strong> (<strong class="bold">SNA</strong>) or network science books. I do applied network science every day, and my goal is to showcase some of the options that are available to allow readers to very quickly get started in <span class="No-Break">network analysis.</span></p>
+			<p>Network science and SNA are both very rich topics, and if you find any section of this chapter especially interesting, I encourage you to do your own research to learn more. Throughout this book, I will reference certain sections of NetworkX documentation. Be aware that there are many additional non-covered capabilities on those reference pages, and it can be insightful to learn about lesser-used functions, what they do, and how they can <span class="No-Break">be used.</span></p>
+			<p>NetworkX’s online documentation shares links to journal articles, so there is plenty to read <span class="No-Break">and learn.</span></p>
+			<p>As you read this chapter, I want you to consider the problems that you work on and try to find ways that you can use what I am describing in your own work. Once you begin working with networks, you will see that they are everywhere, and once you learn how to analyze and manipulate them, then a world of opportunity <span class="No-Break">opens up.</span></p>
+			<p>We will cover the <span class="No-Break">following topics:</span></p>
+			<ul>
+				<li>Creating baseline <span class="No-Break">WNA questions</span></li>
+				<li>WNA <span class="No-Break">in action</span></li>
+				<li><span class="No-Break">Comparing centralities</span></li>
+				<li><span class="No-Break">Visualizing subgraphs</span></li>
+				<li>Investigating <span class="No-Break">connected components</span></li>
+				<li>Understanding <span class="No-Break">network layers</span></li>
+			</ul>
+			<h1 id="_idParaDest-173"><a id="_idTextAnchor264"/>Technical requirements</h1>
+			<p>In this chapter, we will be using the Python libraries NetworkX and pandas. Both of these libraries should be installed by now, so they should be ready for your use. If they are not installed, you can install Python libraries with <span class="No-Break">the following:</span></p>
+			<pre class="source-code">
+pip install &lt;library name&gt;</pre>
+			<p>For instance, to install NetworkX, you would do <span class="No-Break">the following:</span></p>
+			<pre class="source-code">
+pip install networkx</pre>
+			<p>In <a href="B17105_04.xhtml#_idTextAnchor158"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, we also introduced a <strong class="source-inline">draw_graph()</strong> function that uses both NetworkX and <strong class="source-inline">Scikit-Network</strong>. You will need that code anytime that we do network visualization. Keep <span class="No-Break">it handy!</span></p>
+			<p>You can find all of the code in this chapter in the GitHub <span class="No-Break">repository: </span><a href="https://github.com/PacktPublishing/Network-Science-with-Python"><span class="No-Break">https://github.com/PacktPublishing/Network-Science-with-Python</span></a><span class="No-Break">.</span><a id="_idTextAnchor265"/></p>
+			<h1 id="_idParaDest-174"><a id="_idTextAnchor266"/>Creating baseline WNA questions</h1>
+			<p>I often jot <a id="_idIndexMarker470"/>down questions that I have before doing any kind of analysis. This sets the context of what I am looking for and sets up a framework for me to pursue <span class="No-Break">those answers.</span></p>
+			<p>In doing any kind of WNA, I am interested in finding answers to each of <span class="No-Break">these questions:</span></p>
+			<ul>
+				<li>How big is <span class="No-Break">the network?</span></li>
+				<li>How complex is <span class="No-Break">the network?</span></li>
+				<li>What does the network visually <span class="No-Break">look like?</span></li>
+				<li>What are the most important nodes in <span class="No-Break">the network?</span></li>
+				<li>Are there islands, or just one <span class="No-Break">big continent?</span></li>
+				<li>What communities can be found in <span class="No-Break">the network?</span></li>
+				<li>What bridges exist in <span class="No-Break">the network?</span></li>
+				<li>What do the layers of the <span class="No-Break">network reveal?</span></li>
+			</ul>
+			<p>These <a id="_idIndexMarker471"/>questions give me a start that I can use as a task list for running through network analysis. This allows me to have a disciplined approach when doing network analysis, and not just chase my own curiosity. Networks are noisy and chaotic, and this scaffolding gives me something to use to <span class="No-Break">stay focuse<a id="_idTextAnchor267"/>d.</span></p>
+			<h2 id="_idParaDest-175"><a id="_idTextAnchor268"/>Revised SNA questions</h2>
+			<p>In this chapter, we<a id="_idIndexMarker472"/> will be using a K-pop social network. You can learn more about this network data in <a href="B17105_02.xhtml#_idTextAnchor048"><span class="No-Break"><em class="italic">Chapter 2</em></span></a><span class="No-Break">.</span></p>
+			<p>My goal is to understand the shape of the network and how information flows between individuals and communities. I also want to be able to explore different levels of the network, as if I am peeling an onion. The core is often <span class="No-Break">especially interesting.</span></p>
+			<p>As this is a social network, I have additional questions beyond the previous <span class="No-Break">baseline questions:</span></p>
+			<ul>
+				<li>How big is the social network? What does <span class="No-Break">this mean?</span></li>
+				<li>How complex and interconnected is <span class="No-Break">the network?</span></li>
+				<li>What does the network visually <span class="No-Break">look like?</span></li>
+				<li>Who are the most important people and organizations in <span class="No-Break">the network?</span></li>
+				<li>Is there just one giant cluster in the network, or are there isolated pockets <span class="No-Break">of people?</span></li>
+				<li>What communities can be found in <span class="No-Break">the network?</span></li>
+				<li>What bridges exist in <span class="No-Break">the network?</span></li>
+				<li>What do the layers of the <span class="No-Break">network reve<a id="_idTextAnchor269"/>al?</span></li>
+			</ul>
+			<h2 id="_idParaDest-176"><a id="_idTextAnchor270"/>Social network analysis revisited</h2>
+			<p>In <a href="B17105_02.xhtml#_idTextAnchor048"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>, <em class="italic">Network Analysis</em>, I described the definition, origins, and uses of network science and SNA. Although these are two independent fields of study, there is so much overlap that I consider the social network to be a set of techniques that should be rolled up into network science. This is because SNA can make great use of network science tools and techniques, and network science can be made a lot more interesting by applying it to social networks. I personally do not distinguish between <span class="No-Break">the two.</span></p>
+			<p>What <em class="italic">is</em> social network analysis? In my view, it is a different perspective on network analysis, from a <a id="_idIndexMarker473"/>social angle. Network science has to do with how networks are constructed, the properties of networks, and how networks evolve over time. In social network analysis, we are interested in getting a bit more personal. We want to know <em class="italic">who</em> the important people and organizations are that exist in a network, which individuals serve as bridges between communities, and which communities exist and why <span class="No-Break">they exist.</span></p>
+			<p><strong class="bold">Content analysis</strong> is where the marriage of NLP and network science is most important. NLP allows<a id="_idIndexMarker474"/> for the extraction of entities (people, places, and organizations) and predicts the sentiment of classifying text. Network science and SNA allow for understanding much more about the relationships that exist in these networks. So, with NLP and network analysis, you have both content context as well as relationship context. This is a powerful synergy, where <em class="italic">1 + 1 = </em><span class="No-Break"><em class="italic">3</em></span><span class="No-Break">.</span></p>
+			<p>In this chapter, we are not going to be doing any NLP. I will explain some capabilities of network science and SNA. So, let’s <span class="No-Break">get started!</span></p>
+			<h1 id="_idParaDest-177"><a id="_idTextAnchor271"/>WNA in action</h1>
+			<p>As<a id="_idIndexMarker475"/> mentioned in the previous chapter, in NetworkX, you are able to construct networks as either undirected, directed, multi-, or multi-directed graphs. In this chapter, we’re going to use an undirected graph, as I want to show how certain functionality can be used to understand networks. Just know this: what I am about to show has different implications if you use one of the other types of networks. You also have more options to explore when you use directed networks, such as investigating <strong class="source-inline">in_degrees</strong> and <strong class="source-inline">out_degrees</strong>, not just degrees <span class="No-Break">in g<a id="_idTextAnchor272"/>eneral.</span></p>
+			<h2 id="_idParaDest-178"><a id="_idTextAnchor273"/>Loading data and creating networks</h2>
+			<p>The first thing we<a id="_idIndexMarker476"/> need to do is construct<a id="_idIndexMarker477"/> our graph. We cannot analyze what we do <span class="No-Break">not have:</span></p>
+			<ol>
+				<li>You can read the K-pop edge list from my GitHub <span class="No-Break">like so:</span><pre class="source-code">
+import pandas as pd</pre><pre class="source-code">
+data = 'https://raw.githubusercontent.com/itsgorain/datasets/main/networks/kpop/kpop_edgelist.csv'</pre><pre class="source-code">
+df = pd.read_csv(data)</pre><pre class="source-code">
+df['source'] = df['source'].str[0:16]</pre><pre class="source-code">
+df['target'] = df['target'].str[0:16]</pre><pre class="source-code">
+df.head()</pre></li>
+			</ol>
+			<p>Previewing the pandas DataFrame, we can see that there are columns for <strong class="source-inline">'source'</strong> and <strong class="source-inline">'target'</strong>. This is exactly what NetworkX is looking for to build a graph. If you had wanted to name the graph columns differently, NetworkX would have allowed you to specify your own source and <span class="No-Break">target columns.</span></p>
+			<ol>
+				<li value="2">Looking at the shape of the edge list, we can see that there are 1,286 edges in the <span class="No-Break">edge list:</span><pre class="source-code">
+df.shape[0]</pre><pre class="source-code">
+<strong class="bold">1286</strong></pre></li>
+			</ol>
+			<p>Remember, an edge is a relationship between one node and another, or between one node and itself, which is known <a id="_idIndexMarker478"/>as <span class="No-Break">a </span><span class="No-Break"><strong class="bold">self-loop</strong></span><span class="No-Break">.</span></p>
+			<ol>
+				<li value="3">Now that we have our pandas edge list ready, we can use it to construct our <span class="No-Break">undirected graph:</span><pre class="source-code">
+import networkx as nx</pre><pre class="source-code">
+G = nx.from_pandas_edgelist(df)</pre><pre class="source-code">
+G.remove_edges_from(nx.selfloop_edges(G))</pre><pre class="source-code">
+G.remove_node('@') # remove a junk node</pre></li>
+				<li>Finally, let’s<a id="_idIndexMarker479"/> inspect <strong class="source-inline">G</strong> to <a id="_idIndexMarker480"/>make sure that it is an undirected <span class="No-Break">NetworkX graph:</span><pre class="source-code">
+G</pre><pre class="source-code">
+<strong class="bold">&lt;networkx.classes.graph.Graph at 0x217dc82b4c8&gt;</strong></pre></li>
+			</ol>
+			<p>This looks perfect, so we are ready to begin <span class="No-Break">o<a id="_idTextAnchor274"/>ur analysis.</span></p>
+			<h2 id="_idParaDest-179"><a id="_idTextAnchor275"/>Network size and complexity</h2>
+			<p>The<a id="_idIndexMarker481"/> first thing we are going to investigate is the network’s size, shape, and overall complexity. Let me define what I mean <span class="No-Break">by that:</span></p>
+			<ul>
+				<li><strong class="bold">Network size</strong>: The number of nodes and the number of edges that exist in <span class="No-Break">a network</span></li>
+				<li><strong class="bold">Network complexity</strong>: The <a id="_idIndexMarker482"/>amount of clustering and density present in the network. Clustering is the number of possible triangles that actually exist in a network, and density similarly refers to how interconnected the nodes in a <span class="No-Break">network are.</span></li>
+			</ul>
+			<p>NetworkX makes it very easy to find the number of nodes and edges that exist in a network. You can simply use <strong class="source-inline">nx.info(G)</strong>, <span class="No-Break">like so:</span></p>
+			<pre class="source-code">
+nx.info(G)
+'Graph with 1163 nodes and 1237 edges'</pre>
+			<p>Our network has 1,163 nodes and 1,237 edges. To put that into plain English, our K-pop social network consists of 1,163 people and organizations, and among those 1,163 people and organizations, there are 1,237 identified interactions. As this is Twitter data, an interaction, in this case, means that the two accounts were mentioned in the same tweet, meaning that they are related in some way. Going back to the importance of NLP and content analysis, we can use these identified relationships to further dig into what types of relationships these actually are. Are they collaborative relationships? Were they arguing? Did they write a research paper together? SNA will not give us that answer. We need content analysis to get to those. But this chapter is on network analysis, so <span class="No-Break">let’s continue.</span></p>
+			<p>Is this a <a id="_idIndexMarker483"/>dense network? Internet social networks tend to be sparse, not dense, unless you are analyzing a tight-knit <a id="_idIndexMarker484"/>group <span class="No-Break">of people.</span></p>
+			<p>Let’s see what the clustering and density of the network <span class="No-Break">look like:</span></p>
+			<ol>
+				<li value="1">First, let’s check <span class="No-Break">average clustering:</span><pre class="source-code">
+nx.average_clustering(G)</pre><pre class="source-code">
+0.007409464946430933</pre></li>
+			</ol>
+			<p>Clustering gives us a result of about <strong class="source-inline">0.007</strong>, which indicates that this is a sparse network. If clustering had returned a result of <strong class="source-inline">1.000</strong>, then that would indicate that every node is connected with every other node in the network. From an SNA context, that would mean that every person and organization in the network knows and interacts with each other. In K-pop, this is certainly not the case. Not all musicians know their fans. Not all fans are friends with their <span class="No-Break">favorite idols.</span></p>
+			<ol>
+				<li value="2">What does <strong class="source-inline">density</strong> <span class="No-Break">look like?</span><pre class="source-code">
+from networkx.classes.function import density</pre><pre class="source-code">
+density(G)</pre><pre class="source-code">
+0.001830685967059492</pre></li>
+			</ol>
+			<p>Density gives us a result of about <strong class="source-inline">0.002</strong>, which further validates the sparsity of <span class="No-Break">this network.</span></p>
+			<p>Let’s not move on just yet. I want to make sure these concepts are understood. Let’s construct a fully connected graph – a “complete” graph – with 20 nodes and repeat the steps from the preceding paragraphs. NetworkX has some handy functions for generating graphs, and we will use <strong class="source-inline">nx.complete_graph</strong> for <span class="No-Break">this demonstration:</span></p>
+			<ol>
+				<li value="1">Let’s build <span class="No-Break">the graph!</span><pre class="source-code">
+G_conn = nx.complete_graph(n=20)</pre></li>
+				<li>First, let’s investigate the size of <span class="No-Break">the network:</span><pre class="source-code">
+nx.info(G_conn)</pre><pre class="source-code">
+'Graph with 20 nodes and 190 edges'</pre></li>
+			</ol>
+			<p>Great. We <a id="_idIndexMarker485"/>have a network with 20 nodes, and those 20 nodes have <span class="No-Break">190 edges.</span></p>
+			<ol>
+				<li value="3">Is this actually<a id="_idIndexMarker486"/> a fully connected network, though? If it is, then we should get <strong class="source-inline">1.0</strong> for both clustering <span class="No-Break">and density:</span><pre class="source-code">
+nx.average_clustering(G_conn)</pre><pre class="source-code">
+1.0</pre><pre class="source-code">
+density(G_conn)</pre><pre class="source-code">
+1.0</pre></li>
+				<li>Perfect. That’s exactly what we expected. But what does this network look like? Let’s use the same function we’ve been using throughout this book to draw <span class="No-Break">the visualization:</span><pre class="source-code">
+draw_graph(G_conn, edge_width=0.3)</pre></li>
+			</ol>
+			<p>This will draw our network without any <span class="No-Break">node labels.</span></p>
+			<div>
+				<div id="_idContainer096" class="IMG---Figure">
+					<img src="image/B17105_07_001.jpg" alt="Figure 7.1 – Complete graph" width="1454" height="1040"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.1 – Complete graph</p>
+			<p>As you<a id="_idIndexMarker487"/> can <a id="_idIndexMarker488"/>see in the network visualization, every node links with every other node. This is a fully connected network. Our K-pop network is a sparsely connected network, so the visualization will l<a id="_idTextAnchor276"/>ook <span class="No-Break">very different.</span></p>
+			<h2 id="_idParaDest-180"><a id="_idTextAnchor277"/>Network visualization and thoughts</h2>
+			<p>We know <a id="_idIndexMarker489"/>what a fully connected network looks like, and we know that the K-pop social network is sparsely connected, but what does that actually look like? Let’s take <span class="No-Break">a look:</span></p>
+			<pre class="source-code">
+draw_graph(G, node_size=1, show_names=False)</pre>
+			<p>This will create a network visualization with nodes and edges, but <span class="No-Break">without labels.</span></p>
+			<div>
+				<div id="_idContainer097" class="IMG---Figure">
+					<img src="image/B17105_07_002.jpg" alt="Figure 7.2 – K-pop network" width="1347" height="974"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.2 – K-pop network</p>
+			<p>One thing to<a id="_idIndexMarker490"/> notice is that even with only a <a id="_idIndexMarker491"/>thousand nodes, this still takes a few seconds to render, and it’s impossible to pull any real insights out of the network. We can see a bunch of small dots, and we can see a bunch of lines from those small dots to other small dots. We can also notice that there is a core to the network and that the sparsity of the network increases the further we go toward the outskirts of the network. The idea of network layers will be explored later in this chapter. The point is that there’s very little we can do with this visualization other than consider that it looks cool. At least we can visualize it, and in the later section of this chapter, I will explain how we can “peel the onion” to understand the various layers in <span class="No-Break">the network.</span></p>
+			<p>But just to show something now, here is a very quick way to remove every node that only has a single edge, which is most of the network. If you do this, you can very quickly denoise a network. This is a huge time saver, as my previous approach for doing the exact same thing was to do <span class="No-Break">the following:</span></p>
+			<ol>
+				<li value="1">Identify every node with a single edge, using a <span class="No-Break">list comprehension.</span></li>
+				<li>Remove it from <span class="No-Break">the network.</span></li>
+			</ol>
+			<p>This one line <a id="_idIndexMarker492"/>of code removes the need for any of that. <strong class="source-inline">K_core</strong> converts the <strong class="source-inline">G</strong> graph into another graph that only contains nodes with two or <span class="No-Break">more edges:</span></p>
+			<pre class="source-code">
+draw_graph(nx.k_core(G, 2), node_size=1, show_names=False)</pre>
+			<p>Easy. How does the network <span class="No-Break">look now?</span></p>
+			<div>
+				<div id="_idContainer098" class="IMG---Figure">
+					<img src="image/B17105_07_003.jpg" alt="Figure 7.3 – K-pop network simplified" width="1400" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.3 – K-pop network simplified</p>
+			<p>I hope that you can see that this one single step quickly brought out the structure of the network that exists underneath all of those nodes that only have a single edge. There are several ways to simplify a network, and I use th<a id="_idTextAnchor278"/>is <span class="No-Break">method frequently.</span></p>
+			<h2 id="_idParaDest-181"><a id="_idTextAnchor279"/>Important nodes</h2>
+			<p>We now <a id="_idIndexMarker493"/>have an understanding of the general shape of the network, but we are interested in knowing who the most important people and organizations are. In network science, there is such a thing as <strong class="bold">centrality scores</strong> that<a id="_idIndexMarker494"/> give an indication of the importance of nodes in a network based on where they are placed and how information flows. NetworkX offers dozens of different centrality measures. You can learn about them <span class="No-Break">at </span><a href="https://networkx.org/documentation/stable/reference/algorithms/centrality.html"><span class="No-Break">https://networkx.org/documentation/stable/reference/algorithms/centrality.html</span></a><span class="No-Break">.</span></p>
+			<p>I will introduce a few of the centralities that I frequently use, but these are not necessarily the most important ones. Each centrality is useful for uncovering different contexts. The founders of Google also created their own centrality, famously known as <strong class="bold">PageRank</strong>. PageRank<a id="_idIndexMarker495"/> is a go-to centrality for many data professionals, but it may not be enough. To be thorough, you should understand the importance of nodes based both on how they are connected as well as how information moves. Let’s explore a few different ways of gauging the importanc<a id="_idTextAnchor280"/>e of nodes in <span class="No-Break">a network.</span></p>
+			<h2 id="_idParaDest-182"><a id="_idTextAnchor281"/>Degrees</h2>
+			<p>The<a id="_idIndexMarker496"/> easiest way to judge the importance of somebody or something in a network is based on the number of connections between it and other nodes. Thinking about popular social networks such as Twitter or Facebook, influencers are often very well-connected, and we are suspicious of accounts that have very few connections. We are taking that concept and attempting to pull this insight from our network <span class="No-Break">via code.</span></p>
+			<p>In a network, an entity (person, place, organization, and so on) in a network is called a node, and a relationship between one node and another is called an edge. We can count the number of edges each node has by investigating the degree counts of nodes in <span class="No-Break">a network:</span></p>
+			<pre class="source-code">
+degrees = dict(nx.degree(G))
+degrees
+{'@kmg3445t': 1,
+ '@code_kunst': 13,
+ '@highgrnd': 1,
+ '@youngjay_93': 1,
+ '@sobeompark': 1,
+ '@justhiseung': 1,
+ '@hwajilla': 1,
+ '@blobyblo': 4,
+ '@minddonyy': 1,
+ '@iuiive': 1,
+ '@wgyenny': 1,
+ ...
+ }</pre>
+			<p>Now, we <a id="_idIndexMarker497"/>have a Python dictionary of nodes and their degree count. If we throw this dictionary into a pandas DataFrame, we can sort it and visualize the degree <span class="No-Break">counts easily:</span></p>
+			<ol>
+				<li value="1">First, let’s load it into a pandas DataFrame and sort by degrees in descending order (high <span class="No-Break">to low):</span><pre class="source-code">
+degree_df = pd.DataFrame(degrees, index=[0]).T</pre><pre class="source-code">
+degree_df.columns = ['degrees']</pre><pre class="source-code">
+degree_df.sort_values('degrees', inplace=True, ascending=False)</pre><pre class="source-code">
+degree_df.head()</pre></li>
+			</ol>
+			<p>This will show a DataFrame of Twitter accounts and <span class="No-Break">their degrees.</span></p>
+			<div>
+				<div id="_idContainer099" class="IMG---Figure">
+					<img src="image/B17105_07_004.jpg" alt="Figure 7.4 – pandas DataFrame of node degrees" width="372" height="314"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.4 – pandas DataFrame of node degrees</p>
+			<ol>
+				<li value="2">Now, let’s<a id="_idIndexMarker498"/> create a horizontal bar chart for some <span class="No-Break">quick insights:</span><pre class="source-code">
+import matplotlib.pyplot as plt</pre><pre class="source-code">
+title = 'Top 20 Twitter Accounts by Degrees'</pre><pre class="source-code">
+_= degree_df[0:20].plot.barh(title=title, figsize=(12,7))</pre><pre class="source-code">
+plt.gca().invert_yaxis()</pre></li>
+			</ol>
+			<p>This will visualize Twitter account connections <span class="No-Break">by degrees.</span></p>
+			<div>
+				<div id="_idContainer100" class="IMG---Figure">
+					<img src="image/B17105_07_005.jpg" alt="Figure 7.5 – Horizontal bar chart of Twitter accounts by degrees" width="778" height="422"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.5 – Horizontal bar chart of Twitter accounts by degrees</p>
+			<p>One thing <a id="_idIndexMarker499"/>that stands out is that the number of degrees very quickly drops off, even when comparing the 20 most connected nodes. There is a significant drop-off even after the most connected node. The most connected node in the network belongs to singer/songwriter/actor Byun Baek-hyun – better known as Baekhyun – from the group Exo. That’s interesting. Why is he so connected? Are people connecting to him, or does he connect to other people? Each insight tends to draw out more questions that can be explored. Write them down, prioritize by value, and then you can use those ques<a id="_idTextAnchor282"/>tions for <span class="No-Break">deeper analysis.</span></p>
+			<h2 id="_idParaDest-183"><a id="_idTextAnchor283"/>Degree centrality</h2>
+			<p><strong class="bold">Degree centrality</strong> is <a id="_idIndexMarker500"/>similar to<a id="_idIndexMarker501"/> judging importance based on the number of degrees a node has. Degree centrality is the fraction of nodes in a network that a node is connected to. The more degrees a node has, the higher the fraction of nodes they will be connected to, so degrees and degree centrality can really be <span class="No-Break">used interchangeably:</span></p>
+			<ol>
+				<li value="1">We can calculate the degree centrality of every node in <span class="No-Break">the network:</span><pre class="source-code">
+degcent = nx.degree_centrality(G)</pre><pre class="source-code">
+degcent</pre><pre class="source-code">
+{'@kmg3445t': 0.0008605851979345956,</pre><pre class="source-code">
+ '@code_kunst': 0.011187607573149742,</pre><pre class="source-code">
+ '@highgrnd': 0.0008605851979345956,</pre><pre class="source-code">
+ '@youngjay_93': 0.0008605851979345956,</pre><pre class="source-code">
+ '@sobeompark': 0.0008605851979345956,</pre><pre class="source-code">
+ '@justhiseung': 0.0008605851979345956,</pre><pre class="source-code">
+ '@hwajilla': 0.0008605851979345956,</pre><pre class="source-code">
+ '@blobyblo': 0.0034423407917383822,</pre><pre class="source-code">
+ '@minddonyy': 0.0008605851979345956,</pre><pre class="source-code">
+ '@iuiive': 0.0008605851979345956,</pre><pre class="source-code">
+ ...</pre><pre class="source-code">
+ }</pre></li>
+				<li>We can<a id="_idIndexMarker502"/> use this to create another<a id="_idIndexMarker503"/> pandas DataFrame, sorted by degree centrality in <span class="No-Break">descending order:</span><pre class="source-code">
+degcent_df = pd.DataFrame(degcent, index=[0]).T</pre><pre class="source-code">
+degcent_df.columns = ['degree_centrality']</pre><pre class="source-code">
+degcent_df.sort_values('degree_centrality', inplace=True, ascending=False)</pre><pre class="source-code">
+degcent_df.head()</pre></li>
+			</ol>
+			<p>This will show a dataframe of Twitter accounts and their <span class="No-Break">degree centralities.</span></p>
+			<div>
+				<div id="_idContainer101" class="IMG---Figure">
+					<img src="image/B17105_07_006.jpg" alt="Figure 7.6 – pandas DataFrame of nodes' degree centrality" width="478" height="316"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.6 – pandas DataFrame of nodes' degree centrality</p>
+			<ol>
+				<li value="3">Finally, we <a id="_idIndexMarker504"/>can visualize <a id="_idIndexMarker505"/>this as a horizontal <span class="No-Break">bar chart:</span><pre class="source-code">
+title = 'Top 20 Twitter Accounts by Degree Centrality'</pre><pre class="source-code">
+_= degcent_df[0:20].plot.barh(title=title, figsize=(12,7))</pre><pre class="source-code">
+plt.gca().invert_yaxis()</pre></li>
+			</ol>
+			<p>This will draw a horizontal bar chart of Twitter accounts by <span class="No-Break">degree centrality.</span></p>
+			<div>
+				<div id="_idContainer102" class="IMG---Figure">
+					<img src="image/B17105_07_007.jpg" alt="Figure 7.7 – Horizontal bar chart of Twitter accounts by degree centrality" width="784" height="424"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.7 – Horizontal bar chart of Twitter accounts by degree centrality</p>
+			<p>Did you <a id="_idIndexMarker506"/>notice<a id="_idIndexMarker507"/> that the bar charts for degrees and degree centrality look identical other than the value? This is why I say that they can be used interchangeably. The use of degrees will likely <a id="_idTextAnchor284"/>be easier to explain <span class="No-Break">and defend.</span></p>
+			<h2 id="_idParaDest-184"><a id="_idTextAnchor285"/>Betweenness centrality</h2>
+			<p><strong class="bold">Betweenness centrality</strong> has<a id="_idIndexMarker508"/> to do <a id="_idIndexMarker509"/>with how information flows through a network. If a node is positioned between two other nodes, then information from either of those two nodes must be passed through the node that sits between them. Information flows through the node that is sitting in the middle. That node can be seen as a bottleneck, or a place of advantage. It can give a strategic advantage to have the information that <span class="No-Break">others need.</span></p>
+			<p>Usually, though, nodes with high betweenness centrality are situated between many nodes, not just two. This is often seen in a start network, where a core node is connected to dozens of other nodes or more. Consider an influencer on social media. That person may be connected to 22 million followers, but those followers likely do not know each other. They certainly know the influencer (or are an inauthentic bot). That influencer is a central node, and betweenness centrality will <span class="No-Break">indicate that.</span></p>
+			<p>Before we see<a id="_idIndexMarker510"/> how to calculate betweenness centrality, please note that betweenness centrality is very time-consuming<a id="_idIndexMarker511"/> to calculate for large or dense networks. If your network is large or dense and is causing betweenness centrality to be so slow as to no longer be useful, consider using another centrality to <span class="No-Break">calculate importance:</span></p>
+			<ol>
+				<li value="1">We can calculate the betweenness centrality of every node in <span class="No-Break">the network:</span><pre class="source-code">
+betwcent = nx.betweenness_centrality(G)</pre><pre class="source-code">
+betwcent</pre><pre class="source-code">
+{'@kmg3445t': 0.0,</pre><pre class="source-code">
+ '@code_kunst': 0.016037572215773392,</pre><pre class="source-code">
+ '@highgrnd': 0.0,</pre><pre class="source-code">
+ '@youngjay_93': 0.0,</pre><pre class="source-code">
+ '@sobeompark': 0.0,</pre><pre class="source-code">
+ '@justhiseung': 0.0,</pre><pre class="source-code">
+ '@hwajilla': 0.0,</pre><pre class="source-code">
+ '@blobyblo': 0.02836579219003866,</pre><pre class="source-code">
+ '@minddonyy': 0.0,</pre><pre class="source-code">
+ '@iuiive': 0.0,</pre><pre class="source-code">
+ '@wgyenny': 0.0,</pre><pre class="source-code">
+ '@wondergirls': 0.0013446180439736057,</pre><pre class="source-code">
+ '@wg_lim': 0.0026862711087984274,</pre><pre class="source-code">
+ ...</pre><pre class="source-code">
+ }</pre></li>
+				<li>We can use this to create another pandas DataFrame, sorted by betweenness centrality in <span class="No-Break">descending order:</span><pre class="source-code">
+betwcent_df = pd.DataFrame(betwcent, index=[0]).T</pre><pre class="source-code">
+betwcent_df.columns = ['betweenness_centrality']</pre><pre class="source-code">
+betwcent_df.sort_values('betweenness_centrality', inplace=True, ascending=False)</pre><pre class="source-code">
+betwcent_df.head()</pre></li>
+			</ol>
+			<p>This will show a dataframe of Twitter accounts and their <span class="No-Break">betweenness centralities.</span></p>
+			<div>
+				<div id="_idContainer103" class="IMG---Figure">
+					<img src="image/B17105_07_008.jpg" alt="Figure 7.8 – pandas DataFrame of nodes' betweenness centrality" width="518" height="310"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.8 – pandas DataFrame of nodes' betweenness centrality</p>
+			<ol>
+				<li value="3">Finally, we<a id="_idIndexMarker512"/> can <a id="_idIndexMarker513"/>visualize this as a horizontal <span class="No-Break">bar chart:</span><pre class="source-code">
+title = 'Top 20 Twitter Accounts by Betweenness Centrality'</pre><pre class="source-code">
+_= betwcent_df[0:20].plot.barh(title=title, figsize=(12,7))</pre><pre class="source-code">
+plt.gca().invert_yaxis()</pre></li>
+			</ol>
+			<p>This will draw a horizontal bar chart of Twitter accounts by <span class="No-Break">betweenness centrality.</span></p>
+			<div>
+				<div id="_idContainer104" class="IMG---Figure">
+					<img src="image/B17105_07_009.jpg" alt="Figure 7.9 – Horizontal bar chart of Twitter accounts by betweenness centrality" width="776" height="430"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.9 – Horizontal bar chart of Twitter accounts by betweenness centrality</p>
+			<p>Take <a id="_idIndexMarker514"/>note<a id="_idIndexMarker515"/> that the bar chart looks very different from the charts for degrees and degree centrality. Also note that <strong class="source-inline">@youtube</strong>, <strong class="source-inline">@spotifykr</strong>, and <strong class="source-inline">@kchartsmaster</strong> are the nodes with the highest betweenness centrality. This is likely because artists and others reference YouTube, Spotify, and KChartsMaster in their tweets. These nod<a id="_idTextAnchor286"/>es sit between nodes and <span class="No-Break">other nodes.</span></p>
+			<h2 id="_idParaDest-185"><a id="_idTextAnchor287"/>Closeness centrality</h2>
+			<p><strong class="bold">Closeness centrality</strong> has<a id="_idIndexMarker516"/> to do <a id="_idIndexMarker517"/>with the closeness of nodes to other nodes, and that has to do with something known as<a id="_idIndexMarker518"/> the <strong class="bold">shortest path</strong>, which is computationally expensive (and slow) to compute for a large or dense network. As a result, closeness centrality may be even slower than betweenness centrality. If getting results from closeness centrality is too slow, due to the size and density of your own networks, you can choose another centrality <span class="No-Break">for importance.</span></p>
+			<p>The shortest path will be explored in another chapter but has to do with the number of hops or handshakes it takes to get from one node to another node. This is a very slow operation, as<a id="_idIndexMarker519"/> there are many calculations <span class="No-Break">at play:</span></p>
+			<ol>
+				<li value="1">We can calculate the closeness centrality of every node in <span class="No-Break">the network:</span><pre class="source-code">
+closecent = nx.closeness_centrality(G)</pre><pre class="source-code">
+closecent</pre><pre class="source-code">
+{'@kmg3445t': 0.12710883458078617,</pre><pre class="source-code">
+ '@code_kunst': 0.15176930794223495,</pre><pre class="source-code">
+ '@highgrnd': 0.12710883458078617,</pre><pre class="source-code">
+ '@youngjay_93': 0.12710883458078617,</pre><pre class="source-code">
+ '@sobeompark': 0.12710883458078617,</pre><pre class="source-code">
+ '@justhiseung': 0.12710883458078617,</pre><pre class="source-code">
+ '@hwajilla': 0.12710883458078617,</pre><pre class="source-code">
+ '@blobyblo': 0.18711010406907921,</pre><pre class="source-code">
+ '@minddonyy': 0.12710883458078617,</pre><pre class="source-code">
+ '@iuiive': 0.12710883458078617,</pre><pre class="source-code">
+ '@wgyenny': 0.07940034854856182,</pre><pre class="source-code">
+ ...</pre><pre class="source-code">
+ }</pre></li>
+				<li>We can<a id="_idIndexMarker520"/> use this to create another pandas DataFrame, sorted by closeness centrality in <span class="No-Break">descending order:</span><pre class="source-code">
+closecent_df = pd.DataFrame(closecent, index=[0]).T</pre><pre class="source-code">
+closecent_df.columns = ['closeness_centrality']</pre><pre class="source-code">
+closecent_df.sort_values('closeness_centrality', inplace=True, ascending=False)</pre><pre class="source-code">
+closecent_df.head()</pre></li>
+			</ol>
+			<p>This will show a dataframe of Twitter accounts and their <span class="No-Break">closeness centralities.</span></p>
+			<div>
+				<div id="_idContainer105" class="IMG---Figure">
+					<img src="image/B17105_07_010.jpg" alt="Figure 7.10 – pandas DataFrame of nodes' closeness centrality" width="486" height="302"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.10 – pandas DataFrame of nodes' closeness centrality</p>
+			<ol>
+				<li value="3">Finally, we<a id="_idIndexMarker521"/> can visualize<a id="_idIndexMarker522"/> this as a horizontal <span class="No-Break">bar chart:</span><pre class="source-code">
+title = 'Top 20 Twitter Accounts by Closeness Centrality'</pre><pre class="source-code">
+_= closecent_df[0:20].plot.barh(title=title, figsize=(12,7))</pre><pre class="source-code">
+plt.gca().invert_yaxis()</pre></li>
+			</ol>
+			<p>This will draw a horizontal bar chart of Twitter accounts by <span class="No-Break">closeness centrality.</span></p>
+			<div>
+				<div id="_idContainer106" class="IMG---Figure">
+					<img src="image/B17105_07_011.jpg" alt="Figure 7.11 – Horizontal bar chart of Twitter accounts by closeness centrality" width="786" height="424"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.11 – Horizontal bar chart of Twitter accounts by closeness centrality</p>
+			<p>Take note <a id="_idIndexMarker523"/>that the<a id="_idIndexMarker524"/> results look different than every other centrality we have looked at. <strong class="source-inline">@blackpink</strong> is in the top spot, followed by <strong class="source-inline">@youtube</strong>, <strong class="source-inline">@kchartsmaster</strong>, and <strong class="source-inline">@spotifykr</strong>. BLACKPINK is a well-known K-pop group, and they are well-connected in the K-pop network, allowing them reach and influence. Other K-pop artists may want to investigate what it is that BLACKPINK is doing that puts them in a<a id="_idTextAnchor288"/> strategically advantageous <span class="No-Break">network position.</span></p>
+			<h2 id="_idParaDest-186"><a id="_idTextAnchor289"/>PageRank</h2>
+			<p>Finally, PageRank <a id="_idIndexMarker525"/>is the algorithm behind <a id="_idIndexMarker526"/>Google Search. The creators of Google wrote about it in 1999 in this paper: <a href="http://ilpubs.stanford.edu:8090/422/1/1999-66.pdf">http://ilpubs.stanford.edu:8090/422/1/1999-66.pdf</a>. If you have ever googled anything, the results that are returned to you are partially due to PageRank, though the search has likely evolved significantly <span class="No-Break">since 1999.</span></p>
+			<p>The PageRank mathematical formula considers the number of inbound and outbound degrees of not only a node in question but of the linking nodes as well. It is because of this<a id="_idIndexMarker527"/> that <strong class="bold">Search Engine Optimization</strong> (<strong class="bold">SEO</strong>) has become a thing, as it became known that to get top Google positioning, a website should have as many inbound links as possible while also linking to other sources of information. For more information on the mathematics behind PageRank, check the PDF from <span class="No-Break">Stanford University.</span></p>
+			<p>PageRank<a id="_idIndexMarker528"/> is a very fast algorithm, suitable for large and small networks, and very useful as an <em class="italic">importance</em> metric. Many graph solutions provide PageRank capabilities in their tools, and many people treat PageRank as their preferred centrality. Personally, I believe that you should know several centralities, where they are useful, and what their limitations are. PageRank is useful even for large and dense networks, so I recommend that it be included anytime you are doing any <span class="No-Break">centrality analysis:</span></p>
+			<ol>
+				<li value="1">We can calculate the PageRank score of every node in <span class="No-Break">the network:</span><pre class="source-code">
+pagerank = nx.pagerank(G)</pre><pre class="source-code">
+pagerank</pre><pre class="source-code">
+{'@kmg3445t': 0.00047123124840596525,</pre><pre class="source-code">
+ '@code_kunst': 0.005226313735064201,</pre><pre class="source-code">
+ '@highgrnd': 0.00047123124840596525,</pre><pre class="source-code">
+ '@youngjay_93': 0.00047123124840596525,</pre><pre class="source-code">
+ '@sobeompark': 0.00047123124840596525,</pre><pre class="source-code">
+ '@justhiseung': 0.00047123124840596525,</pre><pre class="source-code">
+ '@hwajilla': 0.00047123124840596525,</pre><pre class="source-code">
+ '@blobyblo': 0.0014007295303692594,</pre><pre class="source-code">
+ '@minddonyy': 0.00047123124840596525,</pre><pre class="source-code">
+ ...</pre><pre class="source-code">
+ }</pre></li>
+				<li>We can use this to create another pandas DataFrame, sorted by PageRank in <span class="No-Break">descending order:</span><pre class="source-code">
+pagerank_df = pd.DataFrame(pagerank, index=[0]).T</pre><pre class="source-code">
+pagerank_df.columns = ['pagerank']</pre><pre class="source-code">
+pagerank_df.sort_values('pagerank', inplace=True, ascending=False)</pre><pre class="source-code">
+pagerank_df.head()</pre></li>
+			</ol>
+			<p>This will show a dataframe of Twitter accounts and their <span class="No-Break">PageRank scores.</span></p>
+			<div>
+				<div id="_idContainer107" class="IMG---Figure">
+					<img src="image/B17105_07_012.jpg" alt="Figure 7.12 – pandas DataFrame of nodes' PageRank scores" width="376" height="307"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.12 – pandas DataFrame of nodes' PageRank scores</p>
+			<ol>
+				<li value="3">Finally, we<a id="_idIndexMarker529"/> can visualize this as a horizontal <span class="No-Break">bar chart:</span><pre class="source-code">
+title = 'Top 20 Twitter Accounts by Page Rank'</pre><pre class="source-code">
+_= pagerank_df[0:20].plot.barh(title=title, figsize=(12,7))</pre><pre class="source-code">
+plt.gca().invert_yaxis()</pre></li>
+			</ol>
+			<p>This will draw a horizontal bar chart of Twitter accounts <span class="No-Break">by PageRank.</span></p>
+			<div>
+				<div id="_idContainer108" class="IMG---Figure">
+					<img src="image/B17105_07_013.jpg" alt="Figure 7.13 – Horizontal bar chart of Twitter accounts by page rank" width="784" height="420"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.13 – Horizontal bar chart of Twitter accounts by page rank</p>
+			<p>These results <a id="_idIndexMarker530"/>actually look very similar to the bar chart from degrees and degree centrality. Once<a id="_idTextAnchor290"/> again, Baekhyun from Exo is in the <span class="No-Break">top position.</span></p>
+			<h2 id="_idParaDest-187"><a id="_idTextAnchor291"/>Edge centralities</h2>
+			<p>Before concluding<a id="_idIndexMarker531"/> this section on centralities, I want to point out that you are not limited to centralities for nodes. There are also centralities<a id="_idIndexMarker532"/> for edges. For instance, <strong class="bold">edge betweenness centrality</strong> can be used to identify the edge that sits between the most nodes. If you were to snip the edge that sits between most nodes, often the network would be split into two large pieces, called <strong class="bold">connected components</strong>. This<a id="_idIndexMarker533"/> can actually be useful for identifying communities or emerging t<a id="_idTextAnchor292"/>rends. We will explore that more in a <span class="No-Break">later chapter.</span></p>
+			<h1 id="_idParaDest-188"><a id="_idTextAnchor293"/>Comparing centralities</h1>
+			<p>To get a feel<a id="_idIndexMarker534"/> for how the different centralities differ, or to use multiple different centralities together (for instance, if building an ML classifier and wanting to use graph metrics), it can be useful to combine the different centralities together into a single pandas DataFrame. You can easily do so with the pandas <span class="No-Break"><strong class="source-inline">concat</strong></span><span class="No-Break"> function:</span></p>
+			<pre class="source-code">
+combined_importance_df = pd.concat([degree_df, degcent_df, betwcent_df, closecent_df, pagerank_df], axis=1)
+combined_importance_df.head(10)</pre>
+			<p>This will combine all of our centrality and PageRank DataFrames into one unified DataFrame. This will make it easier for us to compare different types <span class="No-Break">of centralities.</span></p>
+			<div>
+				<div id="_idContainer109" class="IMG---Figure">
+					<img src="image/B17105_07_014.jpg" alt="Figure 7.14 – pandas DataFrame of combined importance metrics" width="1274" height="582"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.14 – pandas DataFrame of combined importance metrics</p>
+			<p>You may notice that if you rank by the different types of centralities, some have very similar results, and others are very different. I’ll leave you with this: there is no single centrality to rule them all. They are different, and they should be used in different situations. If you are mapping out information flow, then betweenness centrality is very useful, so long as the network is of a manageable size. If you just want to see which nodes in a network are most connected, this is easiest to do by just investigating degrees. If you want to understand which nodes are situated closest to every other node, try closeness centrality. And if you want one algorithm that does a pretty good job at identifying important nodes and is performant even on large networks, <span class="No-Break">try PageRank:</span></p>
+			<pre class="source-code">
+combined_importance_df.sort_values('pagerank', ascending=False)[0:10]</pre>
+			<p>This will <a id="_idIndexMarker535"/>show a DataFrame of Twitter accounts and combined network centralities and <span class="No-Break">PageRank scores.</span></p>
+			<div>
+				<div id="_idContainer110" class="IMG---Figure">
+					<img src="image/B17105_07_015.jpg" alt="Figure 7.15 – pandas DataFrame of combined importance metrics sorted by PageRank" width="1270" height="570"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.15 – pandas DataFrame of combined importance metrics sorted by PageRank</p>
+			<p>Just know that even PageRank and betweenness centrality can give very different results, so you should learn several different ways of determining importance and know what you are trying to do. These are very unfamiliar for beginners, but don’t be afraid. Jump in and learn. The documentation and linked journals on NetworkX’s documentation will be enough to help you <span class="No-Break">get started.</span></p>
+			<p>Centralities are probably the most unusual section of this chapter if you are just getting started with social network analysis and network science. From this point<a id="_idTextAnchor294"/> on in the chapter, concepts should be <span class="No-Break">less unusual.</span></p>
+			<h1 id="_idParaDest-189"><a id="_idTextAnchor295"/>Visualizing subgraphs</h1>
+			<p>Often, in <a id="_idIndexMarker536"/>network analysis, we will want to see just a portion of the network, and how nodes in that portion link to each other. For instance, if I have a list of 100 web domains of interest or social media accounts, then it may be useful to create a subgraph of the whole graph for analysis <span class="No-Break">and visualization.</span></p>
+			<p>For the analysis of a subgraph, everything in this chapter is still applicable. You can use centralities on subgraphs to identify important nodes in a community, for instance. You can also use community detection algorithms to identify communities that exist in a subgraph when the communities <span class="No-Break">are unknown.</span></p>
+			<p>Visualizing <a id="_idIndexMarker537"/>subgraphs is also useful when you want to remove most of the noise in a network and investigate how certain nodes interact. Visualizing a subgraph is identical to how we visualize whole networks, ego graphs, and temporal graphs. But creating subgraphs takes a tiny bit of work. First, we need to identify the nodes of interest, then we need to construct a subgraph containing only those nodes, and finally, we will visualize <span class="No-Break">the subgraph:</span></p>
+			<ol>
+				<li value="1">As an example, let’s choose the 100 nodes from the network that have the highest <span class="No-Break">PageRank scores:</span><pre class="source-code">
+subgraph_nodes = pagerank_df[0:100].index.to_list()</pre><pre class="source-code">
+subgraph_nodes</pre><pre class="source-code">
+['@b_hundred_hyun',</pre><pre class="source-code">
+ '@zanelowe',</pre><pre class="source-code">
+ '@haroobomkum',</pre><pre class="source-code">
+ '@itzailee',</pre><pre class="source-code">
+ '@spotifykr',</pre><pre class="source-code">
+ '@shxx131bi131',</pre><pre class="source-code">
+ '@thinktwicekpop',</pre><pre class="source-code">
+ '@leehi_hi',</pre><pre class="source-code">
+ '@bambam1a',</pre><pre class="source-code">
+ '@bighitent',</pre><pre class="source-code">
+ '@ericnamofficial',</pre><pre class="source-code">
+ '@twicetly',</pre><pre class="source-code">
+ ...</pre><pre class="source-code">
+ ]</pre></li>
+			</ol>
+			<p>That was easy. I’m only showing a few of the nodes, as this scrolls down the screen quite <span class="No-Break">a way.</span></p>
+			<ol>
+				<li value="2">Next, I <a id="_idIndexMarker538"/>can construct a subgraph, <span class="No-Break">like so:</span><pre class="source-code">
+G_sub = G.subgraph(subgraph_nodes)</pre></li>
+				<li>And finally, I can visualize it, the same way I would visualize any <span class="No-Break">other network:</span><pre class="source-code">
+draw_graph(G_sub, node_size=3)</pre></li>
+			</ol>
+			<p>In this example, I have left off the node names, but I could have just as easily added them. I felt it would make a cleaner visualization for <span class="No-Break">this example.</span></p>
+			<div>
+				<div id="_idContainer111" class="IMG---Figure">
+					<img src="image/B17105_07_016.jpg" alt="Figure 7.16 – Subgraph visualization of the top 100 K-pop Twitter accounts by PageRank" width="1395" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.16 – Subgraph visualization of the top 100 K-pop Twitter accounts by PageRank</p>
+			<p>That’s it. There’s really not a lot to know about subgraph creation, other than that it is doable and ho<a id="_idTextAnchor296"/>w to do it. It is a simple process, once you <span class="No-Break">know how.</span></p>
+			<h1 id="_idParaDest-190"><a id="_idTextAnchor297"/>Investigating islands and continents – connected components</h1>
+			<p>If you take a look <a id="_idIndexMarker539"/>at the subgraph visualization, you may notice that there is one large cluster of nodes, a few small islands of nodes (two or more edges), and several isolates (nodes with no edges). This is common in many networks. Very often, there is one giant supercluster, several medium-sized islands, and so <span class="No-Break">many isolates.</span></p>
+			<p>This presents challenges. When some people are new to network analysis, they will often visualize the network and use PageRank to identify important nodes. That is not nearly enough, for anything. There are so many different ways to cut the noise from networks so that you can extract insights, and I will show you several throughout the course of <span class="No-Break">this book.</span></p>
+			<p>But one very simple way to cut through the noise is to identify the continents and islands that exist in a network, create subgraphs using them, and then analyze and visualize <span class="No-Break">those subgraphs.</span></p>
+			<p>These <em class="italic">continents</em> and <em class="italic">islands</em> are formally called <strong class="bold">connected components</strong>. A connected component is a network structure where each node is connected to at least one other node. NetworkX actually allows for isolates to exist in their own connected components, which is strange to me, as isolates are not connected to anything other than possibly themselves (<span class="No-Break">self-loops exist).</span></p>
+			<p>Finding all of the connected components that exist in a network is <span class="No-Break">very easy:</span></p>
+			<pre class="source-code">
+components = list(nx.connected_components(G))
+len(components)</pre>
+			<p>I’m doing two things here: first, I load all connected components of our <strong class="source-inline">G</strong> graph into a Python list, and then I count the number of components that exist. There are 15 in the <span class="No-Break">K-pop network.</span></p>
+			<p>Great, but which of these 15 are continents, and which are islands? Using a simple loop, we can count the number of nodes that exist in each <span class="No-Break">connected component:</span></p>
+			<pre class="source-code">
+for i in range(len(components)):
+    component_node_count = len(components[i])
+    print('component {}: {}'.format(i, component_node_count))</pre>
+			<p>This will give us a list of connected components and the number of nodes that are part of the <a id="_idIndexMarker540"/><span class="No-Break">connected component:</span></p>
+			<pre class="source-code">
+component 0: 909
+component 1: 2
+component 2: 3
+component 3: 4
+component 4: 2
+component 5: 2
+component 6: 80
+component 7: 129
+component 8: 3
+component 9: 7
+component 10: 4
+component 11: 4
+component 12: 2
+component 13: 10
+component 14: 2</pre>
+			<p>Perfect. Notice that one of the components has 909 nodes. This is an example of one of those large continents that can exist in a network. Also, notice the components that have 80 and 129 nodes. This is significantly fewer than the number of nodes in the largest connected component, but it is still a significant number of nodes. I consider these as islands. Finally, notice that there are several other components that have between 2 and 10 nodes. These are like <span class="No-Break">tiny islands.</span></p>
+			<p>Each of these connected components can be analyzed and visualized as a subgraph. For this exercise, to simplify visualization, I’ll create a helper function to extend my main <span class="No-Break"><strong class="source-inline">draw_graph</strong></span><span class="No-Break"> function:</span></p>
+			<pre class="source-code">
+def draw_component(G, component, node_size=3, show_names=True)
+    check_component = components[component]
+    G_check = G.subgraph(check_component)
+    return draw_graph(G_check, show_names=show_names, node_size=node_size)</pre>
+			<p>Let’s try this out. Let’s visualize a<a id="_idIndexMarker541"/> random component, <span class="No-Break">component 13:</span></p>
+			<pre class="source-code">
+draw_component(G, component=13, node_size=5)</pre>
+			<p>How does <span class="No-Break">it render?</span></p>
+			<div>
+				<div id="_idContainer112" class="IMG---Figure">
+					<img src="image/B17105_07_017.jpg" alt="Figure 7.17 – Subgraph visualization of connected component #13" width="1554" height="1078"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.17 – Subgraph visualization of connected component #13</p>
+			<p>That looks good. We have successfully visualized a single component from the overall network. Let’s visualize the <span class="No-Break">largest component:</span></p>
+			<pre class="source-code">
+draw_component(G, 0, show_names=False, node_size=2)</pre>
+			<div>
+				<div id="_idContainer113" class="IMG---Figure">
+					<img src="image/B17105_07_018.jpg" alt="Figure 7.18 – Subgraph visualization of connected component #0" width="1458" height="1052"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.18 – Subgraph visualization of connected component #0</p>
+			<p>Once again, we <a id="_idIndexMarker542"/>are back to a giant, messy ball of yarn. We did successfully visualize it, though, and we can massively simplify it by removing all nodes with a single edge, <span class="No-Break">for instance.</span></p>
+			<p>Connected components are a bit unusual, like centralities, but if you think of them as islands and continents that exist in a network, that really takes away a lot of the mystique. In summary, in a network, there are usually several connected components, and I consider them to be continents, islands, or isolates. In most networks, there is usually at least one large continent, several islands, and zero to many isolates. The number of isolates depends on how the graph was constructed. Using our NER approach from previous chapters, there are <span class="No-Break">no isolates.</span></p>
+			<p>We will look at some more <a id="_idTextAnchor298"/>things we can do with connected components in <a href="B17105_09.xhtml#_idTextAnchor364"><span class="No-Break"><em class="italic">Chapter 9</em></span></a><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-191"><a id="_idTextAnchor299"/>Communities</h2>
+			<p>Community <a id="_idIndexMarker543"/>detection algorithms are very useful in various forms of network analysis. In WNA, they can be used to identify communities that exist in the whole network. When applied to egocentric networks (ego graphs), they can reveal communities and cliques that exist around a single node, and in temporal networks, they can be used to watch communities evolve <span class="No-Break">over time.</span></p>
+			<p>Community detection is common in SNA because communities of people exist in large populations, and it can be useful to identify those communities. There are various approaches to community detection, and there is quite a lot of information available on the internet for how community detection algorithms work. This book is about applied network science, so I am just going to demonstrate one, called the <strong class="bold">Louvain algorithm</strong>. Like <a id="_idIndexMarker544"/>centralities, there is no “best” algorithm. I have been in conversations where somebody pointed out a fringe algorithm that they were convinced was better, and I have been in conversations where people <span class="No-Break">preferred Louvain.</span></p>
+			<p>You can learn more about the <a id="_idIndexMarker545"/>Louvain algorithm <span class="No-Break">here: </span><a href="https://python-louvain.readthedocs.io/en/latest/"><span class="No-Break">https://python-louvain.readthedocs.io/en/latest/</span></a><span class="No-Break">.</span></p>
+			<ol>
+				<li value="1">The Louvain algorithm does not come with NetworkX. You will need to install it, which is as simple as <span class="No-Break">the following:</span><pre class="source-code">
+pip install python-louvain</pre></li>
+				<li>After that, you can import the library for use with <span class="No-Break">the following:</span><pre class="source-code">
+import community as community_louvain</pre></li>
+				<li>To save a lot of time and skip right past the math, the Louvain algorithm identifies various partitions (communities) that nodes are a part of. Visualizing these partitions is a bit trickier than our usual network visualizations, as <strong class="source-inline">scikit-network</strong> does not offer a lot of flexibility for coloring nodes. To save time, I’m going to return to my older network visualization practices and use NetworkX for visualization. Here is the code for drawing <a id="_idIndexMarker546"/>our graph and coloring <span class="No-Break">the communities:</span><pre class="source-code">
+def draw_partition(G, partition):</pre><pre class="source-code">
+    import matplotlib.cm as cm</pre><pre class="source-code">
+    import matplotlib.pyplot as plt</pre><pre class="source-code">
+    # draw the graph</pre><pre class="source-code">
+    plt.figure(3,figsize=(12,12))</pre><pre class="source-code">
+    pos = nx.spring_layout(G)</pre><pre class="source-code">
+    # color the nodes according to their partition</pre><pre class="source-code">
+    cmap = cm.get_cmap('flag', max(partition.values()) + 1)</pre><pre class="source-code">
+    nx.draw_networkx_nodes(G, pos, partition.keys(), node_size=20, cmap=cmap, node_color=list(partition.values()))</pre><pre class="source-code">
+    nx.draw_networkx_edges(G, pos, alpha=0.5, width=0.3)</pre><pre class="source-code">
+    return plt.show()</pre></li>
+				<li>Now that we have the visualization function, we need to first identify partitions, and then we need to visualize the network. Let’s do both of these together. I am using <strong class="source-inline">resolution=2</strong> after some tuning, as the community placement <span class="No-Break">looks optimal:</span><pre class="source-code">
+partition = community_louvain.best_partition(G, resolution=2)</pre><pre class="source-code">
+draw_partition(G, partition)</pre></li>
+			</ol>
+			<p>How <a id="_idIndexMarker547"/>does <span class="No-Break">it look?</span></p>
+			<div>
+				<div id="_idContainer114" class="IMG---Figure">
+					<img src="image/B17105_07_019.jpg" alt="Figure 7.19 – Visualization of community partitions" width="981" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.19 – Visualization of community partitions</p>
+			<p>These images are messy but mesmerizing, to me. I can visually see easily distinguishable communities that I never noticed before. But what are they? What nodes are part of each community? It is simple to convert this partition list into a pandas DataFrame, and we can use that to identify communities, count the number of nodes that exist in<a id="_idIndexMarker548"/> each community, identify which community a node falls into, and visualize the <span class="No-Break">individual communities:</span></p>
+			<ol>
+				<li value="1">First, let’s create a pandas DataFrame from the <span class="No-Break">partition list:</span><pre class="source-code">
+community_df = pd.DataFrame(partition, index=[0]).T</pre><pre class="source-code">
+community_df.columns = ['community']</pre><pre class="source-code">
+community_df.head()</pre></li>
+			</ol>
+			<p>How does it <span class="No-Break">look now?</span></p>
+			<div>
+				<div id="_idContainer115" class="IMG---Figure">
+					<img src="image/B17105_07_020.jpg" alt="Figure 7.20 – pandas DataFrame of community partitions" width="349" height="299"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.20 – pandas DataFrame of community partitions</p>
+			<ol>
+				<li value="2">This looks good. We can see that it is already sorted by partition number, which I am calling <strong class="source-inline">community</strong>. Now that this is in a pandas DataFrame, it is simple to count the number of nodes that belong to <span class="No-Break">each community:</span><pre class="source-code">
+community_df['community'].value_counts()</pre></li>
+			</ol>
+			<p>This will give us a list of communities (the lefthand number) and a count of nodes that are part of the community (the <span class="No-Break">righthand number):</span></p>
+			<pre class="source-code">
+21    170
+10    133
+14    129
+16    104
+2      91
+3      85
+13     80
+23     70
+0      66
+15     55
+4      51
+22     48
+1      36
+17     10
+19      7
+9       4
+20      4
+5       4
+8       3
+18      3
+12      2
+11      2
+7       2
+6       2
+24      2</pre>
+			<p>We can easily see which communities have the most nodes. We should analyze and visualize these using subgraphs, as <span class="No-Break">explained previously.</span></p>
+			<ol>
+				<li value="3">How do<a id="_idIndexMarker549"/> we identify the nodes that exist in each community, though? Let’s just do this in pandas. Here is a simple <span class="No-Break">helper function:</span><pre class="source-code">
+def get_community_nodes(commmunity_df, partition):</pre><pre class="source-code">
+    community_nodes = community_df[community_df['community']==partition].index.to_list()</pre><pre class="source-code">
+    return community_nodes</pre></li>
+				<li>We can use that function as it is, but I would prefer to take those <strong class="source-inline">community</strong> nodes, create a subgraph, and visualize it. Here is a helper function to do all <span class="No-Break">of that:</span><pre class="source-code">
+def draw_community(G, community_df, partition, node_size=3, show_names=False):</pre><pre class="source-code">
+    community_nodes = get_community_nodes(community_df, partition)</pre><pre class="source-code">
+    G_community = G.subgraph(community_nodes)</pre><pre class="source-code">
+    return draw_graph(G_community, node_size=node_size, show_names=show_names)</pre></li>
+			</ol>
+			<p>Let’s try <span class="No-Break">one out:</span></p>
+			<pre class="source-code">
+draw_community(G, community_df, 1, show_names=True)</pre>
+			<div>
+				<div id="_idContainer116" class="IMG---Figure">
+					<img src="image/B17105_07_021.jpg" alt="Figure 7.21 – Subgraph visualization of community #1" width="1584" height="1062"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.21 – Subgraph visualization of community #1</p>
+			<p>After<a id="_idIndexMarker550"/> running that, I can see this visualization. If you see something different, don’t worry. When working with networks, things such as connected components and community numbers do not always end up in the same place on a <span class="No-Break">subsequent run.</span></p>
+			<p>Very cool. This feels very similar to visualizing connected components, but communities are not necessarily islands or continents. Several communities can be found in large connected components, for instance. The algorithm looks for boundaries that separate groups of nodes, and then it labels <span class="No-Break">communities accordingly.</span></p>
+			<p>If you work with networks, and especially if you are interested in identifying communities of people that exist in social networks, you will want to learn as much as you can about how to identify cliques and communities. Try different algorithms. I have chosen Louva<a id="_idTextAnchor300"/>in because it is fast and reliable, even on <span class="No-Break">massive networks.</span></p>
+			<h2 id="_idParaDest-192"><a id="_idTextAnchor301"/>Bridges</h2>
+			<p>In simple terms, bridges<a id="_idIndexMarker551"/> are nodes that sit between two different communities. These are typically easy to visually identify in small social networks, as there will be what looks like one or a few rubber bands or strengths that, if snipped, would allow the two groups to split apart. Just as a bridge allows people to traverse across the water from one piece of land to another, bridges in networks allow information to spread from one community to another. As a human, being a bridge is a powerful position to be in, as information and resources must flow through you to reach the <span class="No-Break">other side.</span></p>
+			<p>In a complex network, bridges are more difficult to see visually, but they often exist, sitting between two communities. Our K-Pop network is pretty complex, so networks are less visible than they might be in a smaller social network, but they <span class="No-Break">are there.</span></p>
+			<ol>
+				<li value="1">You can find bridges in a network <span class="No-Break">like so:</span><pre class="source-code">
+list(nx.bridges(G))</pre><pre class="source-code">
+[('@kmg3445t', '@code_kunst'),</pre><pre class="source-code">
+ ('@code_kunst', '@highgrnd'),</pre><pre class="source-code">
+ ('@code_kunst', '@youngjay_93'),</pre><pre class="source-code">
+ ('@code_kunst', '@sobeompark'),</pre><pre class="source-code">
+ ('@code_kunst', '@justhiseung'),</pre><pre class="source-code">
+ ('@code_kunst', '@hwajilla'),</pre><pre class="source-code">
+ ('@code_kunst', '@blobyblo'),</pre><pre class="source-code">
+ ('@code_kunst', '@minddonyy'),</pre><pre class="source-code">
+ ('@code_kunst', '@iuiive'),</pre><pre class="source-code">
+ ('@code_kunst', '@eugenius887'),</pre><pre class="source-code">
+ ...</pre><pre class="source-code">
+]</pre></li>
+				<li>This is a very long list of bridges, and I’m only showing a few of the rows, but we can <a id="_idIndexMarker552"/>use this along with pandas to identify the most <span class="No-Break">important bridges:</span><pre class="source-code">
+bridges = [s[0] for s in list(nx.bridges(G))]</pre><pre class="source-code">
+pd.Series(bridges).value_counts()[0:10]</pre><pre class="source-code">
+@b_hundred_hyun    127</pre><pre class="source-code">
+@zanelowe           90</pre><pre class="source-code">
+@haroobomkum        84</pre><pre class="source-code">
+@itzailee           78</pre><pre class="source-code">
+@spotifykr          60</pre><pre class="source-code">
+@shxx131bi131       57</pre><pre class="source-code">
+@thinktwicekpop     53</pre><pre class="source-code">
+@leehi_hi           53</pre><pre class="source-code">
+@bambam1a           49</pre><pre class="source-code">
+@bighitent          46</pre></li>
+				<li>One side effect of removing bridge nodes is that it can be similar to removing highly central notes – the network will shatter into a large group of isolates and a few smaller connected components. Let’s take the 10 bridge nodes with the most edges and <span class="No-Break">remove them:</span><pre class="source-code">
+cut_bridges = pd.Series(bridges).value_counts()[0:10].index.to_list()</pre><pre class="source-code">
+G_bridge_cut = G.copy()</pre><pre class="source-code">
+G_bridge_cut.remove_nodes_from(cut_bridges)</pre></li>
+				<li>After doing this, our network will likely look like a star has gone supernova, with debris flying out into space. Let’s take <span class="No-Break">a look:</span><pre class="source-code">
+draw_graph(G_bridge_cut, show_names=False)</pre></li>
+			</ol>
+			<p>This should draw a network without <span class="No-Break">node labels.</span></p>
+			<div>
+				<div id="_idContainer117" class="IMG---Figure">
+					<img src="image/B17105_07_022.jpg" alt="Figure 7.22 – Network visualization with top bridges cut" width="1466" height="1042"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.22 – Network visualization with top bridges cut</p>
+			<p>As we can <a id="_idIndexMarker553"/>see, there is still one densely connected component in the center of the network, a few tiny connected components consisting of a few nodes, and many individual isolates. Cutting bridges is not always so devastating. In other networks I have worked on, there’s been a core nucleus consisting of two communities with a few nodes sitting between the two communities as bridges. When removing those bridges, the network core communities just split apart. There were few or <span class="No-Break">no isolates.</span></p>
+			<p>There are reasons for identifying bridges. In a social network, these are nodes that information must flow through in order to reach communities on the other side. If you wanted to strategically place yourself in one of these networks, it would be wise to understand what the bridge is doing and then mimic what they have done, making connections with the people on each side. This can be a shortcut <span class="No-Break">to power.</span></p>
+			<p>Similarly, if <a id="_idIndexMarker554"/>your goal was to disable a network, identifying and removing important bridges would cease the information flow from one community to another. It would be highly disruptive. This can be useful for disrupting dark networks (of crime, hate, and <span class="No-Break">so on).</span></p>
+			<p>These are useful insights that can be extracted from networks, and they aren’t as identifiable without network analysis. Identifying bridges and having a plan for what to do with them can provide a strategic advantage. You can use them to gain power, you can use them to disrupt, or you can <a id="_idTextAnchor302"/>use them to pull network communities apart for <span class="No-Break">cleaner analysis.</span></p>
+			<h1 id="_idParaDest-193"><a id="_idTextAnchor303"/>Understanding layers with k_core and k_corona</h1>
+			<p>Networks can be thought of as like onions, and they are often visualized similarly, with isolates drawn on the outside, nodes with a single edge rendered after that, then nodes with two edges, and on and on and on until the core of the network is reached. NetworkX allows two <a id="_idTextAnchor304"/>functions for peeling the onion, so to say: <strong class="bold">k_core</strong> <span class="No-Break">and </span><span class="No-Break"><strong class="bold">k_corona</strong></span><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-194"><a id="_idTextAnchor305"/>k_core</h2>
+			<p>NetworkX’s <strong class="source-inline">k_core</strong> function <a id="_idIndexMarker555"/>allows us to easily reduce a network to only nodes <a id="_idIndexMarker556"/>that have <strong class="source-inline">k</strong> or more edges, with “<strong class="source-inline">k</strong>” being a number between 0 and the maximum number of edges that any node has in a network. As a result, you get the “core” of a network that contains <strong class="source-inline">k</strong> or more edges. If you were to do <strong class="source-inline">k_core(G, 2)</strong>, then this would return a graph containing nodes that have two or more edges, removing isolates and nodes with a single degree in one <span class="No-Break">easy step.</span></p>
+			<p>That single step of denoising a network may not seem like a big deal, but doing this with list comprehensions or loops requires more steps, more thought, and more troubleshooting. This single step easily does the cleanup. As such, <strong class="source-inline">k_core(G, 2)</strong> is common in my code when I am most interested in the shape of the network that exists after removing isolates and <span class="No-Break">single-edge nodes.</span></p>
+			<p>For instance, here<a id="_idIndexMarker557"/> is what our full K-pop network looks like when it is rendered. It is very difficult to see anything, as the single-edge nodes have turned the network visualization into a messy ball <span class="No-Break">of yarn.</span></p>
+			<div>
+				<div id="_idContainer118" class="IMG---Figure">
+					<img src="image/B17105_07_023.jpg" alt="Figure 7.23 – Whole network visualization" width="1650" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.23 – Whole network visualization</p>
+			<p>However, we <a id="_idIndexMarker558"/>can easily remove all nodes that have fewer than <span class="No-Break">two edges:</span></p>
+			<pre class="source-code">
+G_core = nx.k_core(G, 2)</pre>
+			<p>How does the network <span class="No-Break">look now?</span></p>
+			<pre class="source-code">
+draw_graph(G_core, show_names=True, node_size=3)</pre>
+			<p>This <a id="_idIndexMarker559"/>should draw our <strong class="source-inline">G_core</strong> network with <span class="No-Break">node labels.</span></p>
+			<div>
+				<div id="_idContainer119" class="IMG---Figure">
+					<img src="image/B17105_07_024.jpg" alt="Figure 7.24 – Whole network visualization with k_core and k=2" width="1612" height="1046"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.24 – Whole network visualization with k_core and k=2</p>
+			<p>It should be<a id="_idIndexMarker560"/> obvious that this is much easier <span class="No-Break">to interpret.</span></p>
+			<p>Learning about <strong class="source-inline">k_core</strong> was one of the most important moments for me as I learned how to analyze graphs and social networks. I used to denoise networks the less straightforward way, identifying nodes with fewer than two degrees, adding them to a list, and then removing <a id="_idTextAnchor306"/>them from a network. This single function has saved me so <span class="No-Break">much time.</span></p>
+			<h2 id="_idParaDest-195"><a id="_idTextAnchor307"/>k_corona</h2>
+			<p>Just as <strong class="source-inline">k_core</strong> allows <a id="_idIndexMarker561"/>us to<a id="_idIndexMarker562"/> extract the core of a network, <strong class="source-inline">k_corona</strong> allows us to investigate each layer of a network. <strong class="source-inline">k_corona</strong> is not about finding the core. It is about investigating what is happening in each layer of the network. For instance, if we only wanted to see nodes that have zero or one edges, we could <span class="No-Break">do this:</span></p>
+			<pre class="source-code">
+G_corona = nx.k_corona(G, 1)</pre>
+			<p>This would render as a bunch of isolates, and there will also likely be a few nodes that have one edge <span class="No-Break">between them:</span></p>
+			<ol>
+				<li value="1">First, let’s visualize the results of <span class="No-Break"><strong class="source-inline">k_corona(G, 1)</strong></span><span class="No-Break">:</span><pre class="source-code">
+draw_graph(G_corona, show_names=False, node_size=2)</pre></li>
+			</ol>
+			<p>This should render a network visualization of all nodes that have one or fewer edges. Nodes without any edges are called isolates and will appear <span class="No-Break">as dots.</span></p>
+			<div>
+				<div id="_idContainer120" class="IMG---Figure">
+					<img src="image/B17105_07_025.jpg" alt="Figure 7.25 – Visualization of k_corona k=1 layer" width="1650" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.25 – Visualization of k_corona k=1 layer</p>
+			<p>As we can see, there <a id="_idIndexMarker563"/>are lots of isolates. Can you identify the few nodes that have a single edge between them? I can’t. It’s like reading that book, Where’s Waldo? So, how do we identify the nodes in this layer that have an edge between them? How do we remove all of the nodes that have less than one edge? Think for <span class="No-Break">a second.</span></p>
+			<ol>
+				<li value="2">That’s<a id="_idIndexMarker564"/> right, we’ll use <strong class="source-inline">k_core</strong> for <span class="No-Break">the cleanup:</span><pre class="source-code">
+G_corona = nx.k_corona(G, 1)</pre><pre class="source-code">
+G_corona = nx.k_core(G_corona, 1)</pre></li>
+			</ol>
+			<p>If we visualize this, we can see that there are five connected components, each containing two nodes, and each node has a single edge between it and another node that exists in that <span class="No-Break">connected component.</span></p>
+			<pre class="source-code">
+draw_graph(G_corona, show_names=True, node_size=5, font_size=12)</pre>
+			<p>This will<a id="_idIndexMarker565"/> draw the <strong class="source-inline">G_corona</strong> network, with isolates removed, and with node <span class="No-Break">labels showing.</span></p>
+			<div>
+				<div id="_idContainer121" class="IMG---Figure">
+					<img src="image/B17105_07_026.jpg" alt="Figure 7.26 – Visualization of k_corona k=1 layer, simplified" width="1650" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.26 – Visualization of k_corona k=1 layer, simplified</p>
+			<ol>
+				<li value="3">Is there an easy <a id="_idIndexMarker566"/>way to extract these nodes, so that we can use them for further analysis? <span class="No-Break">Yes, easily:</span><pre class="source-code">
+corona_nodes = list(G_corona.nodes)</pre><pre class="source-code">
+corona_nodes</pre></li>
+			</ol>
+			<p>This will show us a list of all of the nodes <span class="No-Break">in </span><span class="No-Break"><strong class="source-inline">corona_nodes</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+['@day6official',
+ '@9muses_',
+ '@bol4_official',
+ '@8_ohmygirl',
+ '@withdrama',
+ '@elris_official',
+ '@hunus_elris',
+ '@miiiiiner_misog',
+ '@into__universe',
+ '@shofarmusic']</pre>
+			<ol>
+				<li value="4">What does the <a id="_idIndexMarker567"/>second layer of the network look like, the layer where each node has two degrees? Are the nodes on this layer connected to each other? Let’s create and render <span class="No-Break">this visualization:</span><pre class="source-code">
+G_corona = nx.k_corona(G, 2)</pre><pre class="source-code">
+draw_graph(G_corona, show_names=True, node_size=3)</pre></li>
+			</ol>
+			<p>This will<a id="_idIndexMarker568"/> render a network visualization of all nodes with two or <span class="No-Break">fewer edges.</span></p>
+			<div>
+				<div id="_idContainer122" class="IMG---Figure">
+					<img src="image/B17105_07_027.jpg" alt="Figure 7.27 – Visualization of k_corona k=2 layer" width="1592" height="1058"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.27 – Visualization of k_corona k=2 layer</p>
+			<p>It looks very similar to <strong class="source-inline">k_corona</strong> of layer one, but we can more easily see that a few nodes are connected to other nodes. We can also see that there are drastically fewer isolates in this layer. <a id="_idTextAnchor308"/>We <a id="_idIndexMarker569"/>could redo the <strong class="source-inline">k_core</strong> step for cleanup, but I<a id="_idIndexMarker570"/> think you get <span class="No-Break">the point.</span></p>
+			<p>Personally, I don’t use <strong class="source-inline">k_corona</strong> all that often. I have little interest in peeling networks, layer by layer, but the option is there, and maybe it can be more useful to you than it is to me. However, I use <strong class="source-inline">k_core</strong> practically every time I do anything with networks, for denoising a network, and for investigating the nucleus or nuclei that exist at the core of social networks. I recommend that you learn about both, but you may possibly have much more use for <strong class="source-inline">k_core</strong> than <a id="_idTextAnchor309"/>for <strong class="source-inline">k_corona</strong>. Still, <strong class="source-inline">k_corona</strong> opens up some interesting doors <span class="No-Break">for analysis.</span></p>
+			<h1 id="_idParaDest-196"><a id="_idTextAnchor310"/>Challenge yourself!</h1>
+			<p>Before concluding this chapter, I want to bring a challenge forward to you. You have learned how to create networks using text, what an edge list looks like and how to build one in pandas, how to create a network, and how to clean a network, and now you have an introduction to whole network analysis. You now have every tool required to start your journey into network analysis. I will explain how to do much more in later chapters, but you have all the tools you need to get started and get hooked on <span class="No-Break">network analysis.</span></p>
+			<p>I want to challenge you to think about your own data, about the data you work with, about the social networks you play on, about the work networks you collaborate in, and more. I want you to consider how you could take these living networks, describe them in an edge list (it’s just source and target columns), render a network visualization, and analyze the networks. You have the tools to do this, and networks are all around us. I recommend that when you are learning to investigate social networks and various networks, you use data that is actually interesting to you. You don’t need to find a dataset online. You can easily create one yourself, or you can scrape social media, as we explored in <span class="No-Break">earlier chapters.</span></p>
+			<p>I challenge you to stop at this chapter and play around for a while. Get lost in networks. Reread previous chapters in this book. Explore. Get weird. Have fun. This is my favorite way to learn. I take great enjoyment in buil<a id="_idTextAnchor311"/>ding my own datasets and analyzing the things that I am most <span class="No-Break">interested in.</span></p>
+			<h1 id="_idParaDest-197"><a id="_idTextAnchor312"/>Summary</h1>
+			<p>We have gone a long way in this chapter. This chapter could be a book on its own, but my goal was to give a fast-paced tour of the things that you can do with networks. As I stated in the beginning, this will not be a math book. I want to unlock new capabilities and opportunities for you, and I feel that this chapter and this book can do this <span class="No-Break">for you.</span></p>
+			<p>In this chapter, we covered a lot of ground: explaining whole network analysis, describing questions that can help with an analysis, and spending a lot of time actually doing network analysis. We looked at the network as a whole, but we also looked at node centralities, connected components, <span class="No-Break">and layers.</span></p>
+			<p>In the next chapter, we are going to learn about egocentric network analysis. We call these <strong class="bold">ego networks</strong>, to be concise. In that chapter, we will zoom in on nodes of interest, to understand the communities and nodes that exist around them. You can think of egocentric network analysis as <span class="No-Break">zooming in.</span></p>
+		</div>
+	</div>
+</div>
+</body></html>

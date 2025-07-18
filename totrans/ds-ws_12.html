@@ -1,0 +1,578 @@
+<html><head></head><body><div id="sbo-rt-content"><div>
+			<div id="_idContainer586" class="Content">
+			</div>
+		</div>
+		<div id="_idContainer587" class="Content">
+			<h1 id="_idParaDest-271">12. <a id="_idTextAnchor270"/>Feature Engineering</h1>
+		</div>
+		<div id="_idContainer634" class="Content">
+			<p class="callout-heading">Overview</p>
+			<p class="callout">By the end of this chapter, you will be able to merge multiple datasets together; bin categorical and numerical variables; perform aggregation on data; and manipulate dates using <strong class="source-inline">pandas</strong>.</p>
+			<p class="callout">This chapter will introduce you to some of the key techniques for creating new variables on an existing dataset.</p>
+			<h1 id="_idParaDest-272"><a id="_idTextAnchor271"/>Introduction</h1>
+			<p>In the previous chapters, we learned how to analyze and prepare a dataset in order to increase its level of quality. In this chapter, we will introduce you to another interesting topic: creating new features, also known as feature engineering. You already saw some of these concepts in <em class="italic">Chapter 3</em>, <em class="italic">Binary Classification</em>, but we will dive a bit deeper into it in this chapter.</p>
+			<p>The objective of feature engineering is to provide more information for the analysis you are performing on or the machine learning algorithms you will train on. Adding more information will help you to achieve better and more accurate results. </p>
+			<p>New features can come from internal data sources such as another table from databases or from different systems. For instance, you may want to link data from the CRM tool used in your company to the data from a marketing tool. The added features can also come from external sources such as open-source data or shared data from partners or providers. For example, you may want to link the volume of sales with a weather API or with governmental census data. But it can also come from the original dataset by creating new variables from existing ones.</p>
+			<p>Let's pause for a second and understand why feature engineering is so important for training machine learning algorithms. We are all aware that these algorithms have achieved incredible results in recent years in finding extremely complex patterns from data. But their main limitations lie in the fact that they can only analyze and find meaningful patterns within the data provided as input. If the data is incorrect, incomplete, or missing important features, the algorithms will not be able to perform correctly. </p>
+			<p>On the other hand, we humans tend to understand the broader context and see the bigger picture quite easily. For instance, if you were tasked with analyzing customer churn, even before looking at the existing data, you would already expect it to have some features describing customer attributes such as demographics, services or products subscribed to, and subscription date. And once we receive the data, we can highlight the features that we think are important and missing from the dataset. This is the reason why data scientists, with their expertise and experience, need to think about the additional information that will help algorithms to understand and detect more meaningful patterns from this enriched data. Without further ado, let's jump in.</p>
+			<h2 id="_idParaDest-273"><a id="_idTextAnchor272"/>Merging Datasets</h2>
+			<p>Most organizations store their data in data stores such as databases, data warehouses, or data lakes. The flow of information can come from different systems or tools. Most of the time, the data is stored in a relational database composed of multiple tables rather than a single one with well-defined relationships between them.</p>
+			<p>For instance, an online store could have multiple tables for recording all the purchases made on its platform. One table might contain information relating to existing customers, another one might list all existing and past products in the catalog, and a third one might contain all of the transactions that occurred, and so on.</p>
+			<p>If you were working on a project recommending products to customers for an e-commerce platform such as Amazon, you may have been given only the data from the transactions table. In that case, you would like to get some attributes for each product and customer and would have to ask to extract these additional tables you need and then merge the three tables together before building your recommendation system.</p>
+			<p>Let's see how we can merge multiple data sources with a real example: the Online Retail dataset we used in the previous chapter. We will add new information regarding whether the transactions happened on public holidays in the UK or not. This additional data may help the model to understand whether there are some correlations between sales and some public holidays such as Christmas or the Queen's birthday, which is a holiday in countries such as Australia.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The list of public holidays in the UK will be extracted from this site: <a href="https://packt.live/2twsFVR">https://packt.live/2twsFVR</a>.</p>
+			<p>First, we need to import the Online Retail dataset into a <strong class="source-inline">pandas</strong> DataFrame:</p>
+			<p class="source-code">import pandas as pd</p>
+			<p class="source-code">file_url = 'https://github.com/PacktWorkshops/'\</p>
+			<p class="source-code">           'The-Data-Science-Workshop/blob/'\</p>
+			<p class="source-code">           'master/Chapter12/Dataset/'\</p>
+			<p class="source-code">           'Online%20Retail.xlsx?raw=true'</p>
+			<p class="source-code">df = pd.read_excel(file_url)</p>
+			<p class="source-code">df.head()</p>
+			<p>You should get the following output.</p>
+			<div>
+				<div id="_idContainer588" class="IMG---Figure">
+					<img src="Images/B15019_12_01.jpg" alt="Figure 12.01: First five rows of the Online Retail dataset&#13;&#10;" width="1236" height="207"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.1: First five rows of the Online Retail dataset</p>
+			<p>Next, we are going to load all the public holidays in the UK into another <strong class="source-inline">pandas</strong> DataFrame. From <em class="italic">Chapter 10</em>, <em class="italic">Analyzing a Dataset</em> we know the records of this dataset are only for the years 2010 and 2011. So we are going to extract public holidays for those two years, but we need to do so in two different steps as the API provided by <strong class="source-inline">date.nager</strong> is split into single years only. </p>
+			<p>Let's focus on 2010 first:</p>
+			<p class="source-code">uk_holidays_2010 = pd.read_csv\</p>
+			<p class="source-code">                   ('https://date.nager.at/PublicHoliday/'\</p>
+			<p class="source-code">                    'Country/GB/2010/CSV')</p>
+			<p>We can print its shape to see how many rows and columns it has:</p>
+			<p class="source-code">uk_holidays_2010.shape</p>
+			<p>You should get the following output.</p>
+			<p class="source-code">(13, 8)</p>
+			<p>We can see there were <strong class="source-inline">13</strong> public holidays in that year and there are <strong class="source-inline">8</strong> different columns. </p>
+			<p>Let's print the first five rows of this DataFrame:</p>
+			<p class="source-code">uk_holidays_2010.head()</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer589" class="IMG---Figure">
+					<img src="Images/B15019_12_02.jpg" alt="Figure 12.02: First five rows of the UK 2010 public holidays DataFrame&#13;&#10;" width="1236" height="267"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.2: First five rows of the UK 2010 public holidays DataFrame</p>
+			<p>Now that we have the list of public holidays for 2010, let's extract the ones for 2011:</p>
+			<p class="source-code">uk_holidays_2011 = pd.read_csv\</p>
+			<p class="source-code">                   ('https://date.nager.at/PublicHoliday/'\</p>
+			<p class="source-code">                    'Country/GB/2011/CSV')</p>
+			<p class="source-code">uk_holidays_2011.shape</p>
+			<p>You should get the following output.</p>
+			<p class="source-code">(15, 8)</p>
+			<p>There were <strong class="source-inline">15</strong> public holidays in 2011. Now we need to combine the records of these two DataFrames. We will use the <strong class="source-inline">.append()</strong> method from <strong class="source-inline">pandas</strong> and assign the results into a new DataFrame:</p>
+			<p class="source-code">uk_holidays = uk_holidays_2010.append(uk_holidays_2011)</p>
+			<p>Let's check we have the right number of rows after appending the two DataFrames:</p>
+			<p class="source-code">uk_holidays.shape</p>
+			<p>You should get the following output:</p>
+			<p class="source-code">(28, 8)</p>
+			<p>We got <strong class="source-inline">28</strong> records, which corresponds with the total number of public holidays in 2010 and 2011. </p>
+			<p>In order to merge two DataFrames together, we need to have at least one common column between them, meaning the two DataFrames should have at least one column that contains the same type of information. In our example, we are going to merge this DataFrame using the <strong class="source-inline">Date</strong> column with the Online Retail DataFrame on the <strong class="source-inline">InvoiceDate</strong> column. We can see that the data format of these two columns is different: one is a date (<strong class="source-inline">yyyy-mm-dd</strong>) and the other is a datetime (<strong class="source-inline">yyyy-mm-dd hh:mm:ss</strong>). </p>
+			<p>So, we need to transform the <strong class="source-inline">InvoiceDate</strong> column into date format (<strong class="source-inline">yyyy-mm-dd</strong>). One way to do it (we will see another one later in this chapter) is to transform this column into text and then extract the first 10 characters for each cell using the <strong class="source-inline">.str.slice()</strong> method. </p>
+			<p>For example, the date 2010-12-01 08:26:00 will first be converted into a string and then we will keep only the first 10 characters, which will be 2010-12-01. We are going to save these results into a new column called <strong class="source-inline">InvoiceDay</strong>:</p>
+			<p class="source-code">df['InvoiceDay'] = df['InvoiceDate'].astype(str)\</p>
+			<p class="source-code">                                    .str.slice(stop=10)</p>
+			<p class="source-code">df.head()</p>
+			<p>The output is as follows:</p>
+			<div>
+				<div id="_idContainer590" class="IMG---Figure">
+					<img src="Images/B15019_12_03.jpg" alt="Figure 12.03: First five rows after creating InvoiceDay&#13;&#10;" width="984" height="269"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.3: First five rows after creating InvoiceDay</p>
+			<p>Now <strong class="source-inline">InvoiceDay</strong> from the online retail DataFrame and <strong class="source-inline">Date</strong> from the UK public holidays DataFrame have similar information, so we can merge these two DataFrames together using <strong class="source-inline">.merge()</strong> from <strong class="source-inline">pandas</strong>. </p>
+			<p>There are multiple ways to join two tables together: </p>
+			<ul>
+				<li>The left join </li>
+				<li>The right join </li>
+				<li>The inner join</li>
+				<li>The outer join</li>
+			</ul>
+			<h3 id="_idParaDest-274"><a id="_idTextAnchor273"/>The Left Join</h3>
+			<p>The left join will keep all the rows from the first DataFrame, which is the <em class="italic">Online Retail </em>dataset (the left-hand side) and join it to the matching rows from the second DataFrame, which is the <em class="italic">UK Public Holidays </em>dataset (the right-hand side), as shown in <em class="italic">Figure 12.04</em>:</p>
+			<div>
+				<div id="_idContainer591" class="IMG---Figure">
+					<img src="Images/B15019_12_04.jpg" alt="Figure 12.04: Venn diagram for left join&#13;&#10;" width="814" height="204"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.4: Venn diagram for left join</p>
+			<p>To perform a left join, we need to specify to the .merge() method the following parameters: </p>
+			<ul>
+				<li><strong class="source-inline">how = 'left'</strong> for a left join</li>
+				<li><strong class="source-inline">left_on = InvoiceDay</strong> to specify the column used for merging from the left-hand side (here, the <strong class="source-inline">Invoiceday</strong> column from the Online Retail DataFrame)</li>
+				<li><strong class="source-inline">right_on = Date</strong> to specify the column used for merging from the right-hand side (here, the <strong class="source-inline">Date</strong> column from the UK Public Holidays DataFrame)</li>
+			</ul>
+			<p>These parameters are clubbed together as shown in the following code snippet:</p>
+			<p class="source-code">df_left = pd.merge(df, uk_holidays, left_on='InvoiceDay', \</p>
+			<p class="source-code">                   right_on='Date', how='left')</p>
+			<p class="source-code">df_left.shape</p>
+			<p>You should get the following output:</p>
+			<p class="source-code">(541909, 17)</p>
+			<p>We got the exact same number of rows as the original Online Retail DataFrame, which is expected for a left join. Let's have a look at the first five rows:</p>
+			<p class="source-code">df_left.head()</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer592" class="IMG---Figure">
+					<img src="Images/B15019_12_05.jpg" alt="Figure 12.05: First five rows of the left-merged DataFrame&#13;&#10;" width="1564" height="579"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.5: First five rows of the left-merged DataFrame</p>
+			<p>We can see that the eight columns from the public holidays DataFrame have been merged to the original one. If no row has been matched from the second DataFrame (in this case, the public holidays one), <strong class="source-inline">pandas</strong> will fill all the cells with missing values (<strong class="source-inline">NaT</strong> or <strong class="source-inline">NaN</strong>), as shown in <em class="italic">Figure 12.05</em>.</p>
+			<h3 id="_idParaDest-275"><a id="_idTextAnchor274"/>The Right Join</h3>
+			<p>The right join is similar to the left join except it will keep all the rows from the second DataFrame (the right-hand side) and tries to match it with the first one (the left-hand side), as shown in <em class="italic">Figure 12.06</em>:</p>
+			<div>
+				<div id="_idContainer593" class="IMG---Figure">
+					<img src="Images/B15019_12_06.jpg" alt="Figure 12.06: Venn diagram for right join&#13;&#10;" width="920" height="195"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.6: Venn diagram for right join</p>
+			<p>We just need to specify the parameters:</p>
+			<ul>
+				<li><strong class="source-inline">how</strong> <strong class="source-inline">= 'right</strong>' to the <strong class="source-inline">.merge()</strong> method to perform this type of join. </li>
+				<li>We will use the exact same columns used for merging as the previous example, which is <strong class="source-inline">InvoiceDay</strong> for the Online Retail DataFrame and <strong class="source-inline">Date</strong> for the UK Public Holidays one.</li>
+			</ul>
+			<p>These parameters are clubbed together as shown in the following code snippet:</p>
+			<p class="source-code">df_right = df.merge(uk_holidays, left_on='InvoiceDay', \</p>
+			<p class="source-code">                    right_on='Date', how='right')</p>
+			<p class="source-code">df_right.shape</p>
+			<p>You should get the following output:</p>
+			<p class="source-code">(9602, 17)</p>
+			<p>We can see there are fewer rows as a result of the right join, but it doesn't get the same number as for the Public Holidays DataFrame. This is because there are multiple rows from the Online Retail DataFrame that match one single date in the public holidays one. </p>
+			<p>For instance, looking at the first rows of the merged DataFrame, we can see there were multiple purchases on January 4, 2011, so all of them have been matched with the corresponding public holiday. Have a look at the following code snippet:</p>
+			<p class="source-code">df_right.head()</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer594" class="IMG---Figure">
+					<img src="Images/B15019_12_07.jpg" alt="Figure 12.07: First five rows of the right-merged DataFrame&#13;&#10;" width="987" height="297"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.7: First five rows of the right-merged DataFrame</p>
+			<p>There are two other types of merging: inner and outer. </p>
+			<p>An inner join will only keep the rows that match between the two tables:</p>
+			<div>
+				<div id="_idContainer595" class="IMG---Figure">
+					<img src="Images/B15019_12_08.jpg" alt="Figure 12.08: Venn diagram for inner join&#13;&#10;" width="935" height="202"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.8: Venn diagram for inner join</p>
+			<p>You just need to specify the <strong class="source-inline">how = 'inner'</strong> parameter in the <strong class="source-inline">.merge()</strong> method.</p>
+			<p>These parameters are clubbed together as shown in the following code snippet:</p>
+			<p class="source-code">df_inner = df.merge(uk_holidays, left_on='InvoiceDay', \</p>
+			<p class="source-code">                    right_on='Date', how='inner')</p>
+			<p class="source-code">df_inner.shape</p>
+			<p>You should get the following output:</p>
+			<p class="source-code">(9579, 17)</p>
+			<p>We can see there are only 9,579 observations that happened during a public holiday in the UK. </p>
+			<p>The outer join will keep all rows from both tables (matched and unmatched), as shown in <em class="italic">Figure 12.09</em>:</p>
+			<div>
+				<div id="_idContainer596" class="IMG---Figure">
+					<img src="Images/B15019_12_09.jpg" alt="Figure 12.09: Venn diagram for outer join&#13;&#10;" width="899" height="202"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.9: Venn diagram for outer join</p>
+			<p>As you may have guessed, you just need to specify the <strong class="source-inline">how == 'outer'</strong> parameter in the <strong class="source-inline">.merge()</strong> method:</p>
+			<p class="source-code">df_outer = df.merge(uk_holidays, left_on='InvoiceDay', \</p>
+			<p class="source-code">                    right_on='Date', how='outer')</p>
+			<p class="source-code">df_outer.shape</p>
+			<p>You should get the following output:</p>
+			<p class="source-code">(541932, 17)</p>
+			<p>Before merging two tables, it is extremely important for you to know what your focus is. If your objective is to expand the number of features from an original dataset by adding the columns from another one, then you will probably use a left or right join. But be aware you may end up with more observations due to potentially multiple matches between the two tables. On the other hand, if you are interested in knowing which observations matched or didn't match between the two tables, you will either use an inner or outer join.</p>
+			<h2 id="_idParaDest-276"><a id="_idTextAnchor275"/>Exercise 12.01: Merging the ATO Dataset with the Postcode Data</h2>
+			<p>In this exercise, we will merge the ATO dataset (28 columns) with the Postcode dataset (150 columns) to get a richer dataset with an increased number of columns.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The Australian Taxation Office (ATO) dataset can be found in the Packt GitHub repository: <a href="https://packt.live/39B146q">https://packt.live/39B146q</a>.</p>
+			<p class="callout">The Postcode dataset can be found here: <a href="https://packt.live/2sHAPLc">https://packt.live/2sHAPLc</a>.</p>
+			<p class="callout">The sources of the dataset are as follows: </p>
+			<p class="callout">The <strong class="bold">Australian Taxation Office</strong> (<strong class="bold">ATO</strong>): <a href="https://packt.live/361i1p3">https://packt.live/361i1p3</a>.</p>
+			<p class="callout">The Postcode dataset: <a href="https://packt.live/2umIn6u">https://packt.live/2umIn6u</a>.</p>
+			<p>The following steps will help you complete the exercise:</p>
+			<ol>
+				<li>Open up a new Colab notebook.</li>
+				<li>Now, begin with the <strong class="source-inline">import</strong> of the <strong class="source-inline">pandas</strong> package:<p class="source-code">import pandas as pd</p></li>
+				<li>Assign the link to the ATO dataset to a variable called <strong class="source-inline">file_url</strong>:<p class="source-code">file_url = 'https://raw.githubusercontent.com/'\</p><p class="source-code">           'PacktWorkshops/The-Data-Science-Workshop/'\</p><p class="source-code">           'master/Chapter12/Dataset/taxstats2015.csv'</p></li>
+				<li>Using the <strong class="source-inline">.read_csv()</strong> method from the <strong class="source-inline">pandas</strong> package, load the dataset into a new DataFrame called <strong class="source-inline">df</strong>:<p class="source-code">df = pd.read_csv(file_url)</p></li>
+				<li>Display the dimensions of this DataFrame using the <strong class="source-inline">.shape</strong> attribute:<p class="source-code">df.shape</p><p>You should get the following output:</p><p class="source-code">(2473, 28)</p><p>The ATO dataset contains <strong class="source-inline">2471</strong> rows and <strong class="source-inline">28</strong> columns.</p></li>
+				<li>Display the first five rows of the ATO DataFrame using the <strong class="source-inline">.head()</strong> method:<p class="source-code">df.head()</p><p>You should get the following output:</p><div id="_idContainer597" class="IMG---Figure"><img src="Images/B15019_12_10.jpg" alt="Figure 12.10: First five rows of the ATO dataset&#13;&#10;" width="1665" height="272"/></div><p class="figure-caption">Figure 12.10: First five rows of the ATO dataset</p><p>Both DataFrames have a column called <strong class="source-inline">Postcode</strong> containing postcodes, so we will use it to merge them together. </p><p class="callout-heading">Note</p><p class="callout">Postcode is the name used in Australia for zip code. It is an identifier for postal areas. </p><p>We are interested in learning more about each of these postcodes. Let's make sure they are all unique in this dataset.</p></li>
+				<li>Display the number of unique values for the <strong class="source-inline">Postcode</strong> variable using the <strong class="source-inline">.nunique()</strong> method:<p class="source-code">df['Postcode'].nunique()</p><p>You should get the following output:</p><p class="source-code">2473</p><p>There are <strong class="source-inline">2473</strong> unique values in this column and the DataFrame has <strong class="source-inline">2473</strong> rows, so we are sure the <strong class="source-inline">Postcode</strong> variable contains only unique values.</p></li>
+				<li>Now, assign the link to the second Postcode dataset to a variable called <strong class="source-inline">postcode_df</strong>:<p class="source-code">postcode_url = 'https://github.com/PacktWorkshops/'\</p><p class="source-code">               'The-Data-Science-Workshop/blob/'\</p><p class="source-code">               'master/Chapter12/Dataset/'\</p><p class="source-code">               'taxstats2016individual06taxablestatusstate'\</p><p class="source-code">               'territorypostcodetaxableincome%20(2).xlsx?'\</p><p class="source-code">               'raw=true'</p></li>
+				<li>Load the second Postcode dataset into a new DataFrame called <strong class="source-inline">postcode_df</strong> using the <strong class="source-inline">.read_excel()</strong> method. <p>We will only load the <em class="italic">Individuals Table 6B </em>sheet as this is where the data is located so we need to provide this name to the <strong class="source-inline">sheet_name</strong> parameter. Also, the header row (containing the name of the variables) in this spreadsheet is located on the third row so we need to specify it to the header parameter.</p><p class="callout-heading">Note</p><p class="callout">Don't forget the <strong class="source-inline">index</strong> starts with 0 in Python.</p><p>Have a look at the following code snippet:</p><p class="source-code">postcode_df = pd.read_excel(postcode_url, \</p><p class="source-code">                            sheet_name='Individuals Table 6B', \</p><p class="source-code">                            header=2)</p></li>
+				<li>Print the dimensions of <strong class="source-inline">postcode_df</strong> using the <strong class="source-inline">.shape</strong> attribute:<p class="source-code">postcode_df.shape</p><p>You should get the following output:</p><p class="source-code">(2567, 150)</p><p>This DataFrame contains <strong class="source-inline">2567</strong> rows for <strong class="source-inline">150</strong> columns. By merging it with the ATO dataset, we will get additional information for each postcode.</p></li>
+				<li>Print the first five rows of <strong class="source-inline">postcode_df</strong> using the <strong class="source-inline">.head()</strong> method:<p class="source-code">postcode_df.head()</p><p>You should get the following output:</p><div id="_idContainer598" class="IMG---Figure"><img src="Images/B15019_12_11.jpg" alt="Figure 12.11: First five rows of the Postcode dataset&#13;&#10;" width="1600" height="309"/></div><p class="figure-caption">Figure 12.11: First five rows of the Postcode dataset</p><p>We can see that the second column contains the postcode value, and this is the one we will use to merge on with the ATO dataset. Let's check if they are unique.</p></li>
+				<li>Print the number of unique values in this column using the <strong class="source-inline">.nunique()</strong> method as shown in the following code snippet:<p class="source-code">postcode_df['Postcode'].nunique()</p><p>You should get the following output:</p><p class="source-code">2567</p><p>There are <strong class="source-inline">2567</strong> unique values, and this corresponds exactly to the number of rows of this DataFrame, so we're absolutely sure this column contains unique values. This also means that after merging the two tables, there will be only one-to-one matches. We won't have a case where we get multiple rows from one of the datasets matching with only one row of the other one. For instance, postcode <strong class="source-inline">2029</strong> from the ATO DataFrame will have exactly one match in the second Postcode DataFrame.</p></li>
+				<li>Perform a left join on the two DataFrames using the <strong class="source-inline">.merge()</strong> method and save the results into a new DataFrame called <strong class="source-inline">merged_df</strong>. Specify the <strong class="source-inline">how='left'</strong> and <strong class="source-inline">on='Postcode'</strong> parameters:<p class="source-code">merged_df = pd.merge(df, postcode_df, \</p><p class="source-code">                     how='left', on='Postcode')</p></li>
+				<li>Print the dimensions of the new merged DataFrame using the <strong class="source-inline">.shape</strong> attribute:<p class="source-code">merged_df.shape</p><p>You should get the following output:</p><p class="source-code">(2473, 177)</p><p>We got exactly <strong class="source-inline">2473</strong> rows after merging, which is what we expect as we used a left join and there was a one-to-one match on the <strong class="source-inline">Postcode</strong> column from both original DataFrames. Also, we now have <strong class="source-inline">177</strong> columns, which is the objective of this exercise. But before concluding it, we want to see whether there are any postcodes that didn't match between the two datasets. To do so, we will be looking at one column from the right-hand side DataFrame (the Postcode dataset) and see if there are any missing values.</p></li>
+				<li>Print the total number of missing values from the <strong class="source-inline">'State/Territory1'</strong> column by combining the <strong class="source-inline">.isna()</strong> and <strong class="source-inline">.sum()</strong> methods:<p class="source-code">merged_df['State/ Territory1'].isna().sum()</p><p>You should get the following output:</p><p class="source-code">4</p><p>There are four postcodes from the ATO dataset that didn't match the Postcode code.</p><p>Let's see which ones they are.</p></li>
+				<li>Print the missing postcodes using the <strong class="source-inline">.iloc()</strong> method, as shown in the following code snippet:<p class="source-code">merged_df.loc[merged_df['State/ Territory1'].isna(), \</p><p class="source-code">              'Postcode']</p><p>You should get the following output:</p><div id="_idContainer599" class="IMG---Figure"><img src="Images/B15019_12_12.jpg" alt="Figure 12.12: List of unmatched postcodes&#13;&#10;" width="903" height="179"/></div></li>
+			</ol>
+			<p class="figure-caption">Figure 12.12: List of unmatched postcodes</p>
+			<p>The missing postcodes from the Postcode dataset are <strong class="source-inline">3010</strong>, <strong class="source-inline">4462</strong>, <strong class="source-inline">6068</strong>, and <strong class="source-inline">6758</strong>. In a real project, you would have to get in touch with your stakeholders or the data team to see if you are able to get this data.</p>
+			<p>We have successfully merged the two datasets of interest and have expanded the number of features from <strong class="source-inline">28</strong> to <strong class="source-inline">177</strong>. We now have a much richer dataset and will be able to perform a more detailed analysis of it.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">To access the source code for this specific section, please refer to <a href="https://packt.live/324bV67">https://packt.live/324bV67</a>.</p>
+			<p class="callout">You can also run this example online at <a href="https://packt.live/2CDYv80">https://packt.live/2CDYv80</a>.</p>
+			<p>In the next topic, you will be introduced to the binning variables.</p>
+			<h2 id="_idParaDest-277"><a id="_idTextAnchor276"/>Binning Variables</h2>
+			<p>As mentioned earlier, feature engineering is not only about getting information not present in a dataset. Quite often, you will have to create new features from existing ones. One example of this is consolidating values from an existing column to a new list of values. </p>
+			<p>For instance, you may have a very high number of unique values for some of the categorical columns in your dataset, let's say over 1,000 values for each variable. This is actually quite a lot of information that will require extra computation power for an algorithm to process and learn the patterns from. This can have a significant impact on the project cost if you are using cloud computing services or on the delivery time of the project.</p>
+			<p>One possible solution is to not use these columns and drop them, but in that case, you may lose some very important and critical information for the business. Another solution is to create a more consolidated version of these columns by reducing the number of unique values to a smaller number, let's say 100. This would drastically speed up the training process for the algorithm without losing too much information. This kind of transformation is called binning and, traditionally, it refers to numerical variables, but the same logic can be applied to categorical variables as well.</p>
+			<p>Let's see how we can achieve this on the Online Retail dataset. First, we need to load the data:</p>
+			<p class="source-code">import pandas as pd</p>
+			<p class="source-code">file_url = 'https://github.com/PacktWorkshops/'\</p>
+			<p class="source-code">           'The-Data-Science-Workshop/blob/'\</p>
+			<p class="source-code">           'master/Chapter12/Dataset/'\</p>
+			<p class="source-code">           'Online%20Retail.xlsx?raw=true'</p>
+			<p class="source-code">df = pd.read_excel(file_url)</p>
+			<p>In <em class="italic">Chapter 10</em>, <em class="italic">Analyzing a Dataset</em> we learned that the <strong class="source-inline">Country</strong> column contains <strong class="source-inline">38</strong> different unique values: </p>
+			<p class="source-code">df['Country'].unique()</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer600" class="IMG---Figure">
+					<img src="Images/B15019_12_13.jpg" alt="Figure 12.13: List of unique values for the Country column&#13;&#10;" width="938" height="208"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.13: List of unique values for the Country column</p>
+			<p>We are going to group some of the countries together into regions such as Asia, the Middle East, and America. We will leave the European countries as is.</p>
+			<p>First, let's create a new column called <strong class="source-inline">Country_bin</strong> by copying the <strong class="source-inline">Country</strong> column:</p>
+			<p class="source-code">df['Country_bin'] = df['Country']</p>
+			<p>Then, we are going to create a list called <strong class="source-inline">asian_countries</strong> containing the name of Asian countries from the list of unique values for the <strong class="source-inline">Country</strong> column:</p>
+			<p class="source-code">asian_countries = ['Japan', 'Hong Kong', 'Singapore']</p>
+			<p>And finally, using the <strong class="source-inline">.loc()</strong> and <strong class="source-inline">.isin()</strong> methods from <strong class="source-inline">pandas</strong>, we are going to change the value of <strong class="source-inline">Country_bin</strong> to <strong class="source-inline">Asia</strong> for all of the countries that are present in the <strong class="source-inline">asian_countries</strong> list:</p>
+			<p class="source-code">df.loc[df['Country'].isin(asian_countries), \</p>
+			<p class="source-code">       'Country_bin'] = 'Asia'</p>
+			<p>Now, if we print the list of unique values for this new column, we will see the three Asian countries (<strong class="source-inline">Japan</strong>, <strong class="source-inline">Hong Kong</strong>, and <strong class="source-inline">Singapore</strong>) have been replaced by the value <strong class="source-inline">Asia</strong>:</p>
+			<p class="source-code">df['Country_bin'].unique()</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer601" class="IMG---Figure">
+					<img src="Images/B15019_12_14.jpg" alt="Figure 12.14: List of unique values for the Country_bin column &#13;&#10;after binning Asian countries&#13;&#10;" width="933" height="215"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.14: List of unique values for the Country_bin column after binning Asian countries</p>
+			<p>Let's perform the same process for Middle Eastern countries:</p>
+			<p class="source-code">m_east_countries = ['Israel', 'Bahrain', 'Lebanon', \</p>
+			<p class="source-code">                    'United Arab Emirates', 'Saudi Arabia']</p>
+			<p class="source-code">df.loc[df['Country'].isin(m_east_countries), \</p>
+			<p class="source-code">       'Country_bin'] = 'Middle East'</p>
+			<p class="source-code">df['Country_bin'].unique()</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer602" class="IMG---Figure">
+					<img src="Images/B15019_12_15.jpg" alt="Figure 12.15: List of unique values for the Country_bin column after &#13;&#10;binning Middle Eastern countries&#13;&#10;" width="933" height="179"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.15: List of unique values for the Country_bin column after binning Middle Eastern countries</p>
+			<p>Finally, let's group all countries from North and South America together:</p>
+			<p class="source-code">american_countries = ['Canada', 'Brazil', 'USA']</p>
+			<p class="source-code">df.loc[df['Country'].isin(american_countries), \</p>
+			<p class="source-code">       'Country_bin'] = 'America'</p>
+			<p class="source-code">df['Country_bin'].unique()</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer603" class="IMG---Figure">
+					<img src="Images/B15019_12_16.jpg" alt="Figure 12.16: List of unique values for the Country_bin column after binning &#13;&#10;countries from North and South America&#13;&#10;" width="946" height="154"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.16: List of unique values for the Country_bin column after binning countries from North and South America</p>
+			<p class="source-code">df['Country_bin'].nunique()</p>
+			<p>You should get the following output:</p>
+			<p class="source-code">30</p>
+			<p><strong class="source-inline">30</strong> is the number of unique values for the <strong class="source-inline">Country_bin</strong> column. So we reduced the number of unique values in this column from <strong class="source-inline">38</strong> to <strong class="source-inline">30</strong>:</p>
+			<p>We just saw how to group categorical values together, but the same process can be applied to numerical values as well. For instance, it is quite common to group people's ages into bins such as 20s (20 to 29 years old), 30s (30 to 39), and so on.</p>
+			<p>Have a look at <em class="italic">Exercise 12.02</em>, <em class="italic">Binning the YearBuilt variable from the AMES Housing dataset</em>.</p>
+			<h2 id="_idParaDest-278"><a id="_idTextAnchor277"/>Exercise 12.02: Binning the YearBuilt Variable from the AMES Housing Dataset</h2>
+			<p>In this exercise, we will create a new feature by binning an existing numerical column in order to reduce the number of unique values from <strong class="source-inline">112</strong> to <strong class="source-inline">15</strong>.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The dataset we will be using in this exercise is the Ames Housing dataset and it can be found in our GitHub repository: <a href="https://packt.live/35r2ahN">https://packt.live/35r2ahN</a>.</p>
+			<p class="callout">This dataset was compiled by Dean De Cock: <a href="https://packt.live/2uojqHR">https://packt.live/2uojqHR</a>.</p>
+			<p class="callout">This dataset contains the list of residential home sales in the city of Ames, Iowa between 2010 and 2016.</p>
+			<p class="callout">More information about each variable can be found here: <a href="https://packt.live/2sT88L4">https://packt.live/2sT88L4</a>.</p>
+			<ol>
+				<li value="1">Open up a new Colab notebook.</li>
+				<li>Import the <strong class="source-inline">pandas</strong> and <strong class="source-inline">altair</strong> packages:<p class="source-code">import pandas as pd</p><p class="source-code">import altair as alt</p></li>
+				<li>Assign the link to the dataset to a variable called <strong class="source-inline">file_url</strong>:<p class="source-code">file_url = 'https://raw.githubusercontent.com/'\</p><p class="source-code">           'PacktWorkshops/The-Data-Science-Workshop/'\</p><p class="source-code">           'master/Chapter12/Dataset/ames_iowa_housing.csv'</p></li>
+				<li>Using the <strong class="source-inline">.read_csv()</strong> method from the <strong class="source-inline">pandas</strong> package, load the dataset into a new DataFrame called <strong class="source-inline">df</strong>:<p class="source-code">df = pd.read_csv(file_url)</p></li>
+				<li>Display the first five rows using the<strong class="source-inline"> .head()</strong> method:<p class="source-code">df.head()</p><p>You should get the following output:</p><div id="_idContainer604" class="IMG---Figure"><img src="Images/B15019_12_17.jpg" alt="Figure 12.17: First five rows of the AMES housing DataFrame&#13;&#10;" width="1665" height="232"/></div><p class="figure-caption">Figure 12.17: First five rows of the AMES housing DataFrame</p></li>
+				<li>Display the number of unique values on the column using <strong class="source-inline">.nunique()</strong>:<p class="source-code">df['YearBuilt'].nunique()</p><p>You should get the following output:</p><p class="source-code">112</p><p>There are <strong class="source-inline">112</strong> different or unique values in the <strong class="source-inline">YearBuilt</strong> column:</p></li>
+				<li>Print a scatter plot using <strong class="source-inline">altair</strong> to visualize the number of records built per year. Specify <strong class="source-inline">YearBuilt:O</strong> as the x-axis and <strong class="source-inline">count()</strong> as the y-axis in the <strong class="source-inline">.encode()</strong> method:<p class="source-code">alt.Chart(df).mark_circle().encode(alt.X('YearBuilt:O'),\</p><p class="source-code">                                   y='count()')</p><p>You should get the following output:</p><div id="_idContainer605" class="IMG---Figure"><img src="Images/B15019_12_18.jpg" alt="Figure 12.18: First five rows of the AMES housing DataFrame&#13;&#10;" width="1008" height="233"/></div><p class="figure-caption">Figure 12.18: First five rows of the AMES housing DataFrame</p><p class="callout-heading">Note</p><p class="callout">The output is not shown on GitHub due to its limitations. If you run this on your Colab file, the graph will be displayed.</p><p>There weren't many properties sold in some of the years. So, you can group them by decades (groups of 10 years).</p></li>
+				<li>Create a list called <strong class="source-inline">year_built</strong> containing all the unique values in the <strong class="source-inline">YearBuilt </strong>column:<p class="source-code">year_built = df['YearBuilt'].unique()</p></li>
+				<li>Create another list that will compute the decade for each year in <strong class="source-inline">year_built</strong>. Use list comprehension to loop through each year and apply the following formula: <strong class="source-inline">year - (year % 10)</strong>. <p>For example, this formula applied to the year 2015 will give 2015 - (2015 % 10), which is 2015 – 5 equals 2010.</p><p class="callout-heading">Note</p><p class="callout">% corresponds to the modulo operator and will return the last digit of each year.</p><p>Have a look at the following code snippet:</p><p class="source-code">decade_list = [year - (year % 10) for year in year_built]</p></li>
+				<li>Create a sorted list of unique values from <strong class="source-inline">decade_list</strong> and save the result into a new variable called <strong class="source-inline">decade_built</strong>. To do so, transform <strong class="source-inline">decade_list</strong> into a set (this will exclude all duplicates) and then use the <strong class="source-inline">sorted()</strong> function as shown in the following code snippet:<p class="source-code">decade_built = sorted(set(decade_list))</p></li>
+				<li>Print the values of <strong class="source-inline">decade_built</strong>:<p class="source-code">decade_built</p><p>You should get the following output:</p><div id="_idContainer606" class="IMG---Figure"><img src="Images/B15019_12_19.jpg" alt="Figure 12.19: List of decades&#13;&#10;" width="1465" height="789"/></div><p class="figure-caption">Figure 12.19: List of decades</p><p>Now we have the list of decades we are going to bin the <strong class="source-inline">YearBuilt</strong> column with.</p></li>
+				<li>Create a new column on the <strong class="source-inline">df</strong> DataFrame called <strong class="source-inline">DecadeBuilt</strong> that will bin each value from <strong class="source-inline">YearBuilt</strong> into a decade. You will use the <strong class="source-inline">.cut()</strong> method from <strong class="source-inline">pandas</strong> and specify the <strong class="source-inline">bins=decade_built</strong> parameter:<p class="source-code">df['DecadeBuilt'] = pd.cut(df['YearBuilt'], \</p><p class="source-code">                           bins=decade_built)</p></li>
+				<li>Print the first five rows of the DataFrame but only for the <strong class="source-inline">'YearBuilt'</strong> and <strong class="source-inline">'DecadeBuilt'</strong> columns:<p class="source-code">df[['YearBuilt', 'DecadeBuilt']].head()</p><p>You should get the following output:</p><div id="_idContainer607" class="IMG---Figure"><img src="Images/B15019_12_20.jpg" alt="Figure 12.20: First five rows after binning&#13;&#10;" width="1183" height="367"/></div></li>
+			</ol>
+			<p class="figure-caption">Figure 12.20: First five rows after binning</p>
+			<p>We can see each year has been properly assigned to the relevant decade.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">To access the source code for this specific section, please refer to <a href="https://packt.live/3kXnC7c">https://packt.live/3kXnC7c</a>.</p>
+			<p class="callout">This section does not currently have an online interactive example, but can be run as usual on Google Colab.</p>
+			<p>We have successfully created a new feature from the <strong class="source-inline">YearBuilt</strong> column by binning its values into groups of decades. We have reduced the number of unique values from <strong class="source-inline">112</strong> to <strong class="source-inline">15</strong>.</p>
+			<h2 id="_idParaDest-279"><a id="_idTextAnchor278"/>Manipulating Dates</h2>
+			<p>In most datasets you will be working on, there will be one or more columns containing date information. Usually, you will not feed that type of information directly as input to a machine learning algorithm. The reason is you don't want it to learn extremely specific patterns, such as customer A bought product X on August 3, 2012, at 08:11 a.m. The model would be overfitting in that case and wouldn't be able to generalize to future data. </p>
+			<p>What you really want is the model to learn patterns, such as customers with young kids tending to buy unicorn toys in December, for instance. Rather than providing the raw dates, you want to extract some cyclical characteristics such as the month of the year, the day of the week, and so on. We will see in this section how easy it is to get this kind of information using the <strong class="source-inline">pandas</strong> package.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">There is an exception to this rule of thumb. If you are performing a time-series analysis, this kind of algorithm requires a date column as an input feature, but this is out of the scope of this book.</p>
+			<p>In <em class="italic">Chapter 10</em>, <em class="italic">Analyzing a Dataset</em> you were introduced to the concept of data types in <strong class="source-inline">pandas</strong>. At that time, we mainly focused on numerical variables and categorical ones but there is another important one: <strong class="source-inline">datetime</strong>. Let's have a look again at the type of each column from the Online Retail dataset:</p>
+			<p class="source-code">import pandas as pd</p>
+			<p class="source-code">file_url = 'https://github.com/PacktWorkshops/'\</p>
+			<p class="source-code">           'The-Data-Science-Workshop/blob/'\</p>
+			<p class="source-code">           'master/Chapter12/Dataset/'\</p>
+			<p class="source-code">           'Online%20Retail.xlsx?raw=true'</p>
+			<p class="source-code">df = pd.read_excel(file_url)</p>
+			<p class="source-code">df.dtypes</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer608" class="IMG---Figure">
+					<img src="Images/B15019_12_21.jpg" alt="Figure 12.21: Data types for the variables in the Online Retail dataset&#13;&#10;" width="1039" height="316"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.21: Data types for the variables in the Online Retail dataset</p>
+			<p>We can see that <strong class="source-inline">pandas</strong> automatically detected that <strong class="source-inline">InvoiceDate</strong> is of type <strong class="source-inline">datetime</strong>. But for some other datasets, it may not recognize dates properly. In this case, you will have to manually convert them using the <strong class="source-inline">.to_datetime()</strong> method:</p>
+			<p class="source-code">df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])</p>
+			<p>Once the column is converted to <strong class="source-inline">datetime</strong>, pandas provides a lot of attributes and methods for extracting time-related information. For instance, if you want to get the year of a date, you use the <strong class="source-inline">.dt.year</strong> attribute:</p>
+			<p class="source-code">df['InvoiceDate'].dt.year</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer609" class="IMG---Figure">
+					<img src="Images/B15019_12_22.jpg" alt="Figure 12.22: Extracted year for each row for the InvoiceDate column&#13;&#10;" width="633" height="256"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.22: Extracted year for each row for the InvoiceDate column</p>
+			<p>As you may have guessed, there are attributes for extracting the month and day of a date: <strong class="source-inline">.dt.month</strong> and <strong class="source-inline">.dt.day</strong> respectively. You can get the day of the week from a date using the <strong class="source-inline">.dt.dayofweek</strong> attribute:</p>
+			<p class="source-code">df['InvoiceDate'].dt.dayofweek</p>
+			<p>You should get the following output.</p>
+			<div>
+				<div id="_idContainer610" class="IMG---Figure">
+					<img src="Images/B15019_12_23.jpg" alt="Figure 12.23: Extracted day of the week for each row for the InvoiceDate column&#13;&#10;" width="672" height="259"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.23: Extracted day of the week for each row for the InvoiceDate column</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">You can find the whole list of available attributes here: <a href="https://packt.live/2ZUe02R">https://packt.live/2ZUe02R</a>.</p>
+			<p>With datetime columns, you can also perform some mathematical operations. We can, for instance, add <strong class="source-inline">3</strong> days to each date by using pandas time-series offset object, <strong class="source-inline">pd.tseries.offsets.Day(3)</strong>:</p>
+			<p class="source-code">df['InvoiceDate'] + pd.tseries.offsets.Day(3)</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer611" class="IMG---Figure">
+					<img src="Images/B15019_12_24.jpg" alt="Figure 12.24: InvoiceDate column offset by three days&#13;&#10;" width="738" height="269"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.24: InvoiceDate column offset by three days</p>
+			<p>You can also offset days by business days using <strong class="source-inline">pd.tseries.offsets.BusinessDay()</strong>. For instance, if we want to get the previous business days, we do:</p>
+			<p class="source-code">df['InvoiceDate'] + pd.tseries.offsets.BusinessDay(-1)</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer612" class="IMG---Figure">
+					<img src="Images/B15019_12_25.jpg" alt="Figure 12.25: InvoiceDate column offset by -1 business day&#13;&#10;" width="689" height="261"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.25: InvoiceDate column offset by -1 business day</p>
+			<p>Another interesting date manipulation operation is to apply a specific time-frequency using <strong class="source-inline">pd.Timedelta()</strong>. For instance, if you want to get the first day of the month from a date, you do: </p>
+			<p class="source-code">df['InvoiceDate'] + pd.Timedelta(1, unit='MS')</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer613" class="IMG---Figure">
+					<img src="Images/B15019_12_26.jpg" alt="Figure 12.26: InvoiceDate column transformed to the start of the month&#13;&#10;" width="692" height="263"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.26: InvoiceDate column transformed to the start of the month</p>
+			<p>As you have seen in this section, the <strong class="source-inline">pandas</strong> package provides a lot of different APIs for manipulating dates. You have learned how to use a few of the most popular ones. You can now explore the other ones on your own.</p>
+			<h2 id="_idParaDest-280"><a id="_idTextAnchor279"/>Exercise 12.03: Date Manipulation on Financial Services Consumer Complaints</h2>
+			<p>In this exercise, we will learn how to extract time-related information from two existing date columns using <strong class="source-inline">pandas</strong> in order to create six new columns:</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The dataset we will be using in this exercise is the Financial Services Customer Complaints dataset and it can be found on our GitHub repository: <a href="https://packt.live/2ZYm9Dp">https://packt.live/2ZYm9Dp</a>.</p>
+			<p class="callout">The original dataset can be found here: <a href="https://packt.live/35mFhMw">https://packt.live/35mFhMw</a>.</p>
+			<ol>
+				<li value="1">Open up a new Colab notebook.</li>
+				<li>Import the <strong class="source-inline">pandas</strong> package:<p class="source-code">import pandas as pd</p></li>
+				<li>Assign the link to the dataset to a variable called <strong class="source-inline">file_url</strong>:<p class="source-code">file_url = 'https://raw.githubusercontent.com/'\</p><p class="source-code">           'PacktWorkshops/The-Data-Science-Workshop/'\</p><p class="source-code">           'master/Chapter12/Dataset/Consumer_Complaints.csv'</p></li>
+				<li>Use the <strong class="source-inline">.read_csv()</strong> method from the <strong class="source-inline">pandas</strong> package and load the dataset into a new DataFrame called <strong class="source-inline">df</strong>:<p class="source-code">df = pd.read_csv(file_url)</p></li>
+				<li>Display the first five rows using the <strong class="source-inline">.head()</strong> method:<p class="source-code">df.head()</p><p>You should get the following output:</p><div id="_idContainer614" class="IMG---Figure"><img src="Images/B15019_12_27.jpg" alt="Figure 12.27: First five rows of the Customer Complaint DataFrame&#13;&#10;" width="1179" height="214"/></div><p class="figure-caption">Figure 12.27: First five rows of the Customer Complaint DataFrame</p></li>
+				<li>Print out the data types for each column using the<strong class="source-inline"> .dtypes</strong> attribute:<p class="source-code">df.dtypes</p><p>You should get the following output:</p><div id="_idContainer615" class="IMG---Figure"><img src="Images/B15019_12_28.jpg" alt="Figure 12.28: Data types for the Customer Complaint DataFrame&#13;&#10;" width="790" height="381"/></div><p class="figure-caption">Figure 12.28: Data types for the Customer Complaint DataFrame</p><p>The <strong class="source-inline">Date received</strong> and <strong class="source-inline">Date sent to company</strong> columns haven't been recognized as datetime, so we need to manually convert them.</p></li>
+				<li>Convert the <strong class="source-inline">Date received</strong> and <strong class="source-inline">Date sent to company</strong> columns to datetime using the <strong class="source-inline">pd.to_datetime()</strong> method:<p class="source-code">df['Date received'] = pd.to_datetime(df['Date received'])</p><p class="source-code">df['Date sent to company'] = pd.to_datetime\</p><p class="source-code">                             (df['Date sent to company'])</p></li>
+				<li>Print out the data types for each column using the <strong class="source-inline">.dtypes</strong> attribute:<p class="source-code">df.dtypes</p><p>You should get the following output:</p><div id="_idContainer616" class="IMG---Figure"><img src="Images/B15019_12_29.jpg" alt="Figure 12.29: Data types for the Customer Complaint DataFrame after conversion&#13;&#10;" width="986" height="485"/></div><p class="figure-caption">Figure 12.29: Data types for the Customer Complaint DataFrame after conversion</p><p>Now these two columns have the right data types. Now let's create some new features from these two dates.</p></li>
+				<li>Create a new column called <strong class="source-inline">YearReceived</strong>, which will contain the year of each date from the <strong class="source-inline">Date Received</strong> column using the <strong class="source-inline">.dt.year</strong> attribute:<p class="source-code">df['YearReceived'] = df['Date received'].dt.year</p></li>
+				<li>Create a new column called <strong class="source-inline">MonthReceived</strong>, which will contain the month of each date using the <strong class="source-inline">.dt.month</strong> attribute:<p class="source-code">df['MonthReceived'] = df['Date received'].dt.month</p></li>
+				<li>Create a new column called <strong class="source-inline">DayReceived</strong>, which will contain the day of the month for each date using the <strong class="source-inline">.dt.day</strong> attribute:<p class="source-code">df['DomReceived'] = df['Date received'].dt.day</p></li>
+				<li>Create a new column called <strong class="source-inline">DowReceived</strong>, which will contain the day of the week for each date using the <strong class="source-inline">.dt.dayofweek</strong> attribute:<p class="source-code">df['DowReceived'] = df['Date received'].dt.dayofweek</p></li>
+				<li>Display the first five rows using the <strong class="source-inline">.head()</strong> method:<p class="source-code">df.head()</p><p>You should get the following output:</p><div id="_idContainer617" class="IMG---Figure"><img src="Images/B15019_12_30.jpg" alt="Figure 12.30: First five rows of the Customer Complaint DataFrame &#13;&#10;after creating four new features&#13;&#10;" width="1570" height="514"/></div><p class="figure-caption">Figure 12.30: First five rows of the Customer Complaint DataFrame after creating four new features</p><p>We can see we have successfully created four new features: <strong class="source-inline">YearReceived</strong>, <strong class="source-inline">MonthReceived</strong>, <strong class="source-inline">DayReceived</strong>, and <strong class="source-inline">DowReceived</strong>. Now let's create another that will indicate whether the date was during a weekend or not.</p></li>
+				<li>Create a new column called <strong class="source-inline">IsWeekendReceived</strong>, which will contain binary values indicating whether the <strong class="source-inline">DowReceived</strong> column is over or equal to <strong class="source-inline">5</strong> (<strong class="source-inline">0</strong> corresponds to Monday, <strong class="source-inline">5</strong> and <strong class="source-inline">6</strong> correspond to Saturday and Sunday respectively):<p class="source-code">df['IsWeekendReceived'] = df['DowReceived'] &gt;= 5</p></li>
+				<li>Display the first <strong class="source-inline">5</strong> rows using the <strong class="source-inline">.head()</strong> method:<p class="source-code">df.head()</p><p>You should get the following output:</p><div id="_idContainer618" class="IMG---Figure"><img src="Images/B15019_12_31.jpg" alt="Figure 12.31: First five rows of the Customer Complaint DataFrame &#13;&#10;after creating the weekend feature &#13;&#10;" width="1665" height="551"/></div><p class="figure-caption">Figure 12.31: First five rows of the Customer Complaint DataFrame after creating the weekend feature </p><p>We have created a new feature stating whether each complaint was received during a weekend or not. Now we will feature engineer a new column with the numbers of days between <strong class="source-inline">Date sent to company</strong> and <strong class="source-inline">Date received</strong>.</p></li>
+				<li>Create a new column called <strong class="source-inline">RoutingDays</strong>, which will contain the difference between <strong class="source-inline">Date sent to company</strong> and <strong class="source-inline">Date received</strong>:<p class="source-code">df['RoutingDays'] = df['Date sent to company'] \</p><p class="source-code">                    - df['Date received']</p></li>
+				<li>Print out the data type of the new <strong class="source-inline">'RoutingDays'</strong> column using the <strong class="source-inline">.dtype</strong> attribute:<p class="source-code">df['RoutingDays'].dtype</p><p>You should get the following output:</p><div id="_idContainer619" class="IMG---Figure"><img src="Images/B15019_12_32.jpg" alt="Figure 12.32: Data type of the RoutingDays column&#13;&#10;" width="953" height="44"/></div><p class="figure-caption">Figure 12.32: Data type of the RoutingDays column</p><p>The result of subtracting two datetime columns is a new datetime column (<strong class="source-inline">dtype('&lt;M8[ns]'</strong>), which is a specific datetime type for the <strong class="source-inline">numpy</strong> package). We need to convert this data type into an <strong class="source-inline">int</strong> to get the number of days between these two days.</p></li>
+				<li>Transform the <strong class="source-inline">RoutingDays</strong> column using the <strong class="source-inline">.dt.days</strong> attribute:<p class="source-code">df['RoutingDays'] = df['RoutingDays'].dt.days</p></li>
+				<li>Display the first five rows using the <strong class="source-inline">.head()</strong> method:<p class="source-code">df.head()</p><p>You should get the following output:</p><div id="_idContainer620" class="IMG---Figure"><img src="Images/B15019_12_33.jpg" alt="Figure 12.33: First five rows of the Customer Complaint DataFrame after creating RoutingDays&#13;&#10;" width="1567" height="586"/></div></li>
+			</ol>
+			<p class="figure-caption">Figure 12.33: First five rows of the Customer Complaint DataFrame after creating RoutingDays</p>
+			<p>In this exercise, you put into practice different techniques to feature engineer new variables from datetime columns on a real-world dataset. From the two <strong class="source-inline">Date sent to company</strong> and <strong class="source-inline">Date received</strong> columns, you successfully created six new features that will provide additional valuable information.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">To access the source code for this specific section, please refer to <a href="https://packt.live/3kWvhmf">https://packt.live/3kWvhmf</a>.</p>
+			<p class="callout">You can also run this example online at <a href="https://packt.live/316YT8z">https://packt.live/316YT8z</a>.</p>
+			<p>For instance, we were able to find patterns such as the number of complaints tends to be higher in November or on a Friday. We also found that routing the complaints takes more time when they are received during the weekend, which may be due to the limited number of staff at that time of the week.</p>
+			<h2 id="_idParaDest-281"><a id="_idTextAnchor280"/>Performing Data Aggregation</h2>
+			<p>Alright. We are getting close to the end of this chapter. But before we wrap it up, there is one more technique to explore for creating new features: data aggregation. The idea behind it is to summarize a numerical column for specific groups from another column. We already saw an example of how to aggregate two numerical variables from the ATO dataset (Average net tax and Average total deductions) for each cluster found by k-means using the <strong class="source-inline">.pivot_table()</strong> method in <em class="italic">Chapter 5</em>, <em class="italic">Performing Your First Cluster Analysis</em>. But at that time, we aggregated the data not to create new features but to understand the difference between these clusters.</p>
+			<p>You may wonder to yourself in which cases you would want to perform feature engineering using data aggregation. If you already have a numerical column that contains a value for each record, why would you need to summarize it and add this information back to the DataFrame? It feels like we are just adding the same information but with fewer details. But there are actually multiple good reasons for using this technique. </p>
+			<p>One potential reason might be that you want to normalize another numerical column using this aggregation. For instance, if you are working on a dataset for a retailer that contains all the sales for each store around the world, the volume of sales may differ drastically for a country compared to another one as they don't have the same population. In this case, rather than using the raw sales figures for each store, you would calculate a ratio (or a percentage) of the sales of a store divided by the total volume of sales in its country. With this new ratio feature, some of the stores that looked as though they were underperforming because their raw volume of sales was not as high as for other countries may actually be performing much better than the average in its country.</p>
+			<p>In <strong class="source-inline">pandas</strong>, it is quite easy to perform data aggregation. We just need to combine the following methods successively: <strong class="source-inline">.groupby()</strong> and <strong class="source-inline">.agg()</strong>. </p>
+			<p>We will need to specify the list of columns that will be grouped together to the <strong class="source-inline">.groupby()</strong> method. If you are familiar with pivot tables in Excel, this corresponds to the <strong class="source-inline">Rows</strong> field. </p>
+			<p>The <strong class="source-inline">.agg()</strong> method expects a dictionary with the name of a column as a key and the aggregation function as a value such as <strong class="source-inline">{'column_name': 'aggregation_function'}</strong>. In an Excel pivot table, the aggregated column is referred to as <strong class="source-inline">values</strong>. </p>
+			<p>Let's see how to do it on the Online Retail dataset. First, we need to import the data:</p>
+			<p class="source-code">import pandas as pd</p>
+			<p class="source-code">file_url = 'https://github.com/PacktWorkshops/'\</p>
+			<p class="source-code">           'The-Data-Science-Workshop/blob/'\</p>
+			<p class="source-code">           'master/Chapter12/Dataset/'\</p>
+			<p class="source-code">           'Online%20Retail.xlsx?raw=true'</p>
+			<p class="source-code">df = pd.read_excel(file_url)</p>
+			<p>Let's calculate the total quantity of items sold for each country. We will specify the <strong class="source-inline">Country</strong> column as the grouping column:</p>
+			<p class="source-code">df.groupby('Country').agg({'Quantity': 'sum'})</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer621" class="IMG---Figure">
+					<img src="Images/B15019_12_34.jpg" alt="Figure 12.34: Sum of Quantity per Country (truncated)&#13;&#10;" width="1124" height="546"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.34: Sum of Quantity per Country (truncated)</p>
+			<p>This result gives the total volume of items sold for each country. We can see that Australia has almost sold four times more items than Belgium. This level of information may be too high-level and we may want a bit more granular detail. Let's perform the same aggregation but this time we will group on two columns: <strong class="source-inline">Country</strong> and <strong class="source-inline">StockCode</strong>. We just need to provide the names of these columns as a list to the <strong class="source-inline">.groupby()</strong> method:</p>
+			<p class="source-code">df.groupby(['Country', 'StockCode']).agg({'Quantity': 'sum'})</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer622" class="IMG---Figure">
+					<img src="Images/B15019_12_35.jpg" alt="Figure 12.35: Sum of Quantity per Country and StockCode&#13;&#10;" width="709" height="531"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.35: Sum of Quantity per Country and StockCode</p>
+			<p>We can see how many items have been sold for each country. We can note that Australia has sold the same quantity of products <strong class="source-inline">20675</strong>, <strong class="source-inline">20676</strong>, and <strong class="source-inline">20677</strong> (<strong class="source-inline">216</strong> each). This may indicate that these products are always sold together. </p>
+			<p>We can add one more layer of information and get the number of items sold for each country, the product, and the date. To do so, we first need to create a new feature that will extract the date component of <strong class="source-inline">InvoiceDate</strong> (we just learned how to do this in the previous section):</p>
+			<p class="source-code">df['Invoice_Date'] = df['InvoiceDate'].dt.date</p>
+			<p>Then, we can add this new column in the <strong class="source-inline">.groupby()</strong> method:</p>
+			<p class="source-code">df.groupby(['Country', 'StockCode', \</p>
+			<p class="source-code">            'Invoice_Date']).agg({'Quantity': 'sum'})</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer623" class="IMG---Figure">
+					<img src="Images/B15019_12_36.jpg" alt="Figure 12.36: Sum of Quantity per Country, StockCode, and Invoice_Date&#13;&#10;" width="724" height="530"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.36: Sum of Quantity per Country, StockCode, and Invoice_Date</p>
+			<p>We have generated a new DataFrame with the total quantity of items sold per country, item ID, and date. We can see the item with <strong class="source-inline">StockCode 15036</strong> was quite popular on <strong class="source-inline">2011-05-17</strong> in <strong class="source-inline">Australia</strong> – there were <strong class="source-inline">600</strong> sold items. On the other hand, only <strong class="source-inline">6</strong> items of <strong class="source-inline">Stockcode</strong> <strong class="source-inline">20665</strong> were sold on <strong class="source-inline">2011-03-24</strong> in <strong class="source-inline">Australia</strong>.</p>
+			<p>We can now merge this additional information back into the original DataFrame. But before that, there is an additional data transformation step required: reset the column index. The <strong class="source-inline">pandas</strong> package creates a multi-level index after data aggregation by default. You can think of it as though the column names were stored in multiple rows instead of one only. To change it back to a single level, you need to call the <strong class="source-inline">.reset_index()</strong> method:</p>
+			<p class="source-code">df_agg = df.groupby(['Country', 'StockCode', 'Invoice_Date'])\</p>
+			<p class="source-code">           .agg({'Quantity': 'sum'}).reset_index()</p>
+			<p class="source-code">df_agg.head()</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer624" class="IMG---Figure">
+					<img src="Images/B15019_12_37.jpg" alt="Figure 12.37: DataFrame containing data aggregation information&#13;&#10;" width="909" height="262"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.37: DataFrame containing data aggregation information</p>
+			<p>Now we can merge this new DataFrame into the original one using the <strong class="source-inline">.merge()</strong> method we saw earlier in this chapter:</p>
+			<p class="source-code">df_merged = pd.merge(df, df_agg, how='left', \</p>
+			<p class="source-code">                     on = ['Country', 'StockCode', \</p>
+			<p class="source-code">                           'Invoice_Date'])</p>
+			<p class="source-code">df_merged</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer625" class="IMG---Figure">
+					<img src="Images/B15019_12_38.jpg" alt="Figure 12.38: Merged DataFrame (truncated)&#13;&#10;" width="1665" height="647"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.38: Merged DataFrame (truncated)</p>
+			<p>We can see there are two columns called <strong class="source-inline">Quantity_x</strong> and <strong class="source-inline">Quantity_y</strong> instead of <strong class="source-inline">Quantity</strong>. </p>
+			<p>The reason is that, after merging, there were two different columns with the exact same name (<strong class="source-inline">Quantity</strong>), so by default, pandas added a suffix to differentiate them. </p>
+			<p>We can fix this situation either by replacing the name of one of those two columns before merging or we can replace both of them after merging. To replace column names, we can use the <strong class="source-inline">.rename()</strong> method from <strong class="source-inline">pandas</strong> by providing a dictionary with the old name as the key and the new name as the value, such as <strong class="source-inline">{'old_name': 'new_name'}</strong>. </p>
+			<p>Let's replace the column names after merging with <strong class="source-inline">Quantity</strong> and <strong class="source-inline">DailyQuantity</strong>:</p>
+			<p class="source-code">df_merged.rename(columns={"Quantity_x": "Quantity", \</p>
+			<p class="source-code">                          "Quantity_y": "DailyQuantity"}, \</p>
+			<p class="source-code">                 inplace=True)</p>
+			<p class="source-code">df_merged</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer626" class="IMG---Figure">
+					<img src="Images/B15019_12_39.jpg" alt="Figure 12.39: Renamed DataFrame (truncated)&#13;&#10;" width="871" height="282"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.39: Renamed DataFrame (truncated)</p>
+			<p>Now we can create a new feature that will calculate the ratio between the items sold with the daily total quantity of sold items in the corresponding country:</p>
+			<p class="source-code">df_merged['QuantityRatio'] = df_merged['Quantity'] \</p>
+			<p class="source-code">                             / df_merged['DailyQuantity']</p>
+			<p class="source-code">df_merged</p>
+			<p>You should get the following output:</p>
+			<div>
+				<div id="_idContainer627" class="IMG---Figure">
+					<img src="Images/B15019_12_40.jpg" alt="Figure 12.40: Final DataFrame with new QuantityRatio feature&#13;&#10;" width="1665" height="472"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.40: Final DataFrame with new QuantityRatio feature</p>
+			<p>In this section, we learned how performing data aggregation can help us to create new features by calculating the ratio or percentage for each grouping of interest. Looking at the first and second rows, we can see there were <strong class="source-inline">6</strong> items sold for <strong class="source-inline">StockCode</strong> transactions <strong class="source-inline">84123A</strong> and <strong class="source-inline">71053</strong>. But if we look at the newly created <strong class="source-inline">DailyQuantity</strong> column, we can see that <strong class="source-inline">StockCode</strong> <strong class="source-inline">84123A</strong> is more popular: on that day (<strong class="source-inline">2010-12-01</strong>), the store sold <strong class="source-inline">454</strong> units of it but only <strong class="source-inline">33</strong> of <strong class="source-inline">StockCode</strong> <strong class="source-inline">71053</strong>. <strong class="source-inline">QuantityRatio</strong> is showing us the third transaction sold <strong class="source-inline">8</strong> items of <strong class="source-inline">StockCode</strong> <strong class="source-inline">84406B</strong> and this single transaction accounted for 20% of the sales of that item on that day. By performing data aggregation, we have gained additional information for each record and have put the original information from the dataset into perspective.</p>
+			<h2 id="_idParaDest-282"><a id="_idTextAnchor281"/>Exercise 12.04: Feature Engineering Using Data Aggregation on the AMES Housing Dataset</h2>
+			<p>In this exercise, we will create new features using data aggregation. First, we'll calculate the maximum <strong class="source-inline">SalePrice</strong> and <strong class="source-inline">LotArea</strong> for each neighborhood and by <strong class="source-inline">YrSold</strong>. Then, we will add this information back to the dataset, and finally, we will calculate the ratio of each property sold with these two maximum values:</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The dataset we will be using in this exercise is the Ames Housing dataset and it can be found in our GitHub repository: <a href="https://packt.live/35r2ahN">https://packt.live/35r2ahN</a>.</p>
+			<ol>
+				<li value="1">Open up a new Colab notebook.</li>
+				<li>Import the <strong class="source-inline">pandas</strong> and <strong class="source-inline">altair</strong> packages:<p class="source-code">import pandas as pd</p></li>
+				<li>Assign the link to the dataset to a variable called <strong class="source-inline">file_url</strong>:<p class="source-code">file_url = 'https://raw.githubusercontent.com/'\</p><p class="source-code">           'PacktWorkshops/The-Data-Science-Workshop/'\</p><p class="source-code">           'master/Chapter12/Dataset/ames_iowa_housing.csv'</p></li>
+				<li>Using the <strong class="source-inline">.read_csv()</strong> method from the <strong class="source-inline">pandas</strong> package, load the dataset into a new DataFrame called <strong class="source-inline">df</strong>:<p class="source-code">df = pd.read_csv(file_url)</p></li>
+				<li>Perform data aggregation to find the maximum <strong class="source-inline">SalePrice</strong> for each <strong class="source-inline">Neighborhood</strong> and the <strong class="source-inline">YrSold</strong> using the <strong class="source-inline">.groupby.agg()</strong> method and save the results in a new DataFrame called <strong class="source-inline">df_agg</strong>:<p class="source-code">df_agg = df.groupby(['Neighborhood', 'YrSold'])\</p><p class="source-code">           .agg({'SalePrice': 'max'}).reset_index()</p></li>
+				<li>Rename the <strong class="source-inline">df_agg</strong> columns to <strong class="source-inline">Neighborhood</strong>, <strong class="source-inline">YrSold</strong>, and <strong class="source-inline">SalePriceMax</strong>:<p class="source-code">df_agg.columns = ['Neighborhood', 'YrSold', 'SalePriceMax']</p></li>
+				<li>Print out the first five rows of <strong class="source-inline">df_agg</strong>:<p class="source-code">df_agg.head()</p><p>You should get the following output:</p><div id="_idContainer628" class="IMG---Figure"><img src="Images/B15019_12_41.jpg" alt="Figure 12.41: First five rows of the aggregated DataFrame&#13;&#10;" width="1204" height="355"/></div><p class="figure-caption">Figure 12.41: First five rows of the aggregated DataFrame</p></li>
+				<li>Merge the original DataFrame, <strong class="source-inline">df</strong>, to <strong class="source-inline">df_agg</strong> using a left join (<strong class="source-inline">how='left'</strong>) on the <strong class="source-inline">Neighborhood</strong> and <strong class="source-inline">YrSold</strong> columns using the <strong class="source-inline">merge()</strong> method and save the results into a new DataFrame called <strong class="source-inline">df_new</strong>:<p class="source-code">df_new = pd.merge(df, df_agg, how='left', \</p><p class="source-code">                  on=['Neighborhood', 'YrSold'])</p></li>
+				<li>Print out the first five rows of <strong class="source-inline">df_new</strong>:<p class="source-code">df_new.head()</p><p>You should get the following output:</p><div id="_idContainer629" class="IMG---Figure"><img src="Images/B15019_12_42.jpg" alt="Figure 12.42: First five rows of df_new&#13;&#10;" width="1023" height="276"/></div><p class="figure-caption">Figure 12.42: First five rows of df_new</p><p>Note that we are displaying the last eight columns of the output.</p></li>
+				<li>Create a new column called <strong class="source-inline">SalePriceRatio</strong> by dividing <strong class="source-inline">SalePrice</strong> by <strong class="source-inline">SalePriceMax</strong>:<p class="source-code">df_new['SalePriceRatio'] = df_new['SalePrice'] \</p><p class="source-code">                           / df_new['SalePriceMax']</p></li>
+				<li>Print out the first five rows of <strong class="source-inline">df_new</strong>:<p class="source-code">df_new.head()</p><p>You should get the following output:</p><div id="_idContainer630" class="IMG---Figure"><img src="Images/B15019_12_43.jpg" alt="Figure 12.43: First five rows of df_new after feature engineering&#13;&#10;" width="995" height="276"/></div><p class="figure-caption">Figure 12.43: First five rows of df_new after feature engineering</p><p>Note that we are displaying the last eight columns of the output.</p></li>
+				<li>Perform data aggregation to find the maximum <strong class="source-inline">LotArea</strong> for each <strong class="source-inline">Neighborhood</strong> and <strong class="source-inline">YrSold</strong> using the <strong class="source-inline">.groupby.agg()</strong> method and save the results in a new DataFrame called <strong class="source-inline">df_agg2</strong>:<p class="source-code">df_agg2 = df.groupby(['Neighborhood', 'YrSold'])\</p><p class="source-code">            .agg({'LotArea': 'max'}).reset_index()</p></li>
+				<li>Rename the column of <strong class="source-inline">df_agg2</strong> to <strong class="source-inline">Neighborhood</strong>, <strong class="source-inline">YrSold</strong>, and <strong class="source-inline">LotAreaMax</strong> and print out the first five columns:<p class="source-code">df_agg2.columns = ['Neighborhood', 'YrSold', 'LotAreaMax']</p><p class="source-code">df_agg2.head()</p><p>You should get the following output:</p><div id="_idContainer631" class="IMG---Figure"><img src="Images/B15019_12_44.jpg" alt="Figure 12.44: First five rows of the aggregated DataFrame&#13;&#10;" width="1086" height="382"/></div><p class="figure-caption">Figure 12.44: First five rows of the aggregated DataFrame</p></li>
+				<li>Merge the original DataFrame, <strong class="source-inline">df</strong>, to <strong class="source-inline">df_agg2</strong> using a left join (<strong class="source-inline">how='left'</strong>) on the <strong class="source-inline">Neighborhood</strong> and <strong class="source-inline">YrSold</strong> columns using the <strong class="source-inline">merge()</strong> method and save the results into a new DataFrame called <strong class="source-inline">df_final</strong>:<p class="source-code">df_final = pd.merge(df_new, df_agg2, how='left', \</p><p class="source-code">                    on=['Neighborhood', 'YrSold'])</p></li>
+				<li>Create a new column called <strong class="source-inline">LotAreaRatio</strong> by dividing <strong class="source-inline">LotArea</strong> by <strong class="source-inline">LotAreaMax</strong>:<p class="source-code">df_final['LotAreaRatio'] = df_final['LotArea'] \</p><p class="source-code">                           / df_final['LotAreaMax']</p></li>
+				<li>Print out the first five rows of <strong class="source-inline">df_final</strong> for the following columns: <strong class="source-inline">Id</strong>, <strong class="source-inline">Neighborhood</strong>, <strong class="source-inline">YrSold</strong>, <strong class="source-inline">SalePrice</strong>, <strong class="source-inline">SalePriceMax</strong>, <strong class="source-inline">SalePriceRatio</strong>, <strong class="source-inline">LotArea</strong>, <strong class="source-inline">LotAreaMax</strong>, <strong class="source-inline">LotAreaRatio</strong>:<p class="source-code">df_final[['Id', 'Neighborhood', 'YrSold', 'SalePrice', \</p><p class="source-code">          'SalePriceMax', 'SalePriceRatio', 'LotArea', \</p><p class="source-code">          'LotAreaMax', 'LotAreaRatio']].head()</p><p>You should get the following output:</p><div id="_idContainer632" class="IMG---Figure"><img src="Images/B15019_12_45.jpg" alt="Figure 12.45: First five rows of the final DataFrame&#13;&#10;" width="965" height="212"/></div></li>
+			</ol>
+			<p class="figure-caption">Figure 12.45: First five rows of the final DataFrame</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">To access the source code for this specific section, please refer to <a href="https://packt.live/2Q8a5eU">https://packt.live/2Q8a5eU</a>.</p>
+			<p class="callout">You can also run this example online at <a href="https://packt.live/2Q8dhXI">https://packt.live/2Q8dhXI</a>.</p>
+			<p>This is it. We just created two new features that give the ratio of <strong class="source-inline">SalePrice</strong> and <strong class="source-inline">LotArea</strong> for a property compared to the highest one that was sold in the same year and the same neighborhood. We can now easily and fairly compare the properties. For instance, from the output of the last step, we can note that the fifth property size (<strong class="source-inline">Id</strong> <strong class="source-inline">5</strong> and <strong class="source-inline">LotArea</strong> <strong class="source-inline">14260</strong>) was almost as close (<strong class="source-inline">LotAreaRatio</strong> <strong class="source-inline">0.996994</strong>) as the biggest property sold (<strong class="source-inline">LotArea</strong> <strong class="source-inline">14303</strong>) in the same area and the same year. But its sale price (<strong class="source-inline">SalePrice</strong> <strong class="source-inline">250000</strong>) was significantly lower (<strong class="source-inline">SalePriceRatio</strong> is <strong class="source-inline">0.714286</strong>) than the highest one (<strong class="source-inline">SalePrice</strong> <strong class="source-inline">350000</strong>). This indicates that other features of the property had an impact on the sale price.</p>
+			<h2 id="_idParaDest-283"><a id="_idTextAnchor282"/>Activity 12.01: Feature Engineering on a Financial Dataset</h2>
+			<p>You are working for a major bank in the Czech Republic and you have been tasked to analyze the transactions of existing customers. The data team has extracted all the tables from their database they think will be useful for you to analyze the dataset. You will need to consolidate the data from those tables into a single DataFrame and create new features in order to get an enriched dataset from which you will be able to perform an in-depth analysis of customers' banking transactions. </p>
+			<p>You will be using only the following four tables:</p>
+			<ul>
+				<li><strong class="source-inline">account</strong>: The characteristics of a customer's bank account for a given branch</li>
+				<li><strong class="source-inline">client</strong>: Personal information related to the bank's customers</li>
+				<li><strong class="source-inline">disp</strong>: A table that links an account to a customer</li>
+				<li><strong class="source-inline">trans</strong>: A list of all historical transactions by account<p class="callout-heading">Note</p><p class="callout">If you want to know more about these tables, you can look at the data dictionary for this dataset: <a href="https://packt.live/2QSev9F">https://packt.live/2QSev9F</a>.</p></li>
+			</ul>
+			<p>The following steps will help you complete this activity:</p>
+			<ol>
+				<li value="1">Download and load the different tables from this dataset into Python.</li>
+				<li>Analyze each table with the <strong class="source-inline">.shape</strong> and <strong class="source-inline">.head()</strong> methods.</li>
+				<li>Find the common/similar column(s) between tables that will be used for merging based on the analysis from <em class="italic">Step 2</em>.</li>
+				<li>There should be four common tables. Merge the four tables together using <strong class="source-inline">pd.merge()</strong>.</li>
+				<li>Rename the column names after merging with <strong class="source-inline">.rename()</strong>.</li>
+				<li>Check there is no duplication after merging with <strong class="source-inline">.duplicated()</strong> and <strong class="source-inline">.sum()</strong>.</li>
+				<li>Transform the data type for date columns using <strong class="source-inline">.to_datetime()</strong>. </li>
+				<li>Create two separate features from <strong class="source-inline">birth_number</strong> to get the date of birth and sex for each customer.<p class="callout-heading">Note</p><p class="callout">This is the rule used for coding the data related to birthday and sex in this column: the number is in the YYMMDD format for men, the number is in the YYMM+50DD format for women, where YYMMDD is the date of birth.</p></li>
+				<li>Fix data quality issues with <strong class="source-inline">.isna()</strong>.</li>
+				<li>Create a new feature that will calculate customers' ages when they opened an account using date operations:<p class="callout-heading">Note</p><p class="callout">The dataset was originally shared by Berka, Petr for the Discovery Challenge PKDD'99: <a href="https://packt.live/2ZVaG7J">https://packt.live/2ZVaG7J</a>.</p><p class="callout">The datasets you will be using in this activity can be found on our GitHub repository: </p><p class="callout"><a href="https://packt.live/2QpUOXC">https://packt.live/2QpUOXC</a>.</p><p class="callout"><a href="https://packt.live/36sN2BR">https://packt.live/36sN2BR</a>.</p><p class="callout"><a href="https://packt.live/2MZLzLB">https://packt.live/2MZLzLB</a>.</p><p class="callout"><a href="https://packt.live/2rW9hkE">https://packt.live/2rW9hkE</a>.</p><p class="callout">The CSV version can be found here: <a href="https://packt.live/2N150nn">https://packt.live/2N150nn</a>.</p></li>
+			</ol>
+			<p><strong class="bold">Expected output:</strong></p>
+			<div>
+				<div id="_idContainer633" class="IMG---Figure">
+					<img src="Images/B15019_12_46.jpg" alt="Figure 12.46: Expected output with the merged rows&#13;&#10;" width="961" height="309"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.46: Expected output with the merged rows</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The solution to this activity can be found at the following address: <a href="https://packt.live/2GbJloz">https://packt.live/2GbJloz</a>.</p>
+			<h2 id="_idParaDest-284"><a id="_idTextAnchor283"/>Summary</h2>
+			<p>We first learned how to analyze a dataset and get a very good understanding of its data using data summarization and data visualization. This is very useful for finding out what the limitations of a dataset are and identifying data quality issues. We saw how to handle and fix some of the most frequent issues (duplicate rows, type conversion, value replacement, and missing values) using <strong class="source-inline">pandas</strong>' APIs. </p>
+			<p>Finally, we went through several feature engineering techniques. It was not possible to cover all the existing techniques for creating features. The objective of this chapter was to introduce you to critical steps that can significantly improve the quality of your analysis and the performance of your model. But remember to regularly get in touch with either the business or the data engineering team to get confirmation before transforming data too drastically. Preparing a dataset does not always mean having the cleanest dataset possible but rather getting the one that is closest to the true information the business is interested in. Otherwise, you may find incorrect or meaningless patterns. As we say, <em class="italic">with great power comes great responsibility</em>.</p>
+			<p>The next chapter opens a new part of this book that presents data science use cases end to end. <em class="italic">Chapter 13</em>, <em class="italic">Imbalanced Datasets</em>, will walk you through an example of an imbalanced dataset and how to deal with such a situation.</p>
+		</div>
+		<div>
+			<div id="_idContainer635" class="Content">
+			</div>
+		</div>
+	</div></body></html>

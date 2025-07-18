@@ -1,0 +1,326 @@
+<html><head></head><body>
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer071">
+			<h1 id="_idParaDest-85" class="chapter-number"><a id="_idTextAnchor085"/>5</h1>
+			<h1 id="_idParaDest-86"><a id="_idTextAnchor086"/>Create a Baseline Model Using Databricks AutoML</h1>
+			<p>In the last chapter, we understood <strong class="bold">MLflow</strong> and all its components. After running the notebook from <a href="B17875_04.xhtml#_idTextAnchor076"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, <em class="italic">Understanding MLflow Components on Databricks</em>, you might have recognized how easy it actually is to start tracking your ML model training in Databricks using the integrated MLflow <a id="_idIndexMarker277"/>tracking <a id="_idIndexMarker278"/>server. In this chapter, we will cover another new and unique feature of <strong class="bold">Databricks</strong> <span class="No-Break">called </span><span class="No-Break"><strong class="bold">AutoML</strong></span><span class="No-Break">.</span></p>
+			<p>Databricks AutoML, like all the other features that are part of the Databricks workspace, is fully integrated with MLflow features and the <span class="No-Break">Feature Store.</span></p>
+			<p>Databricks AutoML, at the time of writing of this book, supports <strong class="bold">classification</strong>, <strong class="bold">regression</strong>, and <strong class="bold">forecasting</strong> use cases using traditional ML algorithms and not deep learning. You can see a list of supported algorithms in the second section of <span class="No-Break">the chapter.</span></p>
+			<p>You can use AutoML with a table registered in Databricks’ Hive metastore, feature tables, or even upload a new file using the import data functionality in Databricks. You can read more about it by clicking the link in the <em class="italic">Further </em><span class="No-Break"><em class="italic">reading</em></span><span class="No-Break"> section.</span></p>
+			<p>In this chapter, we will cover the <span class="No-Break">following topics:</span></p>
+			<ul>
+				<li>Understanding the need <span class="No-Break">for AutoML</span></li>
+				<li>Understanding AutoML <span class="No-Break">in Databricks</span></li>
+				<li>Running AutoML on our churn <span class="No-Break">prediction dataset</span></li>
+				<li><span class="No-Break">Current limitations</span></li>
+			</ul>
+			<p>Let’s go through the technical requirements for <span class="No-Break">this chapter.</span></p>
+			<h1 id="_idParaDest-87"><a id="_idTextAnchor087"/>Technical requirements</h1>
+			<p>To go through the chapter, we’ll need the <span class="No-Break">following requirements:</span></p>
+			<ul>
+				<li>we'll need the execution of the notebooks pertaining to <a href="B17875_03.xhtml#_idTextAnchor063"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>, which involves the ingestion of raw data from a CSV file into a Delta table and the subsequent registration of a new feature table, to have already <span class="No-Break">been completed.</span></li>
+			</ul>
+			<h1 id="_idParaDest-88"><a id="_idTextAnchor088"/>Understanding the need for AutoML</h1>
+			<p>If you have never worked <a id="_idIndexMarker279"/>with any AutoML framework before, you might be wondering what AutoML is and when and how it can <span class="No-Break">be useful.</span></p>
+			<p>AutoML simplifies the machine learning model development process by automating various tasks. It automatically generates baseline models tailored to your specific datasets and even offers preconfigured notebooks to kickstart your projects. This is particularly appealing to data scientists of all levels of expertise because it saves valuable time in the initial stages of model development. Instead of manually crafting models from scratch, AutoML provides a quick and efficient way to obtain baseline models, making it a valuable tool for both beginners and experienced data <span class="No-Break">scientists alike.</span></p>
+			<p>AutoML makes machine learning not only accessible to citizen data scientists and business subject matter experts. AutoML, while undoubtedly a powerful tool, also grapples with significant limitations. One notable challenge is its inherent black-box nature, which makes it difficult, and at times impossible, to decipher which hyperparameters and algorithms are most effective for a particular problem. This opacity presents a substantial obstacle when it comes to achieving <span class="No-Break">model explainability.</span></p>
+			<p>Furthermore, many AutoML tools available in the market fall short of supporting essential components in the machine learning life cycle, including the critical step of operationalizing models for production use. This deficiency can hinder the seamless integration of machine learning solutions into <span class="No-Break">real-world applications.</span></p>
+			<p>It’s important to note that AutoML doesn’t replace the role of a data scientist. While it streamlines certain aspects of model development, the expertise and insights of a skilled data scientist remain indispensable in ensuring the success of machine <span class="No-Break">learning projects.</span></p>
+			<p>This is where Databricks AutoML actually provides one of its biggest benefits. Let’s take a deeper look into AutoML in Databricks and discover how you can use it in your model <span class="No-Break">development journey.</span></p>
+			<h1 id="_idParaDest-89"><a id="_idTextAnchor089"/>Understanding AutoML in Databricks</h1>
+			<p>Databricks AutoML<a id="_idIndexMarker280"/> uses a glass-box approach to AutoML. When you use Databricks AutoML either through the UI or through the supported Python API, it logs every combination of model and hyperparameter (trial) as an MLflow run and generates Python notebooks with source code corresponding to each model trial. The results of all these model trials are logged into the MLflow tracking server. Each of the trials can be compared and reproduced. Since you have access to the source code, the data scientists can easily rerun a trial after modifying the code. We will look at this in more detail when we go over <span class="No-Break">the example.</span></p>
+			<p>Databricks AutoML also prepares the dataset for training and then performs model training and hyperparameter tuning on the Databricks cluster. One important thing to keep in mind here is that Databricks AutoML spreads hyperparameter tuning trials across the cluster. A trial is a unique configuration of hyperparameters associated with the model. All the training datasets should fit in a single executor, as Databricks AutoML will automatically sample your dataset if you have a <span class="No-Break">large dataset.</span></p>
+			<p>At the time of writing the book, Databricks AutoML supports<a id="_idIndexMarker281"/> the <span class="No-Break">following </span><span class="No-Break"><a id="_idIndexMarker282"/></span><span class="No-Break">algorithms:</span></p>
+			<table id="table001-1" class="No-Table-Style _idGenTablePara-1">
+				<colgroup>
+					<col/>
+					<col/>
+				</colgroup>
+				<tbody>
+					<tr class="No-Table-Style">
+						<td class="No-Table-Style">
+							<p><span class="No-Break"><strong class="bold">ML problems</strong></span></p>
+						</td>
+						<td class="No-Table-Style">
+							<p><span class="No-Break"><strong class="bold">Supported algorithms</strong></span></p>
+						</td>
+					</tr>
+					<tr class="No-Table-Style">
+						<td class="No-Table-Style">
+							<p><span class="No-Break">Classification</span></p>
+						</td>
+						<td class="No-Table-Style">
+							<ul>
+								<li><span class="No-Break">Scikit-learn models:</span><ul><li><span class="No-Break">Decision trees</span></li><li><span class="No-Break">Random forests</span></li><li><span class="No-Break">Logistic regression</span></li></ul></li>
+								<li><span class="No-Break">XGBoost</span></li>
+								<li><span class="No-Break">LightGBM</span></li>
+							</ul>
+						</td>
+					</tr>
+					<tr class="No-Table-Style">
+						<td class="No-Table-Style">
+							<p><span class="No-Break">Regression</span></p>
+						</td>
+						<td class="No-Table-Style">
+							<ul>
+								<li><span class="No-Break">Scikit-learn models:</span><ul><li>Linear regression with stochastic <span class="No-Break">gradient descent</span></li><li><span class="No-Break">Decision trees</span></li><li><span class="No-Break">Random forests</span></li></ul></li>
+								<li><span class="No-Break">XGBoost</span></li>
+								<li><span class="No-Break">LightGBM</span></li>
+							</ul>
+						</td>
+					</tr>
+					<tr class="No-Table-Style">
+						<td class="No-Table-Style">
+							<p><span class="No-Break">Forecasting</span></p>
+						</td>
+						<td class="No-Table-Style">
+							<ul>
+								<li><span class="No-Break">Prophet</span></li>
+								<li><span class="No-Break">Auto ARIMA</span></li>
+							</ul>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 5.1 – Algorithms that Databricks AutoML supports</p>
+			<p>Let’s understand some<a id="_idIndexMarker283"/> of the key capabilities provided by Databricks<a id="_idIndexMarker284"/> AutoML in <span class="No-Break">more detail.</span></p>
+			<h2 id="_idParaDest-90"><a id="_idTextAnchor090"/>Sampling large datasets</h2>
+			<p>Sampling is done based on the estimated memory<a id="_idIndexMarker285"/> required to load and train models on the training dataset. Until ML Runtime 10.5, the data sampling does not depend on the VM type or the amount of memory the executor is running on. In ML Runtime 11.0 and later versions, the sampling mechanism will increase sampling fraction and size if a node is compute-optimized with more <span class="No-Break">significant memory.</span></p>
+			<p>By default, in Databricks, each executor is configured to execute the same number of trials as there are available CPU cores. Additionally, the executor’s available memory is evenly distributed among these trials. However, you have the flexibility to modify this behavior by adjusting the <strong class="source-inline">spark. task.cpus</strong> <span class="No-Break">configuration parameter.</span></p>
+			<p>The default setting for <strong class="source-inline">spark.task.cpus</strong> is <strong class="source-inline">1</strong>, which means that each executor will run as many trials in parallel as it has CPU cores. If you change this value to match the number of available CPU cores on the executor, it will result in a different behavior. In this case, only one trial will be executed on the executor at a time, but that trial will have access to the full memory capacity of the executor. This setting can be useful if you want to provide additional resources to each of your trials. This will also increase the size of the sampled dataset. AutoML utilizes the PySparks <strong class="source-inline">sampleBy</strong> method (<a href="https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrameStatFunctions.sampleBy.html">https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrameStatFunctions.sampleBy.html</a>) for performing stratified sampling for <span class="No-Break">classification problems.</span></p>
+			<p>For regression problems, AutoML utilizes the <strong class="source-inline">sample</strong> method (<a href="https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrame.sample.html">https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.sql.DataFrame.sample.html</a>) when sampling<a id="_idIndexMarker286"/> <span class="No-Break">is needed.</span></p>
+			<p><em class="italic">Sampling is not applicable for </em><span class="No-Break"><em class="italic">forecasting problems</em></span><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-91"><a id="_idTextAnchor091"/>Imbalance data detection</h2>
+			<p>In Databricks Runtime 11.2 ML and newer <a id="_idIndexMarker287"/>versions, when AutoML detects an imbalanced dataset for a classification use case, it takes steps to mitigate the imbalance within the training dataset. This is accomplished through a combination of downsampling the major class(es) and introducing class weights. It’s important to note that this balancing process is applied exclusively to the training dataset and doesn’t affect the test and validation datasets. This approach guarantees that the model’s performance is evaluated based on the original dataset with its true <span class="No-Break">class distribution.</span></p>
+			<p>To address an imbalanced training dataset, AutoML assigns class weights that are inversely proportional to the extent of downsampling applied to a specific class. To illustrate, let’s consider a training dataset with 100 samples, where 95 belong to <strong class="source-inline">Class A</strong> and 5 belong to <strong class="source-inline">Class B</strong>. AutoML reduces this imbalance by downsampling <strong class="source-inline">Class A</strong> to 70 samples, effectively reducing it by a ratio of 70:95, or approximately 0.736. Meanwhile, the number of samples in <strong class="source-inline">Class B</strong> remains at five. To ensure that the final model is properly calibrated and maintains the same probability distribution as the input data, AutoML adjusts the class weight for <strong class="source-inline">Class A</strong> by the inverse of this ratio, which is approximately 1:0.736, or 1.358. The weight for <strong class="source-inline">Class B</strong> remains at one. These class weights are then used during the model training process as a parameter to ensure that samples from each class receive appropriate weighting, contributing to a balanced and <span class="No-Break">accurate</span><span class="No-Break"><a id="_idIndexMarker288"/></span><span class="No-Break"> model.</span></p>
+			<h2 id="_idParaDest-92"><a id="_idTextAnchor092"/>Splitting data into train/validation/test sets</h2>
+			<p>In Databricks Runtime 10.1 ML<a id="_idIndexMarker289"/> and later versions, you have the option to designate a time column when performing data splits for classification and regression tasks. When you specify this time column, the dataset is divided into training, validation, and test sets based on chronological order. The data points from the earliest time period are allocated to the training set, followed by the next earliest for validation. The most recent data points are reserved for the <span class="No-Break">test set.</span></p>
+			<p>In Databricks Runtime 10.1 ML, the time column must be of either the timestamp or integer data type. However, starting from Databricks Runtime 10.2 ML, you also have the flexibility to choose a string column for this purpose. This enhancement offers greater versatility in time-based data splitting for improved model training <span class="No-Break">and evaluation.</span></p>
+			<h2 id="_idParaDest-93"><a id="_idTextAnchor093"/>Enhancing semantic type detection</h2>
+			<p>Semantic type detection<a id="_idIndexMarker290"/> is a powerful feature, introduced in Databricks Runtime versions 9.1 LTS ML and beyond, designed to augment AutoML by providing intelligent insights into the data types present within each column. <em class="italic">It is essential to note that semantic type detection does not apply to forecasting problems or columns where custom imputation methods have </em><span class="No-Break"><em class="italic">been specified.</em></span></p>
+			<p>AutoML conducts a thorough analysis of columns to ascertain whether their semantic type differs from the data type specified in the table schema (either Spark or pandas). Once discrepancies are identified, AutoML takes specific actions based on the detected semantic type. However, it’s important to keep in mind that these detections may not always be 100% accurate. The following are the key adjustments AutoML <span class="No-Break">can make:</span></p>
+			<ul>
+				<li><strong class="bold">String and integer columns with date or timestamp data</strong>: These are intelligently recognized as timestamp types, allowing for more precise handling of <span class="No-Break">temporal information</span></li>
+				<li><strong class="bold">String columns representing numeric data</strong>: When applicable, these columns are converted into numeric types, ensuring that mathematical operations can be <span class="No-Break">performed seamlessly</span></li>
+			</ul>
+			<p>Starting from Databricks Runtime 10.1 ML, AutoML extends its capabilities to encompass <span class="No-Break">the following:</span></p>
+			<ul>
+				<li><strong class="bold">Numeric columns containing categorical IDs</strong>: These are identified as categorical features, aiding in more accurate modeling when dealing with <span class="No-Break">categorical data</span></li>
+				<li><strong class="bold">String columns containing English text</strong>: Such columns are identified as text features, enhancing the understanding of textual data within <span class="No-Break">the dataset</span></li>
+			</ul>
+			<p>In Databricks Runtime<a id="_idIndexMarker291"/> version 10.1 ML and beyond, users gain the ability to manually set semantic types through Python annotations. The following code snippet illustrates the syntax for this manual <span class="No-Break">annotation process:</span></p>
+			<pre class="source-code">
+metadata_dict = df.schema["&lt;column-name&gt;"].metadatametadata_dict["spark.contentAnnotation.semanticType"] = "&lt;semantic-type&gt;"
+df = df.withMetadata("&lt;column-name&gt;", metadata_dict)</pre>
+			<p>The available semantic types <a id="_idIndexMarker292"/>that you can assign manually are <span class="No-Break">as follows:</span></p>
+			<ul>
+				<li><strong class="bold">Categorical</strong>: Appropriate for columns containing values such <span class="No-Break">as IDs</span></li>
+				<li><strong class="bold">Numeric</strong>: Ideal for columns containing <span class="No-Break">numeric values</span></li>
+				<li><strong class="bold">DateTime</strong>: Suitable for columns with <span class="No-Break">timestamp values</span></li>
+				<li><strong class="bold">Text</strong>: Reserved for string columns containing <span class="No-Break">English text</span></li>
+			</ul>
+			<p>To disable semantic type detection for a specific column, you can use the special keyword <span class="No-Break">annotation</span><span class="No-Break"><a id="_idIndexMarker293"/></span><span class="No-Break"> native.</span></p>
+			<h2 id="_idParaDest-94"><a id="_idTextAnchor094"/>Shapley value (SHAP) for model explainability</h2>
+			<p><strong class="bold">Shapley values</strong> (<strong class="bold">SHAP</strong>) are a technique grounded in game theory<a id="_idIndexMarker294"/> used to estimate the significance of each feature<a id="_idIndexMarker295"/> in a machine learning model’s predictions. AutoML regression and classification notebooks come with built-in code to compute these values using the SHAP package. However, because calculating SHAP is highly memory-intensive, they are not enabled <span class="No-Break">by default.</span></p>
+			<p>To activate and compute SHAP in an AutoML notebook, you need to navigate to the <strong class="bold">Feature importance</strong> tab, set <strong class="source-inline">shap_enabled</strong> to <strong class="source-inline">True</strong>, and then rerun the notebook. It’s worth noting that SHAP plots won’t be generated in version 11.1 and earlier versions of MLR if the dataset includes a <span class="No-Break"><strong class="source-inline">DateTime</strong></span><span class="No-Break"> column.</span></p>
+			<h2 id="_idParaDest-95"><a id="_idTextAnchor095"/>Feature Store integration</h2>
+			<p>In Databricks Runtime<a id="_idIndexMarker296"/> version 11.3 LTS ML and subsequent releases, feature tables from the Feature Store can be utilized to enhance the base dataset for classification and regression tasks. As of version 12.2 LTS ML, this capability extends to augmenting the input dataset for a comprehensive set of AutoML challenges, including classification, regression, <span class="No-Break">and forecasting.</span></p>
+			<p>There are certain limitations associated with the current state of AutoML. Only the following data types in your dataset <span class="No-Break">are supported:</span></p>
+			<ul>
+				<li>Numeric (<strong class="source-inline">ByteType</strong>, <strong class="source-inline">ShortType</strong>, <strong class="source-inline">IntegerType</strong>, <strong class="source-inline">LongType</strong>, <strong class="source-inline">FloatType</strong>, <span class="No-Break">and </span><span class="No-Break"><strong class="source-inline">DoubleType</strong></span><span class="No-Break">)</span></li>
+				<li><span class="No-Break">Boolean</span></li>
+				<li>String (categorical or <span class="No-Break">English text)</span></li>
+				<li>Timestamps (<em class="italic">TimestampType</em> <span class="No-Break">and </span><span class="No-Break"><em class="italic">DateType</em></span><span class="No-Break">)</span></li>
+				<li><strong class="source-inline">ArrayType[Numeric]</strong> (Databricks Runtime 10.4 LTS ML and <span class="No-Break">later versions)</span></li>
+				<li><strong class="source-inline">DecimalType</strong> (Databricks Runtime 11.3 LTS ML and <span class="No-Break">later versions)</span></li>
+			</ul>
+			<p>You also need to ensure that the source dataset has all unique column names. If you utilize AutoML for time series forecasting and want Auto ARIMA, ensure that the interval between any two points in the time-series input dataset is the same. AutoML will automatically fill the missing timesteps<a id="_idIndexMarker297"/> with the previous value <span class="No-Break">by default.</span></p>
+			<p>Let’s take a look at an example use case <span class="No-Break">for AutoML.</span></p>
+			<h1 id="_idParaDest-96"><a id="_idTextAnchor096"/>Running AutoML on our churn prediction dataset</h1>
+			<p>Let’s take a look at how to use Databricks<a id="_idIndexMarker298"/> AutoML with our bank<a id="_idIndexMarker299"/> customer churn <span class="No-Break">prediction dataset.</span></p>
+			<p>If you executed the notebooks from <a href="B17875_03.xhtml#_idTextAnchor063"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>, <em class="italic">Utilizing the Feature Store</em>, you will have raw data available as a Delta table in your Hive metastore. It has the name <strong class="source-inline">raw_data</strong>. In the <a href="B17875_03.xhtml#_idTextAnchor063"><span class="No-Break"><em class="italic">Chapter 3</em></span></a> code, we read a CSV file from our Git repository with raw data, wrote that as a Delta table, and registered it in our integrated metastore. Take a look at <strong class="source-inline">cmd 15</strong> in your notebook. In your environment, the dataset can be coming from another data pipeline or uploaded directly to the Databricks workspace using the <em class="italic">Upload </em><span class="No-Break"><em class="italic">file</em></span><span class="No-Break"> functionality.</span></p>
+			<p>To view the tables, you need to have your cluster up <span class="No-Break">and running.</span></p>
+			<div>
+				<div id="_idContainer057" class="IMG---Figure">
+					<img src="image/B17875_05_01.jpg" alt="Figure 5.1 – The location of the raw dataset" width="816" height="501"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.1 – The location of the raw dataset</p>
+			<p>Let’s create our first Databricks <span class="No-Break">AutoML experiment.</span></p>
+			<p class="callout-heading">Important note</p>
+			<p class="callout">Make sure<a id="_idIndexMarker300"/> that before following the next steps,<a id="_idIndexMarker301"/> you have a cluster up and running that has the <span class="No-Break">following configuration:</span></p>
+			<p class="callout">Single-node <span class="No-Break">or multi-node</span></p>
+			<p class="callout">Access mode as a <span class="No-Break">single user</span></p>
+			<p class="callout">The Databricks runtime version is set to 13.3 LTS ML <span class="No-Break">or higher</span></p>
+			<p class="callout"><em class="italic">Worker Type/Driver Type</em> is any VM type with at least <span class="No-Break">four cores</span></p>
+			<p class="callout"><em class="italic">No additional libraries should be installed on the cluster other than those pre-installed in Databricks Runtime for machine learning. AutoML is not compatible with clusters operating in shared </em><span class="No-Break"><em class="italic">access mode.</em></span></p>
+			<ol>
+				<li>On the left tab, click <span class="No-Break">on </span><span class="No-Break"><strong class="bold">Experiments</strong></span><span class="No-Break">.</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer058" class="IMG---Figure">
+					<img src="image/B17875_05_02.jpg" alt="Figure 5.2 – The location of the Experiments tab" width="371" height="619"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.2 – The location of the Experiments tab</p>
+			<ol>
+				<li value="2">On the top<a id="_idIndexMarker302"/> of this page, click on <strong class="bold">Create AutoML Experiment</strong>. This will bring<a id="_idIndexMarker303"/> you to the AutoML <span class="No-Break">configuration page.</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer059" class="IMG---Figure">
+					<img src="image/B17875_05_03.jpg" alt="Figure 5.3 – How to create a new AutoML experiment (1)" width="410" height="650"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.3 – How to create a new AutoML experiment (1)</p>
+			<ol>
+				<li value="3">As an<a id="_idIndexMarker304"/> alternative, you can click on <strong class="bold">New</strong> and then <a id="_idIndexMarker305"/>select <span class="No-Break"><strong class="bold">AutoML Experiment</strong></span><span class="No-Break">.</span></li>
+			</ol>
+			<div>
+				<div id="_idContainer060" class="IMG---Figure">
+					<img src="image/B17875_05_04.jpg" alt="Figure 5.4 – An alternative way to create an AutoML experiment" width="368" height="596"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.4 – An alternative way to create an AutoML experiment</p>
+			<ol>
+				<li value="4">To get started, you need<a id="_idIndexMarker306"/> to enter the following<a id="_idIndexMarker307"/> <span class="No-Break">basic information:</span><ul><li><strong class="bold">For the purpose of this cluster</strong>: This is what cluster configuration you want the AutoML to run on. You can reuse the same cluster we created for <a href="B17875_03.xhtml#_idTextAnchor063"><em class="italic">Chapter 3</em></a>, <em class="italic">Utilizing the Feature Store</em>, and <a href="B17875_04.xhtml#_idTextAnchor076"><em class="italic">Chapter 4</em></a>, <em class="italic">Understanding MLflow Components </em><span class="No-Break"><em class="italic">on Databricks.</em></span></li><li><strong class="bold">ML problem type</strong>: Regression, classification, <span class="No-Break">or forecasting.</span></li><li><strong class="bold">Dataset</strong>: The dataset containing all the features and <span class="No-Break">label/target column.</span></li></ul></li>
+			</ol>
+			<div>
+				<div id="_idContainer061" class="IMG---Figure">
+					<img src="image/B17875_05_05.jpg" alt="Figure 5.5 – How to create a new AutoML experiment (2)" width="581" height="639"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.5 – How to create a new AutoML experiment (2)</p>
+			<ul>
+				<li><strong class="bold">Prediction target</strong>: This is specific <a id="_idIndexMarker308"/>to the classification problem<a id="_idIndexMarker309"/> at hand. Once you select your dataset for running AutoML, this will auto-populate with all the columns and you can select your <span class="No-Break">target column.</span></li>
+			</ul>
+			<div>
+				<div id="_idContainer062" class="IMG---Figure">
+					<img src="image/B17875_05_006.jpg" alt="Figure 5.6 – Showing how to create a new AutoML experiment (3)" width="717" height="553"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.6 – Showing how to create a new AutoML experiment (3)</p>
+			<ul>
+				<li><strong class="bold">Experiment name</strong>: This is the name that is used to track all <span class="No-Break">your trials.</span></li>
+			</ul>
+			<ul>
+				<li>Optionally, you can also select<a id="_idIndexMarker310"/> what features from<a id="_idIndexMarker311"/> your selected table need to be included when running the trials. In our case, <strong class="source-inline">RowNumber</strong>, <strong class="source-inline">CustomerId</strong>, and <strong class="source-inline">Surname</strong> don’t add any value to our analysis, so we will remove them <span class="No-Break">from selection.</span></li>
+			</ul>
+			<div>
+				<div id="_idContainer063" class="IMG---Figure">
+					<img src="image/B17875_05_007.jpg" alt="Figure 5.7 – How to create a new AutoML experiment (4)" width="1072" height="658"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.7 – How to create a new AutoML experiment (4)</p>
+			<p>Optionally, you can also select how you would want to handle missing values in <span class="No-Break">your dataset.</span></p>
+			<p>In versions 10.4 LTS ML<a id="_idIndexMarker312"/> and higher of Databricks Runtime, you can define<a id="_idIndexMarker313"/> the approach for handling <strong class="source-inline">null</strong> values. Within the UI, you can select your desired imputation technique via the <strong class="bold">Impute with</strong> drop-down menu located within the table <span class="No-Break"><strong class="bold">Schema</strong></span><span class="No-Break"> section.</span></p>
+			<p>It’s worth noting that AutoML automatically chooses an appropriate imputation strategy based on both the data type and the content of the column <span class="No-Break">in question.</span></p>
+			<div>
+				<div id="_idContainer064" class="IMG---Figure">
+					<img src="image/B17875_05_08.jpg" alt="Figure 5.8 – How to create a new AutoML experiment (5)" width="571" height="447"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.8 – How to create a new AutoML experiment (5)</p>
+			<p>That’s it! Those are the only<a id="_idIndexMarker314"/> five things you need to do to start <a id="_idIndexMarker315"/>using glassbox AutoML <span class="No-Break">with Databricks.</span></p>
+			<p>There are some advanced configurations as well, such as what metrics you want to optimize when selecting the best-performing model or what supported training framework you want to include to run <span class="No-Break">trials on:</span></p>
+			<ul>
+				<li>The evaluation metric serves as the primary scoring metric <span class="No-Break">for runs.</span></li>
+				<li>Starting from Databricks Runtime 10.3 ML, it’s possible to exclude certain training frameworks. By default, AutoML uses frameworks listed under <span class="No-Break">its algorithms.</span></li>
+				<li>Stopping conditions are customizable. The defaults are <span class="No-Break">as follows:</span><ul><li>Stop after 120 minutes for <span class="No-Break">forecasting experiments.</span></li><li>For classification and regression experiments in Databricks Runtime 10.5 ML and earlier versions, stop after 60 minutes or after 200 trials—whichever comes first. Starting from Databricks Runtime 11.0 ML, the number of trials is not a <span class="No-Break">stopping condition.</span></li></ul></li>
+				<li>From Databricks Runtime 10.1 ML, AutoML incorporates early stopping for classification and regression if the validation metric ceases <span class="No-Break">to improve.</span></li>
+				<li>Also starting from Databricks Runtime 10.1 ML, you can select a time column for chronological data splitting in classification and <span class="No-Break">regression tasks.</span></li>
+				<li>You can specify a DBFS<a id="_idIndexMarker316"/> location for saving the training<a id="_idIndexMarker317"/> dataset in the <strong class="bold">Data directory</strong> field. If left blank, the dataset is saved as an <span class="No-Break">MLflow artifact.</span></li>
+			</ul>
+			<div>
+				<div id="_idContainer065" class="IMG---Figure">
+					<img src="image/B17875_05_09.jpg" alt="Figure 5.9 – How to create a new AutoML experiment (6)" width="560" height="529"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.9 – How to create a new AutoML experiment (6)</p>
+			<p>To enhance the richness of your dataset, you can seamlessly integrate an existing feature table. Simply scroll to the bottom of the page and click on the <strong class="bold">Join Features</strong> option. This will grant you access to a configuration panel where you can precisely specify which feature tables you want to merge with your existing dataset and establish the key or keys that will underpin this merging process, effectively linking <span class="No-Break">the datasets.</span></p>
+			<p>However, it’s important<a id="_idIndexMarker318"/> to note that for the sake of this <a id="_idIndexMarker319"/>example, we will not be incorporating the <em class="italic">Feature store</em> table into the <em class="italic">merge</em> operation. This approach empowers you to bolster your dataset with additional information from selected feature tables, elevating its utility for analytical or machine-learning endeavors while omitting the Feature Store table from this <span class="No-Break">particular exercise.</span></p>
+			<p>Now we simply need to hit <span class="No-Break"><strong class="bold">start AutoML</strong></span><span class="No-Break">:</span></p>
+			<ul>
+				<li>Our AutoML experiment is now executing and is the current state visible in the UI. As AutoML progresses, it produces the following <span class="No-Break">three artifacts:</span><ul><li>It generates a detailed data exploration notebook with source code to outline any skews or concerns, such as missing data or zeros. It uses the <strong class="source-inline">pandas.profiling</strong> package automatically to do this. You can view this notebook by clicking <strong class="bold">View data </strong><span class="No-Break"><strong class="bold">exploration notebook</strong></span><span class="No-Break">.</span></li></ul></li>
+			</ul>
+			<div>
+				<div id="_idContainer066" class="IMG---Figure">
+					<img src="image/B17875_05_010.jpg" alt="Figure 5.10 – How to access the auto-generated exploratory data analysis notebook" width="1351" height="434"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.10 – How to access the auto-generated exploratory data analysis notebook</p>
+			<p class="list-inset">The data exploration notebook also displays the correlation between the <span class="No-Break">different features:</span></p>
+			<div>
+				<div id="_idContainer067" class="IMG---Figure">
+					<img src="image/B17875_05_011.jpg" alt=" Figure 5.11 – Correlation graphs generated by the exploratory data analysis notebook" width="848" height="698"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US"> Figure 5.11 – Correlation graphs generated by the exploratory data analysis notebook</p>
+			<ul>
+				<li>You can see the experiment<a id="_idIndexMarker320"/> trials containing source code<a id="_idIndexMarker321"/> for every run being performed on our dataset. The source code is listed under your workspace under your user directory in a folder <span class="No-Break">called </span><span class="No-Break"><strong class="source-inline">databricks_automl</strong></span><span class="No-Break">.</span></li>
+			</ul>
+			<div>
+				<div id="_idContainer068" class="IMG---Figure">
+					<img src="image/B17875_05_12.jpg" alt="Figure 5.12 – The location of various notebooks with code relating to each trial" width="721" height="187"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.12 – The location of various notebooks with code relating to each trial</p>
+			<ul>
+				<li>The notebook<a id="_idIndexMarker322"/> with the best model is also generated<a id="_idIndexMarker323"/> from AutoML after all the trials have finished execution. This notebook walks you through all the steps performed to feature engineer and train the ML model. The trial is logged automatically in the tracking server. The notebook also contains code for <span class="No-Break">feature transformation.</span></li>
+			</ul>
+			<div>
+				<div id="_idContainer069" class="IMG---Figure">
+					<img src="image/B17875_05_13.jpg" alt="Figure 5.13 – The location of the notebook that logs the best model identified by AutoMl" width="596" height="333"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.13 – The location of the notebook that logs the best model identified by AutoMl</p>
+			<p class="list-inset">It also<a id="_idIndexMarker324"/> utilizes<a id="_idIndexMarker325"/> SHAP (<a href="https://pypi.org/project/shap/">https://pypi.org/project/shap/</a>) to log <span class="No-Break">feature</span><span class="No-Break"><a id="_idIndexMarker326"/></span><span class="No-Break"> importance.</span></p>
+			<div>
+				<div id="_idContainer070" class="IMG---Figure">
+					<img src="image/B17875_05_14.jpg" alt="Figure 5.14 – A sample SHAP value graph auto-generated as part of the best model notebook" width="740" height="352"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 5.14 – A sample SHAP value graph auto-generated as part of the best model notebook</p>
+			<p class="list-inset">This notebook also explains how you can finally utilize the trained model using the various deployment options, which we will discuss later in <a href="B17875_06.xhtml#_idTextAnchor100"><span class="No-Break"><em class="italic">Chapter 6</em></span></a>,<em class="italic"> Model Versioning </em><span class="No-Break"><em class="italic">and Webhooks</em></span><span class="No-Break">.</span></p>
+			<ul>
+				<li>You can compare the various trials through <span class="No-Break">the UI.</span></li>
+				<li>You can also utilize<a id="_idIndexMarker327"/> the Python API to kick off AutoML<a id="_idIndexMarker328"/> for classification, forecasting, or regression. Using the Python API, you can also retrieve the best model programmatically from the AutoML experiment and use it <span class="No-Break">for inference.</span><p class="list-inset">This is an example code for kicking <span class="No-Break">off classification:</span></p><pre class="source-code">
+databricks.automl.classify(  dataset: Union[pyspark.DataFrame, pandas.DataFrame],  *,  target_col: str,  data_dir: Optional[str] = None,  exclude_columns: Optional[List[str]] = None,           # &lt;DBR&gt; 10.3 ML and above  exclude_frameworks: Optional[List[str]] = None,        # &lt;DBR&gt; 10.3 ML and above  experiment_dir: Optional[str] = None,                  # &lt;DBR&gt; 10.4 LTS ML and above  imputers: Optional[Dict[str, Union[str, Dict[str, Any]]]] = None, # &lt;DBR&gt; 10.4 LTS ML and above  max_trials: Optional[int] = None,                     # deprecated in &lt;DBR&gt; 10.3 ML  primary_metric: str = "f1",  time_col: Optional[str] = None,  timeout_minutes: Optional[int] = None,) -&gt; AutoMLSummary</pre></li>			</ul>
+			<p>You can read<a id="_idIndexMarker329"/> more about<a id="_idIndexMarker330"/> the various<a id="_idIndexMarker331"/> parameters <span class="No-Break">at </span><a href="https://docs.databricks.com/applications/machine-learning/automl.html#classification-and-regression"><span class="No-Break">https://docs.databricks.com/applications/machine-learning/automl.html#classification-and-regression</span></a><span class="No-Break">.</span></p>
+			<h1 id="_idParaDest-97"><a id="_idTextAnchor097"/>Summary</h1>
+			<p>In this chapter, we covered the importance of AutoML and how it can help data scientists get started and become productive with the problem at hand. We then covered the Databricks AutoML glassbox approach, which makes it easy to interpret model results and automatically capture lineage. We also learned how Databricks AutoML is integrated with the MLflow tracking server within the <span class="No-Break">Databricks workspace.</span></p>
+			<p>In the next chapters, we will go over managing your ML model’s life cycle using the MLflow model registry and Webhooks in <span class="No-Break">more detail.</span></p>
+			<h1 id="_idParaDest-98"><a id="_idTextAnchor098"/>Further reading</h1>
+			<p>Here are some other <span class="No-Break">useful links:</span></p>
+			<ul>
+				<li>Databricks, <em class="italic">What is </em><span class="No-Break"><em class="italic">AutoML?</em></span><span class="No-Break">: (</span><a href="https://docs.databricks.com/applications/machine-learning/automl.html#databricks-automl"><span class="No-Break">https://docs.databricks.com/applications/machine-learning/automl.html#databricks-automl</span></a><span class="No-Break">)</span></li>
+				<li>Databricks, <em class="italic">Import </em><span class="No-Break"><em class="italic">data</em></span><span class="No-Break">: (</span><a href="https://docs.databricks.com/data/data.html#import-data-1"><span class="No-Break">https://docs.databricks.com/data/data.html#import-data-1</span></a><span class="No-Break">)</span></li>
+			</ul>
+		</div>
+	</div>
+</div>
+
+
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer072" class="Content">
+			<h1 id="_idParaDest-99" lang="en-US" xml:lang="en-US"><a id="_idTextAnchor099"/>Part 3: ML Governance and Deployment</h1>
+			<p>You will learn how to utilize the MLFlow model registry to manage model versioning and transition to production from various stages and use webhooks to set up alerts <span class="No-Break">and monitoring.</span></p>
+			<p>This section has the <span class="No-Break">following chapters:</span></p>
+			<ul>
+				<li><a href="B17875_06.xhtml#_idTextAnchor100"><em class="italic">Chapter 6</em></a>, <em class="italic">Model Versioning and Webhooks</em></li>
+				<li><a href="B17875_07.xhtml#_idTextAnchor108"><em class="italic">Chapter 7</em></a>, <em class="italic">Model Deployment Approaches</em></li>
+				<li><a href="B17875_08.xhtml#_idTextAnchor122"><em class="italic">Chapter 8</em></a>, <em class="italic">Automating ML Workflows Using Databricks Jobs</em></li>
+				<li><a href="B17875_09.xhtml#_idTextAnchor129"><em class="italic">Chapter 9</em></a>, <em class="italic">Model Drift Detection and Retraining</em></li>
+				<li><a href="B17875_10.xhtml#_idTextAnchor142"><em class="italic">Chapter 10</em></a>, <em class="italic">Using CI/CD to Automate Model Retraining and Redeployment</em></li>
+			</ul>
+		</div>
+		<div>
+			<div id="_idContainer073">
+			</div>
+		</div>
+		<div>
+			<div id="_idContainer074" class="Basic-Graphics-Frame">
+			</div>
+		</div>
+	</div>
+</div>
+</body></html>

@@ -1,0 +1,1502 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en-US" xml:lang="en-US">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="generator" content="pandoc"/>
+  <title>ch009.xhtml</title>
+  <style>
+  </style>
+  <link rel="stylesheet" type="text/css" href="../styles/stylesheet1.css"/>
+</head>
+<body epub:type="bodymatter">
+<section id="linear-algebra-in-practice" class="level2 chapterHead">
+<h1 class="chapterHead"><span class="titlemark"><span class="cmss-10x-x-109">3</span></span><br/>
+<span id="x1-520004"></span><span class="cmss-10x-x-109">Linear Algebra in Practice</span></h1>
+<p><span class="cmss-10x-x-109">Now that we</span> <span id="dx1-52001"></span><span class="cmss-10x-x-109">understand the geometric structure of vector spaces, it’s time to put the theory into practice once again. In this chapter, we’ll take a hands-on look at norms, inner products, and NumPy array operations in general. Most importantly, we’ll also meet matrices for the first time.</span></p>
+<p><span class="cmss-10x-x-109">The last time we translated theory to code, we left off at finding an ideal representation for vectors: NumPy arrays. NumPy is built for linear algebra and handles computations much faster than the vanilla Python objects.</span></p>
+<p><span class="cmss-10x-x-109">So, let’s initialize two</span> <span id="dx1-52002"></span><span class="cmss-10x-x-109">NumPy arrays to play around with!</span></p>
+<div id="tcolobox-63" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>import numpy as np 
+ 
+x = np.array([1.8, -4.5, 9.2, 7.3]) 
+y = np.array([-5.2, -1.1, 0.7, 5.1])</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">In linear algebra, and in most of machine learning, almost all operations involve looping through the vector components one by one. For instance, addition can be implemented like this.</span></p>
+<div id="tcolobox-64" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def add(x: np.ndarray, y: np.ndarray): 
+    x_plus_y = np.zeros(shape=len(x)) 
+ 
+    for i in range(len(x_plus_y)): 
+        x_plus_y[i] = x[i] + y[i] 
+ 
+    return x_plus_y</code></pre>
+</div>
+</div>
+<div id="tcolobox-65" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>add(x, y)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([-3.4, -5.6,  9.9, 12.4])</code></pre>
+<p><span class="cmss-10x-x-109">Of course, this is far from optimal. (It may not even work if the vectors have different dimensions.)</span></p>
+<p><span class="cmss-10x-x-109">For example, addition is massively parallelizable, and our implementation does not take advantage of that. With two threads, we can</span><span id="dx1-52016"></span> <span class="cmss-10x-x-109">do two additions simultaneously. So, adding together two-dimensional vectors would require just one step, as one would compute </span><span class="cmtt-10x-x-109">x[0] + y[0]</span><span class="cmss-10x-x-109">, while the other </span><span class="cmtt-10x-x-109">x[1] + y[1]</span><span class="cmss-10x-x-109">. Raw Python does not have access to such high-performance computing tools, but NumPy does, through functions implemented in C. In turn, C uses the LAPACK (Linear Algebra PACKage) library, which makes calls to BLAS (Basic Linear Algebra Subprograms). BLAS is optimized at the assembly level.</span></p>
+<p><span class="cmss-10x-x-109">So, whenever it is possible, we should strive to work with vectors in a NumPythonic way. (Yes, I just made that term up.) For vector addition, this is simply the </span><span class="cmtt-10x-x-109">+ </span><span class="cmss-10x-x-109">operator, as we have seen earlier.</span></p>
+<div id="tcolobox-66" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.equal(x + y, add(x, y))</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([ True,  True,  True,  True])</code></pre>
+<p><span class="cmss-10x-x-109">By the way, you shouldn’t ever compare floats with the </span><span class="cmtt-10x-x-109">== </span><span class="cmss-10x-x-109">operator, as internal rounding errors can occur due to the float representation. The example below illustrates this.</span></p>
+<div id="tcolobox-67" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>1.0 == 0.3*3 + 0.1</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>False</code></pre>
+<div id="tcolobox-68" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>0.3*3 + 0.1</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>0.9999999999999999</code></pre>
+<p><span class="cmss-10x-x-109">To compare arrays, NumPy provides the functions </span><span class="cmtt-10x-x-109">np.allclose </span><span class="cmss-10x-x-109">and </span><span class="cmtt-10x-x-109">np.equal</span><span class="cmss-10x-x-109">. These compare arrays elementwise, returning a Boolean array. From this, the built-in </span><span class="cmtt-10x-x-109">all </span><span class="cmss-10x-x-109">function can be used to see if all the</span> <span id="dx1-52023"></span><span class="cmss-10x-x-109">elements match.</span></p>
+<div id="tcolobox-69" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>all(np.equal(x + y, add(x, y)))</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>True</code></pre>
+<p><span class="cmss-10x-x-109">In the following section, we’ll briefly review how to work with NumPy arrays in practice.</span></p>
+<section id="vectors-in-numpy" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_38"><span class="titlemark"><span class="cmss-10x-x-109">3.1 </span></span> <span id="x1-530004.1"></span><span class="cmss-10x-x-109">Vectors in NumPy</span></h2>
+<p><span class="cmss-10x-x-109">There</span> <span id="dx1-53001"></span><span class="cmss-10x-x-109">are two</span> <span id="dx1-53002"></span><span class="cmss-10x-x-109">operations that we definitely want to do with our vectors: apply a function elementwise or take the sum/product of the elements. Since the </span><span class="cmtt-10x-x-109">+</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">*</span><span class="cmss-10x-x-109">, and </span><span class="cmtt-10x-x-109">** </span><span class="cmss-10x-x-109">operators are implemented for our arrays, certain functions carry over from scalars, as the example below shows.</span></p>
+<pre class="lstinputlisting"><code>def just_a_quadratic_polynomial(x):
+    return 3*x**2 + 1
+
+x = np.array([1.8, -4.5, 9.2, 7.3])
+just_a_quadratic_polynomial(x)</code></pre>
+<pre class="lstlisting"><code>array([ 10.72,  61.75, 254.92, 160.87])</code></pre>
+<p><span class="cmss-10x-x-109">However, we can’t just plug in </span><span class="cmtt-10x-x-109">ndarrays </span><span class="cmss-10x-x-109">to every function. For instance, let’s take a look at Python’s built-in exp from its </span><span class="cmtt-10x-x-109">math </span><span class="cmss-10x-x-109">module.</span></p>
+<div id="tcolobox-70" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>from math import exp 
+ 
+exp(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>--------------------------------------------------------------------------- 
+TypeError                               Traceback (most recent call last) 
+Cell In[10], line 3 
+     1 from math import exp 
+----&gt;/span&gt; 3 exp(x) 
+ 
+TypeError: only length-1 arrays can be converted to Python scalars</code></pre>
+<p><span class="cmss-10x-x-109">To overcome this problem, we could manually apply the function elementwise.</span></p>
+<div id="tcolobox-71" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def naive_exp(x: np.ndarray): 
+    x_exp = np.empty_like(x) 
+ 
+    for i in range(len(x)): 
+        x_exp[i] = exp(x[i]) 
+ 
+    return x_exp</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">(Recall that </span><span class="cmtt-10x-x-109">np.empty_like(x) </span><span class="cmss-10x-x-109">creates an uninitialized array that matches the dimensions of </span><span class="cmtt-10x-x-109">x</span><span class="cmss-10x-x-109">.)</span></p>
+<div id="tcolobox-72" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>naive_exp(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([6.04964746e+00, 1.11089965e-02, 9.89712906e+03, 1.48029993e+03])</code></pre>
+<p><span class="cmss-10x-x-109">A bit</span> <span id="dx1-53028"></span><span class="cmss-10x-x-109">less naive implementation would use a list comprehension to achieve the same effect.</span></p>
+<div id="tcolobox-73" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def bit_less_naive_exp(x: np.ndarray): 
+    return np.array([exp(x_i) for x_i in x]) 
+ 
+bit_less_naive_exp(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([   6. ,    0. , 9897.1, 1480.3])</code></pre>
+<p><span class="cmss-10x-x-109">Even though comprehensions are more concise and readable, they still don’t avoid the core issue: </span><span class="cmtt-10x-x-109">for </span><span class="cmss-10x-x-109">loops in Python.</span></p>
+<p><span class="cmss-10x-x-109">This problem is solved by NumPy’s famous ufuncs, that is, functions that operate element by element on whole arrays ( </span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ufunc.html" class="url"><span class="cmtt-10x-x-109">https://numpy.org/doc/stable/reference/generated/numpy.ufunc.html</span></a><span class="cmss-10x-x-109">). Since they are implemented in C, they are blazing fast. For instance, the exponential function </span><span class="cmmi-10x-x-109">f</span>(<span class="cmmi-10x-x-109">x</span>) = <span class="cmmi-10x-x-109">e</span><sup><span class="cmmi-8">x</span></sup> <span class="cmss-10x-x-109">is given by </span><span class="cmtt-10x-x-109">np.exp</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-74" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.exp(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([6.04964746e+00, 1.11089965e-02, 9.89712906e+03, 1.48029993e+03])</code></pre>
+<p><span class="cmss-10x-x-109">Not surprisingly, the results of our implementations match.</span></p>
+<div id="tcolobox-75" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>all(np.equal(naive_exp(x), np.exp(x)))</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>True</code></pre>
+<div id="tcolobox-76" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>all(np.equal(bit_less_naive_exp(x), np.exp(x)))</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>True</code></pre>
+<p><span class="cmss-10x-x-109">Again, there</span> <span id="dx1-53040"></span><span class="cmss-10x-x-109">are more advantages to using NumPy functions and operations than simplicity. In machine learning, we care a lot about speed, and as we are about to see, NumPy delivers once more.</span></p>
+<pre class="lstinputlisting"><code>from timeit import timeit
+
+
+n_runs = 100000
+size = 1000
+
+
+t_naive_exp = timeit(
+    "np.array([exp(x_i) for x_i in x])",
+    setup=f"import numpy as np; from math import exp; x = np.ones({size})",
+    number=n_runs
+)
+
+t_numpy_exp = timeit(
+    "np.exp(x)",
+    setup=f"import numpy as np; from math import exp; x = np.ones({size})",
+    number=n_runs
+)
+
+
+print(f"Built-in exponential:    \t{t_naive_exp:.5f} s")
+print(f"NumPy exponential:       \t{t_numpy_exp:.5f} s")
+print(f"Performance improvement: \t{t_naive_exp/t_numpy_exp:.5f} times faster")</code></pre>
+<pre class="lstlisting"><code>Built-in exponential:         18.35177 s 
+NumPy exponential:             0.87458 s 
+Performance improvement:       20.98356 times faster</code></pre>
+<p><span class="cmss-10x-x-109">For further reference, you can find the list of available ufuncs here: </span> <a href="https://numpy.org/doc/stable/reference/ufuncs.html/#available-ufuncs" class="url"><span class="cmtt-10x-x-109">https://numpy.org/doc/stable/reference/ufuncs.html\#available-ufuncs</span></a><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">What about operations that aggregate the elements and return a single value? Not surprisingly, these can be found within NumPy as well. For instance, let’s take a look at the sum. In terms of mathematical formulas, we are looking to implement the function</span></p>
+<div class="math-display">
+<img src="../media/file250.png" class="math-display" alt=" n ∑ n sum (x) = xi, x = (x1,...,xn ) ∈ ℝ . i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">A basic approach would be something like this.</span></p>
+<div id="tcolobox-77" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def naive_sum(x: np.ndarray): 
+    val = 0 
+ 
+    for x_i in x: 
+        val += x_i 
+ 
+    return val 
+ 
+naive_sum(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(13.799999999999999)</code></pre>
+<p><span class="cmss-10x-x-109">Alternatively, we</span> <span id="dx1-53077"></span><span class="cmss-10x-x-109">can use Python’s built-in summing function.</span></p>
+<div id="tcolobox-78" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>sum(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(13.799999999999999)</code></pre>
+<p><span class="cmss-10x-x-109">The story is the same: NumPy can do this better. We can either call the function </span><span class="cmtt-10x-x-109">np.sum </span><span class="cmss-10x-x-109">or use the array method </span><span class="cmtt-10x-x-109">np.ndarray.sum</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-79" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.sum(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(13.799999999999999)</code></pre>
+<div id="tcolobox-80" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x.sum()</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(13.799999999999999)</code></pre>
+<p><span class="cmss-10x-x-109">You know by now that I love timing functions, so let’s compare the performances once more.</span></p>
+<div id="tcolobox-81" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>t_naive_sum = timeit( 
+    /span&gt;sum(x) 
+    setup=f/span&gt;import numpy as np; x = np.ones({size}) 
+    number=n_runs 
+) 
+ 
+t_numpy_sum = timeit( 
+    /span&gt;np.sum(x) 
+    setup=f/span&gt;import numpy as np; x = np.ones({size}) 
+    number=n_runs 
+) 
+ 
+ 
+print(f/span&gt;Built-in sum:            \t{t_naive_sum:.5f} s 
+print(f/span&gt;NumPy sum:               \t{t_numpy_sum:.5f} s 
+print(f/span&gt;Performance improvement: \t{t_naive_sum/t_numpy_sum:.5f} times faster</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>Built-in sum:                 5.52380 s 
+NumPy sum:                     0.35774 s 
+Performance improvement:       15.44076 times faster</code></pre>
+<p><span class="cmss-10x-x-109">Similarly, the</span> <span id="dx1-53103"></span><span class="cmss-10x-x-109">product</span></p>
+<div class="math-display">
+<img src="../media/file251.png" class="math-display" alt=" ∏n prod (x ) = xi, x = (x1,...,xn) ∈ ℝn i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">is implemented by the </span><span class="cmtt-10x-x-109">np.prod </span><span class="cmss-10x-x-109">function and the </span><span class="cmtt-10x-x-109">np.ndarray.prod </span><span class="cmss-10x-x-109">method.</span></p>
+<div id="tcolobox-82" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.prod(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(-543.996)</code></pre>
+<p><span class="cmss-10x-x-109">On quite a few occasions, we need to find the maximum or minimum of an array. We can do this using the </span><span class="cmtt-10x-x-109">np.max </span><span class="cmss-10x-x-109">and </span><span class="cmtt-10x-x-109">np.min </span><span class="cmss-10x-x-109">functions. (Similarly to the others, these are also available as array methods.) The rule of thumb is if you want to perform any array operation, use NumPy functions.</span></p>
+<section id="norms-distances-and-dot-products" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_39"><span class="titlemark"><span class="cmss-10x-x-109">3.1.1 </span></span> <span id="x1-540004.1.1"></span><span class="cmss-10x-x-109">Norms, distances, and dot products</span></h3>
+<p><span class="cmss-10x-x-109">Now that</span> <span id="dx1-54001"></span><span class="cmss-10x-x-109">we have reviewed how to perform operations on our vectors efficiently, it’s time to dive deep into the really interesting part: norms and</span> <span id="dx1-54002"></span><span class="cmss-10x-x-109">distances.</span></p>
+<p><span class="cmss-10x-x-109">Let’s start with the most important one: the Euclidean norm, also known as the</span> 2<span class="cmss-10x-x-109">-norm, defined by</span></p>
+<div class="math-display">
+<img src="../media/file252.png" class="math-display" alt=" ∑n ∥x∥2 = ( x2i)1∕2, x = (x1,...,xn) ∈ ℝn. i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">A straightforward implementation would be the following.</span></p>
+<div id="tcolobox-83" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def euclidean_norm(x: np.ndarray): 
+    return np.sqrt(np.sum(x**2))</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Note</span> <span id="dx1-54005"></span><span class="cmss-10x-x-109">that our </span><span class="cmtt-10x-x-109">euclidean_norm </span><span class="cmss-10x-x-109">function is dimension-agnostic; that is, it works for</span> <span id="dx1-54006"></span><span class="cmss-10x-x-109">arrays of every dimension.</span></p>
+<div id="tcolobox-84" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code># a 1D array with 4 elements, which is a vector in 4-dimensional space 
+x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+ 
+# a 1D array with 2 elements, which is a vector in 2-dimensional space 
+y = np.array([8.1, 6.3]) 
+ 
+euclidean_norm(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(4.036087214122113)</code></pre>
+<div id="tcolobox-85" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>euclidean_norm(y)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(10.261578825892242)</code></pre>
+<p><span class="cmss-10x-x-109">But wait, didn’t I just mention that we should use NumPy functions whenever possible? Norms are important enough to have their own functions: </span><span class="cmtt-10x-x-109">np.linalg.norm</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-86" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.linalg.norm(x)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(4.036087214122113)</code></pre>
+<p><span class="cmss-10x-x-109">With a quick inspection, we can check that these match for our vector </span><span class="cmtt-10x-x-109">x</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-87" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.equal(euclidean_norm(x), np.linalg.norm(x))</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.True_</code></pre>
+<p><span class="cmss-10x-x-109">However, the Euclidean norm is just a special case of </span><span class="cmmi-10x-x-109">p</span><span class="cmss-10x-x-109">-norms. Recall that for any </span><span class="cmmi-10x-x-109">p </span><span class="cmsy-10x-x-109">∈</span> [0<span class="cmmi-10x-x-109">,</span><span class="cmsy-10x-x-109">∞</span>)<span class="cmss-10x-x-109">, we defined the </span><span class="cmmi-10x-x-109">p</span><span class="cmss-10x-x-109">-norm by the formula</span></p>
+<div class="math-display">
+<img src="../media/file253.png" class="math-display" alt=" n ∥x∥ = (∑ |x |p)1∕p, x = (x ,...,x ) ∈ ℝn, p i=1 i 1 n "/>
+</div>
+<p><span class="cmss-10x-x-109">and</span></p>
+<div class="math-display">
+<img src="../media/file254.png" class="math-display" alt="∥x∥∞ = max {|x1 |,...,|xn |}, x = (x1,...,xn) ∈ ℝn "/>
+</div>
+<p><span class="cmss-10x-x-109">for </span><span class="cmmi-10x-x-109">p </span>= <span class="cmsy-10x-x-109">∞</span><span class="cmss-10x-x-109">. It is a good practice to keep the number of functions</span> <span id="dx1-54021"></span><span class="cmss-10x-x-109">in a codebase minimal to reduce</span><span id="dx1-54022"></span> <span class="cmss-10x-x-109">maintenance costs. Can we compact all </span><span class="cmmi-10x-x-109">p</span><span class="cmss-10x-x-109">-norms into a single Python function that takes the value of </span><span class="cmmi-10x-x-109">p </span><span class="cmss-10x-x-109">as an argument? Sure. We only have a small issue: representing </span><span class="cmsy-10x-x-109">∞</span><span class="cmss-10x-x-109">. Python and NumPy both provide their own representations, but we will go with NumPy’s </span><span class="cmtt-10x-x-109">np.inf</span><span class="cmss-10x-x-109">. Surprisingly, this is a </span><span class="cmtt-10x-x-109">float </span><span class="cmss-10x-x-109">type.</span></p>
+<div id="tcolobox-88" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>type(np.inf)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>float</code></pre>
+<div id="tcolobox-89" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def p_norm(x: np.ndarray, p: float): 
+    if np.isinf(p): 
+        return np.max(np.abs(x)) 
+    elif p  1: 
+        return (np.sum(np.abs(x)**p))**(1/p) 
+    else: 
+        raise ValueError("/span&gt;p must be a float larger or equal than 1.0 or inf."</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Since </span><span class="cmsy-10x-x-109">∞ </span><span class="cmss-10x-x-109">can have multiple other representations, such as Python’s built-in </span><span class="cmtt-10x-x-109">math.inf</span><span class="cmss-10x-x-109">, we can make our function more robust by using the </span><span class="cmtt-10x-x-109">np.isinf </span><span class="cmss-10x-x-109">function to check if an object represents </span><span class="cmsy-10x-x-109">∞ </span><span class="cmss-10x-x-109">or not.</span></p>
+<p><span class="cmss-10x-x-109">A quick check shows that </span><span class="cmtt-10x-x-109">p_norm </span><span class="cmss-10x-x-109">works as intended.</span></p>
+<div id="tcolobox-90" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+ 
+for p in [1, 2, 42, np.inf]: 
+    print(f/span&gt;p-norm for p = {p}: \t {p_norm(x, p=p):.5f}"</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>p-norm for p = 1:        7.50000 
+p-norm for p = 2:        4.03609 
+p-norm for p = 42:     3.00000 
+p-norm for p = inf:       3.00000</code></pre>
+<p><span class="cmss-10x-x-109">However, once again, NumPy</span> <span id="dx1-54040"></span><span class="cmss-10x-x-109">is one step ahead</span> <span id="dx1-54041"></span><span class="cmss-10x-x-109">of us. In fact, the familiar </span><span class="cmtt-10x-x-109">np.linalg.norm </span><span class="cmss-10x-x-109">already does this out of the box. We can achieve the same with less code by passing the value of </span><span class="cmmi-10x-x-109">p </span><span class="cmss-10x-x-109">as the argument </span><span class="cmtt-10x-x-109">ord</span><span class="cmss-10x-x-109">, short for </span><span class="cmssi-10x-x-109">order</span><span class="cmss-10x-x-109">. For </span><span class="cmtt-10x-x-109">ord = 2</span><span class="cmss-10x-x-109">, we obtain the good old 2-norm.</span></p>
+<div id="tcolobox-91" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>for p in [1, 2, 42, np.inf]: 
+    print(f/span&gt;p-norm for p = {p}: \t {np.linalg.norm(x, ord=p):.5f}"</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>p-norm for p = 1:        7.50000 
+p-norm for p = 2:        4.03609 
+p-norm for p = 42:     3.00000 
+p-norm for p = inf:       3.00000</code></pre>
+<p><span class="cmss-10x-x-109">Somewhat surprisingly, distances don’t have their own NumPy functions. However, as the most common distance metrics are generated from norms (</span><span class="cmssi-10x-x-109">Section </span><a href="ch008.xhtml#defining-distances-from-norms"><span class="cmssi-10x-x-109">2.1.1</span></a><span class="cmss-10x-x-109">), we can often write our own. For instance, here is the Euclidean distance.</span></p>
+<div id="tcolobox-92" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def euclidean_distance(x: np.ndarray, y: np.ndarray): 
+    return np.linalg.norm(x - y, ord=2)</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Besides norms and distances, the third component that defines the geometry of our vector spaces is the inner product. During our journey, we’ll almost exclusively use the </span><span class="cmssi-10x-x-109">dot product</span><span class="cmss-10x-x-109">, defined in the vector space </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">by</span></p>
+<div class="math-display">
+<img src="../media/file255.png" class="math-display" alt=" n ⟨x, y⟩ = ∑ x y, x, y ∈ ℝn. i i i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">By now, you can easily smash out a Python function that calculates this. In principle, the one-liner below should work.</span></p>
+<div id="tcolobox-93" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def dot_product(x: np.ndarray, y: np.ndarray): 
+    return np.sum(x*y)</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Let’s test this out!</span></p>
+<div id="tcolobox-94" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+y = np.array([1.9, 2.5, 3.9, 1.2]) 
+ 
+dot_product(x, y)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(4.5)</code></pre>
+<p><span class="cmss-10x-x-109">When the</span> <span id="dx1-54057"></span><span class="cmss-10x-x-109">dimension</span> <span id="dx1-54058"></span><span class="cmss-10x-x-109">of the vectors doesn’t match, the function throws an exception as we expect.</span></p>
+<div id="tcolobox-95" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+y = np.array([1.9, 2.5]) 
+ 
+dot_product(x, y)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>--------------------------------------------------------------------------- 
+ValueError                              Traceback (most recent call last) 
+Cell In[39], line 4 
+     1 x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+     2 y = np.array([1.9, 2.5]) 
+----&gt;/span&gt; 4 dot_product(x, y) 
+ 
+Cell In[37], line 2, in dot_product(x, y) 
+     1 def dot_product(x: np.ndarray, y: np.ndarray): 
+----&gt;/span&gt; 2    return np.sum(x*y) 
+ 
+ValueError: operands could not be broadcast together with shapes (4,) (2,)</code></pre>
+<p><span class="cmss-10x-x-109">However, upon</span> <span id="dx1-54075"></span><span class="cmss-10x-x-109">further attempts to break the code, a strange thing occurs. Our function </span><span class="cmtt-10x-x-109">dot_product </span><span class="cmss-10x-x-109">should fail when called with an </span><span class="cmmi-10x-x-109">n</span><span class="cmss-10x-x-109">-dimensional and one-dimensional vector, and this is not what happens.</span></p>
+<div id="tcolobox-96" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+y = np.array([2.0]) 
+ 
+dot_product(x, y)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(3.0)</code></pre>
+<p><span class="cmss-10x-x-109">I always advocate breaking solutions in advance to avoid later surprises, and the above example excellently illustrates the usefulness of this principle. If the previous phenomenon occurs in production, you would have code that executes properly but gives a totally wrong result. That’s the worst kind of bug.</span></p>
+<p><span class="cmss-10x-x-109">Behind the scenes, NumPy is doing something called </span><span class="cmssi-10x-x-109">broadcasting</span><span class="cmss-10x-x-109">. When performing an operation on two arrays with mismatching shapes, it tries to guess the correct sizes and reshape them so that the operation can go through. Check out what takes place when calculating </span><span class="cmtt-10x-x-109">x*y</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-97" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x*y</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([-6. ,  2.4,  2.4,  4.2])</code></pre>
+<p><span class="cmss-10x-x-109">NumPy guessed that we want to multiply all elements of </span><span class="cmtt-10x-x-109">x </span><span class="cmss-10x-x-109">by the scalar </span><span class="cmtt-10x-x-109">y[0]</span><span class="cmss-10x-x-109">, so it transforms </span><span class="cmtt-10x-x-109">y = np.array([2.0]) </span><span class="cmss-10x-x-109">into </span><span class="cmtt-10x-x-109">np.array([2.0, 2.0, 2.0, 2.0])</span><span class="cmss-10x-x-109">, then calculates the elementwise product.</span></p>
+<p><span class="cmss-10x-x-109">Broadcasting is extremely useful because it allows us to write much simpler code by automagically performing transformations. Still, if you</span><span id="dx1-54083"></span> <span class="cmss-10x-x-109">are unaware of how and when broadcasting is done, it can seriously come back to bite you. Just like in our case, as the inner product of a four-dimensional and one-dimensional vector is not defined.</span></p>
+<p><span class="cmss-10x-x-109">To avoid writing excessive checks for edge cases (or missing them altogether), we calculate the inner product in practice using the </span><span class="cmtt-10x-x-109">np.dot </span><span class="cmss-10x-x-109">function.</span></p>
+<div id="tcolobox-98" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+y = np.array([1.9, 2.5, 3.9, 1.2]) 
+ 
+np.dot(x, y)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.float64(4.5)</code></pre>
+<p><span class="cmss-10x-x-109">When attempting to call </span><span class="cmtt-10x-x-109">np.dot </span><span class="cmss-10x-x-109">with misaligned arrays, it fails as supposed to, even in cases when broadcasting bails out our custom implementation.</span></p>
+<div id="tcolobox-99" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+y = np.array([2.0]) 
+ 
+np.dot(x, y)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>--------------------------------------------------------------------------- 
+ValueError                              Traceback (most recent call last) 
+Cell In[43], line 4 
+     1 x = np.array([-3.0, 1.2, 1.2, 2.1]) 
+     2 y = np.array([2.0]) 
+----&gt;/span&gt; 4 np.dot(x, y) 
+ 
+ValueError: shapes (4,) and (1,) not aligned: 4 (dim 0) != 1 (dim 0)</code></pre>
+<p><span class="cmss-10x-x-109">Now that we have a basic arsenal of array operations and functions, it is time to do something with them!</span></p>
+</section>
+<section id="the-gramschmidt-orthogonalization-process1" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_40"><span class="titlemark"><span class="cmss-10x-x-109">3.1.2 </span></span> <span id="x1-550004.1.2"></span><span class="cmss-10x-x-109">The Gram-Schmidt orthogonalization process</span></h3>
+<p><span class="cmss-10x-x-109">One of the</span> <span id="dx1-55001"></span><span class="cmss-10x-x-109">most fundamental algorithms in linear algebra is the Gram-Schmidt orthogonalization process (</span><span class="cmssi-10x-x-109">Theorem </span><a href="ch008.xhtml#x1-47004r13"><span class="cmssi-10x-x-109">13</span></a><span class="cmss-10x-x-109">), used to turn</span><span id="dx1-55002"></span> <span class="cmss-10x-x-109">a set of linearly independent vectors into an orthonormal set.</span></p>
+<p><span class="cmss-10x-x-109">To be more precise, for our input of a set of linearly independent vectors </span><span class="cmbx-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmbx-10x-x-109">v</span><sub><span class="cmmi-8">n</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup><span class="cmss-10x-x-109">, the Gram-Schmidt process finds the output set of vectors </span><span class="cmbx-10x-x-109">e</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmbx-10x-x-109">e</span><sub><span class="cmmi-8">n</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">such that </span><span class="cmsy-10x-x-109">∥</span><span class="cmbx-10x-x-109">e</span><sub><span class="cmmi-8">i</span></sub><span class="cmsy-10x-x-109">∥ </span>= 1 <span class="cmss-10x-x-109">and </span><span class="cmsy-10x-x-109">⟨</span><span class="cmbx-10x-x-109">e</span><sub><span class="cmmi-8">i</span></sub><span class="cmmi-10x-x-109">,</span><span class="cmbx-10x-x-109">e</span><sub><span class="cmmi-8">j</span></sub><span class="cmsy-10x-x-109">⟩ </span>= 0 <span class="cmss-10x-x-109">for all </span><span class="cmmi-10x-x-109">i≠j </span><span class="cmss-10x-x-109">(that is, the vectors are orthonormal), and</span> span(<span class="cmbx-10x-x-109">e</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmbx-10x-x-109">e</span><sub><span class="cmmi-8">k</span></sub>) = span(<span class="cmbx-10x-x-109">v</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,</span><span class="cmbx-10x-x-109">v</span><sub><span class="cmmi-8">k</span></sub>) <span class="cmss-10x-x-109">for all </span><span class="cmmi-10x-x-109">k </span>= 1<span class="cmmi-10x-x-109">,…,n</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">If you are having trouble recalling how this is done, feel free to revisit Section 2.2.5, where we first described the algorithm. The learning process is a spiral, where we keep revisiting old concepts from new perspectives. For the Gram-Schmidt process, this is our second iteration, where we put the mathematical formulation into code.</span></p>
+<p><span class="cmss-10x-x-109">Since we are talking about a </span><span class="cmssi-10x-x-109">sequence of vectors</span><span class="cmss-10x-x-109">, we need a suitable data structure for this purpose. There are several possibilities for this in Python. For now, we are going with the conceptually simplest, albeit computationally rather suboptimal, one: lists.</span></p>
+<div id="tcolobox-100" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>vectors = [np.random.rand(5) for _ in range(5)]    # randomly generated vectors in a list 
+vectors</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[array([0.85885635, 0.05917163, 0.42449235, 0.39776749, 0.89750107]), 
+ array([0.49579437, 0.42797077, 0.21057023, 0.3091438 , 0.52590854]), 
+ array([0.73079791, 0.58140107, 0.09823772, 0.14323477, 0.63606972]), 
+ array([0.89495164, 0.40614454, 0.60637559, 0.61614928, 0.69006552]), 
+ array([0.1996764 , 0.90298211, 0.70604567, 0.45721469, 0.02375226])]</code></pre>
+<p><span class="cmss-10x-x-109">The first component of the algorithm is the orthogonal projection operator, defined by</span></p>
+<div class="math-display">
+<img src="../media/file456.png" class="math-display" alt=" ∑k proj (x) = ⟨x,ei⟩ei. e1,...,ek i=1 ⟨ei,ei⟩ "/>
+</div>
+<p><span class="cmss-10x-x-109">With our NumPy tools, the implementation is straightforward by now.</span></p>
+<div id="tcolobox-101" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>from typing import List 
+ 
+def projection(x: np.ndarray, to: List[np.ndarray]): 
+    #x0022;"/span&gt; 
+    Computes the orthogonal projection of the vector ‘x‘ 
+    onto the subspace spanned by the set of vectors ‘to‘. 
+    #x0022;"/span&gt; 
+    p_x = np.zeros_like(x) 
+ 
+    for e in to: 
+        e_norm_square = np.dot(e, e) 
+        p_x += np.dot(x, e)*e/e_norm_square 
+ 
+    return p_x</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">To check</span> <span id="dx1-55024"></span><span class="cmss-10x-x-109">if it works, let’s look at a simple example and visualize the results. Since</span> <span id="dx1-55025"></span><span class="cmss-10x-x-109">this book is written in Jupyter Notebooks, we can do it right here.</span></p>
+<div id="tcolobox-102" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x = np.array([1.0, 2.0]) 
+e = np.array([2.0, 1.0]) 
+ 
+x_to_e = projection(x, to=[e])</code></pre>
+</div>
+</div>
+<div id="tcolobox-103" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>import matplotlib.pyplot as plt 
+ 
+with plt.style.context("/span&gt;seaborn-v0_8": 
+    plt.figure(figsize=(7, 7)) 
+    plt.xlim([-0, 3]) 
+    plt.ylim([-0, 3]) 
+    plt.arrow(0, 0, x[0], x[1], head_width=0.1, color="/span&gt;r label="/span&gt;x linewidth=2) 
+    plt.arrow(0, 0, e[0], e[1], head_width=0.1, color="/span&gt;g label="/span&gt;e linewidth=2) 
+    plt.arrow(x_to_e[0], x_to_e[1], x[0] - x_to_e[0], x[1] - x_to_e[1], linestyle="-" 
+    plt.arrow(0, 0, x_to_e[0], x_to_e[1], head_width=0.1, color="/span&gt;b label="/span&gt;projection(x, to=[e]) 
+    plt.legend() 
+    plt.show()</code></pre>
+</div>
+</div>
+<div class="minipage">
+<p><img src="../media/file257.png" width="284" alt="PIC"/> <span id="x1-55042r1"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 3.1: The projection of x to e</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Checking the</span> <span id="dx1-55043"></span><span class="cmss-10x-x-109">orthogonality of </span><span class="cmtt-10x-x-109">e </span><span class="cmss-10x-x-109">and </span><span class="cmtt-10x-x-109">x - x to e </span><span class="cmss-10x-x-109">provides</span> <span id="dx1-55044"></span><span class="cmss-10x-x-109">another means of verification.</span></p>
+<div id="tcolobox-104" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.allclose(np.dot(e, x - x_to_e), 0.0)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>True</code></pre>
+<p><span class="cmss-10x-x-109">When writing code for production, a couple of visualizations and ad hoc checks are</span> <span id="dx1-55047"></span><span class="cmss-10x-x-109">not enough. An extensive set of unit tests is customarily written to ensure that a function works as intended. We are skipping this to keep our discussion on track, but feel free to add some of your</span> <span id="dx1-55048"></span><span class="cmss-10x-x-109">tests. After all, mathematics and programming are not a spectator’s sport.</span></p>
+<p><span class="cmss-10x-x-109">With the </span><span class="cmtt-10x-x-109">projection </span><span class="cmss-10x-x-109">function available to us, we are ready to knock the Gram-Schmidt algorithm out of the park.</span></p>
+<div id="tcolobox-105" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def gram_schmidt(vectors: List[np.ndarray]): 
+    #x0022;"/span&gt; 
+    Creates an orthonormal set of vectors from the input 
+    that spans the same subspaces. 
+    #x0022;"/span&gt; 
+    output = [] 
+ 
+    # 1st step: finding an orthogonal set of vectors 
+    output.append(vectors[0]) 
+    for v in vectors[1:]: 
+        v_proj = projection(v, to=output) 
+        output.append(v - v_proj) 
+ 
+    # 2nd step: normalizing the result 
+    output = [v/np.linalg.norm(v, ord=2) for v in output] 
+ 
+    return output 
+ 
+gram_schmidt([np.array([2.0, 1.0, 1.0]), 
+              np.array([1.0, 2.0, 1.0]), 
+              np.array([1.0, 1.0, 2.0])])</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[array([0.81649658, 0.40824829, 0.40824829]), 
+ array([-0.49236596,  0.86164044,  0.12309149]), 
+ array([-0.30151134, -0.30151134,  0.90453403])]</code></pre>
+<p><span class="cmss-10x-x-109">Let’s quickly test out this implementation with a simple example.</span></p>
+<div id="tcolobox-106" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>test_vectors = [np.array([1.0, 0.0, 0.0]), 
+                np.array([1.0, 1.0, 0.0]), 
+                np.array([1.0, 1.0, 1.0])] 
+ 
+gram_schmidt(test_vectors)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[array([1., 0., 0.]), array([0., 1., 0.]), array([0., 0., 1.])]</code></pre>
+<p><span class="cmss-10x-x-109">So, we have just created our first algorithm from scratch. This is like the</span> <span id="dx1-55079"></span><span class="cmss-10x-x-109">base camp for Mount Everest. We have come a long way, but there is much further to go before we can create a neural network from scratch. Until then, the journey is packed with some beautiful sections, and this</span><span id="dx1-55080"></span> <span class="cmss-10x-x-109">is one of them. Take a while to appreciate this, then move on when you are ready.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-55081r4"></span> <span class="cmbx-10x-x-109">Remark 4.</span> </span><span class="cmbx-10x-x-109">(Linearly dependent inputs of the Gram-Schmidt process)</span></p>
+<p>Recall that if the input vectors of the Gram-Schmidt are linearly dependent, some vectors of the output are zero (<span class="cmti-10x-x-109">Remark </span><a href="ch008.xhtml#x1-47008r3"><span class="cmti-10x-x-109">3</span></a>). In practice, this causes a lot of problems.</p>
+<p>For instance, we normalize the vectors in the end, using list comprehension:</p>
+<div id="tcolobox-107" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>output = [v/np.linalg.norm(v, ord=2) for v in output]</code></pre>
+</div>
+</div>
+<p>This can cause numerical issues. If any <span class="cmtt-10x-x-109">v </span>is approximately 0, its norm <span class="cmtt-10x-x-109">np.linalg.norm(v, ord=2) </span>is going to be really small, and division with such small numbers is problematic.</p>
+<p>This issue also affects the <span class="cmtt-10x-x-109">projection </span>function. Take a look at the definition below:</p>
+<div id="tcolobox-108" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def projection(x: np.ndarray, to: List[np.ndarray]): 
+    #x0022;"/span&gt; 
+    Computes the orthogonal projection of the vector ‘x‘ 
+    onto the subspace spanned by the set of vectors ‘to‘. 
+    #x0022;"/span&gt; 
+    p_x = np.zeros_like(x) 
+ 
+    for e in to: 
+        e_norm_square = np.dot(e, e) 
+        p_x += np.dot(x, e)*e / e_norm_square 
+ 
+    return p_x</code></pre>
+</div>
+</div>
+<p>If <span class="cmtt-10x-x-109">e </span>is (close to) 0, which can happen if the input vectors are linearly dependent, then <span class="cmtt-10x-x-109">e_norm_square </span>is small. One way to solve this is to add a small float, say, <span class="cmtt-10x-x-109">1e-16</span>.</p>
+<div id="tcolobox-109" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def projection(x: np.ndarray, to: List[np.ndarray]): 
+    p_x = np.zeros_like(x) 
+ 
+    for e in to: 
+        e_norm_square = np.dot(e, e) 
+ 
+        # note the change below: 
+        p_x += np.dot(x, e)*e / (e_norm_square + 1e-16) 
+ 
+    return p_x</code></pre>
+</div>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Now, let’s</span> <span id="dx1-55105"></span><span class="cmss-10x-x-109">meet the single</span> <span id="dx1-55106"></span><span class="cmss-10x-x-109">most important objects in machine learning: matrices.</span></p>
+</section>
+</section>
+<section id="matrices-the-workhorses-of-linear-algebra" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_41"><span class="titlemark"><span class="cmss-10x-x-109">3.2 </span></span> <span id="x1-560004.2"></span><span class="cmss-10x-x-109">Matrices, the workhorses of linear algebra</span></h2>
+<p><span class="cmss-10x-x-109">I am quite sure</span> <span id="dx1-56001"></span><span class="cmss-10x-x-109">that you were already familiar with the notion of matrices before reading this book. Matrices are one of the most important data structures that can represent systems of equations, graphs, mappings between vector spaces, and many more. Matrices are the fundamental building blocks of machine learning.</span></p>
+<p><span class="cmss-10x-x-109">At first look, we define a </span><span class="cmssi-10x-x-109">matrix </span><span class="cmss-10x-x-109">as a table of numbers. If the matrix </span><span class="cmmi-10x-x-109">A </span><span class="cmss-10x-x-109">has, for instance, </span><span class="cmmi-10x-x-109">n </span><span class="cmss-10x-x-109">rows and </span><span class="cmmi-10x-x-109">m </span><span class="cmss-10x-x-109">columns of real numbers, we write</span></p>
+<div class="equation" style="display: flex; align-items: center; justify-content: flex-start;">
+  <div id="matrices-the-workhorses-of-linear-algebraeqq" class="math-display" style="flex: 1;">
+    <img src="../media/file258.png" class="math-display" alt="⌊ ⌋ | a1,1 a1,2 ... a1,m | || a2,1 a2,2 ... a2,m || | . . . . | n×m A = || .. .. .. .. || ∈ ℝ . || a a ... a || ⌈ n,1 n,2 n,m ⌉" style="max-width: 100%; height: auto;"/>
+    <span id="x1-560004.2eq"></span>
+  </div>
+  <div class="equation-label" style="width: 50px; text-align: right; padding-left: 10px;">(3.1)</div>
+</div>
+
+<p><span class="cmss-10x-x-109">When we don’t want to write out the entire matrix as (</span><a href="ch009.xhtml#matrices-the-workhorses-of-linear-algebra"><span class="cmss-10x-x-109">3.1</span></a><span class="cmss-10x-x-109">), we use the abbreviation </span><span class="cmmi-10x-x-109">A </span>= (<span class="cmmi-10x-x-109">a</span><sub><span class="cmmi-8">i,j</span></sub>)<sub><span class="cmmi-8">i</span><span class="cmr-8">=1</span><span class="cmmi-8">,j</span><span class="cmr-8">=1</span></sub><sup><span class="cmmi-8">n,m</span></sup><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">The set of all </span><span class="cmmi-10x-x-109">n </span><span class="cmsy-10x-x-109">×</span><span class="cmmi-10x-x-109">m </span><span class="cmss-10x-x-109">real matrices is denoted by </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup><span class="cmss-10x-x-109">. We will exclusively talk about real matrices, but when referring to other types, this notation is modified accordingly. For instance, </span><span class="msbm-10x-x-109">ℤ</span><sup><span class="cmsy-8">{</span><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span><span class="cmsy-8">}</span></sup> <span class="cmss-10x-x-109">denotes the set of integer matrices.</span></p>
+<p><span class="cmss-10x-x-109">Matrices</span> <span id="dx1-56002"></span><span class="cmss-10x-x-109">can be added and multiplied together, or</span> <span id="dx1-56003"></span><span class="cmss-10x-x-109">multiplied by a scalar.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-56004r14"></span> <span class="cmbx-10x-x-109">Definition 14.</span> </span><span class="cmbx-10x-x-109">(Matrix operations)</span></p>
+<p><span class="cmti-10x-x-109">(a) </span>Let <span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> be a matrix and <span class="cmmi-10x-x-109">c </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ </span>a real number. The multiple of <span class="cmmi-10x-x-109">A</span> by the scalar <span class="cmmi-10x-x-109">c </span>is defined by</p>
+<div class="math-display">
+<img src="../media/file259.png" class="math-display" alt=" n,m cA := (cai,j)i,j=1 ∈ ℝn ×m. "/>
+</div>
+<p><span class="cmti-10x-x-109">(b) </span>Let <span class="cmmi-10x-x-109">A,B </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> be two matrices of matching dimensions. Their sum <span class="cmmi-10x-x-109">A </span>+ <span class="cmmi-10x-x-109">B </span>is defined by</p>
+<div class="math-display">
+<img src="../media/file260.png" class="math-display" alt=" n,m n×m A + B := (ai,j + bi,j)i,j=1 ∈ ℝ . "/>
+</div>
+<p><span class="cmti-10x-x-109">(c) </span>Let <span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">l</span></sup> and <span class="cmmi-10x-x-109">B </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">l</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> be two matrices. Their product <span class="cmmi-10x-x-109">AB </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> is defined by</p>
+<div class="math-display">
+<img src="../media/file261.png" class="math-display" alt=" l ∑ n,m n×m AB := ( ai,kbk,j)i,j=1 ∈ ℝ . k=1 "/>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Scalar multiplication and addition are clear, but matrix multiplication</span><span id="dx1-56005"></span> <span class="cmss-10x-x-109">is not as simple to understand. Fortunately, visualization can help. In essence, the </span>(<span class="cmmi-10x-x-109">i,j</span>)<span class="cmss-10x-x-109">-th element is the dot product of the </span><span class="cmmi-10x-x-109">i</span><span class="cmss-10x-x-109">-th row of </span><span class="cmmi-10x-x-109">A </span><span class="cmss-10x-x-109">and the </span><span class="cmmi-10x-x-109">j</span><span class="cmss-10x-x-109">-th column of </span><span class="cmmi-10x-x-109">B</span><span class="cmss-10x-x-109">.</span></p>
+<div class="minipage">
+<p><img src="../media/file262.png" width="484" alt="PIC"/> <span id="x1-56006r2"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 3.2: Visualizing matrix multiplication</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">Besides</span> <span id="dx1-56007"></span><span class="cmss-10x-x-109">addition and multiplication, there is another operation that is worth mentioning: </span><span class="cmssi-10x-x-109">transposition</span><span class="cmss-10x-x-109">.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-56008r15"></span> <span class="cmbx-10x-x-109">Definition 15.</span> </span><span class="cmbx-10x-x-109">(Matrix transposition)</span></p>
+<p>Let <span class="cmmi-10x-x-109">A </span>= (<span class="cmmi-10x-x-109">a</span><sub><span class="cmsy-8">{</span></sub><span class="cmmi-10x-x-109">i,j</span><span class="cmsy-10x-x-109">}</span>)<sub><span class="cmsy-8">{</span></sub><span class="cmmi-10x-x-109">i,j </span>= 1<span class="cmsy-10x-x-109">}</span><sup><span class="cmsy-8">{</span><span class="cmmi-8">n,m</span><span class="cmsy-8">}</span></sup> <span class="cmsy-10x-x-109">∈ </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmsy-8">{</span><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span><span class="cmsy-8">}</span></sup> be a matrix. The matrix <span class="cmmi-10x-x-109">A</span><sup><span class="cmmi-8">T</span></sup> , defined by</p>
+<div class="math-display">
+<img src="../media/file263.png" class="math-display" alt="AT = (aj,i)ni,,jm=1 ∈ ℝm ×n "/>
+</div>
+<p>is called the <span class="cmti-10x-x-109">transpose </span>of <span class="cmmi-10x-x-109">A</span>. The operation <span class="cmmi-10x-x-109">A</span>→<span class="cmmi-10x-x-109">A</span><sup><span class="cmmi-8">T</span></sup> is called <span class="cmti-10x-x-109">transposition</span>.</p>
+</div>
+<p><span class="cmss-10x-x-109">Transposition</span> <span id="dx1-56009"></span><span class="cmss-10x-x-109">simply</span> <span id="dx1-56010"></span><span class="cmss-10x-x-109">means “flipping” the matrix, replacing rows with columns. For example,</span></p>
+<div class="math-display">
+<img src="../media/file265.png" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ ⌈a b⌉ T ⌈a c⌉ A = c d , A = b d , "/>
+</div>
+<p><span class="cmss-10x-x-109">or</span></p>
+<div class="math-display">
+<img src="../media/file266.png" class="math-display" alt=" ⌊0 1⌋ ⌊ ⌋ | | 0 2 4 B = |⌈2 3|⌉ , BT = ⌈ ⌉ . 4 5 1 3 5 "/>
+</div>
+<p><span class="cmss-10x-x-109">As opposed to addition</span> <span id="dx1-56011"></span><span class="cmss-10x-x-109">and multiplication, transposition is a </span><span class="cmssi-10x-x-109">unary </span><span class="cmss-10x-x-109">operation. (Unary means that it takes one argument. Binary operations take two arguments, and so on.)</span></p>
+<p><span class="cmss-10x-x-109">Let’s take another</span> <span id="dx1-56012"></span><span class="cmss-10x-x-109">look at matrix multiplication, one of the most frequently used operations in computing. As it can be performed extremely fast on modern computers, it is common to vectorize certain algorithms just to express it in terms of matrix multiplications.</span></p>
+<p><span class="cmss-10x-x-109">Thus, the more we know about it, the better. To get a grip on the operation itself, we can take a look at it from a few different angles. Let’s start with a special case!</span></p>
+<p><span class="cmss-10x-x-109">In machine learning, taking the product of a matrix and a column vector is a fundamental building block of certain models. For instance, this is linear regression in itself, or the famous fully connected layer in neural networks.</span></p>
+<p><span class="cmss-10x-x-109">To see what happens in this case, let </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmss-10x-x-109">be a matrix. If we treat </span><span class="cmbx-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">m</span></sup> <span class="cmss-10x-x-109">as a column vector </span><span class="cmbx-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">m</span><span class="cmsy-8">×</span><span class="cmr-8">1</span></sup><span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">A</span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">can be written as</span></p>
+
+<img src="../media/file267.png" width="450" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ ⌊ ∑m ⌋ a1,1 a1,2 ... a1,m x1 j=1a1,jxj || a2,1 a2,2 ... a2,m || || x2|| || ∑m a2,jxj|| Ax = || . . . . || || . || = || j=1. || . |⌈ .. .. .. .. |⌉ |⌈ .. |⌉ |⌈ .. |⌉ ∑m an,1 an,2 ... an,m. xm j=1 an,jxj "/>
+
+<p><span class="cmss-10x-x-109">Based on this, the matrix </span><span class="cmmi-10x-x-109">A </span><span class="cmss-10x-x-109">describes a function that takes a piece of data </span><span class="cmbx-10x-x-109">x</span><span class="cmss-10x-x-109">, then transforms it into the form </span><span class="cmmi-10x-x-109">A</span><span class="cmbx-10x-x-109">x</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">This is the same as</span> <span id="dx1-56013"></span><span class="cmss-10x-x-109">taking the linear combination of the columns of </span><span class="cmmi-10x-x-109">A</span><span class="cmss-10x-x-109">, that is,</span></p>
+
+<img src="../media/file268.png" class="math-display" width="450" alt="⌊ ⌋⌊ ⌋ ⌊ ⌋ ⌊ ⌋ a1,1 a1,2 ... a1,m x1 a1,1 a1,m || |||| || || || || || ||a2,1 a2,2 ... a2,m |||| x2|| = x1|| a2,1|| + ⋅⋅⋅+ xm ||a2,m|| |⌈ ... ... ... ... |⌉|⌈ ...|⌉ |⌈ ... |⌉ |⌈ ... |⌉ an,1 an,2 ... an,m. xm an,1 an,m "/>
+
+<p><span class="cmss-10x-x-109">With a bit more suggestive notation, by denoting the </span><span class="cmmi-10x-x-109">i</span><span class="cmss-10x-x-109">-th column as </span><span class="cmbx-10x-x-109">a</span><sub><span class="cmmi-8">i</span></sub><span class="cmss-10x-x-109">, we can write</span></p>
+<div class="equation" style="display: flex; align-items: center; justify-content: flex-start;">
+  <div id="matrices-the-workhorses-of-linear-algebraeq" class="math-display" style="flex: 1;">
+    <img src="../media/equation_(1).png" class="math-display" alt="⌊ ⌋ | a1,1 a1,2 ... a1,m | || a2,1 a2,2 ... a2,m || | . . . . | n×m A = || .. .. .. .. || ∈ ℝ . || a a ... a || ⌈ n,1 n,2 n,m ⌉" style="max-width: 100%; height: auto;"/>
+  </div>
+  <div class="equation-label" style="width: 50px; text-align: right; padding-left: 10px;">(3.2)</div>
+</div>
+
+<p><span class="cmss-10x-x-109">If we replace the vector </span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">with a matrix </span><span class="cmmi-10x-x-109">B</span><span class="cmss-10x-x-109">, the columns in the product matrix </span><span class="cmmi-10x-x-109">AB </span><span class="cmss-10x-x-109">are linear combinations of the columns of </span><span class="cmmi-10x-x-109">A</span><span class="cmss-10x-x-109">, where the coefficients are determined by </span><span class="cmmi-10x-x-109">B</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">You should</span> <span id="dx1-56014"></span><span class="cmss-10x-x-109">really appreciate that certain operations on the data can be written in the form </span><span class="cmmi-10x-x-109">A</span><span class="cmbx-10x-x-109">x</span><span class="cmss-10x-x-109">. Elevating this simple property to a higher level of abstraction, we can say that the data has the same representation as the function. If you are familiar with programming languages like Lisp, you know how beautiful this is.</span></p>
+<p><span class="cmss-10x-x-109">There is one more way to think about the matrix product: taking the columnwise inner products. If </span><span class="cmbx-10x-x-109">a</span><sub><span class="cmmi-8">i</span></sub> = (<span class="cmmi-10x-x-109">a</span><sub><span class="cmmi-8">i,</span><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,…,a</span><sub><span class="cmmi-8">i,n</span></sub>) <span class="cmss-10x-x-109">denotes the </span><span class="cmmi-10x-x-109">i</span><span class="cmss-10x-x-109">-th column of </span><span class="cmmi-10x-x-109">A</span><span class="cmss-10x-x-109">, then </span><span class="cmmi-10x-x-109">A</span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">can be written as</span></p>
+<div class="equation" style="display: flex; align-items: center; justify-content: flex-start;">
+  <div id="matrices-the-workhorses-of-linear-algebraeqeq" class="math-display" style="flex: 1;">
+    <img src="../media/equation_(2).png" class="math-display" alt="⌊ ⌋ | a1,1 a1,2 ... a1,m | || a2,1 a2,2 ... a2,m || | . . . . | n×m A = || .. .. .. .. || ∈ ℝ . || a a ... a || ⌈ n,1 n,2 n,m ⌉" style="max-width: 100%; height: auto;"/>
+  </div>
+  <div class="equation-label" style="width: 50px; text-align: right; padding-left: 10px;">(3.3)</div>
+</div>
+
+<p><span class="cmss-10x-x-109">That is, the transformation </span><span class="cmbx-10x-x-109">x</span>→<span class="cmmi-10x-x-109">A</span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">projects the input </span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">to the row vectors of </span><span class="cmmi-10x-x-109">A</span><span class="cmss-10x-x-109">, then compacts the results in a vector.</span></p>
+<section id="manipulating-matrices" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_42"><span class="titlemark"><span class="cmss-10x-x-109">3.2.1 </span></span> <span id="x1-570004.2.1"></span><span class="cmss-10x-x-109">Manipulating matrices</span></h3>
+<p><span class="cmss-10x-x-109">Because</span> <span id="dx1-57001"></span><span class="cmss-10x-x-109">matrix operations are well defined, we can do algebra on matrices just as with numbers. However, there are some major differences. As manipulating matrix expressions is an essential skill, let’s take a look at its fundamental rules!</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-57002r16"></span> <span class="cmbx-10x-x-109">Theorem 16.</span> </span><span class="cmbxti-10x-x-109">(Properties of matrix addition and multiplication)</span></p>
+<p><span class="cmti-10x-x-109">(a) Let </span><span class="cmmi-10x-x-109">A,B,C </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">l</span></sup> <span class="cmti-10x-x-109">be arbitrary matrices. Then,</span></p>
+<div class="math-display">
+<img src="../media/file276.png" class="math-display" alt="A + (B + C ) = (A + B )+ C "/>
+</div>
+<p><span class="cmti-10x-x-109">holds. That is, matrix addition is associative.</span></p>
+<p><span class="cmti-10x-x-109">(b) Let </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">l</span></sup><span class="cmti-10x-x-109">, </span><span class="cmmi-10x-x-109">B </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">l</span><span class="cmsy-8">×</span><span class="cmmi-8">k</span></sup><span class="cmti-10x-x-109">, </span><span class="cmmi-10x-x-109">C </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">k</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmti-10x-x-109">be arbitrary matrices. Then,</span></p>
+<img src="../media/file277.png" class="math-display" alt="A (BC ) = (AB )C " width="150"/>
+<p><span class="cmti-10x-x-109">holds. That is, matrix multiplication is associative.</span></p>
+<p><span class="cmti-10x-x-109">(c) Let </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">l</span></sup> <span class="cmti-10x-x-109">and </span><span class="cmmi-10x-x-109">B,C </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">l</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmti-10x-x-109">be arbitrary matrices. Then,</span></p>
+<div class="math-display">
+<img src="../media/file278.png" class="math-display" alt="A(B + C ) = AB + AC "/>
+</div>
+<p><span class="cmti-10x-x-109">holds. That is, matrix multiplication is left-distributive with respect to addition.</span></p>
+<p><span class="cmti-10x-x-109">(d) Let </span><span class="cmmi-10x-x-109">A,B </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">l</span></sup> <span class="cmti-10x-x-109">and </span><span class="cmmi-10x-x-109">C </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">l</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmti-10x-x-109">be arbitrary matrices. Then,</span></p>
+<div class="math-display">
+<img src="../media/file279.png" class="math-display" alt="(A + B)C = AC + BC "/>
+</div>
+<p><span class="cmti-10x-x-109">holds. That is, matrix multiplication is right-distributive with respect to addition.</span></p>
+</div>
+<p><span class="cmss-10x-x-109">As the proof is extremely technical and boring, we are going to skip it. However, there are a</span><span id="dx1-57003"></span> <span class="cmss-10x-x-109">few things to note. Most importantly, matrix multiplication is </span><span class="cmssi-10x-x-109">not </span><span class="cmss-10x-x-109">commutative; that is, </span><span class="cmmi-10x-x-109">AB </span><span class="cmss-10x-x-109">is not always equal to </span><span class="cmmi-10x-x-109">BA</span><span class="cmss-10x-x-109">. (It might not even be defined.) For instance, consider</span></p>
+<div class="math-display">
+<img src="../media/file280.png" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ ⌈1 1 ⌉ ⌈1 0⌉ A = 1 1 , B = 0 2 . "/>
+</div>
+<p><span class="cmss-10x-x-109">You can verify by hand that</span></p>
+<div class="math-display">
+<img src="../media/file281.png" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ ⌈1 2⌉ ⌈1 1⌉ AB = 1 2 , BA = 2 2 , "/>
+</div>
+<p><span class="cmss-10x-x-109">which are not equal.</span></p>
+<p><span class="cmss-10x-x-109">In line with this, the algebraic identities that we use for scalars are quite different. For instance, if </span><span class="cmmi-10x-x-109">A </span><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">B </span><span class="cmss-10x-x-109">are matrices, then</span></p>
+
+<img src="../media/file282.png" class="math-display" width="500" alt="(A + B)(A + B ) = A (A + B) + B (A + B ) = A2 + AB + BA + B2. "/>
+<p><span class="cmss-10x-x-109">or</span></p>
+
+<img src="../media/file283.png" width="500" class="math-display" alt="(A + B)(A − B ) = A (A − B) + B (A − B ) = A2 − AB + BA − B2. "/>
+
+<p><span class="cmss-10x-x-109">Transposition</span> <span id="dx1-57004"></span><span class="cmss-10x-x-109">also behaves nicely with respect</span> <span id="dx1-57005"></span><span class="cmss-10x-x-109">to</span> <span id="dx1-57006"></span><span class="cmss-10x-x-109">addition and multiplication.</span></p>
+<div class="newtheorem">
+<p><span class="head"> <span id="x1-57007r17"></span> <span class="cmbx-10x-x-109">Theorem 17.</span> </span><span class="cmbxti-10x-x-109">(Properties of transposition)</span></p>
+<p><span class="cmti-10x-x-109">(a) Let </span><span class="cmmi-10x-x-109">A,B </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmti-10x-x-109">be arbitrary matrices. Then,</span></p>
+<div class="math-display">
+<img src="../media/file284.png" class="math-display" alt="(A + B )T = AT + BT "/>
+</div>
+<p><span class="cmti-10x-x-109">holds.</span></p>
+<p><span class="cmti-10x-x-109">(b) Let </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">l</span></sup><span class="cmti-10x-x-109">, </span><span class="cmmi-10x-x-109">B </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">l</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmti-10x-x-109">be arbitrary matrices. Then,</span></p>
+<img src="../media/file285.png" class="math-display" alt="(AB )T = BT AT " width="150"/>
+
+<p><span class="cmti-10x-x-109">holds.</span></p>
+</div>
+<p><span class="cmss-10x-x-109">We are not going to prove this either, but feel free to do so as an exercise.</span></p>
+</section>
+<section id="matrices-as-arrays" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_43"><span class="titlemark"><span class="cmss-10x-x-109">3.2.2 </span></span> <span id="x1-580004.2.2"></span><span class="cmss-10x-x-109">Matrices as arrays</span></h3>
+<p><span class="cmss-10x-x-109">To perform</span> <span id="dx1-58001"></span><span class="cmss-10x-x-109">computations with matrices inside a computer, we are looking for a data structure that represents a matrix </span><span class="cmtt-10x-x-109">A </span><span class="cmss-10x-x-109">and supports</span></p>
+<ul>
+<li><span class="cmss-10x-x-109">accessing elements by </span><span class="cmtt-10x-x-109">A[i, j]</span><span class="cmss-10x-x-109">,</span></li>
+<li><span class="cmss-10x-x-109">assigning elements by </span><span class="cmtt-10x-x-109">A[i, j] = value</span></li>
+<li><span class="cmss-10x-x-109">addition and multiplication with the </span><span class="cmtt-10x-x-109">+ </span><span class="cmss-10x-x-109">and </span><span class="cmtt-10x-x-109">* </span><span class="cmss-10x-x-109">operators,</span></li>
+</ul>
+<p><span class="cmss-10x-x-109">and works lightning fast. These requirements only specify the interface of our matrix data structure, not the actual implementation. An obvious choice would be a list of lists, but as discussed when talking about representing vectors in computations (</span><span class="cmssi-10x-x-109">Section </span><a href="ch007.xhtml#vectors-in-practice"><span class="cmssi-10x-x-109">1.3</span></a><span class="cmss-10x-x-109">), this is highly suboptimal. Can we leverage the C array structure to store a matrix?</span></p>
+<p><span class="cmss-10x-x-109">Yes, and this is precisely what NumPy does, providing a fast and convenient representation for matrices in</span> <span id="dx1-58002"></span><span class="cmss-10x-x-109">the form of </span><span class="cmssi-10x-x-109">multidimensional arrays</span><span class="cmss-10x-x-109">. Before learning how to use NumPy’s machinery for our purposes, let’s look a bit deeper into the heart of the issue.</span></p>
+<p><span class="cmss-10x-x-109">At first glance, there seems to be a problem: a computer’s memory is one-dimensional, thus addressed (indexed) by a single key, not two as we want. Thus, we can’t just shove a matrix into the memory. The solution is to </span><span class="cmssi-10x-x-109">flatten </span><span class="cmss-10x-x-109">the matrix and place each consecutive row next to each other, like </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">3.3</span></a> <span class="cmss-10x-x-109">illustrates in the </span>3 <span class="cmsy-10x-x-109">× </span>3 <span class="cmss-10x-x-109">case. This</span><span id="dx1-58003"></span> <span class="cmss-10x-x-109">is called </span><span class="cmssi-10x-x-109">row-major ordering</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">By storing the</span> <span id="dx1-58004"></span><span class="cmss-10x-x-109">rows of any </span><span class="cmmi-10x-x-109">n</span><span class="cmsy-10x-x-109">×</span><span class="cmmi-10x-x-109">m </span><span class="cmss-10x-x-109">matrix in a contiguous array, we get all the benefits of the array data structure at the low cost of a simple index transformation defined by</span></p>
+<div class="math-display">
+<img src="../media/file286.png" class="math-display" alt="(i,j) ↦→ im + j. "/>
+</div>
+<p><span class="cmss-10x-x-109">(Note that for programming languages like Fortran or MATLAB that use column-major ordering — i.e., the columns are concatenated — this index transformation won’t work. I leave figuring out the correct transformation as an exercise to check your understanding.)</span></p>
+<div class="minipage">
+<p><img src="../media/file287.png" width="484" alt="PIC"/> <span id="x1-58005r3"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 3.3: Flattening a matrix</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">To demonstrate what’s happening, let’s conjure up a prototypical </span><span class="cmtt-10x-x-109">Matrix </span><span class="cmss-10x-x-109">class in Python that uses a single list to store all the values, yet supports accessing elements by row and column indices. For the sake of illustration, let’s imagine that a Python list is actually a static array. (At least until this presentation is over.) This is for educational purposes only, as at the moment, we only want to understand the process, not to maximize performance.</span></p>
+<p><span class="cmss-10x-x-109">Take a</span> <span id="dx1-58006"></span><span class="cmss-10x-x-109">moment to review the code below. I’ll explain everything line by line.</span></p>
+<div id="tcolobox-110" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>from typing import Tuple 
+ 
+ 
+class Matrix: 
+    def __init__(self, shape: Tuple[int, int]): 
+        if len(shape) != 2: 
+            raise ValueError("/span&gt;The shape of a Matrix object must be a two-dimensional tuple." 
+ 
+        self.shape = shape 
+        self.data = [0.0 for _ in range(shape[0]*shape[1])] 
+ 
+    def _linear_idx(self, i: int, j: int): 
+        return i*self.shape[1] + j 
+ 
+    def __getitem__(self, key: Tuple[int, int]): 
+        linear_idx = self._linear_idx(*key) 
+        return self.data[linear_idx] 
+ 
+    def __setitem__(self, key: Tuple[int, int], value): 
+        linear_idx = self._linear_idx(*key) 
+        self.data[linear_idx] = value 
+ 
+    def __repr__(self): 
+        array_form = [ 
+            [self[i, j] for j in range(self.shape[1])] 
+            for i in range(self.shape[0]) 
+        ] 
+        return njoin(["tjoin([fx}"/span&gt; for x in row]) for row in array_form])</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">The </span><span class="cmtt-10x-x-109">Matrix </span><span class="cmss-10x-x-109">object is initialized with the </span><span class="cmtt-10x-x-109">__init__ </span><span class="cmss-10x-x-109">method. This is called when an object is created, like we are about to do now.</span></p>
+<div id="tcolobox-111" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>M = Matrix(shape=(3, 4))</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Upon initialization, we supply the dimensions of the matrix in the form of a two-dimensional </span><span class="cmtt-10x-x-109">tuple</span><span class="cmss-10x-x-109">, passed for the </span><span class="cmtt-10x-x-109">shape </span><span class="cmss-10x-x-109">argument. In our concrete example, </span><span class="cmtt-10x-x-109">M </span><span class="cmss-10x-x-109">is a </span>3 <span class="cmsy-10x-x-109">× </span>4 <span class="cmss-10x-x-109">matrix, represented by an array of length </span>12<span class="cmss-10x-x-109">. For simplicity, our simple </span><span class="cmtt-10x-x-109">Matrix </span><span class="cmss-10x-x-109">is filled up with zeros by default.</span></p>
+<p><span class="cmss-10x-x-109">Overall, the </span><span class="cmtt-10x-x-109">__init__ </span><span class="cmss-10x-x-109">method performs three main tasks:</span></p>
+<ol>
+<li><span id="x1-58037x1"><span class="cmssbx-10x-x-109">Validates </span><span class="cmss-10x-x-109">the </span><span class="cmtt-10x-x-109">shape </span><span class="cmss-10x-x-109">parameter to ensure correctness</span></span></li>
+<li><span id="x1-58039x2"><span class="cmssbx-10x-x-109">Stores </span><span class="cmss-10x-x-109">the </span><span class="cmtt-10x-x-109">shape </span><span class="cmss-10x-x-109">in an instance attribute for future reference</span></span></li>
+<li><span id="x1-58041x3"><span class="cmssbx-10x-x-109">Initializes </span><span class="cmss-10x-x-109">a list of size </span><span class="cmtt-10x-x-109">shape[0] * shape[1]</span><span class="cmss-10x-x-109">, which serves as the primary data storage</span></span></li>
+</ol>
+<p><span class="cmss-10x-x-109">The second method, suggestively named </span><span class="cmtt-10x-x-109">_linear_idx</span><span class="cmss-10x-x-109">, is responsible for translating between the row-column indices of the matrix</span><span id="dx1-58042"></span> <span class="cmss-10x-x-109">and the linear index for our internal one-dimensional representation. (In Python, it is customary to prefix methods with an underscore if they are not intended to be called externally. Many other languages, such as Java, support private methods. Python is not one of them, so we have to make do with such polite suggestions instead of strictly enforced rules.)</span></p>
+<p><span class="cmss-10x-x-109">We can implement item retrieval via indexing by providing the </span><span class="cmtt-10x-x-109">__getitem__ </span><span class="cmss-10x-x-109">method, which expects a two-dimensional integer tuple as the key. For any </span><span class="cmtt-10x-x-109">key = (i, j)</span><span class="cmss-10x-x-109">, the method:</span></p>
+<ol>
+<li><span id="x1-58044x1"><span class="cmssbx-10x-x-109">Calculates </span><span class="cmss-10x-x-109">the linear index using our </span><span class="cmtt-10x-x-109">_linear_idx </span><span class="cmss-10x-x-109">method.</span></span></li>
+<li><span id="x1-58046x2"><span class="cmssbx-10x-x-109">Retrieves </span><span class="cmss-10x-x-109">the element located at the given linear index from the list.</span></span></li>
+</ol>
+<p><span class="cmss-10x-x-109">Item assignment happens similarly, as given by the </span><span class="cmtt-10x-x-109">__setitem__ </span><span class="cmss-10x-x-109">magic method. Let’s try these out to see if they work.</span></p>
+<div id="tcolobox-112" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>M[1, 2] = 3.14 
+M[1, 2]</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>3.14</code></pre>
+<p><span class="cmss-10x-x-109">By providing a </span><span class="cmtt-10x-x-109">__repr__ </span><span class="cmss-10x-x-109">method, we specify how a </span><span class="cmtt-10x-x-109">Matrix </span><span class="cmss-10x-x-109">object is represented as a string. So, we can print it out to the standard output in a pretty form.</span></p>
+<div id="tcolobox-113" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>M</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>0.0    0.0    0.0    0.0 
+0.0    0.0    3.14    0.0 
+0.0    0.0    0.0    0.0</code></pre>
+<p><span class="cmss-10x-x-109">Pretty awesome. Now that we understand some of the internals, it is time to see how much we can achieve with NumPy.</span></p>
+</section>
+<section id="matrices-in-numpy" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_44"><span class="titlemark"><span class="cmss-10x-x-109">3.2.3 </span></span> <span id="x1-590004.2.3"></span><span class="cmss-10x-x-109">Matrices in NumPy</span></h3>
+<p><span class="cmss-10x-x-109">As</span> <span id="dx1-59001"></span><span class="cmss-10x-x-109">foreshadowed earlier, NumPy provides an excellent out-of-the-box representation for matrices in the form of </span><span class="cmssi-10x-x-109">multidimensional arrays</span><span class="cmss-10x-x-109">. (These are often called </span><span class="cmssi-10x-x-109">tensors</span><span class="cmss-10x-x-109">, but I’ll just stick to the naming </span><span class="cmssi-10x-x-109">array</span><span class="cmss-10x-x-109">.)</span></p>
+<p><span class="cmss-10x-x-109">I have some fantastic news: these are the same </span><span class="cmtt-10x-x-109">np.ndarray </span><span class="cmss-10x-x-109">objects we have been using! We can create one by simply providing a </span><span class="cmssi-10x-x-109">list of lists </span><span class="cmss-10x-x-109">during initialization.</span></p>
+<div id="tcolobox-114" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>import numpy as np 
+ 
+A = np.array([[0, 1, 2, 3], 
+              [4, 5, 6, 7], 
+              [8, 9, 10, 11]]) 
+ 
+B = np.array([[5, 5, 5, 5], 
+              [5, 5, 5, 5], 
+              [5, 5, 5, 5]]) 
+A</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  1,  2,  3], 
+      [ 4,  5,  6,  7], 
+      [ 8,  9, 10, 11]])</code></pre>
+<p><span class="cmss-10x-x-109">Everything</span> <span id="dx1-59015"></span><span class="cmss-10x-x-109">works the same as we have seen so far. Operations are performed elementwise, and you can plug them into functions like </span><span class="cmtt-10x-x-109">np.exp</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-115" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A + B       # pointwise addition</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 5,  6,  7,  8], 
+      [ 9, 10, 11, 12], 
+      [13, 14, 15, 16]])</code></pre>
+<pre class="lstinputlisting"><code>A*B         # pointwise multiplication</code></pre>
+<pre class="lstlisting"><code>array([[ 0,  5, 10, 15], 
+      [20, 25, 30, 35], 
+      [40, 45, 50, 55]])</code></pre>
+<div id="tcolobox-116" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.exp(A)   # pointwise application of the exponential function</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[1.00000000e+00, 2.71828183e+00, 7.38905610e+00, 2.00855369e+01], 
+      [5.45981500e+01, 1.48413159e+02, 4.03428793e+02, 1.09663316e+03], 
+      [2.98095799e+03, 8.10308393e+03, 2.20264658e+04, 5.98741417e+04]])</code></pre>
+<p><span class="cmss-10x-x-109">Since we are working with multidimensional arrays, the transposition operator can be defined. Here, this is conveniently implemented as the </span><span class="cmtt-10x-x-109">np.transpose </span><span class="cmss-10x-x-109">function, but can also be accessed at the </span><span class="cmtt-10x-x-109">np.ndarray.T </span><span class="cmss-10x-x-109">attribute.</span></p>
+<div id="tcolobox-117" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.transpose(A)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  4,  8], 
+      [ 1,  5,  9], 
+      [ 2,  6, 10], 
+      [ 3,  7, 11]])</code></pre>
+<div id="tcolobox-118" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A.T         # is the same as np.transpose(A)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  4,  8], 
+      [ 1,  5,  9], 
+      [ 2,  6, 10], 
+      [ 3,  7, 11]])</code></pre>
+<p><span class="cmss-10x-x-109">As expected, we</span> <span id="dx1-59038"></span><span class="cmss-10x-x-109">can get and set elements with the </span><span class="cmssi-10x-x-109">indexing operator </span><span class="cmtt-10x-x-109">[]</span><span class="cmss-10x-x-109">. The indexing starts from zero. (Don’t even get me started.)</span></p>
+<div id="tcolobox-119" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A[1, 2]    # 1st row, 2nd column (if we index rows and columns from zero)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>np.int64(6)</code></pre>
+<p><span class="cmss-10x-x-109">Entire rows and columns can be accessed using slicing. Instead of giving the exact definitions, I’ll just provide a few examples and let you figure it out with your internal pattern matching engine. (That is, your brain.)</span></p>
+<pre class="lstinputlisting"><code>A[:, 2]    # 2nd column</code></pre>
+<pre class="lstlisting"><code>array([ 2,  6, 10])</code></pre>
+<div id="tcolobox-120" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A[1, :]    # 1st row</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([4, 5, 6, 7])</code></pre>
+<div id="tcolobox-121" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A[2, 1:4]   # 2nd row, 1st-4th elements</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([ 9, 10, 11])</code></pre>
+<pre class="lstinputlisting"><code>A[1]        # 1st row</code></pre>
+<pre class="lstlisting"><code>array([4, 5, 6, 7])</code></pre>
+<p><span class="cmss-10x-x-109">When used as an</span> <span id="dx1-59049"></span><span class="cmss-10x-x-109">iterable, a two-dimensional array yields its rows at every step.</span></p>
+<div id="tcolobox-122" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>for row in A: 
+    print(row)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>[0 1 2 3] 
+[4 5 6 7] 
+[ 8  9 10 11]</code></pre>
+<p><span class="cmss-10x-x-109">Initializing arrays can be done with the familiar </span><span class="cmtt-10x-x-109">np.zeros</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">np.ones</span><span class="cmss-10x-x-109">, and other functions.</span></p>
+<div id="tcolobox-123" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.zeros(shape=(4, 5))</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[0., 0., 0., 0., 0.], 
+      [0., 0., 0., 0., 0.], 
+      [0., 0., 0., 0., 0.], 
+      [0., 0., 0., 0., 0.]])</code></pre>
+<p><span class="cmss-10x-x-109">As you have guessed, that </span><span class="cmtt-10x-x-109">shape </span><span class="cmss-10x-x-109">argument specifies the dimensions of the array. We are going to explore this property next. Let’s initialize an example multidimensional array with three rows and four columns.</span></p>
+<div id="tcolobox-124" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A = np.array([[0, 1, 2, 3], 
+              [4, 5, 6, 7], 
+              [8, 9, 10, 11]]) 
+A</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  1,  2,  3], 
+      [ 4,  5,  6,  7], 
+      [ 8,  9, 10, 11]])</code></pre>
+<p><span class="cmss-10x-x-109">The shape of an array, stored inside the attribute </span><span class="cmtt-10x-x-109">np.ndarray.shape</span><span class="cmss-10x-x-109">, is a </span><span class="cmtt-10x-x-109">tuple </span><span class="cmss-10x-x-109">object describing its dimensions. In our example, since we have a </span>3 <span class="cmsy-10x-x-109">× </span>4 <span class="cmss-10x-x-109">matrix, the shape equals </span><span class="cmtt-10x-x-109">(3, 4)</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-125" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A.shape</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>(3, 4)</code></pre>
+<p><span class="cmss-10x-x-109">This innocent-looking attribute determines what kind of operations you can perform</span> <span id="dx1-59069"></span><span class="cmss-10x-x-109">with your arrays. Let me tell you, as a machine learning engineer, shape mismatches will be the bane of your existence. You want to calculate the product of two matrices </span><span class="cmtt-10x-x-109">A </span><span class="cmss-10x-x-109">and </span><span class="cmtt-10x-x-109">B</span><span class="cmss-10x-x-109">? The second dimension of </span><span class="cmtt-10x-x-109">A </span><span class="cmss-10x-x-109">must match the first dimension of </span><span class="cmtt-10x-x-109">B</span><span class="cmss-10x-x-109">. Pointwise products? Matching or broadcastable shapes are required. Understanding shapes is vital.</span></p>
+<p><span class="cmss-10x-x-109">However, we have just learned that multidimensional arrays are linear arrays in disguise. (See </span><span class="cmssi-10x-x-109">Section </span><a href="ch009.xhtml#matrices-as-arrays"><span class="cmssi-10x-x-109">3.2.2</span></a><span class="cmss-10x-x-109">.) Because of this, we can reshape an array by slicing the linear view differently. For example, </span><span class="cmtt-10x-x-109">A </span><span class="cmss-10x-x-109">can be reshaped into arrays with shapes </span><span class="cmtt-10x-x-109">(12, 1)</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">(6, 2)</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">(4, 3)</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">(3, 4)</span><span class="cmss-10x-x-109">, </span><span class="cmtt-10x-x-109">(2, 6)</span><span class="cmss-10x-x-109">, and </span><span class="cmtt-10x-x-109">(1, 12)</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-126" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A.reshape(6, 2)    # reshapes A into a 6 x 2 matrix</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  1], 
+      [ 2,  3], 
+      [ 4,  5], 
+      [ 6,  7], 
+      [ 8,  9], 
+      [10, 11]])</code></pre>
+<p><span class="cmss-10x-x-109">The </span><span class="cmtt-10x-x-109">np.ndarray.reshape </span><span class="cmss-10x-x-109">method returns a newly constructed array object but doesn’t change </span><span class="cmtt-10x-x-109">A</span><span class="cmss-10x-x-109">. In other words, reshaping is not destructive in NumPy.</span></p>
+<div id="tcolobox-127" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  1,  2,  3], 
+      [ 4,  5,  6,  7], 
+      [ 8,  9, 10, 11]])</code></pre>
+<p><span class="cmss-10x-x-109">Reshaping is hard to wrap your head around for the first time. To help you visualize the process, </span><span class="cmssi-10x-x-109">Figure </span><a href="#"><span class="cmssi-10x-x-109">3.4</span></a> <span class="cmss-10x-x-109">shows precisely what happens in our case.</span></p>
+<p><span class="cmss-10x-x-109">If you are</span> <span id="dx1-59081"></span><span class="cmss-10x-x-109">unaware of the exact dimension along a specific axis, you can get away by inputting -1 there during the reshaping. Since the product of dimensions is constant, NumPy is smart enough to figure out the missing one for you. This trick will get you out of trouble all the time, so it is worth taking note.</span></p>
+<div id="tcolobox-128" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A.reshape(-1, 2)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  1], 
+      [ 2,  3], 
+      [ 4,  5], 
+      [ 6,  7], 
+      [ 8,  9], 
+      [10, 11]])</code></pre>
+<div id="tcolobox-129" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A.reshape(-1, 4)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  1,  2,  3], 
+      [ 4,  5,  6,  7], 
+      [ 8,  9, 10, 11]])</code></pre>
+<div class="minipage">
+<p><img src="../media/file294.png" width="541" alt="PIC"/> <span id="x1-59093r4"></span></p>
+<span class="id"><span class="cmss-10x-x-109">Figure 3.4: Reshaping a one-dimensional array into multiple possible shapes</span> </span>
+</div>
+<p><span class="cmss-10x-x-109">We won’t go</span> <span id="dx1-59094"></span><span class="cmss-10x-x-109">into the details now, but as you probably guessed, multidimensional arrays can have more than two dimensions. The range of permitted shapes for the operations will be even more complicated, then. So, building a solid understanding now will provide a massive head start in the future.</span></p>
+</section>
+<section id="matrix-multiplication-revisited" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_45"><span class="titlemark"><span class="cmss-10x-x-109">3.2.4 </span></span> <span id="x1-600004.2.4"></span><span class="cmss-10x-x-109">Matrix multiplication, revisited</span></h3>
+<p><span class="cmss-10x-x-109">Without a doubt, one</span><span id="dx1-60001"></span> <span class="cmss-10x-x-109">of the most important operations regarding matrices is multiplication. Computing determinants and eigenvalues? Matrix multiplication. Passing data through a fully connected layer? Matrix multiplication. Convolution? Matrix multiplication. We will see how these seemingly different things can be traced back to matrix multiplication; but first, let’s discuss the operation itself from a computational perspective.</span></p>
+<p><span class="cmss-10x-x-109">First, recap the mathematical definition. For any </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">B </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">m</span><span class="cmsy-8">×</span><span class="cmmi-8">l</span></sup><span class="cmss-10x-x-109">, their product is defined by the formula</span></p>
+<div class="math-display">
+<img src="../media/file295.png" class="math-display" alt=" m ∑ n,l n×l AB = ( ai,kbk,j)i,j=1 ∈ ℝ . k=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">Notice that the element in the </span><span class="cmmi-10x-x-109">i</span><span class="cmss-10x-x-109">-th row and </span><span class="cmmi-10x-x-109">j</span><span class="cmss-10x-x-109">-th column of </span><span class="cmmi-10x-x-109">AB </span><span class="cmss-10x-x-109">is the dot product of </span><span class="cmmi-10x-x-109">A</span><span class="cmss-10x-x-109">’s </span><span class="cmmi-10x-x-109">i</span><span class="cmss-10x-x-109">-th row and </span><span class="cmmi-10x-x-109">B</span><span class="cmss-10x-x-109">’s </span><span class="cmmi-10x-x-109">j</span><span class="cmss-10x-x-109">-th column.</span></p>
+<p><span class="cmss-10x-x-109">We can put this into code using the tools we have learned so far.</span></p>
+<div id="tcolobox-130" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>from itertools import product 
+ 
+ 
+def matrix_multiplication(A: np.ndarray, B: np.ndarray): 
+    # checking if multiplication is possible 
+    if A.shape[1] != B.shape[0]: 
+        raise ValueError("/span&gt;The number of columns in A must match the number of rows in B." 
+ 
+    # initializing an array for the product 
+    AB = np.zeros(shape=(A.shape[0], B.shape[1])) 
+ 
+    # calculating the elements of AB 
+    for i, j in product(range(A.shape[0]), range(B.shape[1])): 
+        AB[i, j] = np.sum(A[i, :]*B[:, j]) 
+ 
+    return AB</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">Let’s test our function with an example that is easy to verify by hand.</span></p>
+<div id="tcolobox-131" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A = np.ones(shape=(4, 6)) 
+B = np.ones(shape=(6, 3)) 
+matrix_multiplication(A, B)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[6., 6., 6.], 
+      [6., 6., 6.], 
+      [6., 6., 6.], 
+      [6., 6., 6.]])</code></pre>
+<p><span class="cmss-10x-x-109">The result is correct, as we expected.</span></p>
+<p><span class="cmss-10x-x-109">Of course, matrix</span> <span id="dx1-60025"></span><span class="cmss-10x-x-109">multiplication has its own NumPy function in the form of </span><span class="cmtt-10x-x-109">numpy.matmul</span><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-132" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.matmul(A, B)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[6., 6., 6.], 
+      [6., 6., 6.], 
+      [6., 6., 6.], 
+      [6., 6., 6.]])</code></pre>
+<p><span class="cmss-10x-x-109">This yields the same result as our custom function. We can test it out by generating a bunch of random matrices and checking if the results match.</span></p>
+<div id="tcolobox-133" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>for _ in range(100): 
+    n, m, l = np.random.randint(1, 100), np.random.randint(1, 100), np.random.randint(1, 100) 
+    A = np.random.rand(n, m) 
+    B = np.random.rand(m, l) 
+ 
+    if not np.allclose(np.matmul(A, B), matrix_multiplication(A, B)): 
+        print(f/span&gt;Result mismatch for\n{A}\n and\n{B}" 
+        break 
+else: 
+    print("/span&gt;All good! Yay!"</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>All good! Yay!</code></pre>
+<p><span class="cmss-10x-x-109">According to this small test, our </span><span class="cmtt-10x-x-109">matrix_multiplication </span><span class="cmss-10x-x-109">function yields the same result as NumPy’s built-in one. We are happy, but don’t forget: always use your chosen framework’s implementations in practice, whether it be NumPy, TensorFlow, or PyTorch.</span></p>
+<p><span class="cmss-10x-x-109">Since</span> <span id="dx1-60042"></span><span class="cmss-10x-x-109">writing </span><span class="cmtt-10x-x-109">np.matmul </span><span class="cmss-10x-x-109">is cumbersome when lots of multiplications are present, NumPy offers a way to abbreviate using the </span><span class="cmtt-10x-x-109">@ </span><span class="cmss-10x-x-109">operator.</span></p>
+<div id="tcolobox-134" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A = np.ones(shape=(4, 6)) 
+B = np.ones(shape=(6, 3)) 
+ 
+np.allclose(A @ B, np.matmul(A, B))</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>True</code></pre>
+</section>
+<section id="matrices-and-data" class="level4 subsectionHead">
+<h3 class="subsectionHead" id="sigil_toc_id_46"><span class="titlemark"><span class="cmss-10x-x-109">3.2.5 </span></span> <span id="x1-610004.2.5"></span><span class="cmss-10x-x-109">Matrices and data</span></h3>
+<p><span class="cmss-10x-x-109">Now that</span> <span id="dx1-61001"></span><span class="cmss-10x-x-109">we are familiar with matrix multiplication, it’s time to make sense of them outside of linear algebra. Let’s take a matrix </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmss-10x-x-109">and a vector </span><span class="cmbx-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">m</span></sup><span class="cmss-10x-x-109">. By treating </span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">as a column vector </span><span class="cmbx-10x-x-109">x </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">m</span><span class="cmsy-8">×</span><span class="cmr-8">1</span></sup><span class="cmss-10x-x-109">, the product of </span><span class="cmmi-10x-x-109">A </span><span class="cmss-10x-x-109">and </span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">can be calculated by</span></p>
+<div class="math-display">
+<img src="../media/file296.png" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ ⌊ ⌋ a a ... a x ∑m a x | 1,1 1,2 1,m | | 1| | ∑mj=1 1,j j| || a2,1 a2,2 ... a2,m || || x2|| || j=1a2,jxj|| Ax = || .. .. .. .. || || .. || = || .. || . ⌈ . . . . ⌉ ⌈ . ⌉ ⌈ ∑ . ⌉ an,1 an,2 ... an,m. xm mj=1an,jxj "/>
+</div>
+<p><span class="cmss-10x-x-109">Mathematically speaking, looking at </span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">as a column vector is perfectly natural. Think of it as extending </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">m</span></sup> <span class="cmss-10x-x-109">with a dummy dimension, thus obtaining </span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">m</span><span class="cmsy-8">×</span><span class="cmr-8">1</span></sup><span class="cmss-10x-x-109">. This form also comes naturally by considering that the columns of a matrix are images of the basis vectors by their very definition.</span></p>
+<p><span class="cmss-10x-x-109">In practice, things are not as simple as they look. Implicitly, we have made a choice here: to represent datasets as a horizontal stack of column vectors. To elaborate further, let’s consider two data points with four features and a matrix that maps these into a three-dimensional feature space. That is, let </span><span class="cmbx-10x-x-109">x</span><sub><span class="cmr-8">1</span></sub><span class="cmmi-10x-x-109">,</span><span class="cmbx-10x-x-109">x</span><sub><span class="cmr-8">2</span></sub> <span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">4</span></sup> <span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmr-8">3</span><span class="cmsy-8">×</span><span class="cmr-8">4</span></sup><span class="cmss-10x-x-109">.</span></p>
+<div id="tcolobox-135" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x1 = np.array([2, 0, 0, 0])       # first data point 
+x2 = np.array([-1, 1, 0, 0])      # second data point 
+ 
+A = np.array([[0, 1, 2, 3], 
+              [4, 5, 6, 7], 
+              [8, 9, 10, 11]])    # a feature transformation</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">(I specifically selected these numbers so that the calculations would be easily verifiable by hand.) To be sure, we double-check the shapes.</span></p>
+<div id="tcolobox-136" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>A.shape</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>(3, 4)</code></pre>
+<div id="tcolobox-137" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>x1.shape</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>(4,)</code></pre>
+<p><span class="cmss-10x-x-109">What happens when we call the </span><span class="cmtt-10x-x-109">np.matmul </span><span class="cmss-10x-x-109">function?</span></p>
+<div id="tcolobox-138" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.matmul(A, x1)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([ 0,  8, 16])</code></pre>
+<p><span class="cmss-10x-x-109">The result is correct. However, when we have a bunch of input data points, we prefer to calculate the images using a single operation. This way, we can take advantage of vectorized code, locality of reference, and all the juicy computational magic we have seen so far.</span></p>
+<p><span class="cmss-10x-x-109">We can</span> <span id="dx1-61014"></span><span class="cmss-10x-x-109">achieve this by horizontally stacking the column vectors, each one representing a data point. Mathematically speaking, we want to perform the calculation in code.</span></p>
+<div class="math-display">
+<img src="../media/file297.png" class="math-display" alt=" ⌊ ⌋ ⌊0 1 2 3⌋ | 2 − 1| ⌊ 0 1⌋ | | || 0 1 || | | |⌈4 5 6 7|⌉ | | = |⌈ 8 1|⌉ |⌈ 0 0 |⌉ 8 9 10 11 0 0 16 1 "/>
+</div>
+<p><span class="cmss-10x-x-109">Upon looking up the NumPy documentation, we quickly find that the </span><span class="cmtt-10x-x-109">np.hstack </span><span class="cmss-10x-x-109">function might be the tool for the job, at least according to its official documentation ( </span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.hstack.html" class="url"><span class="cmtt-10x-x-109">https://numpy.org/doc/stable/reference/generated/numpy.hstack.html</span></a><span class="cmss-10x-x-109">). Yay!</span></p>
+<div id="tcolobox-139" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.hstack([x1, x2])    # np.hstack takes a list of np.ndarrays as its argument</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([ 2,  0,  0,  0, -1,  1,  0,  0])</code></pre>
+<p><span class="cmss-10x-x-109">Not yay. What happened? </span><span class="cmtt-10x-x-109">np.hstack </span><span class="cmss-10x-x-109">treats one-dimensional arrays differently, and even though the math works out perfectly by creatively abusing the notation, we don’t get away that easily in the trenches of real-life computations. Thus, we have to reshape our inputs manually. Meet the true skill gap between junior and senior machine learning engineers: correctly shaping multidimensional arrays.</span></p>
+<div id="tcolobox-140" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code># x.reshape(-1,1) turns x into a column vector 
+data = np.hstack([x1.reshape(-1, 1), x2.reshape(-1, 1)]) 
+data</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 2, -1], 
+      [ 0,  1], 
+      [ 0,  0], 
+      [ 0,  0]])</code></pre>
+<p><span class="cmss-10x-x-109">Let’s try this one more time.</span></p>
+<div id="tcolobox-141" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>np.matmul(A, data)</code></pre>
+</div>
+</div>
+<pre class="lstlisting"><code>array([[ 0,  1], 
+      [ 8,  1], 
+      [16,  1]])</code></pre>
+<p><span class="cmss-10x-x-109">Yay! (For real this time.)</span></p>
+<p><span class="cmss-10x-x-109">Note that we made</span> <span id="dx1-61028"></span><span class="cmss-10x-x-109">an extremely impactful choice in this chapter: </span><span class="cmssbx-10x-x-109">representing individual data points as column vectors</span><span class="cmss-10x-x-109">. I have written this in bold to emphasize its importance.</span></p>
+<p><span class="cmss-10x-x-109">Why? Because we could have gone the other way and treated samples as row vectors. With our current choice, we ended up with a multidimensional array of shape</span></p>
+<div class="math-display">
+<img src="../media/file298.png" class="math-display" alt="number of dimensions× number of samples, "/>
+</div>
+<p><span class="cmss-10x-x-109">as opposed to</span></p>
+<div class="math-display">
+<img src="../media/file299.png" class="math-display" alt="number of samples × number of dimensions. "/>
+</div>
+<p><span class="cmss-10x-x-109">The former is called </span><span class="cmssi-10x-x-109">batch-last</span><span class="cmss-10x-x-109">, while the latter is called </span><span class="cmssi-10x-x-109">batch-first </span><span class="cmss-10x-x-109">format. Popular frameworks like TensorFlow and PyTorch use batch-first, but we are going with batch-last. The reasons go back to the very</span> <span id="dx1-61029"></span><span class="cmss-10x-x-109">definition of matrices, where columns are the images of basis vectors under the given linear transformation. This way, we can write multiplication from left to right, like </span><span class="cmmi-10x-x-109">A</span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">AB</span><span class="cmss-10x-x-109">.</span></p>
+<p><span class="cmss-10x-x-109">Should</span> <span id="dx1-61030"></span><span class="cmss-10x-x-109">we define matrices as </span><span class="cmssi-10x-x-109">rows </span><span class="cmss-10x-x-109">of basis vector images, everything turns upside down. This way, if </span><span class="cmmi-10x-x-109">f </span><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">g </span><span class="cmss-10x-x-109">are linear transformations with “matrices” </span><span class="cmmi-10x-x-109">A </span><span class="cmss-10x-x-109">and </span><span class="cmmi-10x-x-109">B</span><span class="cmss-10x-x-109">, the “matrix” of the composed transformation </span><span class="cmmi-10x-x-109">f </span><span class="cmsy-10x-x-109">∘</span><span class="cmmi-10x-x-109">g </span><span class="cmss-10x-x-109">would be </span><span class="cmmi-10x-x-109">BA</span><span class="cmss-10x-x-109">. This makes the math complicated and ugly.</span></p>
+<p><span class="cmss-10x-x-109">On the other hand, batch-first makes the data easier to store and read. Think about a situation when you have thousands of data points in a single CSV file. Due to how input-output is implemented, files are read line by line, so it is natural and convenient to have a single line correspond to a single sample.</span></p>
+<p><span class="cmss-10x-x-109">There are no good choices here; there are sacrifices either way. Since the math works out much easier for batch-last, we will use that format. However, in practice, you’ll find that batch-first is more common. With this textbook, I don’t intend to give you just a manual. My goal is to help you understand the internals of machine learning. If I succeed, you’ll be able to apply your knowledge to translate between batch-first and batch-last seamlessly.</span></p>
+</section>
+</section>
+<section id="summary2" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_47"><span class="titlemark"><span class="cmss-10x-x-109">3.3 </span></span> <span id="x1-620004.3"></span><span class="cmss-10x-x-109">Summary</span></h2>
+<p><span class="cmss-10x-x-109">In this chapter, we finally dug into the trenches of practice instead of merely looking out from the towers of theory. Previously, we saw that NumPy arrays are the ideal tools for numeric computations, especially linear algebra. Now, we use them to provide fast and elegant implementations of what we learned in the previous chapter: norms, distances, dot products, and the Gram-Schmidt process.</span></p>
+<p><span class="cmss-10x-x-109">Besides vectors, we also finally introduced matrices, one of the most important tools of machine learning. This time, we introduced, in a practical manner, viewing matrices as a table of numbers. Matrices can be transposed and added together, and unlike vectors, they can be multiplied with each other as well.</span></p>
+<p><span class="cmss-10x-x-109">Speaking of our “from scratch” approach, before looking into how to actually work with matrices in practice, we created our very own </span><span class="cmtt-10x-x-109">Matrix </span><span class="cmss-10x-x-109">implementation in vanilla Python. Closing the chapter, we dealt with the fundamentals and best practices of two-dimensional NumPy arrays, the prime matrix representation that Python can offer.</span></p>
+<p><span class="cmss-10x-x-109">In the next chapter, we’ll once more take a theoretical approach. This is how we do it in this book: looking at both aspects at once, supercharging our understanding of mathematics (and machine learning, along the way). We’ll see that matrices are not just plain tables of numbers; they are data transformations as well. This property is beautiful beyond words: data and their transformations are represented by the same object.</span></p>
+<p><span class="cmss-10x-x-109">Let’s get to it!</span></p>
+</section>
+<section id="problems2" class="level3 sectionHead">
+<h2 class="sectionHead" id="sigil_toc_id_48"><span class="titlemark"><span class="cmss-10x-x-109">3.4 </span></span> <span id="x1-630004.4"></span><span class="cmss-10x-x-109">Problems</span></h2>
+<p><span class="cmssbx-10x-x-109">Problem 1. </span><span class="cmss-10x-x-109">Implement the mean squared error</span></p>
+<div class="math-display">
+<img src="../media/file300.png" class="math-display" alt=" ∑n MSE (x,y) = 1- (xi − yi)2, x, y ∈ ℝn n i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">both with and without using NumPy functions and methods. (The vectors </span><span class="cmbx-10x-x-109">x </span><span class="cmss-10x-x-109">and </span><span class="cmbx-10x-x-109">y </span><span class="cmss-10x-x-109">should be represented by NumPy arrays in both cases.)</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 2. </span><span class="cmss-10x-x-109">Compare the performances of the built-in maximum function </span><span class="cmtt-10x-x-109">max </span><span class="cmss-10x-x-109">and NumPy’s </span><span class="cmtt-10x-x-109">np.max </span><span class="cmss-10x-x-109">using </span><span class="cmtt-10x-x-109">timeit.timeit</span><span class="cmss-10x-x-109">, like we did above. Try running a different number of experiments and changing the array sizes to figure out the breakeven point between the two performances.</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 3. </span><span class="cmss-10x-x-109">Instead of implementing the general </span><span class="cmmi-10x-x-109">p</span><span class="cmss-10x-x-109">-norm as we did earlier in this chapter in </span><span class="cmssi-10x-x-109">Section </span><a href="ch009.xhtml#norms-distances-and-dot-products"><span class="cmssi-10x-x-109">3.1.1</span></a> <span class="cmss-10x-x-109">, we can change things around to obtain the version below.</span></p>
+<div id="tcolobox-142" class="tcolorbox">
+<div class="tcolorbox-title">
+
+</div>
+<div class="tcolorbox-contnt">
+<pre class="lstinputlisting"><code>def p_norm(x: np.ndarray, p: float): 
+    if p  1: 
+        return (np.sum(np.abs(x)**p))**(1/p) 
+    elif np.isinf(p): 
+        return np.max(np.abs(x)) 
+    else: 
+        raise ValueError("/span&gt;p must be a float larger or equal than 1.0 or inf."</code></pre>
+</div>
+</div>
+<p><span class="cmss-10x-x-109">However, this doesn’t work for </span><span class="cmmi-10x-x-109">p </span>= <span class="cmsy-10x-x-109">∞</span><span class="cmss-10x-x-109">. What is the problem with it?</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 4. </span><span class="cmss-10x-x-109">Let </span><span class="cmbx-10x-x-109">w </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">be a vector with nonnegative elements. Use NumPy to implement the weighted </span><span class="cmmi-10x-x-109">p</span><span class="cmss-10x-x-109">-norm by</span></p>
+<div class="math-display">
+<img src="../media/file301.png" class="math-display" alt=" ∑n ∥x∥wp = ( wi|xi|p)1∕p, x = (x1,...,xn) ∈ ℝn. i=1 "/>
+</div>
+<p><span class="cmss-10x-x-109">Can you come up with a scenario where this can be useful in machine learning?</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 5. </span><span class="cmss-10x-x-109">Implement the cosine similarity function, defined by the formula</span></p>
+<div class="math-display">
+<img src="../media/file302.png" class="math-display" alt="cos(x,y ) = ⟨-x-,-y--⟩, x, y ∈ ℝn. ∥x ∥ ∥y∥ "/>
+</div>
+<p><span class="cmss-10x-x-109">(Whenever possible, use built-in NumPy functions.)</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 6. </span><span class="cmss-10x-x-109">Calculate the product of the following matrices.</span></p>
+<p><span class="cmssi-10x-x-109">(a)</span></p>
+<div class="math-display">
+<img src="../media/file303.png" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ − 1 2 | 6 − 2| A = ⌈ ⌉, B = | 2 − 6|. 1 5 ⌈ ⌉ − 3 2 "/>
+</div>
+<p><span class="cmssi-10x-x-109">(b)</span></p>
+<div class="math-display">
+<img src="../media/file304.png" class="math-display" alt=" ⌊ ⌋ ⌊ ⌋ 1 2 3 7 8 A = ⌈ ⌉ , B = ⌈ ⌉ . 4 5 6 9 10 "/>
+</div>
+<p><span class="cmssbx-10x-x-109">Problem 7. </span><span class="cmss-10x-x-109">The famous Fibonacci numbers are defined by the recursive sequence</span></p>
+<p><span class="cmmi-10x-x-109">F</span><sub><span class="cmr-8">0</span></sub>= 0,</p>
+<p><span class="cmmi-10x-x-109">F</span><sub><span class="cmr-8">1</span></sub>=1,</p>
+<span class="cmmi-10x-x-109">F</span><sub><span class="cmmi-8">n</span></sub>= <span class="cmmi-10x-x-109">F</span><sub><span class="cmmi-8">n</span><span class="cmsy-8">−</span><span class="cmr-8">1</span></sub> + <span class="cmmi-10x-x-109">F</span><sub><span class="cmmi-8">n</span><span class="cmsy-8">−</span><span class="cmr-8">2</span></sub>
+
+<p><span class="cmssi-10x-x-109">(a) </span><span class="cmss-10x-x-109">Write a recursive function that computes the </span><span class="cmmi-10x-x-109">n</span><span class="cmss-10x-x-109">-th Fibonacci number. (Expect it to be </span><span class="cmssi-10x-x-109">really </span><span class="cmss-10x-x-109">slow.)</span></p>
+<p><span class="cmssi-10x-x-109">(b) </span><span class="cmss-10x-x-109">Show that</span></p>
+<div class="math-display">
+<img src="../media/file305.png" class="math-display" alt="⌊ ⌋n ⌊ ⌋ ⌈1 1⌉ = ⌈Fn+1 Fn ⌉ , 1 0 Fn Fn− 1 "/>
+</div>
+<p><span class="cmss-10x-x-109">and use this identity to write a non-recursive function that computes the </span><span class="cmmi-10x-x-109">n</span><span class="cmss-10x-x-109">-th Fibonacci number.</span></p>
+<p><span class="cmss-10x-x-109">Use Python’s built-in </span><span class="cmtt-10x-x-109">timeit </span><span class="cmss-10x-x-109">function to measure the execution of both functions. Which one is faster?</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 8. </span><span class="cmss-10x-x-109">Let </span><span class="cmmi-10x-x-109">A,B </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">m</span></sup> <span class="cmss-10x-x-109">be two matrices. Their </span><span class="cmssi-10x-x-109">Hadamard product </span><span class="cmss-10x-x-109">is defined by</span></p>
+<div class="math-display">
+<img src="../media/file306.png" class="math-display" alt=" ⌊ ⌋ | a1,1b1,1 a1,2b1,2 ... a1,nb1,n| | a2,1b2,1 a2,2b2,2 ... a2,nb2,n| || . . . . || A ⊙ B = || .. .. .. .. || . || || ⌈ an,1bn,1 an,2bn,2 ... an,nbn,n⌉ "/>
+</div>
+<p><span class="cmss-10x-x-109">Implement a function that takes two identically shaped NumPy arrays, then performs the Hadamard product on them. (There are two ways to do this: with </span><span class="cmtt-10x-x-109">for </span><span class="cmss-10x-x-109">loops and with NumPy operations. It is instructive to implement both.)</span></p>
+<p><span class="cmssbx-10x-x-109">Problem 9. </span><span class="cmss-10x-x-109">Let </span><span class="cmmi-10x-x-109">A </span><span class="cmsy-10x-x-109">∈</span><span class="msbm-10x-x-109">ℝ</span><sup><span class="cmmi-8">n</span><span class="cmsy-8">×</span><span class="cmmi-8">n</span></sup> <span class="cmss-10x-x-109">be a square matrix. Functions of the form</span></p>
+<div class="math-display">
+<img src="../media/file307.png" class="math-display" alt="B(x,y ) = xT Ay, x,y ∈ ℝn "/>
+</div>
+<p><span class="cmss-10x-x-109">are called </span><span class="cmssi-10x-x-109">bilinear forms</span><span class="cmss-10x-x-109">. Implement a function that takes two vectors and a matrix (all represented by NumPy arrays), then calculates the corresponding bilinear form.</span></p>
+</section>
+<section id="join-our-community-on-discord3" class="level3 likesectionHead">
+<h2 class="likesectionHead sigil_not_in_toc" id="sigil_toc_id_49"><span id="x1-64000"></span><span class="cmss-10x-x-109">Join our community on Discord</span></h2>
+<p><span class="cmss-10x-x-109">Read this book alongside other users, Machine Learning experts, and the author himself. Ask questions, provide solutions to other readers, chat with the author via Ask Me Anything sessions, and much more. Scan the QR code or visit the link to join the community.</span> <a href="https://packt.link/math" class="url"><span class="cmtt-10x-x-109">https://packt.link/math</span></a></p>
+<p><img src="../media/file1.png" width="85" alt="PIC"/></p>
+</section>
+</section>
+</body>
+</html>

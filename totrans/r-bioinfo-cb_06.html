@@ -1,0 +1,915 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Proteomics from Spectrum to Annotation</h1>
+                </header>
+            
+            <article>
+                
+<p><span><strong>Mass spectrometry</strong> (<strong>MS</strong>) data usually comprises spectra that must be bioinformatically processed to identify candidate peptides. These peptides include assignments, and counts can then be analyzed using a wide range of techniques and packages. The wide range of graphical user interface-driven tools for proteomics means that there is a proliferation of file formats that can be tough to deal with initially. These recipes will explore how to take advantage of the excellent parsers and reformatters available in the new <kbd>RforProteomics</kbd> project and associated tools for analysis and verification of spectra, and even show you how to view your peptides in genome browsers alongside other genomic information such as gene models.</span></p>
+<p>In this chapter, we will cover the following recipes:</p>
+<ul>
+<li>Representing raw MS data visually</li>
+<li>Viewing proteomics data in a genome browser</li>
+<li>Visualizing distributions of peptide hit counts to find thresholds</li>
+<li>Converting MS formats to move data between tools</li>
+<li>Matching spectra to peptides for verification with protViz</li>
+<li>Applying quality control filters to spectra</li>
+<li>Identifying genomic loci that match peptides</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>The sample data you'll need is available from this book's GitHub repository at <a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">https://github.com/danmaclean/R_Bioinformatics_Cookbook</a><a href="https://github.com/danmaclean/R_Bioinformatics_Cookbook">.</a> If you want to use the code examples as they are written, then you will need to make sure that this data is located in your working directory's subdirectory.</p>
+<p class="mce-root"/>
+<p>Here are the R packages that you'll need. In general, you can install these with<span> </span><kbd>install.packages("package_name")</kbd>. The packages listed under <kbd>Bioconductor</kbd> need to be installed with the dedicated installer, as described here. If you need to do anything else, the installation will be described in the recipes in which the packages are used:</p>
+<ul>
+<li> <kbd>Bioconductor</kbd>
+<ul>
+<li><kbd>EnsDb.Hsapiens.v86</kbd> </li>
+<li><kbd>MSnID</kbd> </li>
+<li><kbd>MSnbase</kbd> </li>
+<li><kbd>mzR</kbd></li>
+<li><kbd>proteoQC</kbd> </li>
+<li><kbd>rtracklayer</kbd></li>
+</ul>
+</li>
+<li><kbd>data.table</kbd></li>
+<li><kbd>dplyr</kbd></li>
+<li><kbd>ggplot2</kbd></li>
+<li><kbd>protViz</kbd></li>
+</ul>
+<p><kbd>Bioconductor</kbd> is huge and has its own installation manager. You can install the manager with the following code:<a href="https://www.bioconductor.org/install/"/></p>
+<pre>if (!requireNamespace("BiocManager"))
+   install.packages("BiocManager")</pre>
+<p>Then, you can install the packages with this code:</p>
+<div>
+<pre>BiocManager::install("package_name")</pre>
+ </div>
+<div class="packt_infobox"><span> </span><span>Further information is available at</span><span> </span><span><a href="https://www.bioconductor.org/install/">https://www.bioconductor.org/install/</a>.</span></div>
+<div>
+<p>Normally in R, a user will load a library and use the functions directly by name. This is great in interactive sessions, but it can cause confusion when many packages are loaded. To clarify which package and function I'm using at a given moment, I will occasionally use the<span> </span><kbd>packageName::functionName()</kbd> convention. </p>
+<div class="packt_infobox"><span>Occasionally, in the middle of a recipe, I'll interrupt the code so you can see some intermediate output or the structure of an object that's important for you to understand. Whenever that happens, you'll see a code block, where each line begins with ##, that is, double hash symbols. Consider the following command:<br/>
+<br/>
+<kbd>letters[1:5]</kbd><br/>
+<br/>
+This will give us the following output:<br/>
+<br/>
+<kbd>## a b c d e</kbd><br/>
+<br/>
+Note that the output lines are prefixed with <kbd>##</kbd>.<br/></span></div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Representing raw MS data visually</h1>
+                </header>
+            
+            <article>
+                
+<p>The raw data of proteomics analysis is the spectra that's generated by the mass spectrometers. Each type of mass spectrometer has a different native file format in which the spectra are encoded. Examining and analyzing the spectra begins with loading in the files and coercing them into a common object type. In this recipe, we'll look at how to load the varied file types, look at the metadata, and plot the spectra themselves.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll need the <kbd>Bioconductor</kbd> package, <kbd>mzR</kbd>, and some files from this book's data repository, in the <kbd>datasets/ch6</kbd><em> </em><span>folder. W</span>e'll use three different files, selected not so much for the data in them, but because they each represent one of the most common MS file types, <kbd>mzXML</kbd>, <kbd>mzdata</kbd>, and <kbd>mzML</kbd>. The example files all come from the <kbd>mzdata</kbd> <span>package</span>. Since they're extracted, you won't need to install this package, but if you'd like more example files, it's a good place to look.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Raw MS data can be represented visually using the following steps:</p>
+<ol>
+<li>Load the libraries:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">library(mzR)<br/>library(MSnbase)</pre>
+<ol start="2">
+<li>Load the files into objects:</li>
+</ol>
+<pre style="padding-left: 60px">mzxml_file &lt;- file.path(getwd(), "datasets", "ch6", "threonine_i2_e35_pH_tree.mzXML")
+ms1 &lt;- openMSfile(mzxml_file)<br/><br/>mzdata_file &lt;- file.path(getwd(), "datasets", "ch6", "HAM004_641fE_14-11-07--Exp1.extracted.mzdata")
+ms2 &lt;- openMSfile(mzdata_file)
+<br/>mzml_file &lt;-  file.path(getwd(), "datasets", "ch6", "MM8.mzML")
+ms3 &lt;- openMSfile(mzml_file)</pre>
+<ol start="3">
+<li>View the metadata where available:</li>
+</ol>
+<pre style="padding-left: 60px">runInfo(ms3)<br/><br/>## $scanCount
+## [1] 198
+## 
+## $lowMz
+## [1] 95.51765
+## 
+## $highMz
+## [1] 1005.043
+## 
+## $dStartTime
+## [1] 0.486
+## 
+## $dEndTime
+## [1] 66.7818
+## 
+## $msLevels
+## [1] 1
+## 
+## $startTimeStamp
+## [1] "2008-09-01T09:48:37.296+01:00"<br/><br/><br/>sampleInfo(ms1)<br/><br/>## [1] ""</pre>
+<ol start="4">
+<li>Plot the spectra:</li>
+</ol>
+<pre style="padding-left: 60px">msn_exp &lt;- MSnbase::readMSData(mzxml_file)
+MSnbase::plot(msn_exp, full = TRUE)<br/>MSnbase::plot(msn_exp[5], full = TRUE)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we load the libraries we'll need. The main one is <kbd>mzR</kbd>. </p>
+<p>In <em>Step 2</em>, we define the paths to the files we will load using the system-agnostic <kbd>file.path()</kbd> function, which returns a character vector with the filename in it. Then, we use that filename in the <kbd>openMSfile()</kbd> function from <kbd>mzR</kbd> to actually create an <kbd>mzR</kbd> object representing the data in the respective files. Note that we essentially <span>run </span>the same code three times, changing only the file and input file type each time. The <kbd>openMSfile()</kbd> function will automatically detect the format of the file.</p>
+<p>In <em>Step 3</em>, we use the <kbd>mzR</kbd> package accessor functions, <kbd>runInfo()</kbd> and <kbd>sampleInfo()</kbd>, to extract some of the metadata in the input files. Note that <kbd>sampleInfo()</kbd> with <kbd>ms1</kbd> doesn't return anything—this is because that particular file didn't have that data in it. The metadata that can be returned is dependent on the file and file type.</p>
+<p>In <em>Step 4</em>, we use the <kbd>MSnbase</kbd> package to load in a file with its <kbd>readMSData()</kbd> function. This uses <kbd>mzR</kbd> on its backend, so it can do the same, but it returns a modified object of the <kbd>MSnbase</kbd> class. This means that some generic plot functions will work. We then use the <kbd>plot()</kbd> function to create an image of all the spectra in the file:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-603 image-border" src="Images/4d0b67ad-9667-473b-80ee-bba4bffa2395.png" style="width:40.17em;height:28.75em;" width="672" height="480"/></p>
+<p>And then, by using indexing, we create an image of just the fifth spectrum in the file:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-604 image-border" src="Images/9b263019-d698-464b-bba8-5db036393517.png" style="width:43.42em;height:31.08em;" width="672" height="480"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Viewing proteomics data in a genome browser</h1>
+                </header>
+            
+            <article>
+                
+<p>Once we have mass spectrometer data and have identified the peptides and proteins the spectra describe using search engine software such as Xtandem, MSGF+, or Mascot, we may want to look at those in their genomic context alongside other important data. In this recipe, we'll look at how to extract peptides and the Uniprot IDs from a search file, find the genes those Uniprot IDs map to, and then create a genome browser track showing those genes. These can be sent to the UCSC human genome browser, and the interactive web page, which will be loaded in your local browser automatically.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, you'll need the Bioconductor packages <kbd>MSnID</kbd>, <kbd>EnsDB.Hsapiens.v86</kbd>, and <kbd>rtracklayer</kbd>, and the <kbd>HeLa_180123_m43_r2_CAM.mzid.gz</kbd> <span>file </span>from the <kbd>datasets/ch6</kbd> folder of this book's repository. For this recipe to work, you'll also need to be connected to the internet, and have a recent web browser that can run the UCSC genome browser located at <a href="https://genome.ucsc.edu">https://genome.ucsc.edu</a>. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Proteomics data can be viewed in a genome browser using the following steps:</p>
+<ol>
+<li>Load the libraries:</li>
+</ol>
+<pre style="padding-left: 60px">library(MSnID)<br/>library(EnsDb.Hsapiens.v86)<br/>library(rtracklayer)</pre>
+<ol start="2">
+<li>Create and populate the search file object:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">msnid &lt;- MSnID() <br/>msnid &lt;- read_mzIDs(msnid, file.path(getwd(), "datasets", "ch6", "HeLa_180123_m43_r2_CAM.mzid.gz")) </pre>
+<ol start="3">
+<li>Extract rows containing useful hits and columns containing useful information:</li>
+</ol>
+<pre style="padding-left: 60px">real_hits &lt;- msnid@psms[! msnid@psms$isDecoy, ]
+required_info &lt;- real_hits[, c("spectrumID", "pepSeq", "accession", "start", "end")]</pre>
+<ol start="4">
+<li>Extract the Uniprot IDs from the <kbd>accession</kbd> column:</li>
+</ol>
+<pre style="padding-left: 60px">uniprot_ids &lt;- unlist(lapply(strsplit(required_info$accession, "\\|"), function(x){x[2]}) )
+uniprot_ids &lt;- uniprot_ids[!is.na(uniprot_ids)]</pre>
+<p class="mce-root"/>
+<ol start="5">
+<li>Create a database connection and obtain genes matching our Uniprot IDs:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">edb &lt;- EnsDb.Hsapiens.v86
+genes_for_prots &lt;- genes(edb, <br/>    filter = UniprotFilter(uniprot_ids), <br/>    columns = c("gene_name", "gene_seq_start", "gene_seq_end", "seq_name"))</pre>
+<ol start="6">
+<li>Set up the genome browser track:</li>
+</ol>
+<pre style="padding-left: 60px" class="r">track &lt;- GRangesForUCSCGenome("hg38", <br/>    paste0("chr",seqnames(genes_for_prots)), <br/>    ranges(genes_for_prots), <br/>    strand(genes_for_prots), <br/>    genes_for_prots$gene_name, <br/>    genes_for_prots$uniprot_id )</pre>
+<ol start="7">
+<li>Set up the browser session and view:</li>
+</ol>
+<pre style="padding-left: 60px">session &lt;- browserSession("UCSC")
+track(session, "my_peptides") &lt;- track
+
+first_peptide &lt;- track[1] 
+view &lt;- browserView(session, first_peptide * -5, pack = "my_peptides") </pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> is our standard library loading step.</p>
+<p><em>Step 2</em> is the data loading step. This is a little unusual. Instead of just calling a file-reading function, we must first create and empty the <kbd>MSnID</kbd> object and load the data into it. We create <kbd>msnid</kbd> with the <kbd>MSnID()</kbd> function and then pass it to the <kbd>read_mzid()</kbd> function to actually put data into it. </p>
+<p><em>Step 3</em> is concerned with extracting the information we are concerned about from the <kbd>msnid</kbd> <span>object</span>. We require rows that match actual hits, not decoys, so we access the <kbd>msnid@psms</kbd> slot directly, which contains the useful data and subset that retains a row if its value of <kbd>isDecoy</kbd> is <kbd>FALSE</kbd>. This gives us an object that we save in the <kbd>real_hits</kbd> variable. Next, we use <kbd>real_hits</kbd> to select a few useful columns from the many in the original object.</p>
+<p><em>Step 4</em> helps us extract the Uniprot IDs embedded in the accession column field. It is important to note that these values come from the names that are used in the search engine's database. Naturally, this step will vary according to the precise formatting of the database, but the general pattern applies. We have a fairly densely nested set of functions that breaks down like this: the inner, anonymous function, <kbd>function(x){x[2]}</kbd>, returns the second element of any vector it is passed. We use <kbd>lapply()</kbd> to apply that function to every element in the list returned from <kbd>strsplit()</kbd> on the accession column. Finally, as <kbd>lapply()</kbd> returns lists, we use <kbd>unlist()</kbd> to flatten it to the vector we require. Sometimes, this will generate NAs as there is no Uniprot ID, so we remove them from the vector with subsetting and <kbd>is.na()</kbd>.</p>
+<p>In <em>Step 5</em>, we connect to the Ensembl database package and use the <kbd>genes()</kbd> function to get Ensembl genes that match our Uniprot IDs. The vector of Uniprot IDs is passed in the <kbd>UniprotFilter()</kbd> function and, with the <kbd>columns</kbd> argument, we select the data we wish to get back from the database. This gives us a <kbd>GRanges</kbd> object that contains all the information we require in order to build a browser track.</p>
+<p>In <em>Step 6</em>, we use the helper function, <kbd>GRangesForUCSCGenome()</kbd>, passing it the version of the genome we wish to view—<kbd>hg38</kbd>, and then the basic chromosome name, coordinates, and strand information a <kbd>GRanges</kbd> object needs. We can use the <kbd>seqnames()</kbd>, <kbd>ranges()</kbd>, and <kbd>strand()</kbd> accessor functions to pull these out of the <kbd>genes_for_prots</kbd> object we created previously. The seqnames in UCSC are prefixed with <kbd>chr</kbd>, so we use paste to add that to our seqnames data. We also create columns for the gene name and gene ID, preserving that information in our eventual view. We save the resulting object in the <kbd>track</kbd> variable.</p>
+<p>Finally, in <em>Step 7</em>, we can render the track we created. First, we create a session object that represents a session on UCSC and add the track to it with the <kbd>session()</kbd> and <kbd>track()</kbd> functions, respectively. We select which of the many peptides to focus on by passing the first peptide just to the <kbd>view()</kbd> function, which actually spawns a new web browser window with the data requested. The second argument to <kbd>view()</kbd> specifies a zoom level and, by formulating the argument as <kbd>first_peptide * -5</kbd>, we get a zoom that will fit five of the requested features.</p>
+<p>At the time of writing, this recipe generated the following view. Note that the very top track is our <kbd>my_peptides</kbd> track:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-605 image-border" src="Images/349edda3-92f4-4d48-9e45-582d00e9480c.png" style="width:80.08em;height:73.83em;" width="961" height="886"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>You may have noticed that this recipe actually plots whole genes, and not the peptide hits we started with. Plotting the genes is the simplest case, but going to the peptides requires only a small change. In <em>Step 5</em>, we create an object, <kbd>genes_for_prots</kbd>, which gives the start and end of the genes. The earlier <kbd>msnid@psms</kbd> object contains starts and ends of peptides within those genes, indexed from the start of the hit, so by adding one to the other, it is possible to create an object that represents the peptides and not the genes.</p>
+<p>For those of you not working with organisms in the UCSC browser, it is still possible to generate a GFF file of the hits to upload into another genome browser—many offer this functionality. Simply stop the recipe at the end of <em>Step 5</em> and use the <kbd>rtracklayer::export()</kbd> function to create a GFF file.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Visualizing distributions of peptide hit counts to find thresholds</h1>
+                </header>
+            
+            <article>
+                
+<p>Every MS experiment will need some idea of the peptide hit counts that represent noise or unusual features, such as over-represented peptides in the proteome. In this recipe, we'll use some neat visualization tricks using <kbd>tidyverse</kbd> tools such as <kbd>dplyr</kbd> and <kbd>ggplot</kbd> to create graphics that will help you get an idea of the spread and limits of the peptide hits in your mass spectrometry experiment.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, you'll require the <kbd>MSnId</kbd>, <kbd>data.table</kbd>, <kbd>dplyr</kbd>, and <kbd>ggplot</kbd> <span>packages.</span><strong> </strong>We'll use the <kbd>mzid</kbd> file, <span><kbd>HeLa_180123_m43_r2_CAM.mzid.gz</kbd>, from the <kbd>datasets/ch6</kbd> folder of this book's repository. </span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Visualizing distributions of peptide hit counts to find thresholds can be done using the following steps:</p>
+<ol>
+<li>Load the libraries and data:</li>
+</ol>
+<pre style="padding-left: 60px">library(MSnID)<br/>library(data.table)<br/>library(dplyr)<br/>library(ggplot2)<br/>msnid &lt;- MSnID() <br/>msnid &lt;- read_mzIDs(msnid, file.path(getwd(), "datasets", "ch6", "HeLa_180123_m43_r2_CAM.mzid.gz")) <br/>peptide_info &lt;- as(msnid, "data.table")</pre>
+<ol start="2">
+<li>Filter out decoy data rows and get a count of every time a peptide appears:</li>
+</ol>
+<pre style="padding-left: 60px">per_peptide_counts &lt;- peptide_info %&gt;% <br/> filter(isDecoy == FALSE) %&gt;%<br/> group_by(pepSeq) %&gt;%<br/> summarise(count = n() ) %&gt;% <br/> mutate(sample = rep("peptide_counts", length(counts) ) )</pre>
+<ol start="3">
+<li>Create a violin and jitter plot of the hit counts:</li>
+</ol>
+<pre style="padding-left: 60px">per_peptide_counts %&gt;% <br/> ggplot() + aes( sample, count) + geom_jitter() + geom_violin() + scale_y_log10()</pre>
+<ol start="4">
+<li>Create a plot of cumulative hit counts for peptides sorted by hit count:</li>
+</ol>
+<pre style="padding-left: 60px">per_peptide_counts %&gt;%<br/> arrange(count) %&gt;%<br/> mutate(cumulative_hits = cumsum(count), peptide = 1:length(count)) %&gt;%<br/> ggplot() + aes(peptide, cumulative_hits) + geom_line()</pre>
+<ol start="5">
+<li>Filter out very low and very high peptide hits and then replot them:</li>
+</ol>
+<pre style="padding-left: 60px">filtered_per_peptide_counts &lt;- per_peptide_counts %&gt;%<br/>  filter(count &gt;= 5, count &lt;= 2500) <br/><br/>filtered_per_peptide_counts %&gt;% <br/> ggplot() + aes( sample, count) + geom_jitter() + geom_violin() + scale_y_log10()</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we do some library loading and add a data loading step. As we mentioned previously, with <kbd>MSnID</kbd>, this is a little unusual. Instead of just calling a file reading function, we must first create and empty the<span> </span><kbd>MSnID</kbd> object and load the data into it. We create <kbd>msnid</kbd> with the<span> </span><kbd>MSnID()</kbd> function and then pass it to the<span> </span><kbd>read_mzid()</kbd><span> </span>function to actually put data into it. Next, we use the <kbd>as()</kbd> function to convert <kbd>msnid</kbd> into a <kbd>data.table</kbd> object—a data frame-like object that is optimized for large datasets.</p>
+<p>In <em>Step</em> <em>2</em>, we prepare a plot using the <kbd>tidyverse</kbd> packages, <kbd>dplyr</kbd> and <kbd>ggplot</kbd>. <kbd>tidyverse</kbd> packages all work really well in concert as they're centered on working with data frames. The usual way of working is to use the piping operator, <kbd>%&gt;%</kbd>, to pass data from one function to another without having to save the interim object. By convention, the result of the upstream function is passed as the first argument of the downstream function, so we don't need to specify it. This results in the construction we have here. We take the <kbd>peptide_info</kbd> object and pass it through the <kbd>%&gt;%</kbd> operator to the <kbd>dplyr filter()</kbd> function, which does its work and passes its result onto the <kbd>group_by()</kbd> function and so on. Each function does its work and passes the data on. So, in this pipeline, we use <kbd>filter()</kbd> to keep all the rows that are not decoys, and then use <kbd>group_by(pepSeq)</kbd> to group the long <kbd>data.table</kbd> into subtables according to the value of the <kbd>pepSeq</kbd> row <span>–</span> effectively getting one table per peptide sequence. The next step uses <kbd>summarise()</kbd>, which generates a summary table containing a column called <kbd>count</kbd> that contains the result of the <kbd>n()</kbd> function, which counts rows in a table, giving us a table with one row per peptide, telling us how many times the peptide appears in the table. It's a good idea to step through the code one function at a time if it isn't clear how these objects are building up. Finally, we use <kbd>mutate()</kbd> to add a new column called <kbd>sample</kbd> to the table, which simply creates a column of the same length as the current table, fills it with the word <kbd>peptide_counts</kbd>, and adds it to the table. The table is saved in a variable called <kbd>per_peptide_counts</kbd>.</p>
+<p class="mce-root"/>
+<p>In <em>Step 3</em>, we pipe the <kbd>per_peptide_counts</kbd> data to the <kbd>ggplot()</kbd> function, which sets up a <kbd>ggplot</kbd> object. These are built-in layers, so we use the <kbd>+</kbd> operator to add an aesthetic layer using the <kbd>aes()</kbd> function. This usually contains the variables to plot on the x and y axes <span>–</span> here, these are <kbd>sample</kbd> and <kbd>count</kbd>. Then, we use <kbd>+</kbd> again to add a <kbd>geom</kbd> <span>–</span> a layer that defines what a plot should look like. First, we add <kbd>geom_jitter()</kbd>, which plots the points, adding a bit of random x and y noise to spread them out a little. We then add another geom, <kbd>geom_violin()</kbd>, which gives a violin density plot. Finally, we add a scale layer, converting the scale into a log base 10 scale. The resulting plot looks like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-606 image-border" src="Images/ca924fb6-0eb5-4b31-b30b-74551e87dad2.png" style="width:56.00em;height:40.00em;" width="672" height="480"/></p>
+<p>In <em>Step 4</em>, we create a cumulative hits plot by piping the <kbd>per_peptide_counts</kbd> data to the <kbd>arrange()</kbd> function, which sorts a data frame in ascending order by the variable specified (in this case, count). The result is piped to mutate to add a new column called <kbd>cumulative_hits</kbd>, which gets the result of the <kbd>cumsum()</kbd> function on the count column. We also add a column called <kbd>peptide</kbd>, which gets the row number of the table, but also gives us a convenient variable so that we can order the peptides in the plot. We can generate the plot by piping the sorted data directly to <kbd>ggplot()</kbd> and adding the <kbd>aes()</kbd> function so that <kbd>peptide</kbd> is on the x-axis and <kbd>cumulative_hits</kbd> is on the y-axis. Then <span>by adding </span><kbd>geom_line()</kbd>, the resulting plot appears as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-607 image-border" src="Images/bd630ef1-f6af-4ca3-8a35-f55ce24d8de0.png" style="width:56.00em;height:40.00em;" width="672" height="480"/></p>
+<p><span>From the two plots, we can see the spread of hits and assess which thresholds we wish to apply.</span></p>
+<p class="mce-root"/>
+<p>With <em>Step 5</em>, we use the <kbd>filter()</kbd> function again to retain rows with a value of count over 5 and below 2500 and put that new data into the same plot recipe we made in <em>Step 3</em>. This gives us the following plot, showing the removal of points outside the thresholds:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-608 image-border" src="Images/42a4fa9b-af31-4481-9e57-c5964eff9868.png" style="width:56.00em;height:40.00em;" width="672" height="480"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Converting MS formats to move data between tools</h1>
+                </header>
+            
+            <article>
+                
+<p>It's an unavoidable fact of bioinformatics life that we spend a lot of time converting between file formats. In this brief recipe, we'll look at some convenient methods in R, that allows us to convert between MS data formats.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we require the <kbd>mzR</kbd> package and the <kbd>threonine_i2_e35_pH_tree.mzXML</kbd> file from the <kbd>datasets/ch6</kbd> folder of this book's repository. Some of the dependencies rely on encapsulated Java code, so you'll need to install a <strong>Java Runtime Environment</strong> (<strong>JRE</strong>) for your system; refer to <a href="https://docs.oracle.com/goldengate/1212/gg-winux/GDRAD/java.htm">https://docs.oracle.com/goldengate/1212/gg-winux/GDRAD/java.htm</a> for instructions. Install the JRE before the R packages.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Converting MS formats to move data between tools can be done using the following steps:</p>
+<ol>
+<li>Load the library and import the source data file:</li>
+</ol>
+<pre style="padding-left: 60px">library(mzR)<br/>mzxml_file &lt;- file.path(getwd(), "datasets", "ch6", "threonine_i2_e35_pH_tree.mzXML")<br/>mzdata &lt;- openMSfile(mzxml_file)</pre>
+<ol start="2">
+<li>Extract the header and peak data:</li>
+</ol>
+<pre style="padding-left: 60px">header_info &lt;- header(mzdata)<br/>peak_data_list &lt;- spectra(mzdata)</pre>
+<ol start="3">
+<li>Write the data into a new format file:</li>
+</ol>
+<pre style="padding-left: 60px">writeMSData(peak_data_list, <br/> file.path(getwd(), "datasets", "ch6", "out.mz"), <br/> header = header_info, <br/> outformat = "mzml", <br/> rtime_seconds = TRUE <br/>)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The first step is a straightforward data loading step that we've seen in previous recipes. We use the <kbd>openMSfile()</kbd> function, which autodetects the input file type.</p>
+<p><em>Step 2</em> is the key step; to create output, we need to make a header object and a peak list. So, we use the <kbd>header()</kbd> and <kbd>spectra()</kbd> accessor functions to extract them from our <kbd>mzdata</kbd> object. The output function will require a list, so if you only have one spectrum in the file, use the <kbd>list()</kbd> function to wrap the <kbd>spectra()</kbd> function. </p>
+<p class="mce-root"/>
+<p>The final step is to write the file; here, the first argument is the peak list, the second is the name of the file to be created, and the third is the output format of your choice <span>–</span> you can choose from <kbd>mzml</kbd>, <kbd>mzxml</kbd>, and <kbd>mzdata</kbd>. The final argument states whether the retention times are coded in seconds; selecting <kbd>FALSE</kbd> sets the output to be written in minutes.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Matching spectra to peptides for verification with protViz</h1>
+                </header>
+            
+            <article>
+                
+<p>Although most spectra/peptide matching is done in high throughput search engines, there are times when you'd like to check the quality of competing ambiguous matches against one another, or against a completely arbitrary sequence of interest. Running the whole search engine pipeline is probably overkill, so, in this recipe, we'll look at a convenient method to run a single spectrum against a single peptide sequence and get a plot of congruence between theoretical ion sizes and those present in the spectrum. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, all we need is the <kbd>protViz</kbd> package, the <kbd>mzR</kbd> package, and the <kbd>MM8.mzml</kbd> file from the <kbd>datasets/ch6</kbd> folder of this book's repository.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Matching spectra to peptides with <kbd>protViz</kbd> can be done by using the following steps:</p>
+<ol>
+<li>Load in the libraries and the MS data:</li>
+</ol>
+<pre style="padding-left: 60px">library(mzR)<br/>library(protViz)<br/>mzml_file &lt;- file.path(getwd(), "datasets", "ch6", "MM8.mzML")<br/>ms &lt;- openMSfile(mzml_file)</pre>
+<ol start="2">
+<li>Extract the peaks and retention time from the spectrum:</li>
+</ol>
+<pre style="padding-left: 60px">p &lt;- peaks(ms,2)<br/>spec &lt;- list(mZ = p[,1], intensity = p[,2])</pre>
+<ol start="3">
+<li>Create a plot of theoretical versus observed ion masses:</li>
+</ol>
+<pre style="padding-left: 60px">m &lt;- psm("PEPTIDESEQ", spec, plot=TRUE)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In <em>Step 1</em>, we load the libraries and use the <kbd>mzR</kbd> function, <kbd>openMSFile()</kbd>, to create the object representing the mass spectrometer data. </p>
+<p>In <em>Step 2</em>, we use the <kbd>peaks()</kbd> function, which will extract the retention time and peak intensity as a matrix object. Note that the first column contains the retention time, while the second contains the intensity. The second argument to <kbd>peaks()</kbd> is the index of the spectrum we want, so we're getting the second spectrum in this file. If this argument is omitted, we get a list of all spectra. For the next step, we need to wrap the retention time and intensity data in a list, which we do by using the <kbd>list()</kbd> function, with members named <kbd>mZ</kbd> and <kbd>intensity</kbd>.</p>
+<p>Finally, we can make the plot using the <kbd>psm()</kbd> function. This function takes a sequence as its first argument (here, it's a nonsense one to guarantee a poor match) and the spectrum data list we made previously as its second argument. By setting the plot argument to <kbd>TRUE</kbd>, we get the following resulting plot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-609 image-border" src="Images/3da98830-bbff-4fcc-9616-c7f61cf712f4.png" style="width:40.00em;height:28.67em;" width="656" height="470"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In the plot, each point represents the difference between a predicted ion mass and the nearest mass observed in the spectra. Here, we can see that the ions b8, b7, and c1 are all around 1 Da, or more divergent in mass from any of the predicted masses, suggesting a poor fit to the spectrum for this peptide sequence.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Applying quality control filters to spectra</h1>
+                </header>
+            
+            <article>
+                
+<p>Quality control of raw proteomics data is an essential step in ensuring that pipelines and analyses give believable and useful results. A large number of metrics and plots of data are needed to get a view of whether a particular experiment has been a success, and that means carrying out a lot of analysis before we start to actually derive any new knowledge from the data. In this recipe, we'll look at an integrated pipeline that carries out a wide range of relevant and useful QC steps and presents the result as a single helpful and readable report.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll be examining an Escherichia coli cell membrane proteomics experiment. This will require a large file that was too big to host in this book's repository, so we'll use code to download it directly. Due to this, you will need to be online for this recipe to work. We'll also need a file of the target organism peptides, that is, the <kbd>Escherichia_coli.pep.all.fa</kbd> file, which can be found in the <kbd>datasets/ch6</kbd> folder of this book's repository. Our main functions will come from the <kbd>proteoQC</kbd> library.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Quality control filters can be applied to spectra using the following steps:</p>
+<ol>
+<li>Load the library and download the source data:</li>
+</ol>
+<pre style="padding-left: 60px">library(proteoQC) <br/>online_file &lt;- "ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2017/11/PXD006247/CS_130530_ORBI_EMCP2156_b2469_narQ_DDM_AmH_X_5.mzXML"<br/><br/>mzxml_file &lt;- file.path(getwd(), "datasets", "ch6", "PXD006247_mz.xml.gz" )<br/><br/>download.file(online_file, mzxml_file, "internal")</pre>
+<p class="mce-root"/>
+<ol start="2">
+<li>Create a design file:</li>
+</ol>
+<pre style="padding-left: 60px">design_df &lt;- data.frame(<br/> file = c(mzxml_file),<br/> sample = c(1),<br/> bioRep = c(1),<br/> techRep = c(1),<br/> fraction = c(1)<br/> )<br/>design_file &lt;- file.path(getwd(), "datasets", "ch6", "design_file.txt")<br/>write.table(design_df, file = design_file, quote = FALSE, row.names = FALSE)</pre>
+<ol start="3">
+<li>Set up the QC pipeline and run the following command:</li>
+</ol>
+<pre style="padding-left: 60px">qc &lt;- msQCpipe(<br/> spectralist = design_file,<br/> fasta = file.path(getwd(), "datasets", "ch6", "Escherichia_coli.pep.all.fa"),<br/> outdir = file.path(getwd(), "qc_result"),<br/> enzyme = 1, varmod = 2, fixmod =1,<br/> tol = 10, itol = 0.6, cpu = 2,<br/> mode = "identification"<br/>)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>After loading in the library in <em>Step 1</em>, we set up the URL to the file we want to pull over the internet from <a href="http://www.proteomexchange.org/">http://www.proteomexchange.org/</a>; we're after just one file in accession <kbd>PXD006247</kbd>, and we save the URL in the <kbd>online_file</kbd> variable. We also create an <kbd>mzmxl_file</kbd> <span>variable </span>that points to a non-existent file, <span><kbd>PXD006247_mz.xml.gzX</kbd>, </span>on our local filesystem <span>–</span> this will be the saved name of the downloaded file. The <kbd>download.file()</kbd> <span>function </span>actually does the downloading; the first argument is the online source, while the second argument is the place to put the file on the local machine when it downloads. The final argument, <kbd>internal</kbd>, is the download method to use. The setting we've chosen should use a system-agnostic downloader that works anywhere, but you can change this to other faster or more system-specific settings if you like. The documentation will explain these options. </p>
+<p>In <em>Step 2</em>, we create a design file that describes the experiment. In our small demo, we only have one file, but you can specify many more here. In the first part, we create a dataframe with the columns <strong>file</strong>, <strong>sample</strong>, <strong>bioRep</strong>, <strong>techRep</strong>, and <strong>fraction</strong>. We only have one file, so the table only has one row. It looks like this: </p>
+<table style="border-collapse: collapse;width: 100%" border="1">
+<tbody>
+<tr>
+<td style="width: 23%" class="CDPAlignCenter CDPAlign"><strong>file</strong></td>
+<td style="width: 16%" class="CDPAlignCenter CDPAlign"><strong>sample</strong></td>
+<td style="width: 10%" class="CDPAlignCenter CDPAlign"><strong>bioRep</strong></td>
+<td style="width: 11%" class="CDPAlignCenter CDPAlign"><strong>techRep</strong></td>
+<td style="width: 11.8122%" class="CDPAlignCenter CDPAlign"><strong>fraction</strong></td>
+</tr>
+<tr>
+<td style="width: 23%" class="CDPAlignCenter CDPAlign"><kbd>PXD006247_mz.xml.gz</kbd></td>
+<td style="width: 16%" class="CDPAlignCenter CDPAlign">1</td>
+<td style="width: 10%" class="CDPAlignCenter CDPAlign">1</td>
+<td style="width: 11%" class="CDPAlignCenter CDPAlign">1</td>
+<td style="width: 11.8122%" class="CDPAlignCenter CDPAlign">1</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<p>If you had a more complicated experiment, you'd have many more rows describing the sample and bioRep, for example, for each file. We then save this file to disk for use in the next step using <kbd>write.table()</kbd> along with the appropriate options. Note that although, for the sake of demonstration, we've created this file programmatically, the file would be equally valid if we'd created it by hand in a spreadsheet program or text editor.</p>
+<p>Finally, we set up and run the QC pipeline in <em>Step 3</em>. The main function, <kbd>msQCpipe()</kbd>, is the workhorse and needs a few option settings. The <kbd>spectralist</kbd> option needs the path to the design file we created so that it knows which files to open and how to treat them. The <kbd>fasta</kbd> option requires the file of the target organism protein sequences in <kbd>fasta</kbd> format. This allows the QC pipeline to carry out spectral peptide identification using <kbd>XTandem</kbd> from the <kbd>rtandem</kbd> package. The <kbd>outdir</kbd> argument gets the path to a new folder that will hold the numerous report files that will be created. Here, our folder will be called <kbd>qc_result</kbd>, and it will be a sub-directory of the current working directory. The arguments <kbd>enzyme</kbd>, <kbd>varmod</kbd>, and <kbd>fixmod</kbd> describe the enzyme used for digest (1 = trypsin), the variable modifications that may be present, and the fixed modifications that will be present on all residues. The arguments<span> <kbd>tol</kbd> and <kbd>itol</kbd> specify tolerances on peptide mass values and error windows. The <kbd>cpu</kbd> argument specifies the compute cores to use on the source machine and <kbd>mode</kbd> specifies the sort of run to do.</span></p>
+<p>When the QC pipeline completes, we get a series of reports in the <kbd>qc_result</kbd> folder. The <kbd>qc_report.html</kbd> <span>file </span>contains the browsable results of QC. The many pages describing the results should allow you to see the extent to which the experiment was a success.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p class="CDPAlignLeft CDPAlign">To find the proper values for the <kbd>enzyme</kbd>, <kbd>varmod</kbd>, and <kbd>fixmod</kbd> variables, you can use the <kbd>showMods()</kbd> and <kbd>showEnzymes()</kbd> functions to see a list and their key numbers.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Identifying genomic loci that match peptides</h1>
+                </header>
+            
+            <article>
+                
+<p>Finding the exact places on a genome that a peptide matches to can be a challenging task, especially if the genome is one that is not represented by the original search file. In this recipe, we'll look at mixing in a classic command-line BLAST recipe to find short, nearly precise matches for peptides on a translated genome sequence to various R genomics pipelines by targeting a <kbd>GRanges</kbd> object of the BLAST hits.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll use the <kbd>MSnID</kbd>, <kbd>dplyr</kbd>, <kbd>withR</kbd>, <kbd>GenomicRanges</kbd>, and <kbd>Biostrings</kbd> packages and a search engine output file of Escherichia coli-derived spectra, which can be found in the <kbd>PXD006247.mzXML.mzid</kbd> <span>file </span>in this book's <kbd>datasets/ch6</kbd> folder. You'll also need to have a locally installed version of BLAST+. You can install this using the conda package manager with <kbd>conda install -c bioconda blast</kbd> . You'll also need to know where the tblastn program from BLAST+ was installed. You can find this on macOS and Linux systems with the Terminal command, <kbd>which tblastn</kbd>, and on Windows.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Genomic loci that match peptides can be identified using the following steps:</p>
+<ol>
+<li>Load in the libraries and the data:</li>
+</ol>
+<pre style="padding-left: 60px">library(MSnID)<br/>library(dplyr)<br/>library(Biostrings)<br/><br/>msnid &lt;- MSnID() # create object<br/>msnid &lt;- read_mzIDs(msnid, file.path(getwd(), "datasets", "ch6", "PXD006247.mzXML.mzid")) <br/><br/>peptide_info &lt;- as(msnid, "data.table") %&gt;%<br/> filter(isDecoy == FALSE) %&gt;%<br/> select(spectrumID, pepSeq, ) %&gt;%<br/> mutate(fasta_id = paste0( spectrumID, ":", 1:length(spectrumID)) )</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="2">
+<li>Extract the peptide sequence and save it as a fasta file:</li>
+</ol>
+<pre style="padding-left: 60px">string_set &lt;- AAStringSet(peptide_info$pepSeq )<br/>names(string_set) &lt;- peptide_info$fasta_id<br/>writeXStringSet(string_set[1], file.path(getwd(), "datasets", "ch6", "peptides.fa"))</pre>
+<ol start="3">
+<li>Prepare the filenames for the BLAST run:</li>
+</ol>
+<pre style="padding-left: 60px">input_seqs &lt;- file.path(getwd(), "datasets", "ch6", "peptides.fa")<br/>genome_seqs &lt;- file.path(getwd(), "datasets", "ch6", "ecoli_genome.fasta")<br/>output_blast &lt;- file.path(getwd(), "datasets", "ch6", "out.blast")</pre>
+<ol start="4">
+<li>Prepare the <kbd>BLAST</kbd> command:</li>
+</ol>
+<pre style="padding-left: 60px">command &lt;- paste0(<br/> "tblastn", <br/> " -query ", input_seqs ,<br/> " -subject ", genome_seqs, <br/> " -out ", output_blast,<br/> " -word_size 2 -evalue 20000 -seg no -matrix PAM30 -comp_based_stats F -outfmt 6 -max_hsps 1"<br/> )</pre>
+<ol start="5">
+<li>Run BLAST as a background process:</li>
+</ol>
+<pre style="padding-left: 60px">library(withr)<br/>with_path("/Users/macleand/miniconda2/bin", system(command, wait = TRUE) )</pre>
+<ol start="6">
+<li>Convert BLAST into <kbd>GFF</kbd> and <kbd>GRanges</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">results &lt;- read.table(output_blast)<br/><br/>blast_to_gff &lt;- function(blst_res){<br/> blst_res %&gt;% <br/> mutate(<br/> seqid = V2,<br/> source = rep("tblastn", length(V1)),<br/> type = rep(".", length(V1)),<br/> start = V9,<br/> end = V10,<br/> score = V3,<br/> strand = rep(".", length(V1)),<br/> phase = rep(".", length(V1)),<br/> attributes = paste("Name=",V1)<br/> ) %&gt;%<br/> select( - starts_with("V") )<br/>}<br/><br/>gff_df &lt;- blast_to_gff(results)<br/><br/>library(GenomicRanges)<br/>granges&lt;-makeGRangesFromDataFrame(gff_df)</pre>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> loads the libraries and uses the <kbd>MSnID</kbd> package to load the data into an object that we then process using a <kbd>dplyr</kbd> pipeline, as described in <em>Step 2</em> of <em>Recipe 3</em> in this chapter. Look there for an in-depth explanation of this sort of syntax if you're not familiar with it. Briefly, even though the pipeline removes rows that are decoys, it keeps only the <kbd>spectrumID</kbd> and <kbd>pepSeq</kbd> columns and adds a new column called <kbd>fasta_id</kbd>, which pastes the spectrum ID as a unique number. The resulting data frame is saved to the <kbd>peptide_info</kbd> <span>variable</span>. </p>
+<p><em>Step 2</em> creates a <kbd>Biostrings</kbd> object from the <kbd>peptide_info$pepSeq</kbd> column using the <kbd>peptide_info$fasta_id</kbd> column for the names with the <kbd>names()</kbd> function. The resulting string_set <kbd>BioStrings</kbd> object is then written to disk in a fasta format file with the name <kbd>peptides.fa</kbd> using the <kbd>writeXStringSet()</kbd> function. Note the index <kbd>[1]</kbd> on the end of <kbd>string_set</kbd>; this is a small hack to make sure only the first peptide is written. We want this <em>only</em> because this is a demonstration and we want the code to complete in a short amount of time. For a genuine analysis, you can leave the index completely and write all the sequences to disk.</p>
+<p>In <em>Step 3</em>, we just set up the filenames for the input and output files for the BLAST run. Note that the reference genome we map to <kbd>ecoli_genome.fasta</kbd> will be in the <kbd>datasets/ch6</kbd> folder of this book's repository .</p>
+<p>In <em>Step 4</em>, we specify the <kbd>BLAST</kbd> command, while the code here is a simple pasting of variables and text to make one long character string that we save in the command. This is worth looking at in some detail. The first lines specify the BLAST+ program to run; here, <kbd>tblastn</kbd>, which uses protein inputs and a translated nucleotide database. The next three lines specify the input peptide sequences, the reference genome against which to BLAST, and the output file in which we save the results. The final long lines specify the BLAST+ options that allow for short, nearly precise matches. With these particular options set, BLAST runs can take a while, so it's a good idea to run just one sequence while you're developing.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In <em>Step 5</em>, with the <kbd>BLAST</kbd> command specified, we can run the actual BLAST. Our main function here is the base R function, <kbd>system()</kbd>, which will run a system command in the background. However, to help this function be portable across systems, we are using the <kbd>withR</kbd> library function <kbd>with_path()</kbd>, which temporarily adds a particular folder to the system's PATH <span>–</span> a list of folders that contain programs. This step is necessary because sometimes, R and RStudio don't pick up non-standard install locations like those used by the conda package manager. Hence, the first argument here is the path to the <kbd>tblastn</kbd> folder. Note that <kbd>/Users/macleand/miniconda2/bin</kbd> is the path on my machine; you'll need to get the value for your machine using something like <kbd>which tblastn</kbd> on the terminal or command line and substitute that. Once that path is added by <kbd>with_path()</kbd>, it will run its second argument, our <kbd>system()</kbd> function, which, in turn, runs BLAST. The actual running of the BLAST program will take some time.</p>
+<p>Once the command completes, in <em>Step 6</em>, we start by loading the output file made by BLAST into the results variable using the <kbd>read.table()</kbd> function. We then create a custom function to convert the rows of results to a GFF-compatible table. The <kbd>blast_to_gff()</kbd> <span>function </span>uses the <kbd>dplyr mutate()</kbd> function to add the relevant columns, and then it uses the <kbd>select()</kbd> function with the <kbd>-</kbd> option to select columns not beginning with the letter V, which all the original columns did. We can now use the <kbd>GenomicRanges</kbd> function, <kbd>makeGRangesFromDataFrame()</kbd>, to convert our GFF style dataframe into a <kbd>GRanges</kbd> object. This is the final part, and we now have an object of genomic loci that matches peptides that can be used in all the standard genomics pipelines in R and that are used in the genomics recipes in this book.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+
+
+
+  </body></html>

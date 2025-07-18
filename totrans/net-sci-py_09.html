@@ -1,0 +1,453 @@
+<html><head></head><body>
+<div id="book-content">
+<div id="sbo-rt-content"><div id="_idContainer159" class="IMG---Figure">
+			<h1 id="_idParaDest-212" class="chapter-number"><a id="_idTextAnchor364"/>9</h1>
+			<h1 id="_idParaDest-213"><a id="_idTextAnchor365"/>Community Detection</h1>
+			<p>In the last two chapters, we covered whole network analysis and egocentric network analysis. The former was useful for understanding the complete makeup of a complex network. The latter was useful for investigating the people and relationships that exist around an “ego” node. However, there’s a missing layer that we have not yet discussed. Between whole networks and egos, communities exist. We are people, and we are part of a global population of humans that exist on this planet, but we are each also part of individual communities. For instance, we work in companies and as part of individual teams. Many of us have social interests, and we know people from participating in activities. There are layers to life, and we can use algorithms to identify the various communities that exist in a <span class="No-Break">network, automatically.</span></p>
+			<p>This chapter contains the <span class="No-Break">following sections:</span></p>
+			<ul>
+				<li>Introducing <span class="No-Break">community detection</span></li>
+				<li>Getting started with <span class="No-Break">community detection</span></li>
+				<li>Exploring <span class="No-Break">connected components</span></li>
+				<li>Using the <span class="No-Break">Louvain method</span></li>
+				<li>Using <span class="No-Break">label propagation</span></li>
+				<li>Using the <span class="No-Break">Girvan-Newman algorithm</span></li>
+				<li>Other approaches to <span class="No-Break">community detection</span></li>
+			</ul>
+			<h1 id="_idParaDest-214"><a id="_idTextAnchor366"/> Technical requirements</h1>
+			<p>In this chapter, we will mostly be using the NetworkX and pandas Python libraries. These libraries should be installed by now, so they should be ready for your use. If they are not installed, you can install the Python libraries with <span class="No-Break">the following:</span></p>
+			<pre class="source-code">
+pip install &lt;library name&gt;</pre>
+			<p>For instance, to install NetworkX, you can <span class="No-Break">use this:</span></p>
+			<pre class="source-code">
+pip install networkx</pre>
+			<p>In <a href="B17105_04.xhtml#_idTextAnchor158"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, we also introduced a <strong class="source-inline">draw_graph()</strong> function that uses both NetworkX and Scikit-Network. You will need that code any time that we do network visualization. You will need it for this chapter, and most of the chapters in <span class="No-Break">this book.</span></p>
+			<p>For community detection, we will also be using <strong class="source-inline">python-louvain</strong>. You can install it with <span class="No-Break">the following:</span></p>
+			<pre class="source-code">
+pip install python-louvain</pre>
+			<p>You can import it like this, which you will see later in <span class="No-Break">this chapter:</span></p>
+			<pre class="source-code">
+from community import community_louvain</pre>
+			<p>It is understandable if you’re confused by the installation and import commands for <strong class="source-inline">python-louvain</strong>. The library name does not match the import library name. It’s a useful library for community detection, so let’s accept this as an oddity and <span class="No-Break">move on.</span></p>
+			<h1 id="_idParaDest-215"><a id="_idTextAnchor367"/>Introducing community detection</h1>
+			<p>Community detection is<a id="_idIndexMarker647"/> about identifying the various communities or groups that exist in a network. This is useful in social network analysis, as humans interact with others as part of our various communities, but these approaches are not limited to <span class="No-Break">studying humans.</span></p>
+			<p>We can also use these approaches to investigate any kinds of nodes that interact closely with other nodes, whether those nodes are animals, hashtags, websites, or any kind of nodes in a network. Pause for a moment and think about what we are doing. Community detection is a clear, concise, and appropriate name for what we are doing. We are zooming in on communities that exist in a network. What communities would you be interested in exploring and understanding, <span class="No-Break">and why?</span></p>
+			<p>There are many good use cases for this. You <a id="_idIndexMarker648"/>can use it to understand the sentiment communities share about your product. You can use this to understand a threat landscape. You can use this to understand how ideas move and transform between different groups of people. Be creative here. There are probably more uses for this than you <span class="No-Break">can imagine.</span></p>
+			<p>In this chapter, we will explore this in the context of human life, but you should not feel limited to only using this for social network analysis. This is very useful in social network analysis, but it is also useful in analyzing most network data, not just social network data. For instance, this can<a id="_idIndexMarker649"/> be useful in both cybersecurity (malware analysis) and computational humanities, or in understanding how ideas move between groups <span class="No-Break">and evolve.</span></p>
+			<p>There are at least three different approaches to doing community detection, with the most frequently<a id="_idIndexMarker650"/> researched including <span class="No-Break">the following:</span></p>
+			<ul>
+				<li><span class="No-Break">Node connectivity</span></li>
+				<li><span class="No-Break">Node closeness</span></li>
+				<li><span class="No-Break">Network splitting</span></li>
+			</ul>
+			<p>What I am calling <em class="italic">node connectivity</em> has to <a id="_idIndexMarker651"/>do with whether nodes are part of the same connected component or not. If two nodes are not part of the same connected component, then they are part of a completely different social group, not part of the <span class="No-Break">same community.</span></p>
+			<p>Node closeness has to do <a id="_idIndexMarker652"/>with the distance between two nodes, even if they are part of the same connected component. For instance, two people might work together in the same large organization, but if they are more than two handshakes away from one another, they may not be part of the same community. It would take several rounds of introductions for them to ever meet each other. Consider how many people would you have to go through to be introduced to your favorite celebrity. How many people would you need to be <span class="No-Break">introduced to?</span></p>
+			<p>Network splitting has to <a id="_idIndexMarker653"/>do with literally cutting a network into pieces by either removing nodes or edges. The preferred approach that I will explain is cuts on edges, but I have done something similar by removing nodes, and I've done this a few times in this book, shattering networks into pieces by removing <span class="No-Break">central nodes.</span></p>
+			<p>I do not believe that we are at the end of discovery for community detection. I hope that reading through this chapter will give you some ideas for new approaches to identifying the various communities that exist <span class="No-Break">in net<a id="_idTextAnchor368"/>works.</span></p>
+			<h1 id="_idParaDest-216"><a id="_idTextAnchor369"/>Getting started with community detection</h1>
+			<p>Before we can start, we need <a id="_idIndexMarker654"/>a network to use. Let’s use NetworkX’s <em class="italic">Les Miserables</em> graph that we used in the previous chapter since it held several <span class="No-Break">separate communities:</span></p>
+			<ol>
+				<li>Loading the network <span class="No-Break">is simple:</span><pre class="source-code">
+import networkx as nx</pre><pre class="source-code">
+import pandas as pd</pre><pre class="source-code">
+G = nx.les_miserables_graph()</pre></li>
+			</ol>
+			<p>That’s all it takes to load <span class="No-Break">the graph.</span></p>
+			<ol>
+				<li value="2">There is a <strong class="source-inline">weight</strong> attribute that I do not want to include in the network because we don’t need edge weights for this simple demonstration. So, I’m going to drop it and rebuild <span class="No-Break">the graph:</span><pre class="source-code">
+df = nx.to_pandas_edgelist(G)[['source', 'target']]</pre><pre class="source-code">
+# dropping 'weight'</pre><pre class="source-code">
+G = nx.from_pandas_edgelist(df)</pre></li>
+			</ol>
+			<p>In those two steps, we converted the <em class="italic">Les Miserables</em> graph into a <strong class="source-inline">pandas</strong> edge list, and we kept only the <strong class="source-inline">source</strong> and <strong class="source-inline">target</strong> fields, effectively dropping the <strong class="source-inline">weight</strong> field. Let’s see how many nodes and edges exist in <span class="No-Break">the network:</span></p>
+			<pre class="source-code">
+nx.info(G)
+'Graph with 77 nodes and 254 edges'</pre>
+			<p>This is a tiny network. Does this network contain isolates and islands, or is it just one large connected component? <span class="No-Break">Let’s check.</span></p>
+			<ol>
+				<li value="3">First, let’s add the <span class="No-Break"><strong class="source-inline">draw_graph</strong></span><span class="No-Break"> function:</span><pre class="source-code">
+def draw_graph(G, show_names=False, node_size=1, font_size=10, edge_width=0.5):</pre><pre class="source-code">
+    import numpy as np</pre><pre class="source-code">
+    from IPython.display import SVG</pre><pre class="source-code">
+    from sknetwork.visualization import svg_graph</pre><pre class="source-code">
+    from sknetwork.data import Bunch</pre><pre class="source-code">
+    from sknetwork.ranking import PageRank</pre><pre class="source-code">
+    adjacency = nx.to_scipy_sparse_matrix(G, nodelist= None, dtype=None, weight='weight', format='csr')</pre><pre class="source-code">
+    names = np.array(list(G.nodes()))</pre><pre class="source-code">
+    graph = Bunch()</pre><pre class="source-code">
+    graph.adjacency = adjacency</pre><pre class="source-code">
+    graph.names = np.array(names)</pre><pre class="source-code">
+    pagerank = PageRank()</pre><pre class="source-code">
+    scores = pagerank.fit_transform(adjacency)</pre><pre class="source-code">
+    if show_names:</pre><pre class="source-code">
+        image = svg_graph(graph.adjacency, font_size = font_size , node_size=node_size, names=graph.names, width=700, height=500, scores=scores, edge_width = edge_width)</pre><pre class="source-code">
+    else:</pre><pre class="source-code">
+        image = svg_graph(graph.adjacency, node_size = node_size, width=700, height=500, scores = scores, edge_width=edge_width)</pre><pre class="source-code">
+    return SVG(image)</pre></li>
+				<li>Now, let’s visualize<a id="_idIndexMarker655"/> the network in <span class="No-Break">its entirety:</span><pre class="source-code">
+draw_graph(G, font_size=12, show_names=True, node_size =4, edge_width=1)</pre></li>
+			</ol>
+			<p>This outputs <span class="No-Break">the following:</span></p>
+			<div>
+				<div id="_idContainer143" class="IMG---Figure">
+					<img src="image/B17105_09_001.jpg" alt="Figure 9.1 – Les Miserables graph" width="1582" height="1060"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.1 – Les Miserables graph</p>
+			<p>At a glance, we should be able to see that there are no isolates (nodes without edges), there are several nodes with a single edge, there are several clusters of nodes that are very close to each other (communities), and there are a few critically important nodes. If those critically important nodes were removed, the network would shatter <span class="No-Break">to pieces.</span></p>
+			<ol>
+				<li value="5">Let’s zoom in a little, using <strong class="source-inline">k_core</strong>, and only show nodes that have two or more edges. Let’s also not display labels so that we can get a sense of the overall shape of <span class="No-Break">the network:</span><pre class="source-code">
+draw_graph(nx.k_core(G, 2), font_size=12, show_names=False, node_size=4, edge_width=0.5)</pre></li>
+			</ol>
+			<p>We will get the<a id="_idIndexMarker656"/> <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer144" class="IMG---Figure">
+					<img src="image/B17105_09_002.jpg" alt="Figure 9.2 – Les Miserables graph, k_core with K=2, unlabeled" width="1219" height="887"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.2 – Les Miserables graph, k_core with K=2, unlabeled</p>
+			<p>The communities should be a little clearer now. Look for parts of the graphs where the nodes are close together and where there are more edges/lines present. How many communities do you see? Four of them really stand out to me, but there are smaller groups scattered around, and there is also likely a community in the center of <span class="No-Break">the network.</span></p>
+			<p>We are now ready to begin our attempts at <span class="No-Break">community det<a id="_idTextAnchor370"/>ection.</span></p>
+			<h1 id="_idParaDest-217"><a id="_idTextAnchor371"/>Exploring connected components</h1>
+			<p>The first attempt at understanding the various communities and structures that exist in a network is often to analyze the connected components. As we discussed in <em class="italic">w</em>, connected <a id="_idIndexMarker657"/>components are structures in networks where all nodes have a connection to another node in the <span class="No-Break">same component.</span></p>
+			<p>As we saw previously, connected components can be useful for finding smaller connected components. Those can be thought of as communities as they are detached from the primary component and overall network, but the largest connected component is not typically a single community. It is usually made up of several communities, and it can usually be split into <span class="No-Break">individual communities.</span></p>
+			<p>In the <em class="italic">Les Miserables</em> network, there is only one connected component. There are no islands or isolates. There is just one single component. That makes sense, as these are the characters from a piece of literature, and it wouldn’t make much sense for characters in a book to just spend all day talking to themselves. However, that takes away a bit of the usefulness of inspecting connected components for <span class="No-Break">this graph.</span></p>
+			<p>There is a way around that! As I mentioned previously, if we remove a few critically important nodes from a network, that network tends to shatter <span class="No-Break">into pieces:</span></p>
+			<ol>
+				<li value="1">Let’s remove five very important characters from <span class="No-Break">the network:</span><pre class="source-code">
+G_copy = G.copy()</pre><pre class="source-code">
+G_copy.remove_nodes_from(['Valjean', 'Marius', 'Fantine', 'Cosette', 'Bamatabois'])</pre></li>
+				<li>In these two lines, we built a second graph called <strong class="source-inline">G_copy</strong>, and then we removed five key nodes. Let’s visualize the <span class="No-Break">network again!</span><pre class="source-code">
+draw_graph(G_copy, font_size=12, show_names=True, node_size=4, edge_width=1)</pre></li>
+			</ol>
+			<p>This gives us<a id="_idIndexMarker658"/> the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer145" class="IMG---Figure">
+					<img src="image/B17105_09_003.jpg" alt="Figure 9.3 – Shattered Les Miserables network" width="1570" height="1068"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.3 – Shattered Les Miserables network</p>
+			<p>Great. That’s much closer to how many real-world networks look. There’s still one primary connected component (continent), there are three smaller connected components (islands), and there are six isolate nodes. Calling these islands and continents is my own thing. There is no threshold for deciding that an island is a continent. It is just that most networks contain one super-component (continent), lots and lots of isolate nodes, and several connected components (islands). This helps me, but do with it what <span class="No-Break">you like.</span></p>
+			<p>One other thing to keep in mind is that what we just did could be used as a step in community detection. Removing a few key nodes can break a network apart, pulling out the smaller communities that exist. Those critically important nodes held one or more communities together as part of the larger structure. Removing the important nodes allowed the communities to drift apart. We<a id="_idIndexMarker659"/> did this by removing important nodes, which is not usually ideal. However, other actual approaches to community detection work similarly, by removing edges rather <span class="No-Break">than nodes.</span></p>
+			<ol>
+				<li value="3">How many connected components are left after shattering <span class="No-Break">the network?</span><pre class="source-code">
+components = list(nx.connected_components(G_copy))</pre><pre class="source-code">
+len(components)</pre><pre class="source-code">
+10</pre></li>
+			</ol>
+			<p>NetworkX says that there are <strong class="source-inline">10</strong>, but isolates are not connected to anything other than <span class="No-Break">possibly themselves.</span></p>
+			<ol>
+				<li value="4">Let’s remove them before looking into <span class="No-Break">connected components:</span><pre class="source-code">
+G_copy = nx.k_core(G_copy, 1)</pre><pre class="source-code">
+components = list(nx.connected_components(G_copy))</pre><pre class="source-code">
+len(components)</pre><pre class="source-code">
+4</pre></li>
+			</ol>
+			<p>It looks like there are four <span class="No-Break">connected components.</span></p>
+			<ol>
+				<li value="5">As there are so few of them, let’s inspect <span class="No-Break">each one:</span><pre class="source-code">
+community = components[0]</pre><pre class="source-code">
+G_community = G_copy.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>Let’s look at <span class="No-Break">the visualization:</span></p>
+			<div>
+				<div id="_idContainer146" class="IMG---Figure">
+					<img src="image/B17105_09_004.jpg" alt="Figure 9.4 – Component 0 subgraph of the shattered Les Miserables network" width="1622" height="1066"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.4 – Component 0 subgraph of the shattered Les Miserables network</p>
+			<p>Very interesting! The first connected component is almost a star network, with all nodes connecting to one central character, <strong class="bold">Myriel</strong>. However, if you look at the top left, you should see that two characters also share a link. That relationship could be <a id="_idIndexMarker660"/><span class="No-Break">worth investigating.</span></p>
+			<ol>
+				<li value="6">Let’s look at the <span class="No-Break">next component:</span><pre class="source-code">
+community = components[1]</pre><pre class="source-code">
+G_community = G_copy.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=4)</pre></li>
+			</ol>
+			<p>This gives us the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer147" class="IMG---Figure">
+					<img src="image/B17105_09_005.jpg" alt="Figure 9.5 – Component 1 subgraph of the shattered Les Miserables network" width="1650" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.5 – Component 1 subgraph of the shattered Les Miserables network</p>
+			<p>This is even more interesting. This is what I am calling the primary component. It’s the<a id="_idIndexMarker661"/> largest connected component in the shattered network. However, as I said, connected components are not ideal for identifying communities. Look slightly left of the center in the network – we should see two clusters of nodes, two separate communities. There’s also at least one other community on the right. If two edges or nodes were removed, the community on the right would split off from the <span class="No-Break">network. Onward!</span></p>
+			<ol>
+				<li value="7">Let’s keep shattering <span class="No-Break">the community:</span><pre class="source-code">
+community = components[2]</pre><pre class="source-code">
+G_community = G_copy.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=4)</pre></li>
+			</ol>
+			<p>We will get the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer148" class="IMG---Figure">
+					<img src="image/B17105_09_006.jpg" alt="Figure 9.6 – Component 2 subgraph of the shattered Les Miserables network" width="1650" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.6 – Component 2 subgraph of the shattered Les Miserables network</p>
+			<p>This is a strongly connected<a id="_idIndexMarker662"/> component. Each node has a connection to the other nodes in this network. If one node were removed, this network would remain intact. From a network perspective, each node is as important or central as each <span class="No-Break">other node.</span></p>
+			<ol>
+				<li value="8">Let’s check the <span class="No-Break">final component:</span><pre class="source-code">
+community = components[3]</pre><pre class="source-code">
+G_community = G_copy.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=4)</pre></li>
+			</ol>
+			<p>This gives us the <span class="No-Break">following</span><span class="No-Break"><a id="_idIndexMarker663"/></span><span class="No-Break"> visualization:</span></p>
+			<div>
+				<div id="_idContainer149" class="IMG---Figure">
+					<img src="image/B17105_09_007.jpg" alt="Figure 9.7 – Component 3 subgraph of the shattered Les Miserables network" width="1500" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.7 – Component 3 subgraph of the shattered Les Miserables network</p>
+			<p>This is another densely connected network. Each node is equally important or central. If one node were to be removed, this network would <span class="No-Break">remain intact.</span></p>
+			<p>As you can see, we were able to find three communities by looking at the connected components, but connected components did not draw out the communities that exist in the larger primary component. If we wanted to draw those out, we’d have to remove other important nodes and then repeat our analysis. Throwing away nodes is one way to lose information, so I do not recommend that approach, but it can be useful for quick ad <span class="No-Break">hoc analysis.</span></p>
+			<p>I do not consider investigating connected components to be community detection, but communities can be found while investigating connected components. I consider this one of the first steps that should be done during any network analysis, and the insights gained are valuable, but it’s not sensitive enough for <span class="No-Break">community detection.</span></p>
+			<p>If your network contained no super-cluster of a connected component, then connected components would be pretty adequate for community detection. However, you would have to<a id="_idIndexMarker664"/> treat the super-cluster as one community, and in reality, the cluster contains many communities. The connected component approach becomes less useful with <span class="No-Break">larger networks.</span></p>
+			<p>Let’s move on to more <span class="No-Break">suitabl<a id="_idTextAnchor372"/>e methods.</span></p>
+			<h1 id="_idParaDest-218"><a id="_idTextAnchor373"/>Using the Louvain method</h1>
+			<p>The <strong class="bold">Louvain method</strong> is certainly my favorite for community detection, for a <span class="No-Break">few reasons.</span></p>
+			<p>First, this algorithm can be<a id="_idIndexMarker665"/> used on very large networks of millions of nodes and it will be effective and fast. Other approaches that we will explore in this chapter will not work on large networks and will not be as fast, so we get effectiveness and speed with this algorithm that we can’t find anywhere else. As such, it is my go-to algorithm for community detection, and I save the others as options <span class="No-Break">to consider.</span></p>
+			<p>Second, it is possible to tune the <strong class="source-inline">resolution</strong> parameter to find the best partitions for community detection, giving flexibility when the default results are not optimal. With the other algorithms, you do not have <span class="No-Break">this flexibility.</span></p>
+			<p>In summary, with the Louvain method, we have a fast algorithm that is effective at community detection in massive networks, and we can optimize the algorithm for better results. I recommend dabbling in community detection by starting with the Louvain method, and then picking up these other approaches as you learn. It’s good to know that there <span class="No-Break">a<a id="_idTextAnchor374"/>re options.</span></p>
+			<h2 id="_idParaDest-219"><a id="_idTextAnchor375"/>How does it work?</h2>
+			<p>The creators of the<a id="_idIndexMarker666"/> Louvain method were able to use their algorithm on a network of hundreds of millions of nodes and more than a billion edges, making this approach suitable for very large networks. You can read more about the<a id="_idIndexMarker667"/> Louvain method <span class="No-Break">at </span><a href="https://arxiv.org/pdf/0803.0476.pdf"><span class="No-Break">https://arxiv.org/pdf/0803.0476.pdf</span></a><span class="No-Break">.</span></p>
+			<p>The algorithm works through a series of passes, where each pass contains two phases. The first phase assigns different communities to each node in the network. Initially, each node has a different community assigned to it. Then, each neighbor is evaluated and nodes are assigned to communities. The first step concludes when no more improvements can be made. In the second phase, a new network is built, with nodes being the communities discovered in the first step. Then, the results of the first phase can be repeated. The two steps are iterated until optimal communities <span class="No-Break">are found.</span></p>
+			<p>This is a simplified <a id="_idIndexMarker668"/>description of how the algorithm works. I recommend reading the research paper in its entirety to get a feel for how the <span class="No-Break">al<a id="_idTextAnchor376"/>gorithm works.</span></p>
+			<h2 id="_idParaDest-220"><a id="_idTextAnchor377"/>The Louvain method in action!</h2>
+			<p>We used the<a id="_idIndexMarker669"/> Louvain method briefly in <a href="B17105_03.xhtml#_idTextAnchor080"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>, so if you paid attention, this code should look familiar. The Louvain method has been included in more recent versions of NetworkX, so if you have the latest version of NetworkX, you will not need to use the <strong class="source-inline">community</strong> Python library, but your code will be different. For consistency, I will use the “community” <span class="No-Break">library approach:</span></p>
+			<ol>
+				<li value="1">First, let’s import <span class="No-Break">the library:</span><pre class="source-code">
+import community as community_louvain</pre></li>
+				<li>Here is some code that will help us draw <span class="No-Break">Louvain partitions:</span><pre class="source-code">
+def draw_partition(G, partition):</pre><pre class="source-code">
+    import matplotlib.cm as cm</pre><pre class="source-code">
+    import matplotlib.pyplot as plt</pre><pre class="source-code">
+    # draw the graph</pre><pre class="source-code">
+    plt.figure(3,figsize=(12,12))</pre><pre class="source-code">
+    pos = nx.spring_layout(G)</pre><pre class="source-code">
+    # color the nodes according to their partition</pre><pre class="source-code">
+    cmap = cm.get_cmap('jet', max(partition.values()) + 1)</pre><pre class="source-code">
+    nx.draw_networkx_nodes(G, pos, partition.keys(), node_size=40, cmap=cmap, node_color = list(partition.values()))</pre><pre class="source-code">
+    nx.draw_networkx_edges(G, pos, alpha=0.5, width = 0.3)</pre><pre class="source-code">
+    return plt.show()</pre></li>
+				<li>Now, let’s use the <strong class="source-inline">best_partition</strong> function to identify the optimal partition using the Louvain <a id="_idIndexMarker670"/>method. During my testing, I found <strong class="source-inline">resolution=1</strong> to be ideal, but with other networks, you should experiment with <span class="No-Break">this parameter:</span><pre class="source-code">
+partition = community_louvain.best_partition(G, resolution=1)</pre><pre class="source-code">
+draw_partition(G, partition)</pre></li>
+			</ol>
+			<p>This creates <span class="No-Break">a visualization:</span></p>
+			<div>
+				<div id="_idContainer150" class="IMG---Figure">
+					<img src="image/B17105_09_008.jpg" alt="Figure 9.8 – Louvain method community detection of the Les Miserables network" width="1046" height="1012"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.8 – Louvain method community detection of the Les Miserables network</p>
+			<p>The helper function in <em class="italic">step 2</em> will color nodes by the communities that they belong to. What is important is that the <a id="_idIndexMarker671"/>separate communities have been detected, and each community of nodes is identified with a different color. Each node belongs to a different partition, and those partitions are <span class="No-Break">the communities.</span></p>
+			<ol>
+				<li value="4">Let’s take a look at what is inside the <span class="No-Break"><strong class="source-inline">partition</strong></span><span class="No-Break"> variable:</span><pre class="source-code">
+partition</pre><pre class="source-code">
+{'Napoleon': 1,</pre><pre class="source-code">
+ 'Myriel': 1,</pre><pre class="source-code">
+ 'MlleBaptistine': 1,</pre><pre class="source-code">
+ 'MmeMagloire': 1,</pre><pre class="source-code">
+ 'CountessDeLo': 1,</pre><pre class="source-code">
+ 'Geborand': 1,</pre><pre class="source-code">
+  …</pre><pre class="source-code">
+ 'Grantaire': 0,</pre><pre class="source-code">
+ 'Child1': 0,</pre><pre class="source-code">
+ 'Child2': 0,</pre><pre class="source-code">
+ 'BaronessT': 2,</pre><pre class="source-code">
+ 'MlleVaubois': 2,</pre><pre class="source-code">
+ 'MotherPlutarch': 0}</pre></li>
+			</ol>
+			<p>To save space, I cut out some of the nodes and partitions. Each node has an associated partition number, and that’s the community that it belongs to. If you wanted to get a list of nodes that belong to an individual community, you could do something <span class="No-Break">like this:</span></p>
+			<pre class="source-code">
+[node for node, community in partition.items() if community == 2]</pre>
+			<p>So, why is this exciting? What’s so<a id="_idIndexMarker672"/> cool about the Louvain method? Well, for one thing, it can scale to massive networks, allowing for research into the largest networks, such as the internet. Second, it’s fast, which means it is practical. There is not a lot of point to an algorithm that is so slow as to only be useful on tiny networks. Louvain is practical with massive networks. This algorithm is fast and efficient, and the results are very good. This is one algorithm for community detection that you will want in your <span class="No-Break">tool belt.</span></p>
+			<p>Next, let’s look at label propagation as another option for <span class="No-Break">com<a id="_idTextAnchor378"/>munity detection.</span></p>
+			<h1 id="_idParaDest-221"><a id="_idTextAnchor379"/>Using label propagation</h1>
+			<p>Label propagation is<a id="_idIndexMarker673"/> another fast approach for identifying communities that exist in a network. In my experience, the results haven’t been as good as with the Louvain method, but this is another tool that can be explored as part of community detection. You can read about label propagation <span class="No-Break">at </span><a href="https://arxiv.org/pdf/0709.2938.pdf"><span class="No-Break">https://arxiv.org/<span id="_idTextAnchor380"/>pdf/0709.2938.pdf</span></a><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-222"><a id="_idTextAnchor381"/>How does it work?</h2>
+			<p>This is an iterative <a id="_idIndexMarker674"/>approach. Each node is initialized with a unique label, and during each iteration of the algorithm, each node adopts the label that most of its neighbors have. For instance, if the <strong class="bold">David</strong> node had seven neighbor nodes, and four out of seven neighbors were <strong class="bold">label 1</strong> with the other three were <strong class="bold">label 0</strong>, then the <strong class="bold">David</strong> node would pick up <strong class="bold">label 1</strong>. During each step of the process, each node picks up the majority label, and the process concludes by grouping nodes with the same labels toget<a id="_idTextAnchor382"/>her <span class="No-Break">as communities.</span></p>
+			<h2 id="_idParaDest-223"><a id="_idTextAnchor383"/>Label propagation in action!</h2>
+			<p>This algorithm can be imported <a id="_idIndexMarker675"/>directly <span class="No-Break">from NetworkX:</span></p>
+			<pre class="source-code">
+from networkx.algorithms.community.label_propagation import label_propagation_communities</pre>
+			<p>Once you have imported the algorithm, all you have to do is pass it to your graph, and you will get back a list <span class="No-Break">of communities:</span></p>
+			<ol>
+				<li value="1">Let’s try this out using our Les <span class="No-Break">Miserables graph:</span><pre class="source-code">
+communities = label_propagation_communities(G)</pre></li>
+			</ol>
+			<p>This line passes our graph to the label propagation algorithm and writes the results to a <strong class="source-inline">community</strong> variable. On a network this small, this algorithm is zippy-fast, taking a fraction of a second to identify communities. I prefer to convert these results into a list, to extract the <span class="No-Break">community nodes.</span></p>
+			<ol>
+				<li value="2">We can do just that, <span class="No-Break">like so:</span><pre class="source-code">
+communities = list(communities)</pre><pre class="source-code">
+communities[0]</pre><pre class="source-code">
+{'Champtercier',</pre><pre class="source-code">
+ 'Count',</pre><pre class="source-code">
+ 'CountessDeLo',</pre><pre class="source-code">
+ 'Cravatte',</pre><pre class="source-code">
+ 'Geborand',</pre><pre class="source-code">
+ 'Myriel',</pre><pre class="source-code">
+ 'Napoleon',</pre><pre class="source-code">
+ 'OldMan'}</pre></li>
+			</ol>
+			<p>In that last line, we inspected the first community, community 0. Visualizing these communities is <span class="No-Break">simple enough.</span></p>
+			<ol>
+				<li value="3">We can extract <a id="_idIndexMarker676"/>them as subgraphs and then use the same <strong class="source-inline">draw_graph</strong> function we have used throughout <span class="No-Break">this book:</span><pre class="source-code">
+community = communities[1]</pre><pre class="source-code">
+G_community = G.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>What can we see from <span class="No-Break">the output?</span></p>
+			<div>
+				<div id="_idContainer151" class="IMG---Figure">
+					<img src="image/B17105_09_009.jpg" alt="Figure 9.9 – Label propagation community detection of the Les Miserables network, community 1" width="1522" height="1066"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.9 – Label propagation community detection of the Les Miserables network, community 1</p>
+			<p>This looks pretty good, but not quite as good as the results from the Louvain method. It was fast but not quite as precise as I’d wanted. For instance, looking to the left of <strong class="bold">Valjean</strong>, there is a tight community of densely connected<a id="_idIndexMarker677"/> nodes. That should be its own community, not part of this larger group. This algorithm isn’t perfect, but no algorithm is. However, this algorithm is fast and can scale to large networks, so it is another option for large-scale <span class="No-Break">community detection.</span></p>
+			<ol>
+				<li value="4">Let’s look at a couple <span class="No-Break">more communities:</span><pre class="source-code">
+community = communities[2]</pre><pre class="source-code">
+G_community = G.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>This gives us the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer152" class="IMG---Figure">
+					<img src="image/B17105_09_010.jpg" alt="Figure 9.10 – Label propagation community detection of the Les Miserables network, community 2" width="1542" height="1068"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.10 – Label propagation community detection of the Les Miserables network, community 2</p>
+			<p>This community<a id="_idIndexMarker678"/> looks about perfect. It’s not uncommon to have a few additional nodes other than those found in the most densely connected parts of <span class="No-Break">a community.</span></p>
+			<ol>
+				<li value="5">Let’s look <span class="No-Break">at another:</span><pre class="source-code">
+community = communities[3]</pre><pre class="source-code">
+G_community = G.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>This gives us the <span class="No-Break">following visualization:</span></p>
+			<div>
+				<div id="_idContainer153" class="IMG---Figure">
+					<img src="image/B17105_09_011.jpg" alt="Figure 9.11 – Label propagation community detection of the Les Miserables network, community 3" width="1578" height="1052"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.11 – Label propagation community detection of the Les Miserables network, community 3</p>
+			<p>This community looks<a id="_idIndexMarker679"/> great as well. Overall, this algorithm works well and is fast. Also, the setup is easier and faster than with the Louvain method, as all you have to do is import the algorithm, pass it a graph, and then visualize the results. In terms of ease of use, this algorithm is the easiest that I’ve seen. The results look good, and communities have quickly <span class="No-Break">been identified.</span></p>
+			<p>But being fast and easy to use is not enough. Louvain is more accurate and is fast and easy to use. Still<a id="_idTextAnchor384"/>, this <a id="_idIndexMarker680"/>can <span class="No-Break">be useful.</span></p>
+			<h1 id="_idParaDest-224"><a id="_idTextAnchor385"/>Using the Girvan-Newman algorithm</h1>
+			<p>At the beginning of this chapter, we noticed that the <em class="italic">Les Miserables</em> network consisted of a single large connected component and that there were no isolates or smaller “islands” of communities<a id="_idIndexMarker681"/> apart from the large connected component. To show how connected components could be useful for identifying communities, we shattered the network by removing a few <span class="No-Break">key nodes.</span></p>
+			<p>That approach is not typically ideal. While there is information in both nodes (people, places, things) and edges (relationships), in my experience, it is typically preferable to throw away edges than to throw <span class="No-Break">away nodes.</span></p>
+			<p>A better approach than what we did previously would be to identify the least number of edges that could be cut that would result in a split network. We could do this by looking for the edges that the greatest number of shortest paths pass through – that is, the edges with the <span class="No-Break">highest </span><span class="No-Break"><strong class="source-inline">edge_betweenness_centrality</strong></span><span class="No-Break">.</span></p>
+			<p>That is precisely what the <strong class="bold">Girvan<a id="_idTextAnchor386"/>-Newman </strong><span class="No-Break"><strong class="bold">algorithm</strong></span><span class="No-Break"> does.</span></p>
+			<h2 id="_idParaDest-225"><a id="_idTextAnchor387"/>How does it work?</h2>
+			<p>The Girvan-Newman <a id="_idIndexMarker682"/>algorithm identifies communities by cutting the least number of edges possible, which results in splitting a network into two<a id="_idIndexMarker683"/> pieces. You can read more about their approach <span class="No-Break">here: </span><a href="https://www.pnas.org/doi/full/10.1073/pnas.122653799"><span class="No-Break">https://www.pnas.org/doi/full/10.1073/pnas.122653799</span></a><span class="No-Break">.</span></p>
+			<p>Many times, when I’m looking at networks, I see several nodes on two different sides connected by a few edges. It almost looks like a few rubber bands are holding the two groups together. If you snip the rubber bands, the two communities should fly apart, similar to how networks shatter into pieces when key nodes <span class="No-Break">are removed.</span></p>
+			<p>In a way, this is more surgically precise than removing nodes. There is less loss of valuable information. Sure, losing information on certain relationships is a drawback, but all of the nodes <span class="No-Break">remain intact.</span></p>
+			<p>Through a series of iterations, the Girvan-Newman algorithm identifies edges with the highest <strong class="source-inline">edge_betweenness_centrality</strong> scores and removes them, splitting a network into two pieces. Then, the process begins again. If not repeated enough, communities are too large. If repeated too many times, communities end up being a single node. So, there will be some experimentation when using this algorithm to find the ideal number <span class="No-Break">of cuts.</span></p>
+			<p>This algorithm is all about cutting. The downside of this algorithm is that it is not fast. Calculating <strong class="source-inline">edge_betweenness_centrality</strong> is much more computationally expensive than the computations being done for the Louvain method or label propagation. As a result, this algorithm ceases to be useful very quickly, as it becomes much too slow to <span class="No-Break">be practical.</span></p>
+			<p>However, if your <a id="_idIndexMarker684"/>network is small enough, this is a very cool algorithm to explore for community detection. It’s also intuitive and <a id="_idTextAnchor388"/>easy to explain <span class="No-Break">to others.</span></p>
+			<h2 id="_idParaDest-226"><a id="_idTextAnchor389"/>Girvan-Newman algorithm in action!</h2>
+			<p>Let’s try this out with our <em class="italic">Les Miserables</em> graph. The graph is small enough that this algorithm <a id="_idIndexMarker685"/>should be able to split it into communities <span class="No-Break">pretty quickly:</span></p>
+			<ol>
+				<li value="1">First, import <span class="No-Break">the algorithm:</span><pre class="source-code">
+from networkx.algorithms.community import girvan_newman</pre></li>
+				<li>Next, we need to pass the graph to the algorithm as a parameter. When we do this, the algorithm will return the results of each iteration of splits, which we can investigate by converting the results into <span class="No-Break">a list:</span><pre class="source-code">
+communities = girvan_newman(G)</pre><pre class="source-code">
+communities = list(communities)</pre></li>
+				<li>What was the maximum number of iterations that the algorithm could do before each community consisted of a single node? <span class="No-Break">Let’s see:</span><pre class="source-code">
+len(communities)</pre><pre class="source-code">
+76</pre></li>
+			</ol>
+			<p>Neat! We have <strong class="source-inline">76</strong> iterations of splits kept in a Python list. I recommend that you investigate the various levels of splits and find the one that looks best for your needs. It could be very early in the process, in the first 10 splits, or it might be a bit later. This part requires some analysis, further making this a bit of a <span class="No-Break">hands-on algorithm.</span></p>
+			<ol>
+				<li value="4">However, just to push forward, let’s pretend that we found that the tenth iteration of splits yielded the best results. Let’s set the tenth iteration results as our final group of communities, and then visualize the communities as we did with the Louvain method and <span class="No-Break">label propagation:</span><pre class="source-code">
+communities = communities[9]</pre></li>
+			</ol>
+			<p>We’re keeping the tenth iteration results and dropping everything else. If we didn’t want to throw away the results, we could have used a different <span class="No-Break">variable name.</span></p>
+			<ol>
+				<li value="5">Let’s see what these communities look like so that we can compare them against the other <a id="_idIndexMarker686"/>algorithms <span class="No-Break">we discussed:</span><pre class="source-code">
+community = communities[0]</pre><pre class="source-code">
+G_community = G.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>We get the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer154" class="IMG---Figure">
+					<img src="image/B17105_09_012.jpg" alt="Figure 9.12 – Girvan-Newman community detection of the Les Miserables network, community 0" width="1650" height="1013"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.12 – Girvan-Newman community detection of the Les Miserables network, community 0</p>
+			<p>This subgraph should look familiar! We saw exactly this when we shattered the network by nodes and then visualized connected components. This algorithm split the<a id="_idIndexMarker687"/> network using edges and managed to find the <span class="No-Break">same community.</span></p>
+			<ol>
+				<li value="6">Let’s see <span class="No-Break">another community:</span><pre class="source-code">
+community = communities[1]</pre><pre class="source-code">
+G_community = G.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>This produces the following <span class="No-Break">network visualization:</span></p>
+			<div>
+				<div id="_idContainer155" class="IMG---Figure">
+					<img src="image/B17105_09_013.jpg" alt="Figure 9.13 – Girvan-Newman community detection of the Les Miserables network, community 1" width="1560" height="1062"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.13 – Girvan-Newman community detection of the Les Miserables network, community 1</p>
+			<p>This also looks very<a id="_idIndexMarker688"/> good. It’s not uncommon for communities to have a densely connected group, as well as some less <span class="No-Break">connected nodes.</span></p>
+			<ol>
+				<li value="7">And <span class="No-Break">another community:</span><pre class="source-code">
+community = communities[2]</pre><pre class="source-code">
+G_community = G.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>We will see the <span class="No-Break">following output:</span></p>
+			<div>
+				<div id="_idContainer156" class="IMG---Figure">
+					<img src="image/B17105_09_014.jpg" alt="Figure 9.14 – Girvan-Newman community detection of the Les Miserables network, community 2" width="1524" height="1060"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.14 – Girvan-Newman community detection of the Les Miserables network, community 2</p>
+			<p>This is similar to<a id="_idIndexMarker689"/> the last community. We have a densely connected group of nodes and two nodes with a single edge. This <span class="No-Break">looks great.</span></p>
+			<ol>
+				<li value="8">Let’s see <span class="No-Break">community 3:</span><pre class="source-code">
+community = communities[3]</pre><pre class="source-code">
+G_community = G.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>Community 3 looks<a id="_idIndexMarker690"/> <span class="No-Break">like this:</span></p>
+			<div>
+				<div id="_idContainer157" class="IMG---Figure">
+					<img src="image/B17105_09_015.jpg" alt="Figure 9.15 – Girvan-Newman community detection of the Les Miserables network, community 3" width="1556" height="1056"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.15 – Girvan-Newman community detection of the Les Miserables network, community 3</p>
+			<p>This should look familiar as well. Label propagation found the same community but Girvan-Newman removed one <span class="No-Break">additional node.</span></p>
+			<ol>
+				<li value="9">And the <span class="No-Break">next one:</span><pre class="source-code">
+community = communities[4]</pre><pre class="source-code">
+G_community = G.subgraph(community)</pre><pre class="source-code">
+draw_graph(G_community, show_names=True, node_size=5)</pre></li>
+			</ol>
+			<p>We will see the <span class="No-Break">following network:</span></p>
+			<div>
+				<div id="_idContainer158" class="IMG---Figure">
+					<img src="image/B17105_09_016.jpg" alt="Figure 9.16 – Girvan-Newman community detection of the Les Miserables network, community 4" width="1550" height="1060"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 9.16 – Girvan-Newman community detection of the Les Miserables network, community 4</p>
+			<p>While this may be less<a id="_idIndexMarker691"/> visually appealing to look at, this impresses me more than the other network visualizations. This is a less obvious community, found only by cutting edges with the highest <strong class="source-inline">edge_betweenness_centrality</strong> scores. There is a slightly more connected group of nodes in the center, surrounded by nodes with a single edge each on <span class="No-Break">the outskirts.</span></p>
+			<p>The Girvan-Newman algorithm can give really good and clean results. The only downside is its speed. Calculating <strong class="source-inline">edge_betweenness_centrality</strong> and shortest_paths is time-consuming, so this algorithm is much slower than the others that we discussed, but it<a id="_idIndexMarker692"/> can be very useful if your network is not <span class="No-Break">too large.</span></p>
+			<h1 id="_idParaDest-227"><a id="_idTextAnchor390"/>Other approaches to community detection</h1>
+			<p>All of these algorithms that we<a id="_idIndexMarker693"/> have explored were ideas that people had on how to identify communities in networks, either based on nearness to other nodes or found by cutting edges. However, these are not the only approaches. I came up with an approach before learning about the Girvan-Newman algorithm that cut nodes rather than edges. However, when I learned about the Girvan-Newman approach, I found that to be more ideal and gave up on my implementation. But that makes me think, what other approaches might there be for identifying communities <span class="No-Break">in networks?</span></p>
+			<p>As you learn more and become more comfortable working with networks, try to discover other wa<a id="_idTextAnchor391"/>ys of <span class="No-Break">identifying communities.</span></p>
+			<h1 id="_idParaDest-228"><a id="_idTextAnchor392"/>Summary</h1>
+			<p>In this chapter, we went through several different approaches to community detection. Each had its pros <span class="No-Break">and cons.</span></p>
+			<p>We saw that connected components can be useful for identifying communities, but only if the network consists of more than just one single primary component. To use connected components to identify communities, there need to be some smaller connected components split off. It’s very important to use connected components at the beginning of your network analysis to get an understanding of the overall structure of your network, but it is less than ideal as a standalone tool for <span class="No-Break">identifying communities.</span></p>
+			<p>Next, we used the Louvain method. This algorithm is extremely fast and can be useful in networks where there are hundreds of millions of nodes and billions of edges. If your network is very large, this is a useful first approach for community detection. The algorithm is fast, and the results are clean. There is also a parameter you can experiment with to get <span class="No-Break">optimal partitions.</span></p>
+			<p>We then used label propagation to identify communities. On the <em class="italic">Les Miserables</em> network, the algorithm took a fraction of a second to identify communities. Overall, the results looked good, but it did seem to struggle with splitting out a dense cluster of nodes from a larger community. However, every other community looked good. This algorithm is fast and should scale to large networks, but I have never heard of this being used on a network with millions of nodes. It is worth <span class="No-Break">experimenting with.</span></p>
+			<p>Finally, we used the Girvan-Newman algorithm, which is an algorithm that finds communities by performing several rounds of cuts on edges with the highest <strong class="source-inline">edge_betweenness_centrality</strong> scores. The results were very clean. The downside of this algorithm is that it is very slow and does not scale well to large networks. However, if your network is small, then this is a very useful algo<a id="_idTextAnchor393"/>rithm for <span class="No-Break">community detection.</span></p>
+			<p>This has been a fun chapter to write. Community detection is one of the most interesting areas of network analysis, for me. It’s one thing to analyze networks as a whole or explore ego networks, but being able to identify and extract communities is another skill that sits somewhere between whole network analysis and egocentric <span class="No-Break">network analysis.</span></p>
+			<p>In the next few chapters, we’re going to go into the wilderness and explore how we can use network science and machine learning together! The first chapter will be on supervised machine learning, while the final chapter will be on unsupervised machine learning. We only have a few more chapters to go! Hang <span class="No-Break">in there!</span></p>
+		</div>
+	</div>
+</div>
+</body></html>
