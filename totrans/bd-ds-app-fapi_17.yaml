@@ -503,16 +503,20 @@
   id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Python 中，有多种库可以帮助实现工作进程。它们提供了定义任务、将任务调度到队列中并运行进程、拉取并执行任务所需的工具。在本书中，我们将使用 Dramatiq，一个轻量级但强大且现代的后台任务处理库。正如我们在
+    [*第 8 章*](B19528_08.xhtml#_idTextAnchor551) 中所做的，我们将使用 Redis 作为消息代理。
 - en: Implementing a worker
   id: totrans-72
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 实现一个工作进程
 - en: 'As usual, we’ll start by installing the required dependency. Run the following
     command:'
   id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 和往常一样，我们首先安装所需的依赖项。运行以下命令：
 - en: '[PRE5]'
   id: totrans-74
   prefs: []
@@ -523,25 +527,30 @@
   id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将安装 Dramatiq，并安装与 Redis 代理通信所需的依赖项。
 - en: 'In a minimal example, setting up a Dramatiq worker involves two things:'
   id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 在一个最小的示例中，设置 Dramatiq 工作进程涉及两件事：
 - en: Setting the broker type and URL.
   id: totrans-77
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 设置代理类型和 URL。
 - en: Defining tasks by wrapping functions with the `@``dramatiq.actor` decorator.
   id: totrans-78
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 通过使用 `@``dramatiq.actor` 装饰器来定义任务。
 - en: It works very well for the vast majority of tasks, such as sending emails or
     generating exports.
   id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 它非常适合绝大多数任务，比如发送电子邮件或生成导出文件。
 - en: In our case, however, we need to load the heavy Stable Diffusion model. As we
     usually do in the FastAPI server with the `startup` event, we want to do this
     only when the process is actually started. To do this with Dramatiq, we implement
@@ -550,14 +559,18 @@
   id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，在我们的案例中，我们需要加载庞大的 Stable Diffusion 模型。正如我们通常在 FastAPI 服务器中通过 `startup` 事件做的那样，我们希望只有在进程实际启动时才执行这一操作。为了使用
+    Dramatiq 实现这一点，我们需要实现一个*中间件*。它们允许我们在工作进程生命周期中的几个关键事件插入自定义逻辑，包括当工作进程启动时。
 - en: 'You can see the implementation of our custom middleware in the following sample:'
   id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以在以下示例中看到我们自定义中间件的实现：
 - en: worker.py
   id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: worker.py
 - en: '[PRE6]'
   id: totrans-83
   prefs: []
@@ -567,6 +580,7 @@
   id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/worker.py)'
 - en: 'We define a `TextToImageMiddleware` class whose role is to bear an instance
     of `TextToImage`, the image generation service we defined in the previous section.
     It inherits from the `Middleware` class of Dramatiq. The key thing here is the
@@ -577,6 +591,9 @@
   id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们定义了一个 `TextToImageMiddleware` 类，它的作用是承载 `TextToImage` 的实例，这是我们在上一节中定义的图像生成服务。它继承自
+    Dramatiq 的 `Middleware` 类。这里的关键是 `after_process_boot` 方法。它是 Dramatiq 提供的事件钩子之一，允许我们插入自定义逻辑。在这里，我们告诉它在工作进程启动后加载
+    Stable Diffusion 模型。你可以在官方文档中查看支持的钩子列表：[https://dramatiq.io/reference.html#middleware](https://dramatiq.io/reference.html#middleware)。
 - en: The next lines allow us to configure our worker. We first instantiate an instance
     of our custom middleware. Then, we create a broker class corresponding to the
     technology we chose; in our case, Redis. We take care of adding our middleware
@@ -585,14 +602,18 @@
   id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来的几行代码让我们可以配置我们的工作进程。我们首先实例化我们自定义中间件的一个实例。然后，我们创建一个与我们选择的技术相对应的代理类；在我们的案例中是
+    Redis。在告诉 Dramatiq 使用它之前，我们需要将中间件添加到这个代理中。我们的工作进程现在已经完全配置好，可以连接到 Redis 代理，并在启动时加载我们的模型。
 - en: 'Now, let’s see how we can define a task to generate images:'
   id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，让我们来看一下如何定义一个任务来生成图像：
 - en: worker.py
   id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: worker.py
 - en: '[PRE7]'
   id: totrans-89
   prefs: []
@@ -602,6 +623,7 @@
   id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/worker.py)'
 - en: 'The implementation is straightforward: Dramatiq tasks are actually plain functions
     that we decorated with `@dramatiq.actor`. We can define arguments as we would
     for any other function. However, there is an important pitfall to avoid here:
@@ -819,11 +841,13 @@
   id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一节中，我们展示了如何实现一个后台工作程序来执行繁重的计算，以及一个 API 来调度任务给这个工作程序。然而，我们仍然缺少两个重要方面：用户没有任何方式了解任务的进度，也无法获取最终结果。让我们来解决这个问题！
 - en: Sharing data between the worker and the API
   id: totrans-120
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在工作程序和 API 之间共享数据
 - en: 'As we’ve seen, the worker is a program running in the background executing
     the computations the API has asked it to do. However, the worker doesn’t have
     any way to talk with the API server. That’s expected: since there could be any
@@ -833,6 +857,7 @@
   id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们所见，工作程序是一个在后台运行的程序，执行 API 请求它做的计算。然而，工作程序并没有与 API 服务器通信的任何方式。这是预期中的：因为可能有任意数量的服务器进程，且它们甚至可能运行在不同的物理服务器上，因此进程之间不能直接通信。始终是同样的问题：需要有一个中央数据源，供进程写入和读取数据。
 - en: 'Actually, the first approach to solve the lack of communication between the
     API and the worker could be to use the same broker we use to schedule tasks: the
     worker could write results in the broker, and the API could read from it. This
@@ -844,6 +869,8 @@
   id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 事实上，解决 API 和工作程序之间缺乏通信的第一种方法是使用我们用来调度任务的相同代理：工作程序可以将结果写入代理，API 可以从中读取。这在大多数后台任务库中都是可能的，包括
+    Dramatiq。然而，这个解决方案有一些局限性，其中最主要的是我们能保留数据的时间有限。像 Redis 这样的代理并不适合长时间可靠地存储数据。在某些时候，我们需要删除最古老的数据以限制内存使用。
 - en: 'Yet, we already know of something able to store structured data efficiently:
     a database, of course! That’s the approach we’ll show here. By having a central
     database where we’ll store our image generation requests and results, we’ll be
@@ -853,20 +880,26 @@
   id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，我们已经知道有一些东西能够高效地存储结构化数据：当然是数据库！这就是我们在这里展示的方法。通过拥有一个中央数据库，我们可以在其中存储图像生成请求和结果，这样就能在工作程序和
+    API 之间共享信息。为此，我们将重用我们在[《第 6 章》](B19528_06.xhtml#_idTextAnchor346)的*使用 SQLAlchemy
+    ORM 与 SQL 数据库通信*部分中展示的很多技巧。我们开始吧！
 - en: Defining an SQLAlchemy model
   id: totrans-124
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 定义一个 SQLAlchemy 模型
 - en: 'The first step is defining an SQLAlchemy model to store a single image-generation
     task. You can see it as follows:'
   id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一步是定义一个 SQLAlchemy 模型来存储单个图像生成任务。你可以如下所示查看它：
 - en: models.py
   id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: models.py
 - en: '[PRE12]'
   id: totrans-127
   prefs: []
@@ -876,6 +909,7 @@
   id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/models.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/models.py)'
 - en: As usual, we define an auto-incremented ID as the primary key. We also add `prompt`,
     `negative_prompt`, and `num_steps` columns, which correspond to the arguments
     we give to the worker task. This way, we’ll be able to directly give the ID to
@@ -884,21 +918,26 @@
   id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 像往常一样，我们定义一个自增的 ID 作为主键。我们还添加了 `prompt`、`negative_prompt` 和 `num_steps` 列，这些列对应我们传递给工作程序任务的参数。这样，我们就可以直接将
+    ID 传递给工作程序，它会直接从对象中获取参数。此外，这还允许我们存储并记住用于特定生成的参数。
 - en: The `progress` column is an integer where we’ll store the current progress of
     the generation task.
   id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: '`progress` 列是一个整数，用来存储当前生成任务的进度。'
 - en: Finally, `file_name` will store the actual filename we’ll store on our system.
     We’ll see how we use it in the next section, about object storage.
   id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，`file_name` 将存储我们在系统中保存的实际文件名。我们将在下一节中关于对象存储的部分看到如何使用它。
 - en: Adapting the API to save image-generation tasks in a database
   id: totrans-132
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 将API调整为在数据库中保存图像生成任务
 - en: 'With this model at hand, our approach to scheduling image generation in the
     API changes a bit. Instead of directly sending the task to the worker, we first
     create a row in our database and use the ID of this object as input for the worker
@@ -906,10 +945,12 @@
   id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 有了这个模型后，我们对API中图像生成任务的调度方式稍微做了些调整。我们不再直接将任务发送给工作进程，而是首先在数据库中创建一行数据，并将该对象的ID作为输入传递给工作进程任务。端点的实现如下所示：
 - en: api.py
   id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: api.py
 - en: '[PRE13]'
   id: totrans-135
   prefs: []
@@ -919,24 +960,29 @@
   id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/api.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/api.py)'
 - en: We won’t go into the details about how to create an object in a database with
     SQLAlchemy ORM. If you need a refresher, you can refer to the *Communicating with
     a SQL database with SQLAlchemy ORM* section of [*Chapter 6*](B19528_06.xhtml#_idTextAnchor346).
   id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不会深入讨论如何使用SQLAlchemy ORM在数据库中创建对象。如果你需要复习，可以参考[《第6章》](B19528_06.xhtml#_idTextAnchor346)中的*使用SQLAlchemy
+    ORM与SQL数据库通信*部分。
 - en: The main thing to notice in this snippet is that we pass the ID of the newly
     created object as an argument of `text_to_image_task`. As we’ll see right after,
     the worker will read it again from the database to retrieve the generation parameters.
   id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个代码片段中，主要需要注意的是我们将新创建对象的ID作为`text_to_image_task`的参数传递。正如我们稍后看到的，工作进程会从数据库中重新读取这个ID，以检索生成参数。
 - en: 'The response of this endpoint is simply a representation of our `GeneratedImage`
     model, using the Pydantic schema `GeneratedImageRead`. Thus, the user will get
     a response like this to their request:'
   id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 该端点的响应仅仅是我们`GeneratedImage`模型的表示，使用了Pydantic架构`GeneratedImageRead`。因此，用户将会收到类似这样的响应：
 - en: '[PRE14]'
   id: totrans-140
   prefs: []
@@ -950,26 +996,31 @@
   id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 它展示了我们在请求中提供的提示，最重要的是，*它给了一个ID*。这意味着用户将能够再次查询此特定请求以检索数据，并查看是否完成。这就是下面定义的`get_generated_image`端点的目的。我们不会在这里展示它，但你可以在示例仓库中阅读到它。
 - en: Adapting the worker to read and update image-generation tasks from a database
   id: totrans-142
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 将工作进程调整为从数据库中读取和更新图像生成任务
 - en: You probably have guessed that we need to change the implementation of our task
     so it can retrieve objects from the database instead of reading the parameters
     directly. Let’s go through this step by step.
   id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能已经猜到，我们需要改变任务的实现，以便它能从数据库中检索对象，而不是直接读取参数。让我们一步步来进行调整。
 - en: The first thing we do is retrieve a `GeneratedImage` from the database using
     the ID we got in the task argument.
   id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们做的第一件事是使用在任务参数中获得的ID从数据库中检索一个`GeneratedImage`。
 - en: worker.py
   id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: worker.py
 - en: '[PRE15]'
   id: totrans-146
   prefs: []
@@ -979,15 +1030,18 @@
   id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
 - en: 'To achieve this, you see that we use a helper function called `get_image`.
     It’s defined right above the task. Let’s review it:'
   id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了实现这一点，你会看到我们使用了一个名为`get_image`的辅助函数。它定义在任务的上方。让我们来看一下：
 - en: worker.py
   id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: worker.py
 - en: '[PRE16]'
   id: totrans-150
   prefs: []
@@ -997,6 +1051,7 @@
   id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
 - en: It may look quite strange, but actually, you are already familiar with most
     of its logic. If you look closely, you’ll see that it defines a nested and private
     function where we define the actual logic to retrieve and save the object using
@@ -1118,10 +1173,12 @@
   id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下部分用于将图像上传到对象存储。我们将在下一部分中更详细地解释这一点：
 - en: worker.py
   id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: worker.py
 - en: '[PRE20]'
   id: totrans-173
   prefs: []
@@ -1131,15 +1188,18 @@
   id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
 - en: 'Finally, we call another helper function, `update_file_name`, to save the random
     filename in the database. It’ll allow us to retrieve the file for the user:'
   id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们调用另一个辅助函数`update_file_name`，将随机文件名保存到数据库中。它将允许我们为用户检索该文件：
 - en: worker.py
   id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: worker.py
 - en: '[PRE21]'
   id: totrans-177
   prefs: []
@@ -1149,6 +1209,7 @@
   id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
 - en: As you can see, the main point of attention throughout this implementation is
     that we read and write information about `GeneratedImage` from and to the database.
     This is how we can *synchronize* between the API server and the worker. That’s
@@ -1159,17 +1220,21 @@
   id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 如你所见，这个实现的重点是我们从数据库中读取和写入`GeneratedImage`的信息。这就是我们如何在 API 服务器和工作进程之间进行*同步*。工作进程的部分就到此为止！有了这个逻辑，我们就可以从
+    API 调度一个图像生成任务，而工作进程则能够在设置最终文件名之前定期更新任务进度。因此，通过 API，一个简单的`GET`请求就能让我们看到任务的状态。
 - en: Storing and serving files in object storage
   id: totrans-180
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在对象存储中存储和服务文件
 - en: The last challenge we have to tackle concerns the storage of our resulting images.
     We need a way to store them reliably while letting users retrieve them easily
     from the internet.
   id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们必须解决的最后一个挑战是关于存储生成的图像。我们需要一种可靠的方式来存储它们，同时让用户能够轻松地从互联网中检索它们。
 - en: 'Traditionally, web applications handled this quite simply. They stored the
     files directly on the server hard disk, in a defined directory, and configured
     their web server to serve those files when accessed under a certain URL. This
@@ -1179,6 +1244,9 @@
   id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 传统上，Web 应用程序的处理方式非常简单。它们将文件直接存储在服务器的硬盘中，在指定的目录下，并配置其 Web 服务器，当访问某个 URL 时提供这些文件。这实际上是我们在[*第
+    13 章*](B19528_13.xhtml#_idTextAnchor1005)中的 WebSocket 示例中做的：我们使用了 `StaticFiles`
+    中间件来静态地提供我们磁盘上的 JavaScript 脚本。
 - en: While this works well for static files, such as JavaScript or CSS files, for
     which each server has its own copy, it is not suitable for dynamic files uploaded
     by the user or generated by the backend, in particular for complex architectures
@@ -1191,6 +1259,7 @@
   id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然这种方式适用于静态文件，比如每个服务器都有自己副本的 JavaScript 或 CSS 文件，但对于用户上传或后台生成的动态文件来说并不合适，尤其是在多个进程运行在不同物理机器上的复杂架构中。问题再次出现，即不同进程读取的中央数据源问题。在前面的部分，我们看到消息代理和数据库可以在多个场景中解决这个问题。而对于任意的二进制文件，无论是图像、视频还是简单的文本文件，我们需要其他解决方案。让我们来介绍**对象存储**。
 - en: 'Object storage is a bit different from the standard file storage we use daily
     in computers, where the disk is organized in a hierarchy of directories and files.
     Instead, object storage will store each file as an object, which includes the
@@ -1203,6 +1272,8 @@
   id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 对象存储与我们日常在计算机中使用的标准文件存储有所不同，后者中的磁盘是以目录和文件的层次结构组织的。而对象存储将每个文件作为一个对象进行存储，其中包含实际数据及其所有元数据，如文件名、大小、类型和唯一
+    ID。这种概念化的主要好处是，它更容易将这些文件分布到多个物理机器上：*我们可以将数十亿个文件存储在同一个对象存储中*。从用户的角度来看，我们只需请求一个特定的文件，存储系统会负责从实际的物理磁盘加载该文件。
 - en: In the cloud era, this approach has obviously gained a lot of popularity. In
     2006, **Amazon Web Services** (**AWS**) launched Amazon S3, its own implementation
     of object storage. It gave developers access to virtually unlimited disk space
@@ -1216,6 +1287,9 @@
   id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 在云时代，这种方法显然获得了广泛的关注。2006年，**亚马逊网络服务**（**AWS**）推出了其自有实现的对象存储——Amazon S3。它为开发人员提供了几乎无限的磁盘空间，允许通过一个简单的
+    API 存储文件，并且价格非常低廉。Amazon S3 因其广泛的流行，其 API 成为行业事实上的标准。如今，大多数云对象存储，包括微软 Azure 或
+    Google Cloud 等竞争对手的存储，都与 S3 API 兼容。开源实现也应运而生，如 MinIO。这个通用的 S3 API 的主要好处是，您可以在项目中使用相同的代码和库与任何对象存储提供商进行交互，并在需要时轻松切换。
 - en: To sum up, object storage is a very convenient way to store and serve files
     at scale, no matter the number of processes that need to access this data. At
     the end of this section, the global architecture of our project will look like
@@ -1223,14 +1297,17 @@
   id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 总结一下，对象存储是一种非常方便的方式，用于大规模存储和提供文件，无论有多少个进程需要访问这些数据。在本节结束时，我们项目的全球架构将像*图 14.5*中所示。
 - en: '![Figure 14.5 – Web-queue-worker architecture and object storage](img/Figure_14.5_B19528.jpg)'
   id: totrans-187
   prefs: []
   type: TYPE_IMG
+  zh: '![图 14.5 – Web-队列-工作者架构和对象存储](img/Figure_14.5_B19528.jpg)'
 - en: Figure 14.5 – Web-queue-worker architecture and object storage
   id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 14.5 – Web-队列-工作者架构和对象存储
 - en: It’s worth noting that the *object storage will serve the file directly to the
     user*. There won’t be an endpoint where the server would act as a proxy by downloading
     the file from the object storage before sending it to the user. There isn’t much
@@ -1240,16 +1317,20 @@
   id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 值得注意的是，*对象存储会直接将文件提供给用户*。不会有一个端点，服务器在从对象存储下载文件后再将其发送给用户。以这种方式操作并没有太大好处，即使在认证方面也是如此。我们将看到，兼容
+    S3 的存储具有内建的机制来保护文件不被未授权访问。
 - en: Implementing an object storage helper
   id: totrans-190
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 实现一个对象存储助手
 - en: 'Let’s get to the code then! We’ll use the MinIO client for Python, a library
     to interact with any S3-compatible storage. Let’s install it:'
   id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么我们开始写代码吧！我们将使用 MinIO 的 Python 客户端库，这是一个与任何兼容 S3 的存储进行交互的库。让我们先安装它：
 - en: '[PRE22]'
   id: totrans-192
   prefs: []
@@ -1260,10 +1341,12 @@
   id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在可以实现一个类，以便手头有我们需要的所有操作。我们先从初始化器开始：
 - en: storage.py
   id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: storage.py
 - en: '[PRE23]'
   id: totrans-195
   prefs: []
@@ -1273,21 +1356,25 @@
   id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py)'
 - en: In the initializer of this class, we create a `Minio` client instance. You’ll
     see that we use a `settings` object to pull the storage URL and credentials. Thus,
     it’s very easy to switch them by using environment variables.
   id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 在该类的初始化函数中，我们创建了一个 `Minio` 客户端实例。你会看到我们使用一个 `settings` 对象来提取存储 URL 和凭证。因此，使用环境变量就能非常轻松地切换它们。
 - en: 'We’ll then implement several methods that’ll help us work with object storage.
     The first one is `ensure_bucket`:'
   id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后我们将实现一些方法，帮助我们处理对象存储。第一个方法是 `ensure_bucket`：
 - en: storage.py
   id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: storage.py
 - en: '[PRE24]'
   id: totrans-200
   prefs: []
@@ -1297,6 +1384,7 @@
   id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py)'
 - en: The role of this method is to make sure the right bucket is created in our object
     storage. In S3 implementations, a **bucket** is like a folder that you own and
     in which you can store your files. Each file you upload has to be put into an
@@ -1304,14 +1392,17 @@
   id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 该方法的作用是确保在我们的对象存储中创建了正确的存储桶。在 S3 实现中，**存储桶**就像是你拥有的文件夹，你可以将文件存储在其中。你上传的每个文件都必须放入一个现有的存储桶中。
 - en: 'Then, we define `upload_image`:'
   id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，我们定义了 `upload_image`：
 - en: storage.py
   id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: storage.py
 - en: '[PRE25]'
   id: totrans-205
   prefs: []
@@ -1321,6 +1412,7 @@
   id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py)'
 - en: This is for uploading an image to the storage. To simplify things, this method
     accepts a Pillow `Image`, as it’s the result we get at the end of the Stable Diffusion
     pipeline. We implemented some logic to convert this `Image` object into a raw
@@ -1331,14 +1423,18 @@
   id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是用于将图像上传到存储的。为了简化操作，该方法接受一个 Pillow `Image` 对象，因为这是我们在 Stable Diffusion 流水线的最后得到的结果。我们实现了一些逻辑，将这个
+    `Image` 对象转换为适合 S3 上传的原始字节流。该方法还期望接收 `object_name`，即存储中实际的文件名，以及 `bucket_name`。请注意，我们首先确保存储桶已经正确创建，然后再尝试上传文件。
 - en: 'Finally, we add the `get_presigned_url` method:'
   id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们添加了 `get_presigned_url` 方法：
 - en: storage.py
   id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: storage.py
 - en: '[PRE26]'
   id: totrans-210
   prefs: []
@@ -1348,18 +1444,21 @@
   id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py)'
 - en: 'This method will help us to serve the file securely to the user. By default,
     for security reasons, files in S3 storage are not accessible by any user on the
     internet. To give access to a file, we can do either of the following:'
   id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方法将帮助我们安全地将文件提供给用户。出于安全原因，S3 存储中的文件默认对互联网用户不可访问。为了给予文件访问权限，我们可以执行以下任一操作：
 - en: Set the file as public so anybody with the URL can access it. This is suitable
     for public files but certainly not for private user files.
   id: totrans-213
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 将文件设置为公开状态，这样任何拥有 URL 的人都能访问它。这个适合公开文件，但对于私密的用户文件则不适用。
 - en: Generate a URL with a temporary access key. Thus, we can give access to the
     file to the user, knowing that even if the URL is stolen, the access will be revoked
     after a certain time. The huge benefit of this is that this URL generation happens
@@ -1372,25 +1471,32 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 生成一个带有临时访问密钥的 URL。这样，我们就可以将文件访问权限提供给用户，即使 URL 被窃取，访问也会在一段时间后被撤销。这带来的巨大好处是，URL
+    生成发生在我们的 API 服务器上，使用 S3 客户端。因此，在生成文件 URL 之前，我们可以根据自己的逻辑检查用户是否通过身份验证，并且是否有权访问特定的文件。这就是我们在这里采用的方法，并且此方法会在特定存储桶中的特定文件上生成预签名
+    URL，且有效期为一定时间。
 - en: As you can see, our class is just a thin wrapper around the MinIO client. All
     we have to do now is to use it to upload the images and get a pre-signed URL from
     the API.
   id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 如你所见，我们的类只是 MinIO 客户端的一个薄包装。现在我们要做的就是用它来上传图像并从 API 获取预签名 URL。
 - en: Using the object storage helper in the worker
   id: totrans-216
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 在工作者中使用对象存储助手
 - en: 'In the previous section, we showed the following lines in our task implementation:'
   id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一节中，我们展示了任务实现中的以下几行代码：
 - en: worker.py
   id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: worker.py
 - en: '[PRE27]'
   id: totrans-219
   prefs: []
@@ -1400,26 +1506,31 @@
   id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
 - en: 'Now that we’ve talked about the `Storage` class, you should guess what we’re
     doing here: we take the generated image and its random name and upload it to a
     bucket defined in `settings`. And… That’s it!'
   id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经谈到了 `Storage` 类，你应该能猜到我们在这里做的事情：我们获取生成的图像及其随机名称，并将其上传到 `settings` 中定义的存储桶。就这样！
 - en: Generating a pre-signed URL on the server
   id: totrans-222
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 在服务器上生成预签名 URL
 - en: 'On the API’s side, we implement a new endpoint whose role is to return a pre-signed
     URL for a given `GeneratedImage`:'
   id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 API 端，我们实现了一个新端点，角色是返回给定 `GeneratedImage` 的预签名 URL：
 - en: server.py
   id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: server.py
 - en: '[PRE28]'
   id: totrans-225
   prefs: []
@@ -1429,6 +1540,7 @@
   id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/server.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/server.py)'
 - en: Before generating the URL, we first check whether the `file_name` property is
     set on the `GeneratedImage` object. If it’s not, it means the worker has not completed
     the task yet. If it is, we can proceed with the call to the `get_presigned_url`
@@ -1436,21 +1548,26 @@
   id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 在生成 URL 之前，我们首先检查 `GeneratedImage` 对象上是否设置了 `file_name` 属性。如果没有，意味着工作者任务尚未完成。如果有，我们就可以继续调用
+    `Storage` 类的 `get_presigned_url` 方法。
 - en: Notice that we took care of defining a dependency injection to get our `Storage`
     instance. As we’ve seen throughout this book, using dependencies in FastAPI is
     a very good practice when dealing with external services.
   id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，我们已经定义了依赖注入来获取 `Storage` 实例。正如本书中所展示的那样，在处理外部服务时，FastAPI 中使用依赖是一个非常好的实践。
 - en: Well, it seems that we’re all set! Let’s see it in action.
   id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: 好的，看来我们一切准备就绪！让我们看看它如何运行。
 - en: Running the image-generation system
   id: totrans-230
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 运行图像生成系统
 - en: 'First of all, we need to populate the environment variables for our project
     with, in particular, a database URL and S3 credentials. To keep things simple,
     we’ll use a simple SQLite database and the MinIO playground for the S3 storage.
@@ -1460,6 +1577,9 @@
   id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们需要为项目填充环境变量，特别是数据库 URL 和 S3 凭据。为了简化，我们将使用一个简单的 SQLite 数据库和 MinIO 的示例平台作为
+    S3 存储。MinIO 是一个免费的开源对象存储平台，非常适合示例和玩具项目。当进入生产环境时，你可以轻松切换到任何兼容 S3 的提供商。让我们在项目根目录下创建一个
+    `.env` 文件：
 - en: '[PRE29]'
   id: totrans-232
   prefs: []
@@ -1471,6 +1591,7 @@
   id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 存储端点、访问密钥和秘钥是 MinIO 演示环境的参数。确保查看它们的官方文档，以了解自我们编写本书以来是否有所更改：[https://min.io/docs/minio/linux/developers/python/minio-py.html#id5](https://min.io/docs/minio/linux/developers/python/minio-py.html#id5)。
 - en: Our `Settings` class will automatically load this file to populate the settings
     we use throughout the code. Make sure to check the *Setting and using environment
     variables* section of [*Chapter 10*](B19528_10.xhtml#_idTextAnchor694) if you
@@ -1478,12 +1599,14 @@
   id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的`Settings`类将自动加载此文件，以填充我们在代码中使用的设置。如果你需要复习这一概念，确保查看[*第 10 章*](B19528_10.xhtml#_idTextAnchor694)中的*设置和使用环境变量*部分。
 - en: 'We can now run our system. Make sure your Redis server is still running, as
     explained in the *Technical requirements* section. First of all, let’s run the
     FastAPI server:'
   id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以运行系统了。确保你的 Redis 服务器仍在运行，正如在*技术要求*部分所解释的那样。首先，让我们启动 FastAPI 服务器：
 - en: '[PRE30]'
   id: totrans-236
   prefs: []
@@ -1493,6 +1616,7 @@
   id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，启动工作进程：
 - en: '[PRE31]'
   id: totrans-238
   prefs: []
@@ -1503,6 +1627,7 @@
   id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 堆栈现在已准备好生成图像。让我们使用 HTTPie 发起请求，开始一个新的任务：
 - en: '[PRE32]'
   id: totrans-240
   prefs: []
@@ -1514,6 +1639,7 @@
   id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个新的`GeneratedImage`已在数据库中创建，分配的 ID 为`1`。进度为*0%*；处理尚未开始。让我们尝试通过 API 查询它：
 - en: '[PRE33]'
   id: totrans-242
   prefs: []
@@ -1525,6 +1651,7 @@
   id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: API 返回相同的对象及其所有属性。注意，进度已更新，现在为*36%*。过一会儿，我们可以再次尝试相同的请求：
 - en: '[PRE34]'
   id: totrans-244
   prefs: []
@@ -1535,6 +1662,7 @@
   id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 这次，进度为*100%*，文件名已经填写。图像准备好了！现在我们可以请求 API 为该图像生成一个预签名 URL：
 - en: '[PRE35]'
   id: totrans-246
   prefs: []
@@ -1546,34 +1674,41 @@
   id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在 MinIO 服务器上得到了一个非常长的 URL。如果你在浏览器中打开它，你会看到刚刚由我们的系统生成的图像，如*图 14.6*所示。
 - en: '![Figure 14.6 – Generated image hosted on object storage](img/Figure_14.6_B19528.jpg)'
   id: totrans-248
   prefs: []
   type: TYPE_IMG
+  zh: '![图 14.6 – 生成的图像托管在对象存储中](img/Figure_14.6_B19528.jpg)'
 - en: Figure 14.6 – Generated image hosted on object storage
   id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 14.6 – 生成的图像托管在对象存储中
 - en: 'Quite nice, isn’t it? We now have a fully featured system where the user is
     able to do the following:'
   id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 很不错，不是吗？我们现在拥有一个功能齐全的系统，用户能够执行以下操作：
 - en: Request to generate images following their own prompt and parameters
   id: totrans-251
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 请求根据他们自己的提示和参数生成图像
 - en: Get information about the progress of the request
   id: totrans-252
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 获取请求进度的信息
 - en: Get the resulting image from reliable storage
   id: totrans-253
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 从可靠存储中获取生成的图像
 - en: The architecture we see here is already deployable in a cloud environment with
     multiple machines. Typically, we may have a standard, cheap server to serve the
     API and a more expensive one with a dedicated GPU and a good amount of RAM to
@@ -1583,11 +1718,14 @@
   id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在这里看到的架构已经可以在具有多台机器的云环境中部署。通常，我们可能会有一台标准的便宜服务器来提供 API 服务，而另一台则是更昂贵的服务器，配有专用
+    GPU 和充足的 RAM 来运行工作进程。代码无需更改就可以处理这种部署，因为进程间的通信是由中央元素——消息代理、数据库和对象存储来处理的。
 - en: Summary
   id: totrans-255
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: Awesome! You may not have realized it yet, but in this chapter, you learned
     how to architect and implement a very complex machine learning system that could
     rival existing image-generation services you see out there. The concepts we showed
@@ -1599,9 +1737,11 @@
   id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: 太棒了！你可能还没有意识到，但在这一章中，你已经学习了如何架构和实现一个非常复杂的机器学习系统，它能与你在外面看到的现有图像生成服务相媲美。我们在这里展示的概念是至关重要的，且是所有你能想象的分布式系统的核心，无论它们是设计用来运行机器学习模型、提取管道，还是数学计算。通过使用像FastAPI和Dramatiq这样的现代工具，你将能够在短时间内用最少的代码实现这种架构，最终得到一个非常快速且稳健的结果。
 - en: 'We’re near the end of our journey. Before letting you live your own adventures
     with FastAPI, we’ll study one last important aspect when building data science
     applications: logging and monitoring.'
   id: totrans-257
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的旅程即将结束。在让你用FastAPI开始自己的冒险之前，我们将研究构建数据科学应用程序时的最后一个重要方面：日志记录和监控。
