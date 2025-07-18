@@ -1,0 +1,616 @@
+<html><head></head><body>
+<div id="sbo-rt-content"><div id="_idContainer070">
+<h1 class="chapter-num er" id="_idParaDest-85"><a id="_idTextAnchor145"/>4</h1>
+<h1 id="_idParaDest-86"><a id="_idTextAnchor146"/>Exploring the Digital Uniqueness of NFTs – Games, Art, and Identity</h1>
+<p>In this chapter, we will explore <strong class="old">non-fungible tokens</strong> (<strong class="old">NFTs</strong>) and their various economic use cases. We <a id="_idIndexMarker210"/>will begin by understanding what an NFT is, how the relevant information is logged in transaction data, and the alternatives to obtaining it. Additionally, we will analyze how this technology is being leveraged by the gaming, art, and identity industries and explore some of the metrics that hold relevance for <span class="No-Break">each business.</span></p>
+<p>Business initiatives are carried out by a set of smart contracts that we will refer to as “protocols.” We will delve into the fundamental protocol metrics, offering quick insights into each protocol’s structure and user composition. To do that, we can choose to use a data framework, which is a highly valuable tool for business analysts as it helps organize our analyses and craft a compelling narrative when presenting our findings. An example of such a structure is the <em class="italic">Reach, Retention, and </em><span class="No-Break"><em class="italic">Revenue</em></span><span class="No-Break"> framework.</span></p>
+<p>Reach metrics help us understand the origins of growth, customer acquisition costs, target markets, and more. Retention metrics provide a gauge for assessing the effectiveness of our product, encompassing factors such as the frequency of customer usage, churn rates, and cohort analysis. Revenue metrics offer insights into the profitability of a product. It’s worth noting that the Covalent team has designed a data analyst training program, which we will cover in more detail in <a href="B19446_13.xhtml#_idTextAnchor346"><span class="No-Break"><em class="italic">Chapter 13</em></span></a>, that structures the on-chain analytics learning with <span class="No-Break">this framework.</span></p>
+<p>Throughout this chapter, we will explore concrete examples of metrics for each of <span class="No-Break">these categories.</span></p>
+<p>In this chapter, we will delve into the <span class="No-Break">following topics:</span></p>
+<ul>
+<li>Introduction to <span class="No-Break">NFT data</span></li>
+<li>Protocols and database exploration for the gaming, art, and <span class="No-Break">identity industries</span></li>
+<li>Relevant metrics for the gaming, art, and <span class="No-Break">identity businesses</span></li>
+</ul>
+<p>By the end of this chapter, we will be well-equipped to confidently address the metrics that data analysts typically study when working <span class="No-Break">with NFTs.</span></p>
+<p><span class="No-Break">Technical requirements</span></p>
+<p>We will be using indexed data available in platforms like<strong class="old"> Dune Analytics, Increment, Footprint Analytics, </strong>and<strong class="old"> Flipside</strong>. To follow along, please open an account on these platforms while following the links provided in <a href="B19446_02.xhtml#_idTextAnchor073"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>. Transactional data is queried with <strong class="old">SQL</strong> services and the syntax varies depending on the <span class="No-Break">query engines.</span></p>
+<p>We will also utilize the <strong class="source-inline">web3.py</strong> <strong class="old">Ethereum Name Service</strong> (<strong class="old">ENS</strong>) library, which is a Python library that provides tools and functionalities for interacting with the ENS – a decentralized naming system on the Ethereum blockchain. This library allows developers to easily resolve Ethereum addresses from human-readable domain names registered on the ENS, manage ENS domain registrations, and perform various operations related to Ethereum’s naming infrastructure. The <strong class="source-inline">ens</strong> module is included with <strong class="source-inline">web3.py</strong>, which we installed in <a href="B19446_01.xhtml#_idTextAnchor020"><span class="No-Break"><em class="italic">Chapter 1</em></span></a>. To work with it, simply import it using the following <span class="No-Break">code snippet:</span></p>
+<pre class="console">
+from ens import ENS</pre> <p>You can find Jupyter notebooks containing the examples discussed in this chapter in this book’s GitHub repository <span class="No-Break">at </span><a href="https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter04"><span class="No-Break">https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter04</span></a><span class="No-Break">.</span></p>
+<p>Additionally, there is a live dashboard on Dune displaying many of the queries explained in the chapter at <a href="https://dune.com/gabriela/chapter-4-nft">https://dune.com/gabriela/chapter-4-nft</a>. For all Dune dashboards, the query is available by clicking the title of the relevant chart. Here’s <span class="No-Break">an example:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer053">
+<img alt="Figure 4.1 – Where to click to open the query. Dune dashboard by @hildobby (https://dune.com/hildobby/NFTs)" height="259" src="image/B19446_04_01.jpg" width="631"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.1 – Where to click to open the query. Dune dashboard by @hildobby (https://dune.com/hildobby/NFTs)</p>
+<p>We recommend exploring both resources for a <span class="No-Break">comprehensive understanding.</span></p>
+<h1 id="_idParaDest-87"><a id="_idTextAnchor147"/>Enabling unique asset tracking on the blockchain using NFT</h1>
+<p>This section<a id="_idIndexMarker211"/> comprises two main sections: <em class="italic">The business requests</em>, which will unravel the specific demands that were at the origin of this solution, and <em class="italic">The technical solution</em>, which will provide a structural overview of the standard smart contract, its methods, <span class="No-Break">and events.</span></p>
+<h2 id="_idParaDest-88"><a id="_idTextAnchor148"/>The business requests</h2>
+<p>An<a id="_idIndexMarker212"/> asset is considered <strong class="old">fungible</strong> when it shares the same quality and value as another asset of the same nature, making them interchangeable. For example, one dollar is interchangeable with another dollar, and the same applies to native cryptocurrencies and tokens, such as DAI <span class="No-Break">or USDT.</span></p>
+<p>Conversely, if an asset is <strong class="old">non-fungible</strong>, it means that it is unique and cannot be replaced by another because there is no equivalent. Consider Sorolla’s “Walk on the Beach” painting. It is unique and while we can copy it from Google because we admire it, we do not truly own it and cannot <span class="No-Break">prove ownership:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer054">
+<img alt="Figure 4.2 – Sorolla's painting, “Walk on the Beach”" height="226" src="image/B19446_04_02.jpg" width="223"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.2 – Sorolla's painting, “Walk on the Beach”</p>
+<p>A similar, even more acute dilemma arises with digital art. Once a piece of art is on the internet, it can be copied an infinite number of times without proper recognition of authorship or ownership, let alone the payment of royalties for <span class="No-Break">that work.</span></p>
+<p>The<a id="_idIndexMarker213"/> ownership of unique assets that can be tracked on the blockchain using blockchain technology offers a solution to this problem and has revolutionized industries where uniqueness is their trading value, such as art, games, <span class="No-Break">or identity.</span></p>
+<h2 id="_idParaDest-89"><a id="_idTextAnchor149"/>The technical solution</h2>
+<p>The <strong class="old">Ethereum Request for Comment 721</strong>, or <strong class="old">ERC 721</strong> standard, comprises a set of contracts <a id="_idIndexMarker214"/>that allow Ethereum <a id="_idIndexMarker215"/>to implement an API, providing an immutable identity to certain assets on the blockchain. Once that identity is given, those assets can be tracked, valued, sold, and more. The identity of an NFT consists of a pair of two <span class="No-Break">data points:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer055">
+<img alt="Figure 4.3 – Identity of an NFT" height="83" src="image/B19446_04_03.jpg" width="426"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.3 – Identity of an NFT</p>
+<p>The contract address may have different names depending on the industry under consideration. For instance, it may be referred to as<a id="_idIndexMarker216"/> the <strong class="old">registrar</strong> contract when<a id="_idIndexMarker217"/> dealing with ENS or the <strong class="old">collection</strong> contract when <span class="No-Break">studying art.</span></p>
+<p>It’s important to note that with this standard, Ethereum enables connecting an external source, and the smart contract references a third-party server with information about the NFT. This means that if the URI pointed to by the smart contract changes, the information of the NFT may no longer be accessible or may change. Ethereum developers considered storing all the metadata of the assets on the blockchain, but this is prohibitively expensive due to the gas costs associated with registering on the blockchain, which would <span class="No-Break">hinder usability.</span></p>
+<p>The basic contract methods and events for this solution are detailed in ERC 721, as proposed by William Entriken, Dieter Shirley, Jacob Evans, and Nastassia Sachs in 2018. Another valuable source for more information is the Open Zeppelin implementation, which describes each function and method <span class="No-Break">in detail.</span></p>
+<p>The <a id="_idIndexMarker218"/><strong class="source-inline">read</strong> methods we will encounter are <span class="No-Break">as follows:</span></p>
+<ul>
+<li><strong class="source-inline">balanceOf(address _owner)</strong>: This method tells us how many NFTs are owned by a <span class="No-Break">specific address</span></li>
+<li><strong class="source-inline">ownerOf(uint256 _tokenId)</strong>: This method informs us of the address that owns a <span class="No-Break">particular NFT</span></li>
+</ul>
+<p>Optionally, we will see the <span class="No-Break">metadata extension:</span></p>
+<ul>
+<li><strong class="source-inline">name()</strong>: The name of <span class="No-Break">the collection</span></li>
+<li><span class="No-Break"><strong class="source-inline">symbol()</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">tokenURI(uint256 _tokenId)</strong></span></li>
+</ul>
+<p>The enumeration extension is optional and enables a comprehensive view of the collections with the <span class="No-Break">following methods:</span></p>
+<ul>
+<li><span class="No-Break"><strong class="source-inline">totalSupply()</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">tokenByIndex(uint256 _index)</strong></span></li>
+<li><strong class="source-inline">tokenOfOwnerByIndex(_owner, </strong><span class="No-Break"><strong class="source-inline">uint256 _index)</strong></span></li>
+</ul>
+<p>Here are some <span class="No-Break">important events:</span></p>
+<ul>
+<li><strong class="source-inline">Transfer(address indexed _from, address indexed _to, uint256 indexed _tokenId)</strong>: This event is emitted when ownership of the NFT changes. The hashing of this event signature is <strong class="source-inline">0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef</strong>; we will see it in <span class="No-Break">many queries.</span></li>
+<li><strong class="source-inline">Approval(address indexed _owner, address indexed _approved, uint256 </strong><span class="No-Break"><strong class="source-inline">indexed _tokenId)</strong></span><span class="No-Break">.</span></li>
+<li><strong class="source-inline">ApprovalForAll(address indexed _owner, address indexed _operator, </strong><span class="No-Break"><strong class="source-inline">bool _approved)</strong></span><span class="No-Break">.</span></li>
+</ul>
+<p>The application of NFTs, particularly in games, highlighted the high cost of NFTs as initially proposed. Subsequently, another group of authors proposed the ERC 1155 Multi Token standard, also in 2018. ERC-1155 is used for a combination of both fungible tokens and NFTs within <a id="_idIndexMarker219"/>the same contract, saving time and gas costs while reducing redundant code <span class="No-Break">on Ethereum.</span></p>
+<p>We will encounter the following relevant read <span class="No-Break">function method:</span></p>
+<p><strong class="source-inline">balanceOfBatch(address[] calldata _owners, uint256[] calldata _ids)</strong>: This allows you to query the ownership of multiple addresses regarding certain <span class="No-Break">token IDs</span></p>
+<p>The events are <span class="No-Break">as follows:</span></p>
+<ul>
+<li><span class="No-Break"><strong class="source-inline">TransferSingle</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">TransferBatch</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">ApprovalForAll</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">URI</strong></span></li>
+</ul>
+<p>So far, we have listed the events and functions we will encounter when analyzing NFT data. We learned how to interact with them in <a href="B19446_02.xhtml#_idTextAnchor073"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>, so let’s proceed directly to understand the use cases that have generated more data using NFTs and build metrics <span class="No-Break">for<a id="_idTextAnchor150"/> them.</span></p>
+<h1 id="_idParaDest-90"><a id="_idTextAnchor151"/>Blockchain gaming – the GameFi proposal</h1>
+<p>For each <a id="_idIndexMarker220"/>industry, we will briefly review the businesses that are currently active, the players, and the <span class="No-Break">relevant metrics.</span></p>
+<p>These metrics<a id="_idIndexMarker221"/> can be expanded depending on the business case. The <em class="italic">Further reading</em> section contains <span class="No-Break">additional resources.</span></p>
+<h2 id="_idParaDest-91"><a id="_idTextAnchor152"/>Introduction to the business landscape</h2>
+<p>The gaming industry <a id="_idIndexMarker222"/>has its own chapter in the blockchain saga and has been remarkably successful in driving the adoption of this technology while reshaping the landscape of rewards <span class="No-Break">and ownership.</span></p>
+<p>The gaming industry has undergone a significant transformation, shifting from a “pay-to-play” model where players were required to purchase physical cartridges, CDs, or subscriptions to access game content, to a “free-to-play” online format. The advent of blockchain technology has further pushed the boundaries by introducing the <strong class="old">Play-to-Earn</strong> (<strong class="old">P2E</strong>) model. P2E <a id="_idIndexMarker223"/>grants property rights to gamers, allowing them to truly own in-game assets. In the past, players might have acquired in-game perks or items, but they had no real ownership, making it impossible to sell or exchange such assets. The integration of NFTs into the gaming ecosystem has brought about real change, providing players with a genuine sense of ownership and paving the way for the convergence of gaming and finance through blockchain technology. This transformation has extended beyond the realm of the games themselves, impacting players’ lives outside of the virtual world. Consequently, a new business structure has <a id="_idIndexMarker224"/>emerged, known as <strong class="old">gaming guilds</strong>, which are designed to lease relevant in-game assets to players while also offering training and community support to <span class="No-Break">their members.</span></p>
+<p>The rise of blockchain-backed games began in 2018 with Cryptokitties, a game where digital cats could be bred and traded. This game introduced the concept of tradable digital collectibles. A significant milestone followed with Axie Infinity, which onboarded a massive number of non-crypto users into the ecosystem, achieving unprecedented numbers in the industry. Axie Infinity brought mainstream adoption to blockchain gaming. At the time of writing this book, numerous games are being launched, continually pushing the boundaries <span class="No-Break">of innovation.</span></p>
+<p>These blockchain games have created an evolving ecosystem with an economy that extends beyond players. This economy reached non-players, giving them a role, and has even popularized cross-border scholarships as a way to organize players with the support of investors through gaming guilds. This convergence of gaming and finance in a market segment is known as GameFi and is made possible by blockchain technology. Financial concepts and incentives have been integrated into the gaming industry such as yield farming, staking, or governance tokens <span class="No-Break">within games.</span></p>
+<p>GameFi has also democratized access to gaming data, which was previously under the total control of major<a id="_idIndexMarker225"/> gaming corporations. Now, with the right knowledge, we can track assets, players, and the entire in-game economy by querying <span class="No-Break">the blockchain.</span></p>
+<h2 id="_idParaDest-92"><a id="_idTextAnchor153"/>Analytics</h2>
+<p>Now, let’s<a id="_idIndexMarker226"/> analyze a game that claims to have its entire dataset on the <a id="_idIndexMarker227"/>Ethereum network, known as the <strong class="old">Wolf Game</strong>. In this game, sheep and wolves compete in games to earn <strong class="source-inline">$Wool</strong>, the <span class="No-Break">ecosystem’s currency.</span></p>
+<p>To participate in the game, players must own a sheep or a wolf. These characters can be acquired in NFT marketplaces such as OpenSea, which we will define further in the <em class="italic">Redefining the art business with blockchain </em>section later in this chapter. Here is the link to the Wolf Game collection: <a href="https://opensea.io/collection/wolf-game">https://opensea.io/collection/wolf-game</a>. We can start our analysis by identifying the smart contract of the Wolf Game collec<a id="_idTextAnchor154"/>tion, which <span class="No-Break">is </span><span class="No-Break"><strong class="source-inline">0x7f36182dee28c45de6072a34d29855bae76dbe2f</strong></span><span class="No-Break">.</span></p>
+<p class="callout-heading">A note on methodology</p>
+<p class="callout">When working on a project for the first time, especially one that is unfamiliar, we can follow <span class="No-Break">these steps:</span></p>
+<p class="callout">1. Define the specific question we want to answer <span class="No-Break">using data.</span></p>
+<p class="callout">2. Find one transaction that exemplifies the information required to answer <span class="No-Break">the question.</span></p>
+<p class="callout">3. Dissect the transaction, as we learned in <a href="B19446_02.xhtml#_idTextAnchor073"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>, to understand how the smart contract logs <span class="No-Break">the data.</span></p>
+<p>Let’s apply <span class="No-Break">this methodology:</span></p>
+<ol>
+<li>Let’s say we want to determine the number of minted sheep and wolves in the Wolf Game. The number of minted NFTs serves as a valuable indicator of an <span class="No-Break">NFT’s scarcity.</span></li>
+<li>To understand how the smart contract logs the minting data, we will search for a minting transaction. For example, let’s consider the minting of <strong class="old">wolf 4618</strong> under the <strong class="source-inline">0xc7fa87b19a6cc7735c49753442fc034fd6ed5d5c1b5250c56eebed428376272e</strong> <span class="No-Break">transaction hash.</span></li>
+</ol>
+<p>On Etherscan, the<a id="_idIndexMarker228"/> transaction appears <span class="No-Break">as follows:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer056">
+<img alt="Figure 4.4 – An overview of the Etherscan view of the transaction hash under analysis" height="910" src="image/B19446_04_04.jpg" width="932"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.4 – An overview of the Etherscan view of the transaction hash under analysis</p>
+<p>The transaction receipt log is displayed <span class="No-Break">as follows:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer057">
+<img alt="Figure 4.5 – Etherscan view of the transaction log under analysis" height="482" src="image/B19446_04_05.jpg" width="1518"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.5 – Etherscan view of the transaction log under analysis</p>
+<p>We can <a id="_idIndexMarker229"/>also explore the logs in <strong class="source-inline">Chapter4/Games.ipynb</strong> while following the methodology described in <a href="B19446_02.xhtml#_idTextAnchor073"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>, where we retrieve the transaction receipt and decode the logs. The decoded logs reveal the following <span class="No-Break">data structure:</span></p>
+<table class="T---Table _idGenTablePara-1" id="table001-4">
+<colgroup>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><strong class="old">Event name or </strong><span class="No-Break"><strong class="old">Topic [0]</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Transfer</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p>From - <span class="No-Break">Topic [1]</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">0x0000000000000000000000000000000000000000</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p>To - <span class="No-Break">Topic [2]</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><strong class="source-inline">0x0a2542a170aA02B96B588aA3AF8B09AB22a9D7ac</strong> (the EOA that initiated <span class="No-Break">the transaction)</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p>tokenID - <span class="No-Break">Topic [3]</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">4618</strong></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 4.1 – Data structure of the decoded logs</p>
+<p>From these results, we can deduce <span class="No-Break">the following:</span></p>
+<ol>
+<li>The data we are seeking is within the Ethereum <strong class="old">logs</strong> associated with the smart contract address of the Wolf <span class="No-Break">Game: </span><span class="No-Break"><strong class="source-inline">0x7f36182dee28c45de6072a34d29855bae76dbe2f</strong></span><span class="No-Break">.</span></li>
+<li>Within these logs, we need to look for “Transfer” events where the “from” address <span class="No-Break">is </span><span class="No-Break"><strong class="source-inline">0x0000000000000000000000000000000000000000</strong></span><span class="No-Break">.</span></li>
+<li>Finally, we have to count the unique <span class="No-Break"><strong class="source-inline">tokenID</strong></span><span class="No-Break"> values.</span></li>
+</ol>
+<p>If we translate these steps into a SQL query, we can determine that 13,737 NFTs were minted. The SQL query is <span class="No-Break">as follows:</span></p>
+<pre class="console">
+SELECT count (distinct ("topic3")) as total_nfts
+FROM ethereum.logs
+WHERE "contract_address" = 0x7f36182dee28c45de6072a34d29855bae76dbe2f
+AND "topic0" = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+AND "topic1" = 0x0000000000000000000000000000000000000000000000000000000000000000</pre> <p>It is worth <a id="_idIndexMarker230"/>noting that if a transfer originates “from” an address, <strong class="source-inline">0x0000</strong>, we can interpret this as a minting event. If this address or <strong class="source-inline">0x000dEad</strong> is found in the “to” part of the transaction, it can be considered a burning transfer. In the same sense as with cryptocurrencies, <em class="italic">minting</em> an NFT signifies their creation, while <em class="italic">burning</em> means they are sent to an unrecoverable address, effectively removing them from circulation. This can be used to control supply or retire in-game assets that are no longer part of <span class="No-Break">the market.</span></p>
+<p>Another common metric to consider is identifying the <strong class="old">top holders</strong> of a collection. This metric informs us about which addresses hold the most tokens and the quantity they possess. Based on the data structure we examined earlier, we can calculate this metric using the following <span class="No-Break">SQL query:</span></p>
+<pre class="console">
+WITH cte as (
+select address, nftid, sum (indicator) as indicator
+from
+      (select "topic1" as address, "topic3" as nftid, -1 as indicator
+        from ethereum.logs
+        where "contract_address" = 0x7f36182dee28c45de6072a34d29855bae76dbe2f
+        AND "topic0" = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+        union all
+        select "topic2" as address, "topic3" as nftid, 1 as indicator
+        from ethereum.logs
+        where "contract_address" = 0x7f36182dee28c45de6072a34d29855bae76dbe2f
+        AND "topic0" = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef)
+    GROUP BY address, nftid
+    HAVING SUM(indicator) &gt; 0)
+select address, sum (indicator) as total_holdings
+from cte
+group by address
+order by total_holdings DESC
+limit 10</pre> <p>This <a id="_idIndexMarker231"/>query generates a table with two columns – one listing the hexadecimal addresses of the top holders and another indicating the number of NFTs <span class="No-Break">they hold:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer058">
+<img alt="Figure 4.6 – Top holders of NFTs" height="285" src="image/B19446_04_06.jpg" width="946"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.6 – Top holders of NFTs</p>
+<p>We can verify this information on OpenSea analytics (<a href="https://opensea.io/collection/wolf-game/analytics?tab=items">https://opensea.io/collection/wolf-game/analytics?tab=items</a>) to ensure the accuracy of the retrieved data matches the addresses <span class="No-Break">and holdings:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer059">
+<img alt="Figure 4.7 – OpenSea analytics top owners" height="448" src="image/B19446_04_07.jpg" width="773"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.7 – OpenSea analytics top owners</p>
+<p>This <a id="_idIndexMarker232"/>result can also be validated with state data by selecting the <span class="No-Break">following function:</span></p>
+<pre class="console">
+contract.functions.balanceOf(address).call()</pre> <p>In <strong class="source-inline">Chapter4/Games.ipynb</strong>, we apply this function to the listed addresses; the results are the same as the transaction data <span class="No-Break">we queried.</span></p>
+<p>To access state data, we must follow <span class="No-Break">these steps:</span></p>
+<ol>
+<li>Search for the relevant ABI on Etherscan. For the Wolf Game, we already have the ABI in this book’s <span class="No-Break">GitHub repository.</span></li>
+<li>Connect to the Ethereum network <span class="No-Break">using Infura.</span></li>
+<li>Use the <strong class="source-inline">web3.eth.contract()</strong> method to connect the smart contract address and <span class="No-Break">the ABI.</span></li>
+<li>Query the smart contract by executing the <strong class="source-inline">balanceOf()</strong> reading function. In this case, we pass a list of addresses to check the holdings. The result is the same as what we obtained by querying <span class="No-Break">transaction data:</span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer060">
+<img alt="Figure 4.8 – State data on holdings per address" height="266" src="image/B19446_04_08.jpg" width="981"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.8 – State data on holdings per address</p>
+<p>For<a id="_idIndexMarker233"/> additional metrics and insights, consider exploring the Wolf Game dashboard, which is built on <span class="No-Break">Dune: </span><a href="https://dune.com/gabriela/chapter-4"><span class="No-Break">https://dune.com/gabriela/chapter-4</span></a><span class="No-Break">.</span></p>
+<p>Notably, Axie Infinity, operating on its dedicated chain named Ronin, has made a significant impact on the NFT space, until the hack that occurred in March 2022 for an amount of $600 million in ETH. Ronin has its own block explorer and its transactional data is indexed by all the data providers that we analyzed in <a href="B19446_02.xhtml#_idTextAnchor073"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>. One of them, Flipside, maintains an interesting dashboard <span class="No-Break">at </span><a href="https://flipsidecrypto.xyz/dumplings/axie-infinity-axie-infinity-r5iPOK"><span class="No-Break">https://flipsidecrypto.xyz/dumplings/axie-infinity-axie-infinity-r5iPOK</span></a><span class="No-Break">.</span></p>
+<p>The Ronin community is also robust and many developers have joined this ecosystem. The official Axie Infinity Discord server (https://discord.gg/axie) features a “tools-api-etc” channel offering assistance and information. Builders have created specific endpoints to access in-game data. For example, we can explore the REST API (https://documenter.getpostman.com/view/23367645/2s7YfPfEGh#intro) and also the following GraphQL <span class="No-Break">endpoint: </span><a href="https://axie-graphql.web.app/"><span class="No-Break">https://axie-graphql.web.app/</span></a><span class="No-Break">.</span></p>
+<p>Sky Mavis has also provided an official API for retrieving game data. To access this API, we must register so that we can obtain an API key. The documentation is available at <a href="https://docs.skymavis.com/reference/general">https://docs.skymavis.com/reference/general</a>. We can use this API to extract data about the items the game leader owns in the <strong class="source-inline">Chapter4/Games.ipynb</strong> notebook. This is very valuable information for <span class="No-Break">competing players.</span></p>
+<p>Having analyzed the games vertical, let’s delve into another industry where NFTs are being utilized for <span class="No-Break">identity-related purposes.</span></p>
+<h1 id="_idParaDest-93"><a id="_idTextAnchor155"/>Identity in the blockchain</h1>
+<p>As we did in the<a id="_idIndexMarker234"/> previous section, we will briefly review some of the initiatives active in the identity business and understand the players and the <span class="No-Break">relevant metrics.</span></p>
+<h2 id="_idParaDest-94"><a id="_idTextAnchor156"/>Introduction to the business landscape</h2>
+<p>Identity<a id="_idIndexMarker235"/> has long been a focus area for Web3 initiatives. The online domain faces various challenges related to identity, such as solving identity theft, international credit score transfer, and preventing Sybil attacks, <span class="No-Break">among others.</span></p>
+<p>One noteworthy project is “Proof of Humanity,” which aims to create a Sybil-proof list of individuals launched on the Ethereum network. To join the project, an already registered individual must vouch for your profile, thereby expanding the network of trust. The registration span is limited to 2 years to ensure that the registry is continuously updated so that deceased individuals or bots that previously made it into the list are taken out. Identity owners can de-register or update their information. The project’s main page highlights various use cases where verified identity can offer significant benefits, including credit scoring, antispam tools, and <span class="No-Break">self-sovereign identity.</span></p>
+<p>A compelling incentive to encourage more individuals to join this network of trust is the concept of <strong class="old">Universal Basic Income</strong> (<strong class="old">UBI</strong>). UBI, in<a id="_idIndexMarker236"/> the off-chain world, is a welfare policy by which countries provide every citizen with a fixed, unconditional income. “Proof of Humanity” emulates this policy by distributing a token called $UBI to all successfully registered identities in the protocol. We can find relevant addresses on this web page: https://kleros.gitbook.io/docs/developer/deployment-addresses. An interesting $UBI dashboard can be found <span class="No-Break">at </span><a href="https://dune.com/jeremyarbid/Proof-of-Humanity-Universal-Basic-Income-(UBI)"><span class="No-Break">https://dune.com/jeremyarbid/Proof-of-Humanity-Universal-Basic-Income-(UBI)</span></a><span class="No-Break">.</span></p>
+<p class="callout-heading">Note on Sybil attacks</p>
+<p class="callout">A Sybil attack constitutes a security threat to online systems in which one entity seeks to gain control over the network by creating multiple accounts, nodes, or computers. A simple example involves one person creating multiple social media accounts to manipulate a <span class="No-Break">poll’s outcome.</span></p>
+<p>The main product that leverages NFTs in this field is<a id="_idIndexMarker237"/> the <strong class="old">Blockchain Name Service</strong>. In <a href="B19446_02.xhtml#_idTextAnchor073"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>, we introduced the protocol names of <strong class="old">ENS</strong> for <strong class="old">Ethereum Name Service</strong> and <strong class="old">RNS</strong> for <strong class="old">RIF Name Service</strong>. These projects follow the concept of<a id="_idIndexMarker238"/> the traditional <strong class="old">Domain Name Service</strong> (<strong class="old">DNS</strong>), which<a id="_idIndexMarker239"/> replaced IP addresses with human-readable <a id="_idIndexMarker240"/>names for accessing websites. In the same fashion, these protocols lease or sell human-readable names on the blockchain, which help replace the long hex strings that identify an address, making it easier to interact with brands and individuals on the blockchain. An added advantage is that these name services are decentralized and thus impervious to censorship by <span class="No-Break">central authorities.</span></p>
+<p>Several<a id="_idIndexMarker241"/> projects are active in addressing this use case, each presenting distinguishable value propositions. Some protocols offer name services for sale, while others provide leasing options, including variations such as subdomains. Most of these projects are built on the common foundation of the <span class="No-Break">ERC-721 standard.</span></p>
+<p>To extract data from these projects, start by locating the documentation and the list of smart contracts that constitute the entire project. Well-established projects typically provide a transparent list of contract addresses, as <span class="No-Break">illustrated here:</span></p>
+<table class="T---Table _idGenTablePara-1" id="table002-2">
+<colgroup>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Network</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Contract address</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">Ethereum mainnet</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">0x…</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p>Ethereum <span class="No-Break">testnet (Goerli)</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">0x…</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">Polygon mainnet</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">0x…</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">Rootstock mainnet</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">0x…</strong></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 4.2 – Typical reference table of a project’s addresses</p>
+<p>This transparency simplifies access and verification. For ENS, the deployed smart contracts can be found <span class="No-Break">at </span><a href="https://docs.ens.domains/ens-deployments"><span class="No-Break">https://docs.ens.domains/ens-deployments</span></a><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-95"><a id="_idTextAnchor157"/>Analytics</h2>
+<p>The <a id="_idIndexMarker242"/>ENS library streamlines interactions with the protocol and some of its applications can be found in <strong class="source-inline">Chapter04/Identity.ipynb</strong>. The following code snippet gets us the owner address of a <span class="No-Break">specific ENS:</span></p>
+<pre class="console">
+from ens import ENS
+ns = ENS.fromWeb3(web3)
+ns.owner("COMPLETE WITH THE ENS OF CHOICE")</pre> <p>The protocol comprises two types of <span class="No-Break">smart contracts:</span></p>
+<ul>
+<li><em class="italic">Registry</em>, which manages the <span class="No-Break">minted names</span></li>
+<li><em class="italic">Registrar</em>, which handles the procurement of <span class="No-Break">new domains</span></li>
+</ul>
+<p>The registrar addresses for each domain are <span class="No-Break">as follows:</span></p>
+<table class="T---Table _idGenTablePara-1" id="table003">
+<colgroup>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Domain</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Contract address</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><strong class="source-inline">.</strong><span class="No-Break"><strong class="source-inline">eth</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><strong class="source-inline">.</strong><span class="No-Break"><strong class="source-inline">art</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">0x828D6e836e586B53f1da3403FEda923AEd431019</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><strong class="source-inline">.</strong><span class="No-Break"><strong class="source-inline">xyz</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">0x58774Bb8acD458A640aF0B88238369A167546ef2</strong></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 4.3 – Registrars’ addresses. Source: https://docs.ens.domains/ens-deployments</p>
+<p>In this book’s GitHub repository, we have added the permanent registrar ABI from Etherscan, which aids in obtaining state data about specific token holders or a particular ENS. The following code snippet provides information about how many NFTs are held by <span class="No-Break">an address:</span></p>
+<pre class="console">
+ethregContract.functions.balanceOf(owner_address).call()</pre> <p><strong class="source-inline">Chapter04/Identity.ipynb</strong> shows how to extract additional token information, such as the token ID and expiration date. The token ID corresponds to the hash of the normalized name or label that constitutes the domain. With this information, it is possible to retrieve the token’s metadata, such as the associated image (if it exists) from the ENS API available <span class="No-Break">at </span><a href="https://metadata.ens.domains/docs"><span class="No-Break">https://metadata.ens.domains/docs</span></a><span class="No-Break">.</span></p>
+<p>It is worth noting that the ENS documentation includes a special “ENS Data Guide” with a list of resources. The protocol has enabled a subgraph on <strong class="old">The Graph</strong> service, and there are numerous tables available on Dune’s SQL service. Please consider exploring <a href="https://dune.com/makoto/ens">https://dune.com/makoto/ens</a>, which provides an overview of the ENS landscape metrics, including total ENS names created, participating addresses, and monthly variations in <span class="No-Break">these metrics.</span></p>
+<p>I invite you to explore these metrics listed for other projects or networks. Here is a list of some <span class="No-Break">of them:</span></p>
+<ul>
+<li><strong class="old">Unstoppable </strong><span class="No-Break"><strong class="old">domains</strong></span><span class="No-Break">: </span><a href="https://unstoppabledomains.com/"><span class="No-Break">https://unstoppabledomains.com/</span></a></li>
+<li><strong class="old">RIF name </strong><span class="No-Break"><strong class="old">service</strong></span><span class="No-Break">: </span><a href="https://dev.rootstock.io/rif/rns/mainnet/"><span class="No-Break">https://dev.rootstock.io/rif/rns/mainnet/</span></a></li>
+<li><strong class="old">Bitcoin name </strong><span class="No-Break"><strong class="old">service</strong></span><span class="No-Break">: </span><a href="https://btc.us/"><span class="No-Break">https://btc.us/</span></a></li>
+</ul>
+<p>With that, we <a id="_idIndexMarker243"/>have explained what the blockchain name service is and analyzed the sources of data and the main metrics of ENS, which is one of the products that leverages digital uniqueness associated with identity. Currently, only 2% of the addresses that were active in the last year hold an ENS, indicating that there is still much work to be done in the context of identity within the <span class="No-Break">Web3 space.</span></p>
+<p>In the next section, we will examine the impact of digital uniqueness in the world <span class="No-Break">of art.</span></p>
+<h1 id="_idParaDest-96"><a id="_idTextAnchor158"/>Redefining the art business with blockchain</h1>
+<p>In this section, we <a id="_idIndexMarker244"/>will briefly review the Web3 landscape, who the active participants are, and some <span class="No-Break">relevant metrics.</span></p>
+<h2 id="_idParaDest-97"><a id="_idTextAnchor159"/>Introduction to the business landscape</h2>
+<p>One of the <a id="_idIndexMarker245"/>most significant applications of ERC-721-backed protocols, in terms of transaction volume, is in the field of art. Blockchain technology has had a profound impact on the art business by enabling the trade of unique pieces and tracking authenticity, which is something that investors and galleries invest a lot of time and effort to guarantee. Traditional art players are already active in this field in multiple ways, from venturing into the world of digital art, as exemplified by the Belvedere Museum, which offers 10,000 digital pieces of the Klimt masterpiece “The Kiss,” to offering traditional art on Web3 native platforms, expanding their services to a <span class="No-Break">new audience.</span></p>
+<p>Furthermore, companies originally not related to art are exploring the landscape. Covalent recently <a id="_idIndexMarker246"/>analyzed the revenues derived from Nike’s entry into this technology, with the issuance of NFTs for its iconic sneakers. This move generated nearly $200 million from primary and secondary sales, which represent 0.4% of the revenue of this billion-dollar company in its initial foray <span class="No-Break">into Web3.</span></p>
+<p>New <strong class="old">decentralized applications</strong> (<strong class="old">dApps</strong>) have<a id="_idIndexMarker247"/> emerged, creating a direct connection between artists and consumers, often eliminating intermediaries. One example is <strong class="old">anotherblock.io</strong>, which <a id="_idIndexMarker248"/>enables the tokenization of music rights and the distribution of royalties to NFT holders. For instance, a Rihanna song has been tokenized as an NFT with the <strong class="source-inline">0xCB8399D84e17fD5B4e955C716647c7BB2C35Ab63</strong> contract, offering royalties to the holders based on the <span class="No-Break">artist’s earnings.</span></p>
+<p>The ecosystem is vast, dynamic, and continuously expanding, offering plenty of questions for data investigators <span class="No-Break">to answer.</span></p>
+<p>The participants in this industry can be categorized <span class="No-Break">as follows:</span></p>
+<ul>
+<li><span class="No-Break">Artist</span></li>
+<li>Marketplace (may or may not <span class="No-Break">be present)</span></li>
+<li><span class="No-Break">Client/collector</span></li>
+</ul>
+<p>An <strong class="old">artist</strong> can be<a id="_idIndexMarker249"/> an individual or a company that creates a rare and unique piece of artwork, whether it’s a painting, a musical composition, or any file that can be uploaded online and registered. The artist may choose to sell it and, in some instances, establish a royalty structure to receive a percentage of each sale after the initial one (<span class="No-Break">secondary sales).</span></p>
+<p>A <strong class="old">marketplace</strong> is a <a id="_idIndexMarker250"/>platform, typically a dApp, where art owners looking to sell and clients interested in buying can connect. It facilitates the creation of collections and is visually organized to showcase art pieces, providing all the necessary information and facilitating fund transfers. These marketplaces have evolved into beautifully organized online galleries with thousands of artworks on display. Their revenue is derived from a percentage of the proceeds from each sale conducted on their platform, and they may also charge fees for creating collections or displaying them. Relevant marketplaces include Open Sea, Rarible, Blur, <span class="No-Break">and X2Y2.</span></p>
+<p><strong class="old">Clients</strong>, whether<a id="_idIndexMarker251"/> they’re collectors or <a id="_idIndexMarker252"/>art traders, are individuals willing to purchase artwork for personal enjoyment or speculation. If they own an artwork, they may sell it, and if the smart contract allows, a portion of the secondary sale price is transferred to the artist <span class="No-Break">as royalties.</span></p>
+<p>In this structure, the marketplace is optional. An artist can mint their collection and offer it for sale directly, although this approach requires a substantial amount of professional work to attract potential buyers. Marketplaces serve <span class="No-Break">this role.</span></p>
+<p>The art market is constantly evolving, and new players may emerge in <span class="No-Break">the future.</span></p>
+<h2 id="_idParaDest-98"><a id="_idTextAnchor160"/>Data extraction</h2>
+<p>Let’s discuss the<a id="_idIndexMarker253"/> data extraction process by considering <span class="No-Break">two cases.</span></p>
+<h3>Bored Ape collection case</h3>
+<p>One of the most famous<a id="_idIndexMarker254"/> digital art pieces that has been <a id="_idIndexMarker255"/>traded is the <strong class="old">Bored Ape Yacht Club</strong> (<strong class="old">BAYC</strong>) NFT. At the time of writing, it has generated 1,307,484 in traded ETH. The use case of the NFT is to serve as the Yacht Club membership card, which grants access to members-only benefits. The company that created this collection is called Yugga Labs and has issued a coin named Ape Coin. Based on this collection’s importance in the digital art market, we will use it to learn about data in the NFT <span class="No-Break">artistic world.</span></p>
+<p>According to the Bored Ape collection web page (<a href="https://boredapeyachtclub.com/#/provenance">https://boredapeyachtclub.com/#/provenance</a>), the collection address <span class="No-Break">is </span><span class="No-Break"><strong class="source-inline">0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D</strong></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer061">
+<img alt="Figure 4.10 – BAYC’s address web page" height="406" src="image/B19446_04_09.jpg" width="1362"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.10 – BAYC’s address web page</p>
+<p>Each Bored Ape will be identified by its token ID. Let’s take token ID 6633 as a study sample to analyze further – this can be found <span class="No-Break">in </span><span class="No-Break"><strong class="source-inline">Chapter04/Art.ipynb</strong></span><span class="No-Break">.</span></p>
+<p>With the following script, we can find the <span class="No-Break">owner’s address:</span></p>
+<pre class="console">
+baContract.functions.ownerOf(6633).call())</pre> <p>We can<a id="_idIndexMarker256"/> use any API that enables us to query a specific address to search the transfer history of Bored Ape 6633 up to the current owner. In the notebook, we have reviewed a quick search of the response that’s retrieved from the <span class="No-Break">Covalent API.</span></p>
+<p class="callout-heading">A note on blockchain investigations</p>
+<p class="callout">Nick Furneaux, when providing hints for blockchain investigations, suggests “<em class="italic">Use the first five or six characters of an address when taking notes. The lengthy addresses of Bitcoin, Ethereum, or any cryptocurrency that uses private keys as its addressing system make it complex for the human eye to process. Using just the first five or six characters makes the string easier for your mind to process and recognize if you see </em><span class="No-Break"><em class="italic">it again</em></span><span class="No-Break">."</span></p>
+<p>Please also refer to a schematic representation showing the last three transfers of Bored Ape 6633 to the current owner (Neymar Jr.). Note that we use all the characters of the addresses and hashes for editorial purposes, but Nick Furneaux’s suggestion has proven to be <span class="No-Break">very useful:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer062">
+<img alt="Figure 4.11 – Summary of the last three transactions of BAYC token 6633" height="1577" src="image/B19446_04_10.jpg" width="1115"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.11 – Summary of the last three transactions of BAYC token 6633</p>
+<p>If we search the<a id="_idIndexMarker257"/> last transfer of the token, we will get the following transaction hash and the details (as seen <span class="No-Break">on Etherscan):</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer063">
+<img alt="Figure 4.12 – Etherscan view of the transaction under analysis" height="885" src="image/B19446_04_11.jpg" width="1470"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.12 – Etherscan view of the transaction under analysis</p>
+<p>A very user-friendly token profile can be found in the marketplaces. For example, for this token, we can follow the link to OpenSea’s <span class="No-Break">website: </span><a href="https://opensea.io/assets/ethereum/0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d/6633"><span class="No-Break">https://opensea.io/assets/ethereum/0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d/6633</span></a><span class="No-Break">.</span></p>
+<p>Relevant information such as the price paid, the number of transactions of the token, and more can be extracted from the transaction’s <strong class="old">logs</strong>, in the same fashion as we analyzed in the <em class="italic">Blockchain gaming – the GameFi </em><span class="No-Break"><em class="italic">proposal</em></span><span class="No-Break"> section.</span></p>
+<p>In the next section, we will explore the marketplaces that have a very relevant role in this <span class="No-Break">new industry.</span></p>
+<h3>Marketplaces</h3>
+<p>As<a id="_idIndexMarker258"/> anticipated, marketplaces currently play a significant role in the digital art ecosystem, leading to a high demand for data analysis related to them. To meet this demand, data services are gradually incorporating additional data points and preprocessing raw log tables, enhancing simplicity to facilitate analysts’ access to information more easily <span class="No-Break">and quickly.</span></p>
+<p>In Dune, there is a specific <a id="_idIndexMarker259"/>table named <strong class="old">nft.trades</strong> that indexes trades from the main marketplaces. According to their documentation (<a href="https://dune.com/docs/data-tables/spellbook/top-tables/nft.trades/">https://dune.com/docs/data-tables/spellbook/top-tables/nft.trades/</a>), the trades for the following marketplaces can <span class="No-Break">be found:</span></p>
+<ul>
+<li><span class="No-Break">OpenSea</span></li>
+<li><span class="No-Break">Rarible</span></li>
+<li><span class="No-Break">SuperRare</span></li>
+<li><span class="No-Break">CryptoPunks</span></li>
+<li><span class="No-Break">Foundation</span></li>
+<li><span class="No-Break">LooksRare</span></li>
+</ul>
+<p>Also, in Increment, there is a specific table named <strong class="source-inline">reports.nft_sales_all_chains</strong> with 46 marketplaces in the 20 distinct chains they have indexed. NFT activity is not limited to Ethereum. Depending on the benefits of each chain, users will move their assets from one chain to the other and companies will build products that leverage the best of each of them. As analysts, we have to be ready to conduct or interpret multi-chain analysis, where this Increment tool is <span class="No-Break">particularly useful.</span></p>
+<p>An additional feature made possible thanks to blockchain is the direct distribution of <strong class="old">royalties</strong> on secondary sales. Since the artist’s address is known and will always be linked to that piece of art, marketplaces such as OpenSea or Rarible set the possibility to send the author a percentage of secondary sales of the art piece in their smart contracts. This has been solved in the physical world by placing an intermediary that usually takes a significant percentage of the artist’s revenue. In Web3, this is done by design with a <span class="No-Break">smart contract.</span></p>
+<p>Each marketplace has its own rules, and they may also vary depending on the market climate. Some marketplaces have the royalty distribution feature marked as optional, so there are collections that may not be generating revenue for the author on secondary sales. What will always be generated is revenue for <span class="No-Break">the platform.</span></p>
+<p>The<a id="_idIndexMarker260"/> relevant percentages can be found in the documentation for each marketplace, so it is necessary to go through it to make the <span class="No-Break">right query:</span></p>
+<ul>
+<li><span class="No-Break">OpenSea: </span><a href="https://docs.opensea.io/docs/10-setting-fees-on-secondary-sales"><span class="No-Break">https://docs.opensea.io/docs/10-setting-fees-on-secondary-sales</span></a></li>
+<li><span class="No-Break">Rarible: </span><a href="https://docs.rarible.org/overview/tokens-fees-royalties/#royalties"><span class="No-Break">https://docs.rarible.org/overview/tokens-fees-royalties/#royalties</span></a></li>
+</ul>
+<p>Dune has a <strong class="source-inline">fees</strong> table that we can query with the following <span class="No-Break">SQL snippet:</span></p>
+<pre class="console">
+select count (distinct (tx_hash)) as transactions,
+       sum (platform_fee_amount_usd) as platform_fee,
+       sum (royalty_fee_amount_usd) as authors_royalty,
+       sum(royalty_fee_amount) as total_royalties
+from nft.fees
+where blockchain='ethereum'
+and nft_contract_address= '0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d'
+and project = 'opensea'</pre> <p>Another approach is querying the <strong class="source-inline">trades</strong> table and calculating the <strong class="source-inline">fees</strong> percentage out of the price of <span class="No-Break">the sale:</span></p>
+<pre class="console">
+select count (distinct ("tx_hash")) as transactions,
+       sum ("original_amount")*0.025 as platform_fee
+from nft.trades
+where nft_contract_address= 0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d
+and platform = 'OpenSea'</pre> <p>The result of these queries, among many other metrics, can be found on the Dune dashboard <span class="No-Break">at </span><a href="https://dune.com/gabriela/chapter-4-nft"><span class="No-Break">https://dune.com/gabriela/c<span id="_idTextAnchor161"/>hapter-4-nft</span></a><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-99"><a id="_idTextAnchor162"/>Floor price and wash trading</h2>
+<p>Let’s look at additional metrics that are relevant for NFTs in the <span class="No-Break">art business.</span></p>
+<p><strong class="old">Floor price</strong>: As <a id="_idIndexMarker261"/>anticipated in <a href="B19446_01.xhtml#_idTextAnchor020"><span class="No-Break"><em class="italic">Chapter 1</em></span></a>, the floor price of a collection can be defined as the minimum price of any NFT at a given time. This <a id="_idIndexMarker262"/>price answers the question of how much money is necessary to enter into the collection as a buyer while taking away any additional considerations that may add to the price, such as rarity, the identity of the seller, and <span class="No-Break">so on.</span></p>
+<p>This value may be heavily impacted by outliers and manipulated in the case of collections with centralized ownership, meaning that a small group of people have a large number of the NFTs of that collection, and it is not very liquid. A liquid asset can be rapidly converted into cash while retaining its market value. One way to avoid getting a floor price number that is impacted by outliers is to compare the value in multiple marketplaces or to calculate the median over a <span class="No-Break">certain period.</span></p>
+<p>A query to obtain the median prices for the BAYC collection could look like the following <span class="No-Break">SQL snippet:</span></p>
+<pre class="console">
+with cte1 as (select min ("amount_original") as min_price,
+        "project" as platform, ----platform
+        "block_time"
+from nft.trades
+where nft_contract_address= 0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d
+and block_time &gt; timestamp '2022-01-31 00:00:00'
+and block_time &lt; timestamp '2023-01-31 00:00:00'
+and blockchain= 'ethereum'
+and project in ('looksrare','opensea')
+group by project, block_time)
+select approx_percentile(min_price, 0.5) as floor_price , platform  ------  avg (min_price)
+from cte1
+group by platform</pre> <p>The result<a id="_idIndexMarker263"/> of the query can be seen in the following graph. The live version of this graph can be found on the Dune dashboard for this chapter <span class="No-Break">at </span><a href="https://dune.com/gabriela/chapter-4-nft"><span class="No-Break">https://dune.com/gabriela/chapter-4-nft</span></a><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer064">
+<img alt="Figure 4.13 – Floor price for 2022" height="265" src="image/B19446_04_12.jpg" width="978"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.13 – Floor price for 2022</p>
+<p>Another <a id="_idIndexMarker264"/>source of information for this metric is from specialized websites such as NFT Bank (<a href="https://nftbank.ai/">https://nftbank.ai/</a>) and oracles that aggregate data from various sources, both on-chain and off-chain. Although we do not have control over how these sources calculate the price, they can serve as useful points of comparison for our calculations. For Chainlink’s response regarding floor price, you can refer <span class="No-Break">to </span><span class="No-Break"><strong class="source-inline">Chapter4/Art.ipynb</strong></span><span class="No-Break">.</span></p>
+<p><strong class="old">Wash trading</strong>: Wash trading<a id="_idIndexMarker265"/> is the act of artificially<a id="_idIndexMarker266"/> creating transactions around a certain asset to inflate its price. This is a form of market manipulation that, in many jurisdictions, is considered illegal in non-crypto financial markets. If we apply the same criteria, we may consider wash trading as a form of fraud as prices do not reflect real demand but rather result from manipulation by the project owners. One of the objectives of project owners is to <a id="_idIndexMarker267"/>generate a <strong class="old">fear of missing out</strong> (<strong class="old">FOMO</strong>) around a certain collection. For example, increasing the floor price of a collection and having it appear in marketplace rankings can create a sense of urgency among potential buyers. Another objective may be to profit from the incentive programs launched by marketplaces to <span class="No-Break">attract users.</span></p>
+<p>A great set of two articles written by <strong class="source-inline">@hildobby</strong> highlights that wash trading is widespread in the NFT world and can significantly impact our metrics during analysis. The author proposes some basic checks to identify <span class="No-Break">wash trading:</span></p>
+<ul>
+<li>When the buyer and seller addresses <span class="No-Break">are same:</span></li>
+</ul>
+<div>
+<div class="IMG---Figure" id="_idContainer065">
+<img alt="Figure 4.14 – Premise 1 of wash trading" height="188" src="image/B19446_04_13.jpg" width="336"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.14 – Premise 1 of wash trading</p>
+<ul>
+<li>When the owner of two addresses transfers the same NFT between those <span class="No-Break">addresses repeatedly:</span></li>
+</ul>
+<div>
+<div class="IMG---Figure" id="_idContainer066">
+<img alt="Figure 4.15 – Premise 2 of wash trading" height="286" src="image/B19446_04_14.jpg" width="338"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.15 – Premise 2 of wash trading</p>
+<ul>
+<li>If the <a id="_idIndexMarker268"/>same addresses purchased or sold the same NFT more than <span class="No-Break">three times:</span></li>
+</ul>
+<div>
+<div class="IMG---Figure" id="_idContainer067">
+<img alt="Figure 4.16 – Premise 3 of wash trading" height="354" src="image/B19446_04_15.jpg" width="448"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.16 – Premise 3 of wash trading</p>
+<ul>
+<li>If the <a id="_idIndexMarker269"/>buyer and seller were funded by the same “<span class="No-Break">mother” address:</span></li>
+</ul>
+<div>
+<div class="IMG---Figure" id="_idContainer068">
+<img alt="Figure 4.17 – Premise 4 of wash trading" height="219" src="image/B19446_04_16.jpg" width="348"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.17 – Premise 4 of wash trading</p>
+<p>The articles can be found in the Dune community blogs. You can get the queries by clicking on the dashboard’s <span class="No-Break">titles: </span><a href="https://dune.com/hildobby/nfts-wash-trading"><span class="No-Break">https://dune.com/hildobby/nf<span id="_idTextAnchor163"/>ts-wash-trading</span></a><span class="No-Break"><span class="hidden">.</span></span></p>
+<p>Dune also has a table named <strong class="source-inline">nft.wash_trades</strong> that specifically breaks down each transaction according to the wash trading criteria just described. A brief explanation of the columns of the table can be <span class="No-Break">seen here:</span></p>
+<table class="T---Table _idGenTablePara-1" id="table004">
+<colgroup>
+<col/>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body"/>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Criteria</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Column Name</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p>1</p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>When the buyer and seller addresses are <span class="No-Break">the same</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">filter_1_same_buyer_seller</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p>2</p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>When the owner of two addresses transfers the same NFT between those two <span class="No-Break">addresses repeatedly</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">Filter_2_back_and_forth_trade</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p>3</p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>If the same addresses purchased or sold the same NFT more than <span class="No-Break">three times</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">Filter_3_bought_or_sold_3x</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p>4</p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>If the buyer and seller were funded by the same “<span class="No-Break">mother” address</span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">filter_4_first_funded_by_same_wallet</strong></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><a id="_idTextAnchor164"/>Table 4.4 – Relevant columns of nft.wash_trades</p>
+<p>The final column <a id="_idIndexMarker270"/>contains a flag for <strong class="source-inline">is_wash_trade</strong>, which can be either <strong class="source-inline">true</strong> or <strong class="source-inline">false</strong>. With a simple query, we can check whether there are wash trading transactions on any project, or calculate the percentage of wash trading for a project. For example, let’s query the percentage of wash trading transactions for the <span class="No-Break">BAYC project:</span></p>
+<pre class="console">
+with is_wash as (select count (distinct tx_hash) as wash_trades, nft_contract_address
+from nft.wash_trades
+where is_wash_trade = true
+and nft_contract_address= 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D
+group by nft_contract_address),
+total_tx as (
+select count (distinct tx_hash) as wash_trades_total, nft_contract_address
+from nft.wash_trades
+where nft_contract_address=0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D
+group by nft_contract_address)
+select wash_trades, wash_trades_total, (CAST(wash_trades AS double) / CAST(wash_trades_total AS double))*100 as wash_trading_percentage
+from total_tx t
+left join is_wash i
+on t.nft_contract_address=i.nft_contract_address</pre> <p>The <a id="_idIndexMarker271"/>result is that 13% of the transactions comply with one or more of the wash trading conditions <span class="No-Break">listed here:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer069">
+<img alt="Figure 4.18 – Wash trades of the BAYC project" height="172" src="image/B19446_04_17.jpg" width="908"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.18 – Wash trades of the BAYC project</p>
+<p>This database offered by Dune is an excellent source to study projects <span class="No-Break">before investing.</span></p>
+<p>A complete list of additional motifs and patterns, along with a categorization of the level of complexity involved in the wash trading schema, is presented in the paper <em class="italic">Market Microstructure of Non-Fungible Tokens</em>, by Mayukh Mukhopadhyay and Kaushik Ghosh, and is referenced in the <em class="italic">Further </em><span class="No-Break"><em class="italic">reading</em></span><span class="No-Break"> section.</span></p>
+<h2 id="_idParaDest-100"><a id="_idTextAnchor165"/>A word on anti-money laundering (AML) practices</h2>
+<p>Money <a id="_idIndexMarker272"/>laundering and terror financing may seem unrelated to our work, but identifying abnormal money flows heavily relies on data analysis, and government attention is increasingly turning to the world <span class="No-Break">of Web3.</span></p>
+<p>Pieces <a id="_idIndexMarker273"/>of art have been used as a venue for money laundering in the past. In the traditional art market, various entities such as galleries, auction houses, dealers, and more interact and have knowledge that supports pricing in a relatively controlled environment. However, the Web3 market is intentionally more open, with anyone able to create and sell a collection without intermediaries. The price is determined by the interaction of supply and demand, and value can fluctuate subjectively. AML practitioners see a risk of money laundering occurring in <span class="No-Break">this environment.</span></p>
+<p>The sorts of <a id="_idIndexMarker274"/>crimes that AML provisions try to avoid are serious, and analysts be aware when some abnormal <a id="_idIndexMarker275"/>patterns appear. Examples of suspicious patterns may include constant outliers in the floor price of some NFTs or instances of wash trading. A recent paper issued by the US Government named <em class="italic">Study of the Facilitation of Money Laundering and Terror Finance through the Trade in Works of Art</em> mentioned wash trading as a way to self-launder flows of money in the following terms: “<em class="italic">Furthermore, NFTs can be used to conduct self-laundering, where criminals may purchase an NFT with illicit funds and proceed to transact with themselves to create records of sales on the blockchain. The NFT could then be sold to an unwitting individual who would compensate the criminal with clean funds not tied to a </em><span class="No-Break"><em class="italic">prior crime.</em></span><span class="No-Break">”</span></p>
+<h1 id="_idParaDest-101"><a id="_idTextAnchor166"/>Summary</h1>
+<p>In this chapter, we delved into the world of NFTs, exploring their structure and gaining insights into acquiring data for three crucial use cases. We took a deep dive into the game use case, with the analysis of the Wolf Game. Additionally, we examined ENS, shedding light on its role in online identity. Finally, we ventured into the expansive and ever-evolving art ecosystem, where we covered the activities of artists and marketplaces and generated metrics related to floor price and wash trading. In all these cases, we combined metrics derived from transactional data duly showcased on a Dune dashboard (https://dune.com/gabriela/chapter-4-nft) and state data in this book’s <span class="No-Break">Jupyter notebooks.</span></p>
+<p>It is important to note that the applications we’ve explored here are just the tip of the iceberg. The NFT landscape is incredibly diverse, and we might encounter requests to analyze NFTs in various other domains, such as fashion, proof-of-attendance protocols (POAPs) for specific events, government registries undergoing migration, or even non-nominative airplane tickets, as exemplified <span class="No-Break">by TravelX.</span></p>
+<p>Having the ability to comprehend these diverse NFT products poses intriguing questions that open new avenues for exploration. If we join on-chain data with Web2 data like some initiatives are doing (for example, <a href="https://www.spindl.xyz/">https://www.spindl.xyz/</a>), we can enhance the user base profiling of the participants of a certain NFT collection and improve the community’s engagement, develop more targeted features, and improve our product based on <span class="No-Break">data-driven decisions.</span></p>
+<p>In the upcoming chapter, we’ll shift our focus to the <strong class="old">decentralized finance</strong> (<strong class="old">DeFi</strong>) industry, where we’ll explore its products and <span class="No-Break">their impact.</span></p>
+<h1 id="_idParaDest-102"><a id="_idTextAnchor167"/>Further reading</h1>
+<p>To complement this chapter, the following links <span class="No-Break">may help:</span></p>
+<ul>
+<li><span class="No-Break">Technical introduction</span><ul><li>More on the EIP 1155 <span class="No-Break">proposal: </span><a href="https://ethereum.org/en/developers/docs/standards/tokens/erc-1155/"><span class="No-Break">https://ethereum.org/en/developers/docs/standards/tokens/erc-1155/</span></a></li><li>More on the EIP 721 <span class="No-Break">proposal: </span><a href="https://eips.ethereum.org/EIPS/eip-721"><span class="No-Break">https://eips.ethereum.org/EIPS/eip-721</span></a></li><li>Implementation by Open <span class="No-Break">Zeppelin: </span><a href="https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#ERC721"><span class="No-Break">https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#ERC721</span></a></li><li>How to build, deploy, and mint an NFT with Web3.py in Google Colab. Please have a look at these <span class="No-Break">four videos:</span><ol><li class="lower-roman"><em class="italic">Build a Solidity 0.8.12 NFT Smart Contract </em><span class="No-Break"><em class="italic">2022</em></span><span class="No-Break">: </span><a href="https://www.youtube.com/watch?v=SQ-chPSNgGw&amp;list=PLw-9a9yL-pt0tD7ZBci5ybHy-T2XuHBtV&amp;index=41"><span class="No-Break">https://www.youtube.com/watch?v=SQ-chPSNgGw&amp;list=PLw-9a9yL-pt0tD7ZBci5ybHy-T2XuHBtV&amp;index=41</span></a></li><li class="lower-roman"><em class="italic">Compile an NFT Smart Contract with </em><span class="No-Break"><em class="italic">Python</em></span><span class="No-Break">: </span><a href="https://www.youtube.com/watch?v=HOJ-Xl9_FYg&amp;list=PLw-9a9yL-pt0tD7ZBci5ybHy-T2XuHBtV&amp;index=42"><span class="No-Break">https://www.youtube.com/watch?v=HOJ-Xl9_FYg&amp;list=PLw-9a9yL-pt0tD7ZBci5ybHy-T2XuHBtV&amp;index=42</span></a></li><li class="lower-roman"><em class="italic">Deploy an NFT Smart Contract with </em><span class="No-Break"><em class="italic">Python</em></span><span class="No-Break">: </span><a href="https://www.youtube.com/watch?v=lL5s9FDYo64&amp;list=PLw-9a9yL-pt0tD7ZBci5ybHy-T2XuHBtV&amp;index=44"><span class="No-Break">https://www.youtube.com/watch?v=lL5s9FDYo64&amp;list=PLw-9a9yL-pt0tD7ZBci5ybHy-T2XuHBtV&amp;index=44</span></a></li><li class="lower-roman"><em class="italic">Interact with an NFT Smart Contract in </em><span class="No-Break"><em class="italic">Python</em></span><span class="No-Break">: </span><a href="https://www.youtube.com/watch?v=DjMoJEnnvXs&amp;list=PLw-9a9yL-pt0tD7ZBci5ybHy-T2XuHBtV&amp;index=45"><span class="No-Break">https://www.youtube.com/watch?v=DjMoJEnnvXs&amp;list=PLw-9a9yL-pt0tD7ZBci5ybHy-T2XuHBtV&amp;index=45</span></a></li></ol></li></ul></li>
+<li><span class="No-Break">Games:</span><ul><li>A very interesting analysis of the Game Fi landscape by <span class="No-Break">Covalent: </span><a href="https://www.covalenthq.com/blog/gamefi-ebook/"><span class="No-Break">https://www.covalenthq.com/blog/gamefi-ebook/</span></a></li><li>Interesting analysis on a game <span class="No-Break">NFT: </span><span class="No-Break">https://dune.com/sunflower_land/analytics</span></li></ul></li>
+<li><span class="No-Break">Identity</span><ul><li>More on proof of <span class="No-Break">humanity: </span><a href="https://kleros.gitbook.io/docs/products/proof-of-humanity/proof-of-humanity-tutorial"><span class="No-Break">https://kleros.gitbook.io/docs/products/proof-of-humanity/proof-of-humanity-tutorial</span></a></li><li>How the hashing <span class="No-Break">occurs: </span><span class="No-Break">https://docs.ens.domains/contract-api-reference/name-processing</span></li><li>ENS data <span class="No-Break">guide: </span><a href="https://docs.ens.domains/dapp-developer-guide/ens-data-guide"><span class="No-Break">https://docs.ens.domains/dapp-developer-guide/ens-data-guide</span></a></li><li>ENS as <span class="No-Break">NFTs: </span><span class="No-Break">https://docs.ens.domains/dapp-developer-guide/ens-as-nft</span></li></ul></li>
+<li><span class="No-Break">Art:</span><ul><li>How Nike won with NFTs. (n.d.). <em class="italic">Blockchain Data for the New Economy</em> | <span class="No-Break">Covalent: </span><a href="https://www.covalenthq.com/blog/how-nike-won-with-nfts/"><span class="No-Break">https://www.covalenthq.com/blog/how-nike-won-with-nfts/</span></a></li><li><em class="italic">NIKE, Inc. Reports fiscal 2022 fourth quarter and full year results</em>. (2022, June 27). NIKE, Inc. - Investor <span class="No-Break">Relations: </span><a href="https://investors.nike.com/investors/news-events-and-reports/investor-news/investor-news-details/2022/NIKE-Inc.-Reports-Fiscal-2022-Fourth-Quarter-and-Full-Year-Results/default.aspx"><span class="No-Break">https://investors.nike.com/investors/news-events-and-reports/investor-news/investor-news-details/2022/NIKE-Inc.-Reports-Fiscal-2022-Fourth-Quarter-and-Full-Year-Results/default.aspx</span></a></li><li>The traditional Belvedere Museum and the Klimt’s NFTs: A digital declaration of love. (n.d.). Belvedere Museum Wien | <span class="No-Break">Startseite: </span><a href="https://www.belvedere.at/en/digital-declaration-love"><span class="No-Break">https://www.belvedere.at/en/digital-declaration-love</span></a></li><li>Rihanna's <span class="No-Break">song: </span><a href="https://cdn.anotherblock.io/payouts/2.0/bbhmm.pdf"><span class="No-Break">https://cdn.anotherblock.io/payouts/2.0/bbhmm.pdf</span></a></li><li>The Etherscan page of Rihanna’s <span class="No-Break">song: </span><a href="https://etherscan.io/address/0xCB8399D84e17fD5B4e955C716647c7BB2C35Ab63"><span class="No-Break">https://etherscan.io/address/0xCB8399D84e17fD5B4e955C716647c7BB2C35Ab63</span></a></li><li>Documentation on the <strong class="source-inline">nft.trades</strong> <span class="No-Break">table: </span><span class="No-Break">https://dune.com/docs/tables/spells/nft.trades/</span></li><li>The links to the Dune community blog with more information on wash trading: <a href="https://community.dune.com/blog/nft-wash-trading-on-ethereum">https://community.dune.com/blog/nft-wash-trading-on-ethereum</a> <span class="No-Break">and </span><a href="https://dune.com/blog/wash-trading-2-blur"><span class="No-Break">https://dune.com/blog/wash-trading-2-blur</span></a></li><li>Mukhopadhyay, Mayukh and Ghosh, Kaushik. (2021). <em class="italic">Market Microstructure of Non-Fungible Tokens</em>. SSRN Electronic Journal. 10.2139/ssrn.3934676. <span class="No-Break">URL: </span><a href="https://www.researchgate.net/publication/356192381_Market_Microstructure_of_Non_Fungible_Tokens"><span class="No-Break">https://www.researchgate.net/publication/356192381_Market_Microstructure_of_Non_Fungible_Tokens</span></a></li><li><em class="italic">Study of the Facilitation of Money Laundering and Terror Finance through the Trade in Works of Art</em>:<span class="hidden"> </span><a href="https://home.treasury.gov/system/files/136/Treasury_Study_WoA.pdf">https://home.treasury.gov/system/files/136/Treasury_Study_WoA.pdf</a> <span class="No-Break">Page 25</span></li><li>Furneaux, Nick. <em class="italic">Investigating Cryptocurrencies</em>, <a href="B19446_10.xhtml#_idTextAnchor294"><em class="italic">Chapter 10</em></a>. Understanding, Extracting, and Analyzing Blockchain Evidence, <span class="No-Break">Wiley, 2018</span></li><li>Some of the best Reach, Retention, and Revenue analyses can be found <span class="No-Break">at </span><a href="https://0xatomist.notion.site/"><span class="No-Break">https://0xatomist.notion.site/</span></a></li><li>An excellent Dune user to follow for NFTs analysis is <strong class="source-inline">@</strong><span class="No-Break"><strong class="source-inline">hildobby</strong></span><span class="No-Break">:</span><span class="No-Break"><span class="hidden"> </span></span><a href="https://dune.com/hildobby"><span class="No-Break">https://dune.com/hildobby</span></a></li></ul></li>
+</ul>
+</div>
+</div></body></html>

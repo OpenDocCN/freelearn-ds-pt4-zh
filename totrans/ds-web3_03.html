@@ -1,0 +1,467 @@
+<html><head></head><body>
+<div id="sbo-rt-content"><div id="_idContainer052">
+<h1 class="chapter-num er" id="_idParaDest-69"><a id="_idTextAnchor114"/>3</h1>
+<h1 id="_idParaDest-70"><a id="_idTextAnchor115"/>Working with Off-Chain Data</h1>
+<p>In the previous chapter, we learned that on-chain data serves as the primary source of Web3 data analysis. It is open, distributed, and trustworthy. While on-chain data will be key to answering most business data science questions, it is essential to complement it with relevant information from off-chain data sources, which is the focus of <span class="No-Break">this chapter.</span></p>
+<p>Consider a scenario where we receive a request to assess the economic relevance of a smart contract. We can query the number of tokens locked in it, but to finalize the analysis, we need to determine the monetary value of those tokens. To accomplish this, we must integrate on-chain data with prices, often derived from <span class="No-Break">off-chain sources.</span></p>
+<p>Prices, news, and opinions are not stored on-chain and must be retrieved from external sources. In this chapter, we will delve into those sources and acquire data from selected APIs. Specifically, we will discuss alternatives for fetching prices, analyze a crypto news aggregator, and explore the significance of social media, particularly X (<span class="No-Break">formerly Twitter).</span></p>
+<p>Off-chain data differs in nature from on-chain data, and it is crucial to exercise caution regarding reliability when dealing with these sources. The sources discussed in this chapter are typically centralized, meaning the entities have complete control over their data. This directly affects the datasets we will utilize, as data points may be subject to deletion, missing entries, or manipulation. In contrast, on-chain data transactions, as a rule, cannot <span class="No-Break">be modified.</span></p>
+<p>This chapter specifically covers the <span class="No-Break">following topics:</span></p>
+<ul>
+<li>Integrating prices into <span class="No-Break">our dataset</span></li>
+<li>Incorporating news into <span class="No-Break">our dataset</span></li>
+<li>Adding social network data to <span class="No-Break">our dataset</span></li>
+</ul>
+<h1 id="_idParaDest-71"><a id="_idTextAnchor116"/>Technical requirements</h1>
+<p>We will be using <strong class="old">Tweepy</strong>, a <a id="_idIndexMarker146"/>Python library that allows us to easily interact with X. With Tweepy, we can fetch, post, and retrieve information about tweets, users, and much more.<a id="_idTextAnchor117"/> To start using Tweepy, we first need to register for a developer account on the Twitter developer website and obtain a set of API keys, as explained in <em class="italic">Appendix 2</em>. The documentation for <a id="_idIndexMarker147"/>Tweepy is available <span class="No-Break">at </span><a href="https://docs.tweepy.org/en/stable/"><span class="No-Break">https://docs.tweepy.org/en/stable/</span></a><span class="No-Break">.</span></p>
+<p>If you have not worked with Tweepy before, it can be installed with the <span class="No-Break">following code:</span></p>
+<pre class="console">
+pip install tweepy</pre> <p>Additionally, we’ll be <a id="_idIndexMarker148"/>utilizing Plotly <strong class="old">graph objects</strong> and Plotly <strong class="old">Express</strong>, two visualization libraries that empower us to create interactive visualizations with Python. Plotly Express is a high-level library that allows us to plot common types of graphs—such as scatter plots, line charts, maps, pie charts, and more—with minimal lines of code. The documentation for Plotly Express<a id="_idIndexMarker149"/> can be found <span class="No-Break">at </span><a href="https://plotly.com/python/plotly-express/"><span class="No-Break">https://plotly.com/python/plotly-express/</span></a><span class="No-Break">.</span></p>
+<p>Plotly graph objects offer more flexibility and control over visualizations, allowing the creation of complex plots with a high degree of customization. The documentation for Plotly graph objects is <a id="_idIndexMarker150"/>available <span class="No-Break">at </span><a href="https://plotly.com/python/graph-objects/"><span class="No-Break">https://plotly.com/python/graph-objects/</span></a><span class="No-Break">.</span></p>
+<p>To use both libraries, we need to have the Plotly library installed. If you have not worked with Plotly before, it can be installed with the following <span class="No-Break">code snippet:</span></p>
+<pre class="console">
+pip install plotly</pre> <p>You can find Jupyter notebooks containing examples discussed in this chapter in the book’s GitHub repository at <a href="https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter03">https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter03</a>. We recommend reading through the code files in the <strong class="source-inline">Chapter03</strong> folder to <span class="No-Break">follow along.</span></p>
+<h1 id="_idParaDest-72"><a id="_idTextAnchor118"/>Introductory example – listing data sources</h1>
+<p>Let’s <a id="_idIndexMarker151"/>examine <span class="No-Break">this headline:</span></p>
+<p><strong class="old">Dogecoin gains 25% after Elon Musk confirms Tesla will accept DOGE </strong><span class="No-Break"><strong class="old">for merchandise</strong></span></p>
+<p>(Source – <span class="No-Break">Cointelegraph:</span><span class="No-Break"> </span><a href="https://cointelegraph.com/news/dogecoin-gains-25-after-elon-musk-confirms-tesla-will-accept-doge-for-merchandise"><span class="No-Break">https://cointelegraph.com/news/dogecoin-gains-25-after-elon-musk-confirms-tesla-will-accept-doge-for-merchandise</span></a><span class="No-Break">.)</span></p>
+<p>This<a id="_idIndexMarker152"/> headline references three <span class="No-Break">data sources:</span></p>
+<ul>
+<li><strong class="old">Headline (news)</strong>: An <a id="_idIndexMarker153"/>online newspaper specializing in the Web3 industry generates this headline. Blockchain news is gradually entering mainstream platforms, and similar information can also be found in traditional financial news indexes such <span class="No-Break">as Reuters.</span></li>
+<li><strong class="old">Prices</strong>: The headline refers to the price<a id="_idIndexMarker154"/> variation of a particular cryptocurrency. Price data is not typically fetched from the on-chain sources; rather, it is a piece of information data scientists find useful to integrate from a third-party <span class="No-Break">data source.</span></li>
+<li><strong class="old">X (formerly Twitter)/social networks</strong>: Numerous <a id="_idIndexMarker155"/>market-impact events unfold on social networks, where key figures in the Web3 ecosystem have established significant online reputations. A single tweet from these influential individuals can alter prices or bring attention to a scam or failed negotiation. Most Web3 companies maintain a presence on X, often before creating a LinkedIn page. In this case, the impact on Dogecoin, as mentioned in the headline, originated from Elon Musk’s tweet: “<em class="italic">Tesla will make some merch buyable with Doge and see how it goes</em>” (<span class="No-Break">source: </span><a href="https://twitter.com/elonmusk/status/1470703708677840896"><span class="No-Break">https://twitter.com/elonmusk/status/1470703708677840896</span></a><span class="No-Break">).</span></li>
+</ul>
+<p>We described three off-chain data sources that will be relevant for our business data science projects and that we must learn how to consume in a data scientist-friendly format to integrate them effectively. We will discuss each of them in the <span class="No-Break">subsequent sections.</span></p>
+<h1 id="_idParaDest-73">Adding prices to ou<a id="_idTextAnchor119"/>r dataset</h1>
+<p>Price<a id="_idIndexMarker156"/> information is typically stored off-chain, and various sources <a id="_idIndexMarker157"/>provide access to this data. Some of the most popular APIs include <span class="No-Break">the following:</span></p>
+<ul>
+<li><span class="No-Break">CoinGecko</span></li>
+<li><span class="No-Break">CoinMarketCap</span></li>
+<li><span class="No-Break">Binance</span></li>
+<li><span class="No-Break">Chainlink</span></li>
+<li>OHLC <span class="No-Break">data: Kraken</span></li>
+</ul>
+<p>Each API comes with its own limitations, which we need to consider when deciding whether to integrate them into our projects. Specific details can be found in their <span class="No-Break">respective documentation.</span></p>
+<p>Regarding <a id="_idIndexMarker158"/>price data, it is important to understand how it is calculated, as in <span class="No-Break">these</span><span class="No-Break"><a id="_idIndexMarker159"/></span><span class="No-Break"> examples:</span></p>
+<ul>
+<li>CoinMarketCap calculates an asset’s price by considering the volume-weighted average of all markets where the asset is traded. This approach is based on the notion that more liquid markets are less susceptible to price fluctuations or manipulation and, therefore, <span class="No-Break">more reliable.</span></li>
+<li>Binance reports prices based on transactions conducted on their platform. Depending on the pair, it provides the price of the last trade executed in <span class="No-Break">their market.</span></li>
+</ul>
+<p>Let’s briefly analyze each <span class="No-Break">of them.</span></p>
+<h2 id="_idParaDest-74"><a id="_idTextAnchor120"/>CoinGecko</h2>
+<p>The <strong class="old">CoinGecko</strong> (<a href="https://www.coingecko.com/">https://www.coingecko.com/</a>) documentation is straightforward and easy to understand, and<a id="_idIndexMarker160"/> they offer a free tier that does not require any <a id="_idIndexMarker161"/>registration. With their URL engine, which can build the endpoint URL based on what the user needs, making the requests <span class="No-Break">more efficient.</span></p>
+<p>We can find their <a id="_idIndexMarker162"/>documentation at <a href="https://www.coingecko.com/es/api/documentation">https://www.coingecko.com/api/documentation</a>. Let’s test the <strong class="source-inline">simple/price</strong> endpoint, which is accessible through this <span class="No-Break">link, too.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer030">
+<img alt="Figure 3.1 – CoinGecko API view" height="230" src="image/B19446_03_01.jpg" width="1486"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.1 – CoinGecko API view</p>
+<p>As shown <a id="_idIndexMarker163"/>in <span class="No-Break"><em class="italic">Figure 3</em></span><em class="italic">.2</em>, the <em class="italic">required</em> parameters for this endpoint are <strong class="source-inline">ids</strong> <span class="No-Break">and </span><span class="No-Break"><strong class="source-inline">vs_currencies</strong></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer031">
+<img alt="Figure 3.2 – Partial view of the simple/price query parameters" height="611" src="image/B19446_03_02.jpg" width="1374"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.2 – Partial view of the simple/price query parameters</p>
+<p>There are also several optional parameters, such as <span class="No-Break">the following:</span></p>
+<ul>
+<li><span class="No-Break"><strong class="source-inline">include_market_cap</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">include_24hr_vol</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">include_24hr_change</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">include_last_updated_at</strong></span></li>
+<li><span class="No-Break"><strong class="source-inline">precision</strong></span></li>
+</ul>
+<p>To obtain the <em class="italic">ID</em> for a specific asset, we go to CoinGecko’s main page and search for the asset by name. If, for example, we want to fetch the current price of Bitcoin, we would need to add Bitcoin's ID in our query. To look for it, we go to CoinGecko's main page and type <strong class="source-inline">Bitcoin</strong> in the search bar, as shown in <span class="No-Break"><em class="italic">Figure 3</em></span><span class="No-Break"><em class="italic">.3</em></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer032">
+<img alt="Figure 3.3 – CoinGecko search bar" height="121" src="image/B19446_03_03.jpg" width="1612"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.3 – CoinGecko search bar</p>
+<p>This will lead<a id="_idIndexMarker164"/> us to the Bitcoin information page on<a id="_idIndexMarker165"/> CoinGecko (<a href="https://www.coingecko.com/en/coins/bitcoin">https://www.coingecko.com/en/coins/bitcoin</a>) where, as shown in <span class="No-Break"><em class="italic">Figure 3</em></span><em class="italic">.4</em>, we can find the API ID that we will source as a parameter in <span class="No-Break">the query:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer033">
+<img alt="Figure 3.4 – CoinGecko Bitcoin (BTC) page view" height="489" src="image/B19446_03_04.jpg" width="1638"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.4 – CoinGecko Bitcoin <a id="_idTextAnchor121"/>(BTC) page view</p>
+<p>For our <strong class="source-inline">simple/price</strong> request, we also need to input the <strong class="source-inline">vs_currencies</strong> parameter, which determines the currency of the price. In this case, we will <span class="No-Break">use </span><span class="No-Break"><strong class="source-inline">usd</strong></span><span class="No-Break">.</span></p>
+<p>Once we have filled in the mandatory requirements on the API page, we can press the blue <strong class="old">Execute</strong> button, which will return the URL we <span class="No-Break">can use:</span></p>
+<pre class="console">
+https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&amp;vs_currencies=usd</pre> <p>Let’s see how this works <span class="No-Break">i<a id="_idTextAnchor122"/>n </span><span class="No-Break"><strong class="source-inline">prices.ipynb</strong></span><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-75"><a id="_idTextAnchor123"/>CoinMarketCap</h2>
+<p>CoinMarketCap (<a href="https://coinmarketcap.com/">https://coinmarketcap.com/</a>) provides extensive documentation, available at<a id="_idIndexMarker166"/> the <a id="_idIndexMarker167"/>following link: <a href="https://coinmarketcap.com/api/documentation/v1/">https://coinmarketcap.com/api/documentation/v1/</a>. Although this documentation may seem overwhelming, for our purposes, locate the <strong class="old">CRYPTOCURRENCY</strong> category on the left-hand side of the page, accessible through a drop-down menu containing several endpoints related <span class="No-Break">to prices:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer034">
+<img alt="Figure 3.5 – CoinMarketCap left bar view" height="916" src="image/B19446_03_05.jpg" width="455"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.5 – CoinMarketCap left bar view</p>
+<p>For our purposes, we will utilize the endpoint documented at this <span class="No-Break">link: </span><a href="https://coinmarketcap.com/api/documentation/v1/#operation/getV2CryptocurrencyQuotesLatest"><span class="No-Break">https://coinmarketcap.com/api/documentation/v1/#operation/getV2CryptocurrencyQuotesLatest</span></a><span class="No-Break">.</span></p>
+<p>CoinMarketCap <a id="_idIndexMarker168"/>offers multiple tiers of services with varying API limits and endpoints. For this introductory explanation, we will rely on the <span class="No-Break">free tier.</span></p>
+<p>We extract the latest Bitcoin price using CoinMarketCap’s API in the <strong class="source-inline">prices.ipynb</strong> notebook. To identify the ID of a specific coin, we can execute the map ID endpoint, which shows all cryptocurrencies listed on the CoinMarketCap website with their unique ID. Additional details about this endpoint can be accessed in the documentation: <a href="https://coinmarketcap.com/api/documentation/v1/#operation/getV1CryptocurrencyMap">https://coinmarketcap.com/api/documentation/v1/#operation/getV1CryptocurrencyMap</a>. The ID for Bitcoin is <strong class="old">1</strong>. Alternatively, we can use the <strong class="source-inline">slug</strong> parameter, which consists of the string<a id="_idIndexMarker169"/> name of the cryptocurrency – in our case, <span class="No-Break">simply </span><span class="No-Break"><strong class="source-inline">bitcoin</strong></span><span class="No-Break">.</span></p>
+<p class="callout-heading">A note on links and scams</p>
+<p class="callout">Highly sophisticated scams can deceive victims through search engines. Accessing a project, especially smaller or less-known ones that we have not visited before, by clicking from a search engine where scammers can manipulate web pages into top suggestions elevates the risks. CoinGecko and CoinMarketCap have proven to be reliable for having authentic links to official websites. A more in-depth exploration of security will be provi<a id="_idTextAnchor124"/>ded in <a href="B19446_10.xhtml#_idTextAnchor294"><span class="No-Break"><em class="italic">Chapter 10</em></span></a><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-76"><a id="_idTextAnchor125"/>Binance</h2>
+<p>This is one of the most <a id="_idIndexMarker170"/>important centralized exchanges currently active. The exchange offers a basic data plan that does not require registration. The documentation is organized based on the products available on <span class="No-Break">the exchange.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer035">
+<img alt="Figure 3.6 – Binance main menu" height="94" src="image/B19446_03_06.jpg" width="1485"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.6 – Binance main menu</p>
+<p>To extract the spot price of Bitcoin, navigate to the <strong class="old">Spot/Margin/Savings/Mining</strong> tab, as illustrated in <span class="No-Break"><em class="italic">Figure 3</em></span><em class="italic">.6</em>. The documentation and available endpoints are listed in a drop-down menu on the left-hand side of <span class="No-Break">the page.</span></p>
+<p>The URL for the endpoint is composed of two parts – a general base endpoint and the <span class="No-Break">query part:</span></p>
+<ul>
+<li>The base endpoint is located in the <strong class="old">General Info</strong> section, accessible at this <span class="No-Break">link: </span><a href="https://binance-docs.github.io/apidocs/spot/en/#general-info"><span class="No-Break">https://binance-docs.github.io/apidocs/spot/en/#general-info</span></a></li>
+</ul>
+<div>
+<div class="IMG---Figure" id="_idContainer036">
+<img alt="Figure 3.7 – Binance General Info view" height="324" src="image/B19446_03_07.jpg" width="1035"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.7 – Binance General Info view</p>
+<ul>
+<li>The query part we will use is <span class="No-Break">as follows:</span><pre class="source-code">
+<strong class="old"> /api/v3/ticker/price</strong></pre></li> </ul>
+<p>The <a id="_idIndexMarker171"/>documentation for this code is in the <em class="italic">Market Data Endpoints</em> section available at this <span class="No-Break">link: </span><a href="https://binance-docs.github.io/apidocs/spot/en/#symbol-price-ticker"><span class="No-Break">https://binance-docs.github.io/apidocs/spot/en/#symbol-price-ticker</span></a><span class="No-Break">.</span></p>
+<p>In <strong class="source-inline">prices.ipynb</strong>, we extract the latest Bitcoin price from this source. The endpoint requires a <strong class="source-inline">symbol</strong> parameter, expressed in a trading pair format, and we <span class="No-Break">use </span><span class="No-Break"><strong class="source-inline">BTCUSDT</strong></span><span class="No-Break">.</span></p>
+<p>To obtain the list of available trading pairs, there are two options. The first is on the Binance platform, and the second is on TradingView, where an account can be created <span class="No-Break">at </span><a href="https://es.tradingview.com/"><span class="No-Break">https://es.tradingview.com/</span></a><span class="No-Break">.</span></p>
+<p>On TradingView’s main page, go to <strong class="old">Symbol Search</strong>, as shown in <span class="No-Break"><em class="italic">Figure 3</em></span><span class="No-Break"><em class="italic">.8</em></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer037">
+<img alt="Figure 3.8 – TradingView Symbol Search bar" height="65" src="image/B19446_03_08.jpg" width="1147"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.8 – TradingView Symbol Search bar</p>
+<p>This opens a dropdown displaying the complete list of trading pairs. To filter by exchange, modify the <strong class="old">All sources</strong> parameter, as shown in <span class="No-Break"><em class="italic">Figure 3</em></span><span class="No-Break"><em class="italic">.9</em></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer038">
+<img alt="Figure 3.9 – TradingView sources" height="855" src="image/B19446_03_09.jpg" width="1260"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.9 – TradingView sources</p>
+<p>When the <a id="_idIndexMarker172"/>search box opens on <strong class="old">Sources</strong>, we type <strong class="source-inline">Binance</strong> and <span class="No-Break">press </span><span class="No-Break"><em class="italic">Enter</em></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer039">
+<img alt="Figure 3.10 – TradingView source selection" height="324" src="image/B19446_03_10.jpg" width="534"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.10 – TradingView source selection</p>
+<p>This will display all the trading pairs for the specific exchange under the <strong class="old">SYMBOL</strong> column. This symbol is the string we will pass as a parameter to <span class="No-Break">our query.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer040">
+<img alt="Figure 3.11 – Binance pairs/symbols as shown on TradingView" height="788" src="image/B19446_03_11.jpg" width="1257"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.11 – Binance pairs/symbols as shown on TradingView</p>
+<p>Binance’s <a id="_idIndexMarker173"/>API provides comprehensive data beyond price information, making it a valuable resource <span class="No-Break">for exploration.</span></p>
+<h2 id="_idParaDest-77">Ora<a id="_idTextAnchor126"/>cles – Chainlink</h2>
+<p><strong class="old">Oracles</strong> serve <a id="_idIndexMarker174"/>as bridges connecting a smart contract to real-world data. Consider an insurance smart contract designed to provide coverage against specific climate-related events, such as rain. In the closed environment of its blockchain, how can the smart contract ascertain whether it is currently raining or not? The solution lies in oracles, which establish the link between the smart contract and external information, ensuring that the necessary data is reflected within <span class="No-Break">the blockchain.</span></p>
+<p><strong class="old">Chainlink</strong> stands <a id="_idIndexMarker175"/>out as one of the most widely used sets of oracles. This chapter focuses on price feeds for smart contracts, though there are others such as proof of reserve feeds or NFT price feeds (explored in <a href="B19446_04.xhtml#_idTextAnchor145"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>). Documentation for the steps discussed is available <span class="No-Break">at </span><a href="https://docs.chain.link/data-feeds/api-reference"><span class="No-Break">https://docs.chain.link/data-feeds/api-reference</span></a><span class="No-Break">.</span></p>
+<p>Most price consensus occurs off-chain, and when it is necessary to update the blockchain, the agreed-upon price is recorded on-chain by price <span class="No-Break">feed oracles.</span></p>
+<p>For example, the Bitcoin price is continuously updated and can be seen at <a href="https://data.chain.link/ethereum/mainnet/crypto-usd/btc-usd">https://data.chain.link/ethereum/mainnet/crypto-usd/btc-usd</a>. Prices are updated on-chain based on <em class="italic">trigger parameters</em>, as shown in <span class="No-Break"><em class="italic">Figure 3</em></span><span class="No-Break"><em class="italic">.13</em></span><span class="No-Break">:</span></p>
+<ul>
+<li><strong class="old">Deviation threshold</strong>: Triggered when off-chain data deviates by more than 0.5% from the last <span class="No-Break">updated price.</span></li>
+<li><strong class="old">Heartbeat</strong>: Activated after a specified time since the last update has elapsed. Each price feed has its specific time heartbeat. For the Bitcoin price feed, this interval is set to one hour. Consequently, the feed will be refreshed once an hour has passed, provided the previous trigger has not occurred <span class="No-Break">before that.</span></li>
+</ul>
+<p>If we want to source data from these smart contracts, we need to be aware of the heartbeat and check its<a id="_idIndexMarker176"/> timestamp to ensure that the latest answer is recent enough for our dataset to <span class="No-Break">add it.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer041">
+<img alt="Figure 3.12 – Chainlink price feed information view" height="653" src="image/B19446_03_12.jpg" width="389"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.12 – Chainlink price feed information view</p>
+<p>To extract the<a id="_idIndexMarker177"/> latest price or the <strong class="old">latest round</strong> price, we will need the contract address, as indicated in the second red square of the<a id="_idTextAnchor127"/> <span class="No-Break">preceding figure.</span></p>
+<p>The contract <strong class="old">application binary interface</strong> (<strong class="old">ABI</strong>) is<a id="_idIndexMarker178"/> available in the documentation or on Etherscan. For simplicity, the ABI of the price feed smart contract has been added <span class="No-Break">to </span><span class="No-Break"><strong class="source-inline">prices.ipynb</strong></span><span class="No-Break">.</span></p>
+<p>Available <strong class="source-inline">read</strong> functions for the price feed smart contract include <span class="No-Break">the following:</span></p>
+<ul>
+<li><strong class="source-inline">decimals()</strong>: Returns<a id="_idIndexMarker179"/> the number of decimals in the response. In the <strong class="source-inline">prices.ipynb</strong> example, this value is <strong class="source-inline">8</strong>, retrieved with the following <span class="No-Break">code snippet:</span><pre class="source-code">
+<strong class="old">contract.functions.decimals().call()</strong></pre></li> <li><strong class="source-inline">description()</strong>: Returns the description of the data feed. In the <strong class="source-inline">prices.ipynb</strong> example, this result is <strong class="source-inline">BTC / USD</strong>, and it is retrieved with the following <span class="No-Break">code snippet:</span><pre class="source-code">
+<strong class="old">contract.functions.description().call()</strong></pre></li> <li><strong class="source-inline">getRoundData(uint80)</strong>: Returns the data in a <span class="No-Break">specific round.</span></li>
+<li><strong class="source-inline">latestRoundData()</strong>: Returns the latest <span class="No-Break">round data.</span></li>
+<li><strong class="source-inline">version()</strong>: Returns the <span class="No-Break">contract version.</span></li>
+</ul>
+<p>To get the price, we need to execute the <strong class="source-inline">latestRoundData</strong> function, <span class="No-Break">as follows:</span></p>
+<pre class="console">
+contract.functions.latestRoundData().call()</pre> <p>The result is a list composed of the <span class="No-Break">following elements:</span></p>
+<table class="T---Table _idGenTablePara-1" id="table001-3">
+<colgroup>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><strong class="source-inline"><a id="_idTextAnchor128"/></strong><span class="No-Break"><strong class="source-inline">roundId</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>Each time the oracle is updated, it is known as a <strong class="old">round</strong> and it has an identifier. That identifier is the <strong class="source-inline">roundId</strong> value. To retrieve the answer of a historical round, we need to call the <strong class="source-inline">getRoundData(uint80)</strong> function and provide this number as <span class="No-Break">a parameter.</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><strong class="source-inline"><a id="_idTextAnchor129"/><a id="_idTextAnchor130"/></strong><span class="No-Break"><strong class="source-inline">answer</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>This returns the price of the asset, the desired <span class="No-Break">data point.</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><strong class="source-inline"><a id="_idTextAnchor131"/></strong><span class="No-Break"><strong class="source-inline">startedAt</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><a id="_idTextAnchor132"/>This is the timestamp when the <span class="No-Break">round started.</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><strong class="source-inline"><a id="_idTextAnchor133"/></strong><span class="No-Break"><strong class="source-inline">updatedAt</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><a id="_idTextAnchor134"/>This is the timestamp when the round <span class="No-Break">was updated.</span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 3.1 – Oracle response</p>
+<p><a id="_idTextAnchor135"/>There is one last element in the response (<strong class="source-inline">answeredInRound</strong>), which is a legacy variable and is no <span class="No-Break">longer used.</span></p>
+<p><a id="_idTextAnchor136"/>Once the <strong class="source-inline">answer</strong> is retrieved, translate it to traditional decimal format by moving the comma as many places as indicated by the <span class="No-Break"><strong class="source-inline">decimals()</strong></span><span class="No-Break"> function:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer042">
+<img alt="Figure 3.13 – Bitcoin price as fed by Chainlink" height="97" src="image/B19446_03_13.jpg" width="498"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.13 – Bitcoin price as fed by Chainlink</p>
+<h2 id="_idParaDest-78"><a id="_idTextAnchor137"/>OHLC – Kraken</h2>
+<p><strong class="old">Open, High, Low, Close</strong> (<strong class="old">OHLC</strong>) data<a id="_idIndexMarker180"/> is a specific dataset where each row includes a timestamp and <span class="No-Break">four columns:</span></p>
+<ul>
+<li><strong class="old">Open price</strong> (<strong class="old">O</strong>): This is the asset’s price at the beginning of the <span class="No-Break">analyzed period</span></li>
+<li><strong class="old">High price</strong> (<strong class="old">H</strong>): This is the highest price of the asset during the <span class="No-Break">analyzed period</span></li>
+<li><strong class="old">Low price</strong> (<strong class="old">L</strong>): This is the lowest price of the asset during the <span class="No-Break">analyzed period</span></li>
+<li><strong class="old">Closing price</strong> (<strong class="old">C</strong>): This is the last asset’s price at the end of the <span class="No-Break">analyzed period</span></li>
+</ul>
+<p>An example can be seen in <span class="No-Break"><em class="italic">Table 3.2</em></span><span class="No-Break">:</span></p>
+<table class="T---Table _idGenTablePara-1" id="table002-1">
+<colgroup>
+<col/>
+<col/>
+<col/>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Timestamp</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Open</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">High</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Low</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Close</strong></span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">2022-12-06 00:00:00</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">16965.7</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">17089.1</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">16965.7</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">17011.0</strong></span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 3.2 – An example of OHLC data</p>
+<p>The OHLC columns provide information about the price variations of an asset over a specific period of time. <span class="No-Break"><em class="italic">Figure 3</em></span><em class="italic">.14</em> shows an example of a candlestick chart that can be created using <span class="No-Break">OHLC data.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer043">
+<img alt="Figure 3.14 – Candlestick design" height="842" src="image/B19446_03_14.jpg" width="959"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.14 – Candlestick design</p>
+<p>Each row of the <a id="_idIndexMarker181"/>dataset can be used to plot one candlestick. The <em class="italic">Close</em> and <em class="italic">Open</em> prices inform us whether, during a given period of time, the asset’s price decreased (<em class="italic">Close</em> is lower than <em class="italic">Open</em>) or increased (<em class="italic">Close</em> is higher than <em class="italic">Open</em>). This information is used to color the body of <span class="No-Break">the bar.</span></p>
+<p>The <a id="_idIndexMarker182"/>OHLC data can include additional columns such as traded volume or the number of trades. See the example <span class="No-Break">in </span><span class="No-Break"><strong class="source-inline">prices.ipynb</strong></span><span class="No-Break">.</span></p>
+<p>Technical indicators such as moving averages or Bollinger bands, which are popular in trading, can also be plotted using <span class="No-Break">OHLC data.</span></p>
+<p>The <strong class="old">Kraken</strong> centralized <a id="_idIndexMarker183"/>exchange provides OHLC data in its open API, which is very well documented. As we learned with Binance, when using exchanges, every price search has to be expressed as a <span class="No-Break">trading pair.</span></p>
+<p>The documentation can be found at <a href="https://docs.kraken.com/rest/#section/General-Usage">https://docs.kraken.com/rest/#section/General-Usage</a>. The endpoint we will use is explained <span class="No-Break">at </span><a href="https://docs.kraken.com/rest/#tag/Market-Data/operation/getOHLCData"><span class="No-Break">https://docs.kraken.com/rest/#tag/Market-Data/operation/getOHLCData</span></a><span class="No-Break">.</span></p>
+<p>When working with <a id="_idIndexMarker184"/>OHLC data, it is important to consider the time intervals or granularity of the data. Prices that may appear high or low in a short time frame may be insignificant when analyzed over a longer period. Time granularity will depend on the API. Usually, it is possible to extract seconds, minutes, hours, and days and a combination of those. In Kraken, it is possible to extract with the <span class="No-Break">following parameters:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer044">
+<img alt="Figure 3.15 – Interval parameter expressed in seconds" height="490" src="image/B19446_03_15.jpg" width="751"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.15 – Interval parameter expressed in seconds</p>
+<p>To plot a candlestick chart, we can use the <strong class="source-inline">plotly.graph_objects</strong> library. In <strong class="source-inline">prices.ipynb</strong>, we fetch the OHLC dataset of the Bitcoin price with a four-hour period from April 01 to April 05, 2023, and use the library to plot the <span class="No-Break">corresponding candlesticks.</span></p>
+<h2 id="_idParaDest-79"><a id="_idTextAnchor138"/>Final thoughts on prices</h2>
+<p>After our thorough discussion on<a id="_idIndexMarker185"/> prices, here are a few key points <span class="No-Break">to remember:</span></p>
+<ul>
+<li>Not all fiat currencies are supported by these APIs. For currencies that are not the US dollar or Euro, the API may reflect the central bank’s official exchange rate with the US dollar, which can differ significantly from the real market price. This is especially true for countries with regulated economies or high inflation. It is necessary to understand where the APIs are sourcing their data from before adding those prices to <span class="No-Break">our dataset.</span></li>
+<li>Prices of tokens or coins are not the sole products that we may have to track. We could also receive a request to track floor prices of an <span class="No-Break">NFT collection.</span></li>
+<li>At the time of this writing, Web3 assets still exhibit significant price variations in short periods of time. When calculating averages, we have to be mindful of outliers that may affect them. Data sourced from low liquidity markets, such as small exchanges are more prone to outliers. Read the description of how those prices are calculated and compare them regularly with other sources or create a volume-weighted<a id="_idIndexMarker186"/> average as <span class="No-Break">CoinMarketCap does.</span></li>
+</ul>
+<p>News often triggers price fluctuations, so let’s now explore a dedicated news aggregator that keeps track of relevant information in the <span class="No-Break">Web3 world.</span></p>
+<h1 id="_idParaDest-80"><a id="_idTextAnchor139"/>Adding news to our dataset</h1>
+<p>A <a id="_idIndexMarker187"/>professor once mentioned that in the crypto world, news takes only five minutes to <a id="_idIndexMarker188"/>impact the price of <span class="No-Break">an asset.</span></p>
+<p>News is not only important for its effect on prices but marketing teams may also request analysis of the social impact of a brand, a campaign, or a product, or it may be necessary to source an algorithm, among other applications. For that purpose, data scientists need news formatted <span class="No-Break">for analysis.</span></p>
+<p>As of today, there is a dedicated source <a id="_idIndexMarker189"/>named <strong class="old">CryptoPanic</strong>, a data aggregator that specifically<a id="_idIndexMarker190"/> indexes news relevant to the Web3 ecosystem. The link to the website <span class="No-Break">is </span><span class="No-Break">https://cryptopanic.com/</span><span class="No-Break">.</span></p>
+<p>Its data can be consumed through an API and the API key is available <span class="No-Break">upon registration.</span></p>
+<p>On the main page, go to the <strong class="old">Sign In</strong> tab on the <span class="No-Break">left menu:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer045">
+<img alt="Figure 3.16 – An overview of the CryptoPanic main view" height="804" src="image/B19446_03_16.jpg" width="1657"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.16 – An overview of the CryptoPanic main view</p>
+<p>If it is your <a id="_idIndexMarker191"/>first time signing up, you will need to confirm your email. After<a id="_idIndexMarker192"/> that, you are registered. Click on the <strong class="old">Develop</strong> tab located on the <span class="No-Break">home page:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer046">
+<img alt="Figure 3.17 – The Develop tab" height="733" src="image/B19446_03_17.jpg" width="1650"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.17 – The Develop tab</p>
+<p>Click on either of the <strong class="old">API</strong> tabs on the <span class="No-Break">new page:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer047">
+<img alt="Figure 3.18 – API documentation" height="736" src="image/B19446_03_18.jpg" width="1650"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.18 – API documentation</p>
+<p>Click on <strong class="old">API Keys</strong> and it <a id="_idIndexMarker193"/>will open a <a id="_idIndexMarker194"/>new page with <span class="No-Break">the credentials:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer048">
+<img alt="Figure 3.19 – API keys" height="640" src="image/B19446_03_19.jpg" width="1514"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.19 – API keys</p>
+<p>The documentation is available at this <span class="No-Break">link: </span><a href="https://cryptopanic.com/developers/api/"><span class="No-Break">https://cryptopanic.com/developers/api/</span></a><span class="No-Break">.</span></p>
+<p>We will query with the traditional <strong class="source-inline">requests</strong> library, adding our API key to the endpoints listed in the documentation. A step-by-step guide to fetching a list of news can be seen <span class="No-Break">on </span><span class="No-Break"><strong class="source-inline">news.ipynb</strong></span><span class="No-Break">.</span></p>
+<p>There are filters that can be applied to our requests to limit the amount of information received. The filters include <span class="No-Break">the following:</span></p>
+<ul>
+<li>Currency: The asset referred to in the <span class="No-Break">indexed news</span></li>
+<li>Region: <span class="No-Break">The language</span></li>
+<li>UI: This included the following categories – rising, hot, bullish, bearish, important, saved, <span class="No-Break">and lol</span></li>
+<li>Kind: This is either media <span class="No-Break">or news</span></li>
+</ul>
+<p>The <a id="_idIndexMarker195"/>filters can<a id="_idIndexMarker196"/> be combined, and each can accept multiple parameters. For example, it is possible to fetch news in English and Spanish by adding the following string to <span class="No-Break">the URL:</span></p>
+<pre class="console">
+regions=en,es</pre> <p>In <strong class="source-inline">news.ipynb</strong>, we apply two filters, currency <span class="No-Break">and kind:</span></p>
+<pre class="console">
+url= 'https://cryptopanic.com/api/v1/posts/?auth_token=[YOUR API KEY]&amp;currencies=BTC&amp;kind=news'
+response = requests.get(url)</pre> <p>The API also offers professional paid options (named “pro” on their website) that enable access to extra metadata or to get links to the <span class="No-Break">original sources.</span></p>
+<p>What is also very interesting about this API is that the request returns <span class="No-Break">the following:</span></p>
+<ul>
+<li>The community’s opinion on the sentiment of the headline. This can be particularly useful for sourcing a sentiment analysis algorithm, such as the one we will build in <a href="B19446_08.xhtml#_idTextAnchor250"><span class="No-Break"><em class="italic">Chapter 8</em></span></a><span class="No-Break">.</span></li>
+<li>The timestamp of the published news. This enables us to join the headlines with prices, allowing us to compare the historical impact of the news <span class="No-Break">on prices.</span></li>
+</ul>
+<p>As seen in the introductory example at the beginning of the chapter, what happens on social networks can heavily impact prices even before any journalist writes about it. Therefore, it is important to add their input to <span class="No-Break">our dataset.</span></p>
+<h1 id="_idParaDest-81"><a id="_idTextAnchor140"/>Adding social networks to our dataset</h1>
+<p>Web3<a id="_idIndexMarker197"/> is an online <a id="_idIndexMarker198"/>industry so everything that happens online, from <a id="_idIndexMarker199"/>opinions to interactions, holds <span class="No-Break">significant influence.</span></p>
+<p><strong class="old">Sentiment analysis</strong>, gauging<a id="_idIndexMarker200"/> reactions to products or tokens, plays a crucial role for marketing teams, analysts, and traders alike. A noteworthy example illustrating the importance of such metrics is the CoinStats Fear and Greed indicator. This index, available at <a href="https://coinstats.app/fear-and-greed/">https://coinstats.app/fear-and-greed/</a>, incorporates social media posts, among other factors, to measure <span class="No-Break">market sentiment.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer049">
+<img alt="Figure 3.20 – Crypto Fear and Greed Indicator" height="424" src="image/B19446_03_20.jpg" width="817"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.20 – Crypto Fear and Greed Indicator</p>
+<p>According to CoinStats’ explanation, the index combines data from various sources. To capture psychological momentum, they also draw insights from social media interactions on X, focusing on specific hashtags that carry both fear and greed components, which contribute to the overall calculation. The social media component holds a 15% weight in the final index, as per <span class="No-Break">the documentation.</span></p>
+<h2 id="_idParaDest-82"><a id="_idTextAnchor141"/>X (formerly Twitter)</h2>
+<p>X<a id="_idIndexMarker201"/> is probably the most important social media platform regarding Web3 conversations as of the day of this writing, and the service needs <span class="No-Break">no presentation.</span></p>
+<p class="callout-heading">Note</p>
+<p class="callout">We will use <em class="italic">X</em> and <em class="italic">Twitter</em> interchangeably. Although the platform’s user interface now bears the name X, on the developer tools side and in all URLs, it retains its former <span class="No-Break">name, Twitter.</span></p>
+<p>A paradigmatic example of how what happens on X impacts the industry is the majority opinion that the FTX exchange speedily crashed after Binance announced on their official X page, “<em class="italic">As a result of corporate due diligence, as well as the latest news reports regarding mishandled customer funds and alleged US agency investigations, we have decided that we will not pursue the potential acquisition of FTX.com</em>” (<span class="No-Break">source: </span><a href="https://twitter.com/binance/status/1590449161069268992"><span class="No-Break">https://twitter.com/binance/status/1590449161069268992</span></a><span class="No-Break">).</span></p>
+<p>Access to X data became a paid service in February 2023, with subscription details available through the developer portal at <a href="https://developer.twitter.com/">https://developer.twitter.com/</a>. The exercises in this section leverage the Basic subscriptio<a id="_idTextAnchor142"/>n and <span class="No-Break">API v2.</span></p>
+<p>To obtain API keys with reading privileges, we need to create a project and connect an app, as detailed in <span class="No-Break"><em class="italic">Appendix 2</em></span><span class="No-Break">.</span></p>
+<p>Most user<a id="_idIndexMarker202"/> tweets are public, and a tailored query allows us to fetch tweets based on diverse criteria such as user, topic, language, or location. In <strong class="source-inline">social.ipynb</strong>, we extract the latest 100 tweets containing the words <em class="italic">Bitcoin</em> and <em class="italic">BTC</em>, excluding retweets and limited to the English language, using the <span class="No-Break">following query:</span></p>
+<pre class="console">
+query = 'bitcoin btc -is:retweet lang:en'</pre> <p>Additional instructions for constructing effective queries can be found <span class="No-Break">at </span><a href="https://developer.twitter.com/en/docs/twitter-api/tweets/search/integrate/build-a-query"><span class="No-Break">https://developer.twitter.com/en/docs/twitter-api/tweets/search/integrate/build-a-query</span></a><span class="No-Break">.</span></p>
+<p class="callout-heading">Checkpoint</p>
+<p class="callout">A step-by-step version of the tweet extraction pipeline is detailed in <strong class="source-inline">social.ipynb</strong>. Alternatively, the resulting CSV file has been uploaded to the book’s GitHub and is accessible <span class="No-Break">at </span><span class="No-Break"><strong class="source-inline">tweets_100.csv</strong></span><span class="No-Break">.</span></p>
+<p>With v2 endpoints, it is possible to request <strong class="source-inline">annotations</strong>, adding contextual information to tweets. This feature is valuable for data analysis as it normalizes content within a limited taxonomy. For instance, consider the tweet shown in <span class="No-Break"><em class="italic">Figure 3</em></span><span class="No-Break"><em class="italic">.21</em></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer050">
+<img alt="Figure 3.21 – Example tweet (ID: 1731806102101033329)" height="332" src="image/B19446_03_21.jpg" width="604"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.21 – Example tweet (ID: 1731806102101033329)</p>
+<p>X offers <a id="_idIndexMarker203"/>entity recognition and context annotations for this tweet. <strong class="old">Entity recognition</strong> identifies<a id="_idIndexMarker204"/> locations and entities mentioned in the tweet text. Twitter identifies the following categories of entities: <strong class="source-inline">Person</strong>, <strong class="source-inline">Place</strong>, <strong class="source-inline">Product</strong>, <strong class="source-inline">Organization</strong>, <span class="No-Break">and </span><span class="No-Break"><strong class="source-inline">Other</strong></span><span class="No-Break">.</span></p>
+<p>There are three entities recognized in the body of the tweet. Two are organizations –<strong class="source-inline">Blackrock</strong> and <strong class="source-inline">SEC</strong> – and the third is of the <strong class="source-inline">Other</strong> category, when referring <span class="No-Break">to </span><span class="No-Break"><strong class="source-inline">Bitcoin</strong></span><span class="No-Break">:</span></p>
+<pre class="source-code">
+'annotations': 'annotations': [{'start': 10,
+    'end': 18,
+    'probability': 0.8568,
+    'type': <strong class="old">'Organization'</strong>,
+    'normalized_text': 'Blackrock'},
+    {'start': 55,
+    'end': 57,
+    'probability': 0.7281,
+    'type': <strong class="old">'Organization'</strong>,
+    'normalized_text': 'SEC'},
+    {'start': 73,
+    'end': 79,
+    'probability': 0.9581,
+    'type': <strong class="old">'Other'</strong>,
+    'normalized_text': 'Bitcoin'}]</pre> <p>The complete dictionary of entities for this tweet can be seen <span class="No-Break">in </span><span class="No-Break"><strong class="source-inline">social.ipynb.</strong></span></p>
+<p>X<a id="_idIndexMarker205"/> further enriches tweet information <a id="_idIndexMarker206"/>through <strong class="old">context annotations</strong>, which are inferred from the semantics of the text, keywords, and hashtags. A comprehensive list of keywords, hashtags, and handles has been developed, and tagged to specific contexts. If any of these elements appear in a tweet, they are appropriately tagged. As of June 2022, there are more than 80 context domains. The link to the relevant documentation can be found in the <em class="italic">Further </em><span class="No-Break"><em class="italic">reading</em></span><span class="No-Break"> section.</span></p>
+<p>One <span class="No-Break">example follows:</span></p>
+<pre class="source-code">
+{'domain': {'id': '131',
+    'name': 'Unified Twitter Taxonomy',
+    'description': 'A taxonomy of user interests. '},
+    'entity': {'id': '913142676819648512',
+    'name': 'Cryptocurrencies',
+    'description': 'Cryptocurrency'}},</pre> <p>This information is valuable for categorization and NLP machine <span class="No-Break">learning algorithms.</span></p>
+<p>The complete list of context annotations for this tweet is available <span class="No-Break">in </span><span class="No-Break"><strong class="source-inline">social.ipynb</strong></span><span class="No-Break">.</span></p>
+<p>A commonly employed method by marketing and product teams seeking insights into words associated with products or brands involves analyzing customer reviews, feedback, or social media comments. This approach provides a deeper understanding of the audience and their perceptions. One graphical way to achieve this is by creating word clouds, which highlight the most frequently mentioned words. This aids in identifying customer sentiments, preferences, and pain points at <span class="No-Break">a glance.</span></p>
+<p>To reproduce a word cloud, we utilize tweets as the data source, specifically extracting 1,000 tweets targeting a protocol in the NFT space introduced in <a href="B19446_04.xhtml#_idTextAnchor145"><span class="No-Break"><em class="italic">Chapter 4</em></span></a> – namely, OpenSea. To perform this extraction, we used the <span class="No-Break">following query:</span></p>
+<pre class="console">
+new_query = 'opensea -is:retweet lang:en'</pre> <p class="callout-heading">Checkpoint</p>
+<p class="callout">A step-by-step version of the tweet extraction pipeline is detailed in <strong class="source-inline">social.ipynb</strong>. Alternatively, the resulting CSV file has been uploaded to the book’s GitHub and is accessible <span class="No-Break">at </span><span class="No-Break"><strong class="source-inline">tweets_df.csv</strong></span><span class="No-Break">.</span></p>
+<p>In the notebook, we will find libraries and methods to clean the tweets to normalize them before counting the frequency of appearance of the words. These are traditional NLP steps that we will describe in more detail in <a href="B19446_08.xhtml#_idTextAnchor250"><span class="No-Break"><em class="italic">Chapter 8</em></span></a>. The resulting word cloud for OpenSea is shown<a id="_idIndexMarker207"/> in <span class="No-Break"><em class="italic">Figure 3</em></span><span class="No-Break"><em class="italic">.22</em></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer051">
+<img alt="Figure 3.22 – OpenSea word cloud" height="478" src="image/B19446_03_22.jpg" width="882"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 3.22 – OpenSea word cloud</p>
+<p>Once we learn to extract social off-chain data, we can combine it with on-chain data to expand our analysis. Tweets, Discord conversations, Telegram interactions, and other community forums have timestamps and geo-location tags that can be used to merge off-chain activity with transactions occurring on-chain. This helps analysts infer the active hours of a chain or a protocol, deduce the geographic location of customers, and more. These types of analyses are typically requested by marketing teams to improve the direction of <span class="No-Break">their campaigns.</span></p>
+<p>An example of a company leveraging this connection between the two worlds is Spindl, which is working on merging Web2 marketing data sources with on-chain data to build the first marketing funnel tool for the <span class="No-Break">Web3 space.</span></p>
+<p class="callout-heading">A note on Twitter profiles to follow</p>
+<p class="callout">Here are some interesting profiles to follow for Web3 data analysis/content, among <span class="No-Break">many others:</span></p>
+<p class="callout"><strong class="source-inline">@</strong><span class="No-Break"><strong class="source-inline">0xGembus</strong></span><span class="No-Break">: </span><a href="https://twitter.com/0xGembus"><span class="No-Break">https://twitter.com/0xGembus</span></a></p>
+<p class="callout"><strong class="source-inline">@</strong><span class="No-Break"><strong class="source-inline">0xAtomist</strong></span><span class="No-Break">: </span><a href="https://twitter.com/0xAtomist"><span class="No-Break">https://twitter.com/0xAtomist</span></a></p>
+<p class="callout"><strong class="source-inline">@</strong><span class="No-Break"><strong class="source-inline">hildobby_</strong></span><span class="No-Break">: </span><a href="https://twitter.com/hildobby_"><span class="No-Break">https://twitter.com/hildobby_</span></a></p>
+<p>Other social media data sources to explore are <span class="No-Break">as follows:</span></p>
+<ul>
+<li><strong class="old">Reddit</strong>: This <a id="_idIndexMarker208"/>platform hosts numerous Web3-related conversations in the form of Subreddits. The posts and comments within these Subreddits offer <span class="No-Break">valuable information.</span></li>
+<li><strong class="old">BitcoinTalk.org forum</strong>: The<a id="_idIndexMarker209"/> public posts on this forum also serve as an interesting source <span class="No-Break">of information.</span></li>
+</ul>
+<h1 id="_idParaDest-83"><a id="_idTextAnchor143"/>Summary</h1>
+<p>In this chapter, we examined various off-chain sources of data relevant to the Web3 economy, categorizing the analysis into three main areas. For prices, we explored multiple APIs from traditional sources to exchanges, as well as an oracle. With news, we learned how to extract real-time headlines from the best dedicated news indexer as of the time of writing – namely, CryptoPanic. For X (formerly Twitter), we utilized its API to gauge the sentiment around an NFT protocol. This list of resources is not exhaustive, and we have only scratched the surface of the uses we can give to all <span class="No-Break">this data.</span></p>
+<p>In the next chapter, we will delve into NFTs and their applications in the gaming, art, and name <span class="No-Break">service industries.</span></p>
+<h1 id="_idParaDest-84"><a id="_idTextAnchor144"/>Further reading</h1>
+<p>To complement this chapter, the following links <span class="No-Break">may help:</span></p>
+<ul>
+<li><span class="No-Break">Prices:</span><ul><li>Support CoinMarketCap. (2020). Security check. How are prices calculated on <span class="No-Break">CoinMarketCap? </span><a href="https://support.coinmarketcap.com/hc/en-us/articles/360015968632-How-are-prices-calculated-on-CoinMarketCap-"><span class="No-Break">https://support.coinmarketcap.com/hc/en-us/articles/360015968632-How-are-prices-calculated-on-CoinMarketCap-</span></a></li><li>Crypto API documentation. (n.d.). <span class="No-Break">CoinGecko. </span><a href="https://www.coingecko.com/es/api/documentation"><span class="No-Break">https://www.coingecko.com/api/documentation</span></a></li><li>Account. (n.d.). Cryptocurrency Prices, Charts And Market Capitalizations | <span class="No-Break">CoinMarketCap. </span><a href="https://coinmarketcap.com/api/documentation/v1/"><span class="No-Break">https://coinmarketcap.com/api/documentation/v1/</span></a></li><li>CoinMarketCap. (n.d.). Most trusted cryptocurrency market data API | CoinMarketCap. <span class="No-Break">coinmarketcap.com. </span><a href="https://coinmarketcap.com/api/faq"><span class="No-Break">https://coinmarketcap.com/api/faq</span></a></li><li>Useful Chainlink tutorials. Chainlink. (2022). Learning resources. Chainlink <span class="No-Break">documentation: </span><a href="https://docs.chain.link/getting-started/other-tutorials/"><span class="No-Break">https://docs.chain.link/getting-started/other-tutorials/</span></a></li><li>To further expand on oracles. Chainlink, <em class="italic">What is an Oracle in blockchain? » explained</em>. Blockchain Oracles for Hybrid Smart Contracts | <span class="No-Break">Chainlink: </span><a href="https://chain.link/education/blockchain-oracles"><span class="No-Break">https://chain.link/education/blockchain-oracles</span></a></li><li>Data feeds API reference. (n.d.). Chainlink <span class="No-Break">documentation. </span><a href="https://docs.chain.link/data-feeds/api-reference"><span class="No-Break">https://docs.chain.link/data-feeds/api-reference</span></a></li><li>Price feed contract addresses. (n.d.). Chainlink <span class="No-Break">Documentation. </span><a href="https://docs.chain.link/data-feeds/price-feeds/addresses/"><span class="No-Break">https://docs.chain.link/data-feeds/price-feeds/addresses/</span></a></li></ul></li>
+<li><span class="No-Break">News:</span><ul><li>For a step-by-step process to download a website. Furneaux, Nick. “Investigating Cryptocurrencies. Understanding, Extracting, and Analyzing Blockchain Evidence” Wiley, 2018. <a href="B19446_08.xhtml#_idTextAnchor250"><em class="italic">Chapter 8</em></a>.- Pages 125 <span class="No-Break">to 130.</span></li></ul></li>
+<li><span class="No-Break">Social networks:</span><ul><li>Installation — Tweepy 4.13.0 documentation. (n.d.). Tweepy Documentation — tweepy 4.13.0 <span class="No-Break">documentation. </span><a href="https://docs.tweepy.org/en/stable/install.xhtml"><span class="No-Break">https://docs.tweepy.org/en/stable/install.xhtml</span></a></li><li>Getting-started-with-the-twitter-api-v2-for-academic-research/5-how-to-write-search-queries.md at main · twitterdev/getting-started-with-the-twitter-api-v2-for-academic-research. (n.d.). <span class="No-Break">GitHub. </span><a href="https://github.com/twitterdev/getting-started-with-the-twitter-api-v2-for-academic-research/blob/main/modules/5-how-to-write-search-queries.md"><span class="No-Break">https://github.com/twitterdev/getting-started-with-the-twitter-api-v2-for-academic-research/blob/main/modules/5-how-to-write-search-queries.md</span></a></li><li>Overview. (n.d.). Use Cases, Tutorials, and Documentation | Twitter Developer Platform.<span class="hidden"> </span><a href="https://developer.twitter.com/en/docs/twitter-api/annotations/overview">https://developer.twitter.com/en/docs/twitter-api/annotations/overview</a> <span class="No-Break">and </span><a href="https://developer.twitter.com/en/docs/twitter-api/annotations/faq"><span class="No-Break">https://developer.twitter.com/en/docs/twitter-api/annotations/faq</span></a></li></ul></li>
+</ul>
+</div>
+</div></body></html>

@@ -1,0 +1,384 @@
+<html><head></head><body>
+<div id="sbo-rt-content"><div id="_idContainer156">
+<h1 class="chapter-num er" id="_idParaDest-189"><a id="_idTextAnchor307"/>11</h1>
+<h1 id="_idParaDest-190"><a id="_idTextAnchor308"/>Price Prediction with Time Series</h1>
+<p>A significant amount of time spent by analysts and researchers in the finance industry is devoted to predicting investment opportunities, including asset prices and asset returns. With the availability of large volumes of data and advancements in processing techniques, <strong class="old">machine learning</strong> (<strong class="old">ML</strong>) has gained momentum, expanding its application beyond asset pricing to areas such as insurance pricing, portfolio management, and <span class="No-Break">risk management.</span></p>
+<p>In addition to the well-known applications of ML in the financial industry, we can now consider the influence of Web3 and open data. As we have learned throughout this book, data in Web3 is accessible to anyone. Privileged information, such as bank balances or significant account movements, can be viewed by anyone who knows where to look, as explained in <a href="B19446_05.xhtml#_idTextAnchor168"><span class="No-Break"><em class="italic">Chapter 5</em></span></a><span class="No-Break">.</span></p>
+<p>Many asset modeling and prediction problems in the financial industry involve a time component and the estimation of continuous outputs. This is why our focus in this chapter will be on time-series analysis, understanding what these outputs are, and how to model them. Our objective is to utilize historical data points, including the time component, to predict future outcomes, particularly in the context of <span class="No-Break">predicting prices.</span></p>
+<p>In summary, this chapter will cover the <span class="No-Break">following topics:</span></p>
+<ul>
+<li>A primer on <span class="No-Break">time series</span></li>
+<li>Database selection and <span class="No-Break">feature engineering</span></li>
+<li>Modeling, training, and evaluation <span class="No-Break">of results</span></li>
+</ul>
+<p>We will employ both traditional statistical models and <strong class="old">deep learning</strong> (<strong class="old">DL</strong>) methodologies to capture the patterns and dynamics within the time <span class="No-Break">series data.</span></p>
+<h1 id="_idParaDest-191"><a id="_idTextAnchor309"/>Technical requirements</h1>
+<p>In this chapter, we will be utilizing the <strong class="source-inline">statsmodels</strong> library, specifically its time-series analysis packages (<strong class="source-inline">tsa</strong> and <strong class="source-inline">statespace</strong>). <strong class="source-inline">statsmodels</strong> is a comprehensive Python module that offers a wide range of classes and functions for estimating various statistical models, performing statistical tests, and conducting statistical data exploration. For time-series analysis, it provides essential models such as univariate <strong class="old">autoregressive</strong> (<strong class="old">AR</strong>) models, <strong class="old">vector AR</strong> (<strong class="old">VAR</strong>) models, and univariate <strong class="old">AR moving average</strong> (<strong class="old">ARMA</strong>) models. Furthermore, it offers descriptive statistics for time series, such as the <strong class="old">autocorrelation</strong> and <strong class="old">partial autocorrelation</strong> functions (<strong class="old">ACF</strong> <span class="No-Break">and </span><span class="No-Break"><strong class="old">PACF</strong></span><span class="No-Break">).</span></p>
+<p>If you have not worked with <strong class="source-inline">statsmodels</strong> before, it can be installed using the <span class="No-Break">following command:</span></p>
+<pre class="console">
+pip install statsmodels</pre> <p>The documentation for <strong class="source-inline">statsmodels</strong> can be found <span class="No-Break">at </span><a href="https://www.statsmodels.org/stable/index.xhtml"><span class="No-Break">https://www.statsmodels.org/stable/index.xhtml</span></a><span class="No-Break">.</span></p>
+<p>We will also be utilizing <strong class="source-inline">pmdarima</strong>, which allows us to interact with <strong class="old">automatic modeling AR integrated MA</strong> (<strong class="old">Auto ARIMA</strong>). <strong class="source-inline">pmdarima</strong> serves as a Python wrapper for various statistical and ML libraries (including <strong class="source-inline">statsmodels</strong> and <strong class="source-inline">scikit-learn</strong>). If you have not worked with <strong class="source-inline">pmdarima</strong> before, it can be installed with the <span class="No-Break">following command:</span></p>
+<pre class="console">
+pip install pmdarima</pre> <p>The documentation for <strong class="source-inline">pmdarima</strong> can be found <span class="No-Break">at </span><a href="http://alkaline-ml.com/pmdarima/"><span class="No-Break">http://alkaline-ml.com/pmdarima/</span></a><span class="No-Break">.</span></p>
+<p>We will also extract our working dataset from <strong class="source-inline">yfinance</strong>, which is an open source Python library that serves as an interface to the Yahoo Finance API, providing convenient access to a wide range of financial data, including stock market prices, historical data, dividend information, and more. To install the library, we have to run the <span class="No-Break">following command:</span></p>
+<pre class="console">
+pip install yfinance</pre> <p>The documentation for <strong class="source-inline">yfinance</strong> can be found <span class="No-Break">at </span><a href="https://pypi.org/project/yfinance/"><span class="No-Break">https://pypi.org/project/yfinance/</span></a><span class="No-Break">.</span></p>
+<p>All the data and code files related to this chapter can be accessed in the book’s GitHub repository, <span class="No-Break">available here:</span></p>
+<p><a href="https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter11"><span class="No-Break">https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter11</span></a></p>
+<p>We recommend that you read through the code files in the <strong class="source-inline">Chapter11</strong> folder to follow along with the <span class="No-Break">chapter effectively.</span></p>
+<h1 id="_idParaDest-192"><a id="_idTextAnchor310"/>A primer on time series</h1>
+<p class="author-quote">Time Series is a collection of observations across time, spaced at equal intervals of time. </p>
+<p class="author-quote">–<a id="_idTextAnchor311"/> Luis Alberiko Gil-Alaña</p>
+<p>The collection of observations mentioned by Professor Gil-Alaña forms a sequence of events that unfold and evolve over time in <span class="No-Break">chronological order.</span></p>
+<p>These observations <a id="_idIndexMarker632"/>represent various data points that change or fluctuate over time, such as stock prices, temperature readings, sales figures, website traffic, number of blockchain transactions, and more. Each observation holds valuable knowledge about the past and provides information about <span class="No-Break">future trends.</span></p>
+<p>A 10-month time series representing the monthly closing price of <strong class="old">Bitcoin-US Dollar</strong> (<strong class="old">BTC-USD</strong>) looks <span class="No-Break">like this:</span></p>
+<table class="No-Table-Style _idGenTablePara-1" id="table001-10">
+<colgroup>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break"><strong class="old">Date</strong></span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break"><strong class="old">Close</strong></span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">10/1/2014</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">338.321014</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">11/1/2014</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">378.046997</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">12/1/2014</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">320.192993</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">1/1/2015</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">217.464005</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">2/1/2015</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">254.263</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">3/1/2015</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">244.223999</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">4/1/2015</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">236.145004</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">5/1/2015</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">230.190002</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">6/1/2015</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">263.071991</span></p>
+</td>
+</tr>
+<tr class="No-Table-Style">
+<td class="No-Table-Style">
+<p><span class="No-Break">7/1/2015</span></p>
+</td>
+<td class="No-Table-Style">
+<p><span class="No-Break">284.649994</span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 11.1 – Segment of the BTC-USD time series (source: Yahoo Finance)</p>
+<p>As we analyze<a id="_idIndexMarker633"/> time series data, we can identify patterns, trends, and fluctuations. These patterns may reveal recurring themes, follow a clear trajectory, or exhibit chaotic and unpredictable behavior. Here follows a visualization of the time series of the BTC price <span class="No-Break">since 2015:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer143">
+<img alt="Figure 11.1 – Plot of the entire series" height="585" src="image/B19446_11_01.jpg" width="979"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.1 – Plot of the entire series</p>
+<p>A time series comprises the <span class="No-Break">following components:</span></p>
+<p><strong class="old">Trend</strong>: This represents the overall directional movement of the series. A trend can be deterministic, driven by an underlying rationale, or stochastic, exhibiting <span class="No-Break">random behavior.</span></p>
+<p>In the next example, we observe a continuous upward trend since 2017, which has accelerated in the past 2 years: </p>
+<div>
+<div class="IMG---Figure" id="_idContainer144">
+<img alt="Figure 11.2: Graph of trend" height="170" src="image/B19446_11_02.jpg" width="1007"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.2: Graph of trend</p>
+<p><strong class="old">Seasonal</strong>: This component refers to recurring cycles or patterns within the series that repeat over a <span class="No-Break">specific timeframe.</span></p>
+<p>In the given dataset, we can observe a drop mid-year and an increase toward the end of <span class="No-Break">each year:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer145">
+<img alt="Figure 11.3 – Seasonal component" height="163" src="image/B19446_11_03.jpg" width="1064"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.3 – Seasonal component</p>
+<p><strong class="old">White noise</strong>: This represents the component of the series that is not captured by the trend or <span class="No-Break">seasonal components.</span></p>
+<p>In the given dataset, the component appears flat initially but exhibits peaks at specific points coinciding with peaks in the overall series, such as at the end of 2017-2018 <span class="No-Break">and 2021:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer146">
+<img alt="Figure 11.4 – White noise representation" height="151" src="image/B19446_11_04.jpg" width="888"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.4 – White noise representation</p>
+<p>To decompose a time series in order to analyze its components, we can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+decompose = seasonal_decompose(df, model= 'additive').plot(observed=True, seasonal=True, trend=True, resid=True, weights=False)</pre> <p>The<a id="_idTextAnchor312"/>re are two additional concepts relevant to time series analysis: autocorrelation <span class="No-Break">and stationarity.</span></p>
+<p><strong class="old">Autocorrelation</strong>: This refers to the dependence between consecutive points in a series. It indicates that the value at a given time period is influenced by the measurements at previous time periods. The order of autoregression represents the number of previous values used to predict the present value, known as the <em class="italic">lag</em>. For instance, if we use the previous 2 months’ prices to predict the monthly price of Bitcoin, it corresponds to an autocorrelation of <span class="No-Break">order 2.</span></p>
+<p><strong class="old">Stationary</strong>: A time series is said to be stationary if “<em class="italic">the mean and the variance do not depend on time, and the covariance between any two observations only depend on the distance between them, but not on a specific location in time</em>” (<em class="italic">Luis Alberiko Gil-Alaña</em>). Stationarity is an important assumption for many time series models and analyses. We can derive from the previous citation that a time series that has a trend or seasonality cannot be <span class="No-Break">considered stationary.</span></p>
+<p>For example, the following time series example has a clear upward trend, so it is <span class="No-Break">not stationary:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer147">
+<img alt="Figure 11.5 – Time series with trend" height="605" src="image/B19446_11_05.jpg" width="1650"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.5 – Time series with trend</p>
+<p>The following one has an increasing variance as it is progressing in time and trend, so it is <span class="No-Break">not stationary:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer148">
+<img alt="Figure 11.6 – Time series with variance" height="396" src="image/B19446_11_06.jpg" width="1650"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.6 – Time series with variance</p>
+<p>The following has no trend or seasonality, so can be <span class="No-Break">considered stationary:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer149">
+<img alt="Figure 11.7 – Stationary time series" height="629" src="image/B19446_11_07.jpg" width="1650"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.7 – Stationary time series</p>
+<p>Now that we have the theory, let’s introduce <span class="No-Break">the dataset.</span></p>
+<h1 id="_idParaDest-193"><a id="_idTextAnchor313"/>Exploring the dataset</h1>
+<p>For <a id="_idIndexMarker634"/>price prediction, we will utilize two datasets. The first dataset is the time series data of BTC prices, extracted from Yahoo Finance, with a <span class="No-Break">daily granularity.</span></p>
+<p>To extract it, we use the Yfinance library with the <span class="No-Break">following code:</span></p>
+<pre class="console">
+data=yf.Ticker('BTC-USD')
+df= data.history (start='YEAR-MONTH-DAY', end='YEAR-MONTH-DAY')</pre> <p>The dataset contains multiple columns, but we will focus on the close column and the date. The <strong class="source-inline">date</strong> column needs to be used as an index with a frequency. The following code snippet can be useful if not sourcing from Yfinance, which already <span class="No-Break">handles it:</span></p>
+<pre class="console">
+df = df.set_index(pd.DatetimeIndex(df['Date'], freq='D'))</pre> <p>As a Web3 dataset, compared to traditional financial stock price datasets, it includes prices for weekends as well, reflecting the fact that the market operates continuously. When selecting a times series dataset, it is essential to ensure that there are no missing values or handle them using the <span class="No-Break">appropriate techniques.</span></p>
+<p>If it were necessary to work with business days only, the Pandas library has some additional functions such as <strong class="source-inline">USFederalHolidayCalendar</strong>, which imports holiday calendars and provides a list <span class="No-Break">of holidays:</span></p>
+<pre class="console">
+from pandas.tseries.holiday import USFederalHolidayCalendar</pre> <p>The <strong class="source-inline">CustomBusinessDay</strong> class provides a parametric <strong class="source-inline">BusinessDay</strong> class that can be used to create customized business-day calendars for local holidays and local <span class="No-Break">weekend conventions:</span></p>
+<pre class="console">
+from pandas.tseries.offsets import CustomBusinessDay</pre> <p>Additionally, we<a id="_idIndexMarker635"/> have prepared another dataset consisting of news articles and their corresponding <strong class="old">sentiment analysis</strong> (<strong class="old">SA</strong>). For each day in the BTC price time series that we aim to model, we will match it with a set of news articles and their respective SA. We will test the hypothesis that incorporating external information from the real world will improve the prediction performance of the model. Other variables that can be considered include trading volume, the number of tweets containing the term <em class="italic">BTC</em>, days remaining until the next halving event (when the reward for Bitcoin mining is cut in half, and that takes place approximately every 4 years), <span class="No-Break">and more.</span></p>
+<p>During <strong class="old">exploratory data analysis</strong> (<strong class="old">EDA</strong>), it’s possible to discover missing values, outliers, or irregularities in the dataset. As discussed in <a href="B19446_01.xhtml#_idTextAnchor020"><span class="No-Break"><em class="italic">Chapter 1</em></span></a>, there have been instances where market prices were halted due to extreme volatility, such as the UST depeg. When faced with a dataset containing these issues, how should we address them? Non-time series-specific methods, such as mean or median imputation, are effective for stationary series. Time series-specific techniques include <strong class="old">Last Observation Carried Forward</strong> (<strong class="old">LOCF</strong>), which replaces missing values with the immediately preceding observed value, and <strong class="old">Next Observation Carried Backward</strong> (<strong class="old">NOCB</strong>), which performs the same replacement with the subsequent observed value. Another method is interpolation, which can be linear, polynomial, or spline, depending on the assumed relationship between observations. Further resources on potential approaches to resolve this issue are provided in the <em class="italic">Further </em><span class="No-Break"><em class="italic">reading</em></span><span class="No-Break"> section.</span></p>
+<p>Before delving into the models, it is important to address the concept of train-test split for time series data. Unlike the traditional datasets we have analyzed so far, time series models inherently possess an endogenous temporality, which is precisely what we aim to capture. This means that the value’s position in the time series order will have an impact on future points. In order to understand and capture this temporal relationship, we must maintain the chronological order of the time series and any exogenous variables. Randomly splitting the data is not suitable for time <span class="No-Break">series analysis.</span></p>
+<p>In this case, the <a id="_idIndexMarker636"/>test dataset will consist of the most recent portion of the series, while the training dataset will include all rows from the beginning of the series up to the selected <span class="No-Break">test portion.</span></p>
+<p>Sklearn provides a helpful class for performing this split, <span class="No-Break">called </span><span class="No-Break"><strong class="source-inline">TimeSeriesSplit</strong></span><span class="No-Break">:</span></p>
+<pre class="console">
+from sklearn.model_selection import TimeSeriesSplit</pre> <p>The documentation can be found at the <span class="No-Break">following link:</span></p>
+<p><a href="https://scikitlearn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.xhtml"><span class="No-Break">https://scikitlearn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.xhtml</span></a></p>
+<p>The challenge we will try to solve consists of predicting the BTC price on dates that were not part of the training. Time series problems can be approached by using statistical modeling, which we will call the traditional method, and through ML, whereby we will train a <strong class="old">long short-term memory</strong> (<span class="No-Break"><strong class="old">LSTM</strong></span><span class="No-Break">) model.</span></p>
+<h1 id="_idParaDest-194"><a id="_idTextAnchor314"/>Discussing traditional pipelines</h1>
+<p>The initial approach<a id="_idIndexMarker637"/> involves statistical modeling, using models such as ARIMA, <strong class="old">ARIMA with exogenous variables</strong> (<strong class="old">ARIMAX</strong>), and Auto ARIMA. To work with them, we need to address two additional challenges: ensuring the stationarity of the time series and determining the appropriate <span class="No-Break">model order.</span></p>
+<p>Statistical models <a id="_idIndexMarker638"/>perform better when applied to stationary time series. Traditional statistical time series models such as ARIMA are more effective when dealing with stationary time series. Resolving this issue will be part of the <span class="No-Break">preprocessing phase.</span></p>
+<p>The second challenge lies in the modeling phase, which involves understanding the dataset, determining the appropriate lags, and defining time windows. We will approach the solution manually using the Auto ARIMA algorithm, which handles <span class="No-Break">hyperparameters automatically.</span></p>
+<h2 id="_idParaDest-195"><a id="_idTextAnchor315"/>Preprocessing</h2>
+<p>Various functions <a id="_idIndexMarker639"/>can be employed to transform non-stationary time series data into a format suitable for our models. Examples include differencing, logarithmic transformations, <strong class="old">moving averages</strong> (<strong class="old">MAs</strong>), percent <a id="_idIndexMarker640"/>changes, lags, and <span class="No-Break">cumulative sums.</span></p>
+<p>Differencing calculates the differences between consecutive observations. This technique helps stabilize the mean of a time series by removing changes at a certain level, thereby reducing or eliminating trend <span class="No-Break">and seasonality.</span></p>
+<p>In the <strong class="source-inline">Traditional time series models.ipynb</strong> notebook, we start with a dataset that looks <span class="No-Break">like this:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer150">
+<img alt="Figure 11.8 – Complete time series" height="700" src="image/B19446_11_08.jpg" width="1234"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.8 – Complete time series</p>
+<p>To apply differencing, we use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+df.diff().dropna()</pre> <p>After such a process, the dataset is transformed <span class="No-Break">as follows:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer151">
+<img alt="Figure 11.9 – Differenced time series" height="612" src="image/B19446_11_09.jpg" width="1066"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.9 – Differenced time series</p>
+<p>In some cases, differencing the data once may not result in a stationary series. In such instances, it may be necessary to apply differencing a second time to <span class="No-Break">achieve stationarity.</span></p>
+<p>Other functions <a id="_idIndexMarker641"/>such as percent change, log difference, and MA can also help reduce trend and seasonality, making the series resemble white noise. Log transformation is particularly useful when dealing with non-constant variance, while MA can be beneficial for series with <span class="No-Break">high volatility.</span></p>
+<p>To help determine if a series is stationary, we can employ statistical tests such as the Dickey-Fuller test. This test is a root-based test that focuses on the coefficient associated with the first lag of the time series variable. If the coefficient is equal to one (indicating a unit root), the time series behaves as non-stationary, which is the null hypothesis. We reject the null hypothesis if the test result is negative and statistically significant, indicating that the time series is stationary. There are other tests for similar purposes, such as the <strong class="old">Kwiatkowski-Phillips-Schmidt-Shin</strong> (<strong class="old">KPSS</strong>) test or the <a id="_idIndexMarker642"/>Phillips-Perron test. An explanation exceeds the scope of this book; however, all of them can be sourced from the same library we have been working on. Once we have a stationary dataset, we can proceed <span class="No-Break">to modeling.</span><a id="_idTextAnchor316"/></p>
+<h2 id="_idParaDest-196"><a id="_idTextAnchor317"/>Modeling – ARIMA/SARIMAX and Auto ARIMA</h2>
+<p>Among<a id="_idIndexMarker643"/> statistical algorithms used for forecasting future values, we encounter ARIMA /SARIMAX and <a id="_idIndexMarker644"/>Auto ARIMA. ARIMA considers <a id="_idIndexMarker645"/>past values to predict future values, while SARIMAX incorporates seasonality patterns and exogenous variables. Auto ARIMA automates the modeling process based on <span class="No-Break">training data.</span></p>
+<p>The names of these models are derived from the concepts they comprise. <strong class="old">ARIMA</strong> stands for <strong class="old">autoregressive</strong> (<strong class="old">AR</strong>)-<strong class="old">integrated</strong> (<strong class="old">I</strong>)-<strong class="old">moving average</strong> (<strong class="old">MA</strong>). <strong class="old">SARIMAX</strong> adds <strong class="old">S</strong> for <strong class="old">seasonal</strong> and <strong class="old">X</strong> for <strong class="old">exogenous</strong> as it can be fed with independent variables. <strong class="old">Auto ARIMA</strong> adds <strong class="old">Auto</strong> for <strong class="old">automatic modeling</strong>. Let’s delve into <span class="No-Break">these concepts.</span></p>
+<p><strong class="old">AR</strong> identifies the regression order of the time series onto itself. It assumes that the latest data point value depends on previous values with a lag that we determine; that is, <em class="italic">the number of </em><span class="No-Break"><em class="italic">lag observations</em></span><span class="No-Break">.</span></p>
+<p>We can determine the regression order by using the PACF plot, which is part of the <strong class="source-inline">statsmodels</strong> library. The following code can be used to <span class="No-Break">plot it:</span></p>
+<pre class="console">
+pacf_td = plot_pacf(training_data)</pre> <p>The PACF measures the direct correlation between past values and current values and examines the spikes at each lag to determine their significance. A significant spike extends beyond significant limits, indicating that the correlation for that lag is not zero. The number of significant correlations determines the order of the AR <span class="No-Break">term (p).</span></p>
+<p><strong class="old">I</strong> identifies the number of differencing procedures required to make the <span class="No-Break">series stationary.</span></p>
+<p><strong class="old">MA</strong> models the error of the time series based on past forecast errors, assuming that the current error depends on the previous error with a lag that we determine. In essence, this corresponds to the size of the “window” function over our time series data and corresponds to the MA (<em class="italic">q</em>) part of the model. We can approach the order of q by examining the autocorrelation <span class="No-Break">plot (ACF).</span></p>
+<p>The ACF shows whether the elements of a time series are positively correlated, negatively correlated, or independent of each other. The horizontal axis shows the lags and the spikes show how relevantly correlated such lags are. We consider an ACF of order q based on statistically significant spikes that are far <span class="No-Break">from zero.</span></p>
+<p>To plot the ACF, we can use the following code, utilizing the <span class="No-Break"><strong class="source-inline">statsmodels</strong></span><span class="No-Break"> library:</span></p>
+<pre class="console">
+acf_diff = plot_acf(df_train_diff)</pre> <p>Here is a rule of thumb to start <span class="No-Break">testing models:</span></p>
+<p>If the <a id="_idIndexMarker646"/>PACF has a significant spike at lag p, but not beyond, and the ACF plot decays more gradually, we will use the following order for the model: <span class="No-Break">ARIMA (p,d,0):</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer152">
+<img alt="Figure 11.10 – Hypothesis 1" height="465" src="image/B19446_11_10.jpg" width="1324"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.10 – Hypothesis 1</p>
+<p>If the ACF plot has a significant spike at lag q but not beyond and the PACF plot decays more gradually, we will use the following order for the model: <span class="No-Break">ARIMA (0,d,q):</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer153">
+<img alt="Figure 11.11 – Hypothesis 2" height="452" src="image/B19446_11_11.jpg" width="1263"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.11 – Hypothesis 2</p>
+<p><strong class="old">S</strong> feeds into the model the characteristic of regular and predictable changes that recur every <strong class="source-inline">m</strong> period of time. It will be modeled in a similar way as the time series. The specifics of the seasonal component of SARIMA are highlighted <span class="No-Break">as follows:</span></p>
+<p><span class="No-Break"><strong class="source-inline">SARIMA(p,d,q)</strong></span><span class="No-Break"><strong class="old">(P,D,Q)[m]</strong></span></p>
+<p>The components are defined <span class="No-Break">as follows:</span></p>
+<ul>
+<li><strong class="source-inline">P</strong>: Seasonal <span class="No-Break">AR order.</span></li>
+<li><strong class="source-inline">D</strong>: Seasonal <span class="No-Break">difference order.</span></li>
+<li><strong class="source-inline">Q</strong>: Seasonal <span class="No-Break">MA order.</span></li>
+<li><strong class="source-inline">m</strong>: The number of time steps for a single seasonal period. To get this number, it is useful to decompose similar periods of time that we want to predict (always from the training dataset) to spot the seasonality. In the case under analysis, we see a seasonality of <span class="No-Break">8 days.</span></li>
+</ul>
+<p>To evaluate the <a id="_idIndexMarker647"/>model, we utilize a traditional regression metric known<a id="_idIndexMarker648"/> as <strong class="old">root mean squared error</strong> (<strong class="old">RMSE</strong>). RMSE is a statistical measure employed to assess the accuracy of a model’s predictions by calculating the square root of the <strong class="old">mean squared error</strong> (<strong class="old">MSE</strong>). MSE is <a id="_idIndexMarker649"/>the average of the squared differences between the original and predicted values. RMSE yields a single, easily interpretable value that represents the typical magnitude of errors made by a predictive model. A lower RMSE indicates a better fit between predicted and actual values, reflecting a more accurate predictive model. Another related <a id="_idIndexMarker650"/>metric is <strong class="old">mean absolute error</strong> (<strong class="old">MAE</strong>), which represents the average of the absolute differences between the actual and predicted values in <span class="No-Break">the dataset.</span></p>
+<p>RMSE is widely favored for comparing the performance of regression models, particularly because it is expressed in the same units as the dependent variable, facilitating a <span class="No-Break">straightforward interpretation.</span></p>
+<p>In the Jupyter notebook, we can observe that the model can be further improved. The result of the manual modeling is an RMSE value <span class="No-Break">of </span><span class="No-Break"><strong class="source-inline">0.073</strong></span><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-197"><a id="_idTextAnchor318"/>Auto ARIMA</h2>
+<p>Auto ARIMA <a id="_idIndexMarker651"/>handles the task of tuning hyperparameters very well. It automatically generates the optimal values for the parameters (<strong class="source-inline">p</strong>,<strong class="source-inline">d</strong>, <span class="No-Break">and </span><span class="No-Break"><strong class="source-inline">q</strong></span><span class="No-Break">).</span></p>
+<p>The metric<a id="_idIndexMarker652"/> named the <strong class="old">Akaike information criterion</strong> (<strong class="old">AIC</strong>), useful in selecting predictors for regression, is used to determine the order of an ARIMA model. Particularly, the Auto ARIMA model iterates during the fitting process to find the best combination of parameters that minimizes the AIC. According to the documentation, it functions <em class="italic">like a grid search</em>, trying different sets of p and q parameters. For the differencing terms, Auto ARIMA utilizes a test of stationarity, such as an augmented Dickey-Fuller test, and <span class="No-Break">considers seasonality.</span></p>
+<p>This approach <a id="_idIndexMarker653"/>significantly improves our model, saving time and reducing human errors. To implement it, we can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+pm.auto_arima(training_data, stepwise=False, seasonal=True, n_jobs=-1, trace=True)</pre> <p>The parameters passed are <span class="No-Break">as follows:</span></p>
+<ul>
+<li><strong class="source-inline">training_data</strong>: This is the time series data we want <span class="No-Break">to model.</span></li>
+<li><strong class="source-inline">stepwise</strong>: A Boolean parameter that controls whether the function should perform a stepwise search for the best ARIMA model. If set to <strong class="source-inline">True</strong>, the function will perform a stepwise search (that is, it will iteratively consider adding or removing AR, MA, or I components). If set to <strong class="source-inline">False</strong>, the function will search for the best ARIMA model using an exhaustive search over possible combinations, similar to a grid search. A stepwise search is faster but may not always find the <span class="No-Break">best model.</span></li>
+<li><strong class="source-inline">seasonal</strong>: A Boolean parameter that specifies whether the model should include seasonal components (for example, SARIMA). If set to <strong class="source-inline">True</strong>, the function will search for seasonal patterns in the data. If set to <strong class="source-inline">False</strong>, it will only consider non-seasonal <span class="No-Break">ARIMA models.</span></li>
+<li><strong class="source-inline">n_jobs</strong>: This parameter controls the number of CPU cores to use when performing the model search. Setting it to <strong class="source-inline">-1</strong> means using all available CPU cores, which can speed up the search process, especially when we have a <span class="No-Break">large dataset.</span></li>
+<li><strong class="source-inline">trace</strong>: This is a debugging parameter. When set to <strong class="source-inline">True</strong>, it enables verbose output, which includes diagnostic information and intermediate results during the <span class="No-Break">model search.</span></li>
+</ul>
+<p>After implementing this model, the RMSE decreases substantially; however, it has room for improvement. Now, let’s look at incorporating a specific domain or <span class="No-Break">subject-matter knowledge.</span></p>
+<h2 id="_idParaDest-198"><a id="_idTextAnchor319"/>Adding exogenous variables</h2>
+<p>Exogenous variables<a id="_idIndexMarker654"/> are additional pieces of information that can be included in our models. These variables can originate from the same time series, such as observing BTC price increases at specific hours or days, or they can be completely exogenous, such as SA of news or derived from X (<span class="No-Break">formerly Twitter).</span></p>
+<p>In our notebook, we incorporate the sentiment of the news of each day as an exogenous variable. The preprocessing of such a dataset includes <span class="No-Break">the following:</span></p>
+<ol>
+<li>Mapping the sentiment of the news according to the <strong class="source-inline">sentiment_mapping</strong> dictionary to the <span class="No-Break">following criteria:</span><pre class="source-code">
+<strong class="old">sentiment_mapping = {</strong>
+<strong class="old">    'Positive': 1,</strong>
+<strong class="old">    'Negative': -1,</strong>
+<strong class="old">    'Neutral': -1</strong>
+<strong class="old">}</strong></pre></li> <li>We also identify dates where there has been an outlier in the number of news items related to BTC and reinforce its impact. To do that, we find the <strong class="source-inline">z-score</strong> value, which behaves as a threshold against which we will identify outliers. Those considered outliers are multiplied by 2. This is done with the following code in the <span class="No-Break"><strong class="source-inline">traditional_time_series_models.ipynb</strong></span><span class="No-Break"> file:</span><pre class="source-code">
+<strong class="old">outliers = day_sentiment_df[z_scores &gt; threshold]</strong>
+<strong class="old">outliers['sentiment_number'] = outliers['sentiment_number'] * 2</strong>
+<strong class="old">day_sentiment_df.update(outliers)</strong></pre></li> </ol>
+<p>Both decisions in <em class="italic">steps 1</em> and <em class="italic">2</em> are arbitrary decisions of the data scientist and look to reflect in the data the fact that the crypto market tends to overreact to news, whether positive, negative, or neutral. </p>
+<p>By applying the exogenous variable, ARIMAX and Auto ARIMA models show a decreased RMSE compared to their versions without exogenous variables, which is <span class="No-Break">very positive:</span></p>
+<ul>
+<li><strong class="source-inline">rmse - </strong><span class="No-Break"><strong class="source-inline">manual: 0.046</strong></span></li>
+<li><strong class="source-inline">rmse - </strong><span class="No-Break"><strong class="source-inline">auto: 0.062</strong></span></li>
+</ul>
+<p>We see <a id="_idIndexMarker655"/>that the manual tuning of the model outperforms the Auto ARIMA model when adding the <span class="No-Break">exogenous variable.</span></p>
+<p>To compare the performance of these models with the LSTM, we can compare RMSE metrics or reverse the results with the following code in order to compare USD prices. To reverse from logs, we can use this <span class="No-Break">code snippet:</span></p>
+<pre class="console">
+testing_data= np.exp(testing_data)
+forecast_test=np.exp(forecast_test)
+rmse_exog = np.sqrt(mean_squared_error(testing_data, forecast_test))</pre> <p>We have now reviewed the statistic model, so we proceed to build <a id="_idTextAnchor320"/>a <span class="No-Break">DL model.</span></p>
+<h1 id="_idParaDest-199"><a id="_idTextAnchor321"/>Using a neural network – LSTM</h1>
+<p>We explained in detail how LSTM works in <a href="B19446_08.xhtml#_idTextAnchor250"><span class="No-Break"><em class="italic">Chapter 8</em></span></a>. Briefly, LSTM serves as a specialized<a id="_idIndexMarker656"/> form of <strong class="old">recurrent neural network</strong> (<strong class="old">RNN</strong>) designed to detect patterns in data sequences. Its distinct feature lies in its capacity to preserve <a id="_idIndexMarker657"/>information over extended periods compared to conventional RNNs. LSTM overcomes this short-term memory problem by selectively retaining <span class="No-Break">relevant information.</span></p>
+<h2 id="_idParaDest-200"><a id="_idTextAnchor322"/>Preprocessing</h2>
+<p>We will treat the <a id="_idIndexMarker658"/>problem as a <strong class="old">supervised learning</strong> (<strong class="old">SL</strong>) task. For that purpose, we will modify the training set <span class="No-Break">as follows:</span></p>
+<ol>
+<li>Scale the dataset using <span class="No-Break">the </span><span class="No-Break"><strong class="source-inline">MinMaxScaler()</strong></span><span class="No-Break">.</span></li>
+<li>Iterate through the scaled dataset and retrieve the 60 days previous to the current price (<strong class="source-inline">y_train)</strong> and convert them into features for each price. The result will be a training dataset with 60 price columns as <strong class="source-inline">x_train</strong> features for each <a id="_idIndexMarker659"/>BTC price (<strong class="source-inline">y_train</strong>). In summary, for each data point that the model learns, it refers to the previous 60 days <span class="No-Break">in </span><span class="No-Break"><strong class="source-inline">x_train</strong></span><span class="No-Break">:</span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer154">
+<img alt="Figure 11.12 – Structure of the training dataset" height="511" src="image/B19446_11_12.jpg" width="1051"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.12 – Structure of the training dataset</p>
+<p>We use the previous 60 days as input variables for each day considered as an <span class="No-Break">output variable.</span></p>
+<h2 id="_idParaDest-201"><a id="_idTextAnchor323"/>Model building</h2>
+<p>To<a id="_idIndexMarker660"/> build the model, we will leverage the Keras library. For that, we add to the model two LSTM layers with 50 neurons each, the first one with the input shape of <span class="No-Break">our dataset.</span></p>
+<p>We also add two dense layers with 25 and 1 neurons each. The structure of the model should be kept as simple as possible and is <span class="No-Break">totally modifiable:</span></p>
+<pre class="console">
+model= Sequential ()
+model.add (LSTM(50, return_sequences=True, input_shape=(x_train.shape[1],1)))
+model.add (LSTM (50, return_sequences = False))
+model.add (Dense(25))
+model.add (Dense(1))</pre> <p>We will <a id="_idIndexMarker661"/>later compile with the Adam optimizer and choose <strong class="source-inline">mean_squared_error</strong> as the <span class="No-Break">loss metric:</span></p>
+<pre class="console">
+model.compile (optimizer='Adam', loss='mean_squared_error')</pre> <p>To save the callbacks, in order to analyze the results of our training, we set up the TensorBoard tool to read from a new folder that saves <span class="No-Break">the logs:</span></p>
+<pre class="console">
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="./logs")</pre> <h2 id="_idParaDest-202"><a id="_idTextAnchor324"/>Training and evaluation</h2>
+<p>We train<a id="_idIndexMarker662"/> our model with a batch size of 10 and <span class="No-Break">35 epochs:</span></p>
+<pre class="console">
+model.fit (x_train, y_train, batch_size=10, epochs=35,callbacks=[tensorboard_callback])</pre> <p>To evaluate how <a id="_idIndexMarker663"/>well the model predicts, we will build a new dataset with data from the last 30 days that has not been passed to the model. To do that, we need to follow the same steps that we executed for the training dataset in the <em class="italic">Preprocessing</em> section. We turn 60 rows into columns in <strong class="source-inline">x_test</strong> that become features of the 61st value that becomes <strong class="source-inline">y</strong> or the value to be <span class="No-Break">predicted (</span><span class="No-Break"><strong class="source-inline">y_test</strong></span><span class="No-Break">).</span></p>
+<p>For the prediction, we will only consider the last 30 days and calculate the RMSE between the predicted values and the <strong class="source-inline">y_test</strong> values. To do that, we can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+np.sqrt(mean_squared_error(y_test, predictions))</pre> <p>If we plot<a id="_idIndexMarker664"/> the prediction and the ground truth data, the result is not bad. Please refer to the <strong class="source-inline">Chapter11/LSTM.ipynb</strong> notebook for a <span class="No-Break">colored version:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer155">
+<img alt="Figure 11.13 – Predicted and ground truth data" height="695" src="image/B19446_11_13.jpg" width="1351"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 11.13 – Predicted and ground truth data</p>
+<p>A comparison<a id="_idIndexMarker665"/> between the RMSE of the models shows that the LSTM approach performs better in this environment of high volatility of prices with a $457 error versus a $1,283 error of the best <span class="No-Break">ARIMA model.</span></p>
+<p>Some key differences to take into account are <span class="No-Break">as follows:</span></p>
+<ul>
+<li><strong class="old">Relationship between variables</strong>: ARIMA models assume linear relationships between the input and output variables. They can capture some nonlinear patterns, but complex nonlinear dependencies present in the data will not be covered. LSTM models are better suited for capturing nonlinear relationships and long-term dependencies in time series data. This makes LSTM models more suitable for modeling nonlinear and sequential data with complex <span class="No-Break">temporal patterns.</span></li>
+<li><strong class="old">Training complexity</strong>: ARIMA models involve estimating parameters such as AR, MA, and differencing terms. LSTM models, as with all <strong class="old">neural networks</strong> (<strong class="old">NNs</strong>), require <a id="_idIndexMarker666"/>more computational resources and training time. They involve training multiple layers of recurrent units with a large number of parameters. Training DL models <a id="_idIndexMarker667"/>typically requires more data and computational power compared to<a id="_idIndexMarker668"/> traditional <span class="No-Break">statistical models.</span></li>
+</ul>
+<p>With the libraries we analyzed, it is possible to examine both methods, compare the performance, and evaluate the accuracy of <span class="No-Break">each model.</span></p>
+<h1 id="_idParaDest-203"><a id="_idTextAnchor325"/>Summary</h1>
+<p>In this chapter, we explored the analysis of price time series for BTC in a market that operates continuously, exhibits high volatility, and can experience exaggerated reactions to <span class="No-Break">news events.</span></p>
+<p>We began by familiarizing ourselves with the fundamental concepts of time series analysis and introduced traditional models such as ARIMA and Auto ARIMA. For our use case, we transformed our price dataset into the stationary form and learned to apply the models to it. Lastly, we incorporated an exogenous variable such as the news into our model. This external information proved to be valuable, contributing to a reduction in the error metric we <span class="No-Break">were tracking.</span></p>
+<p>Furthermore, we delved into the LSTM model approach, which required us to restructure the dataset differently. This involved numerous modifications and adaptations to accommodate the specific requirements of the LSTM model, which ultimately <span class="No-Break">performed better.</span></p>
+<p>By employing a comprehensive range of techniques and incorporating external factors, we have gained valuable insights into analyzing and forecasting token price time series. These findings serve as a foundation for further exploration and refinement of <span class="No-Break">our models.</span></p>
+<h1 id="_idParaDest-204"><a id="_idTextAnchor326"/>Further reading</h1>
+<p>To complement this chapter, the following links <span class="No-Break">may help:</span></p>
+<ul>
+<li><em class="italic">Time Series Analysis in R Part 2: Time Series Transformations</em>. (n.d.). An online community for showcasing R &amp; Python tutorials. <span class="No-Break"><em class="italic">DataScience+</em></span><span class="No-Break">. </span><a href="https://datascienceplus.com/time-series-analysis-in-r-part-2-time-series-transformations/"><span class="No-Break">https://datascienceplus.com/time-series-analysis-in-r-part-2-time-series-transformations/</span></a></li>
+<li><em class="italic">Computer Science</em>. (<em class="italic">2019</em>, <em class="italic">December 22</em>). <em class="italic">Stock Price Prediction Using Python &amp; Machine Learning</em> [Video]. <span class="No-Break"><em class="italic">YouTube</em></span><span class="No-Break">. </span><a href="https://www.youtube.com/watch?v=QIUxPv5PJOY"><span class="No-Break">https://www.youtube.com/watch?v=QIUxPv5PJOY</span></a></li>
+<li><em class="italic">Luis Alberiko Gil-Alaña</em>. (<em class="italic">2021</em>). <em class="italic">Introduction to Time Series</em> [<span class="No-Break">PDF document].</span></li>
+<li><em class="italic">Cryptocurrencies and stock market indices. Are they related?</em> <em class="italic">LA Gil-Alaña</em>, <em class="italic">EJA Abakah</em>, <em class="italic">MFR Rojo</em>. <em class="italic">Research in International Business and Finance</em>, <span class="No-Break"><em class="italic">2020</em></span><span class="No-Break">. </span><a href="http://ddfv.ufv.es/bitstream/handle/10641/2229/cryptocurrencies%20and%20stock%20market%20indices.pdf?sequence=1&amp;isAllowed=y"><span class="No-Break">http://ddfv.ufv.es/bitstream/handle/10641/2229/cryptocurrencies%20and%20stock%20market%20indices.pdf?sequence=1&amp;isAllowed=y</span></a></li>
+<li><em class="italic">Modelling long memory volatility in the Bitcoin market: Evidence of persistence and structural breaks</em>. <em class="italic">E Bouri</em>, <em class="italic">LA Gil</em>-<em class="italic">Alaña</em>, <em class="italic">R Gupta</em>, <em class="italic">D Roubaud</em>. <em class="italic">International Journal of Finance &amp; Economics</em>, <span class="No-Break"><em class="italic">2019</em></span><span class="No-Break">. </span><a href="https://onlinelibrary.wiley.com/doi/abs/10.1002/ijfe.1670"><span class="No-Break">https://onlinelibrary.wiley.com/doi/abs/10.1002/ijfe.1670</span></a></li>
+<li><em class="italic">Abulkhair, A.</em> (<em class="italic">2023</em>, <em class="italic">June 13</em>). <em class="italic">Data imputation demystified | Time series data</em>. <span class="No-Break"><em class="italic">Medium</em></span><span class="No-Break">. </span><a href="mailto:https://medium.com/@aaabulkhair/data-imputation-demystified-time-series-data-69bc9c798cb7"><span class="No-Break">https://medium.com/@aaabulkhair/data-imputation-demystified-time-series-data-69bc9c798cb7</span></a></li>
+<li><em class="italic">Jingjuewang</em>. (<em class="italic">2017</em>, <em class="italic">December 11</em>). <em class="italic">Handle Missing Values in Time Series For Beginners</em>. <em class="italic">Kaggle: Your Machine Learning and Data Science </em><span class="No-Break"><em class="italic">Community</em></span><span class="No-Break">. </span><a href="https://www.kaggle.com/code/juejuewang/handle-missing-values-in-time-series-for-beginners"><span class="No-Break">https://www.kaggle.com/code/juejuewang/handle-missing-values-in-time-series-for-beginners</span></a></li>
+<li><em class="italic">Aldean, A. S.</em> (<em class="italic">2023</em>, <em class="italic">June 29</em>). <em class="italic">Time Series Data Interpolation</em>. <span class="No-Break"><em class="italic">Medium</em></span><span class="No-Break">. </span><a href="mailto:https://medium.com/@aseafaldean/time-series-data-interpolation-e4296664b86"><span class="No-Break">https://medium.com/@aseafaldean/time-series-data-interpolation-e4296664b86</span></a></li>
+<li><em class="italic">Holloway, N</em>. (<em class="italic">2019</em>, <em class="italic">March 16</em>). <em class="italic">Seasonality and SARIMAX</em>. <em class="italic">Kaggle: Your Machine Learning and Data Science </em><span class="No-Break"><em class="italic">Community</em></span><span class="No-Break">. </span><a href="https://www.kaggle.com/code/nholloway/seasonality-and-sarimax"><span class="No-Break">https://www.kaggle.com/code/nholloway/seasonality-and-sarimax</span></a></li>
+<li><em class="italic">Brownlee, J</em>. (<em class="italic">2020</em>, <em class="italic">December</em>). <em class="italic">Understand Time Series Forecast Uncertainty Using Prediction Intervals with Python</em>. <em class="italic">Machine Learning</em> <span class="No-Break"><em class="italic">Mastery</em></span><span class="No-Break">. </span><a href="https://machinelearningmastery.com/time-series-forecast-uncertainty-using-confidence-intervals-python/"><span class="No-Break">https://machinelearningmastery.com/time-series-forecast-uncertainty-using-confidence-intervals-python/</span></a></li>
+<li><em class="italic">Chugh, A.</em> (<em class="italic">2022</em>, <em class="italic">March 16</em>). <em class="italic">MAE, MSE, RMSE, Coefficient of Determination, Adjusted R Squared — Which Metric is Better?</em> <span class="No-Break"><em class="italic">Medium</em></span><span class="No-Break">. </span><a href="https://medium.com/analytics-vidhya/mae-mse-rmse-coefficient-of-determination-adjusted-r-squared-which-metric-is-better-cd0326a5697e"><span class="No-Break">https://medium.com/analytics-vidhya/mae-mse-rmse-coefficient-of-determination-adjusted-r-squared-which-metric-is-better-cd0326a5697e</span></a></li>
+</ul>
+</div>
+</div></body></html>

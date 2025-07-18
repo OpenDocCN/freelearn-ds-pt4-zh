@@ -1,0 +1,560 @@
+<html><head></head><body>
+<div id="sbo-rt-content"><div id="_idContainer029">
+<h1 class="chapter-num er" id="_idParaDest-39"><a id="_idTextAnchor073"/>2</h1>
+<h1 id="_idParaDest-40"><a id="_idTextAnchor074"/>Working with On-Chain Data</h1>
+<p><a id="_idTextAnchor075"/>In <a href="B19446_01.xhtml#_idTextAnchor020"><span class="No-Break"><em class="italic">Chapter 1</em></span></a>, we learned about the fundamental concepts of a blockchain. We discovered that a blockchain is a distributed ledger composed of a chain of blocks, where each block is cryptographically linked to the previous one. Each block contains transaction information and the hash of the preceding block. Additionally, transactions can modify state data in <strong class="old">Ethereum Virtual Machine</strong> (<span class="No-Break"><strong class="old">EVM</strong></span><span class="No-Break">)-based chains.</span></p>
+<p>On-chain data represents the<a id="_idIndexMarker087"/> trace left by each transaction within the blockchain. It is stored as byte data, which requires parsing in order to become human-readable. To illustrate this follows a fragment of the Bitcoin genesis block in its raw format, sourced from <a href="https://wiki.bitcoinsv.io/index.php/Genesis_block">https://wiki.bitcoinsv.io/index.php/Genesis_block</a> (license: CC <span class="No-Break">BY 3.0):</span></p>
+<pre class="source-code">
+00000000  01 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
+...
+00000080  01 04 45 54 68 65 20 54  69 6D 65 73 20 30 33 2F   ..<strong class="old">Ethe Times</strong> 03/
+00000090  4A 61 6E 2F 32 30 30 39  20 43 68 61 6E 63 65 6C   <strong class="old">Jan/2009 Chancel</strong>
+000000A0  6C 6F 72 20 6F 6E 20 62  72 69 6E 6B 20 6F 66 20   <strong class="old">lor on brink of</strong>
+000000B0  73 65 63 6F 6E 64 20 62  61 69 6C 6F 75 74 20 66   <strong class="old">second bailout f</strong>
+000000C0  s6F 72 20 62 61 6E 6B 73  FF FF FF FF 01 00 F2 05   <strong class="old">or banks</strong>ÿÿÿÿ..ò.
+...
+00000110   8A 4C 70 2B 6B F1 1D 5F  AC 00 00 00 00            ŠLp+kñ._¬</pre> <p>This data can be parsed and enriched by providing <span class="No-Break">additional information:</span></p>
+<pre class="source-code">
+{"hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f", …, "minerInfo": { "name": "\u0004��\u0000\u001d\u0001\<strong class="old">u0004Ethe Times 03/Jan/2009 Chancellor on brink of second bailout for banks</strong>\n"}}],...blockhash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f","confirmations": 765769, "time": 1231006505, … }}</pre> <p>Nodes store copies of this data, typically as <strong class="source-inline">.dat</strong> files containing the raw concatenated <span class="No-Break">block data.</span></p>
+<p>Data stored <em class="italic">on-chain</em> is serialized, so in order to extract valuable insights, we must understand its structure, decode its content, and make it readable. With that in mind, in this chapter, we will delve<a id="_idIndexMarker088"/> into blockchain transactions and dissect the anatomy of a transaction. We will examine its essential components, such as sender and recipient addresses, transaction amounts, gas fees, and more. Furthermore, we will focus on the building blocks of a blockchain – the blocks. We will explore the block structure, including the block header, timestamp, difficulty, <span class="No-Break">and nonce.</span></p>
+<p>Additionally, we will delve into blockchain state data, learning how to connect with smart contracts and retrieve contract variables’ values for <span class="No-Break">any block.</span></p>
+<p>Toward the end of the chapter, we will explore popular on-chain data providers and APIs, understanding how to access the exact source that suits our needs, while considering their advantages <span class="No-Break">and disadvantages.</span></p>
+<p>In summary, this chapter will cover the <span class="No-Break">following topics:</span></p>
+<ul>
+<li>Dissecting <span class="No-Break">a transaction</span></li>
+<li>Dissecting <span class="No-Break">a block</span></li>
+<li>Exploring <span class="No-Break">state data</span></li>
+<li>Reviewing <span class="No-Break">data source<a id="_idTextAnchor076"/>s</span></li>
+</ul>
+<h1 id="_idParaDest-41"><a id="_idTextAnchor077"/>Technical requirements</h1>
+<p>In this chapter, we will extensively utilize the <strong class="source-inline">requests</strong> library. This popular and user-friendly Python library simplifies the process of sending HTTP requests and handling responses. HTTP requests form the foundation of client-server communication in web applications and APIs, enabling clients to request specific resources or perform actions on the server, such as data retrieval, creation, modification, <span class="No-Break">and deletion.</span></p>
+<p>If you haven’t installed <strong class="source-inline">requests</strong> yet, you can do so by executing the <span class="No-Break">following command:</span></p>
+<pre class="console">
+pip install requests</pre> <p>The documentation for <strong class="source-inline">requests</strong> is available at the following <span class="No-Break">link: </span><a href="https://requests.readthedocs.io/en/latest/"><span class="No-Break">https://requests.readthedocs.io/en/latest/</span></a><span class="No-Break">.</span></p>
+<p>You can find all the data and code files for this chapter in the book’s GitHub repository, accessible <span class="No-Break">here: </span><a href="https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter02"><span class="No-Break">https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter02</span></a><span class="No-Break">.</span></p>
+<p>We recommend that you read through the code files in the <strong class="source-inline">Chapter02</strong> folder to follow along with <span class="No-Break">the chapter.</span></p>
+<p class="callout-heading">A note on differences between blockchains and databases</p>
+<p class="callout">Blockchains and databases have architectural differences. We have observed that a blockchain leverages distributed ledger technology while databases operate on a client-server relationship. This fundamental difference has an impact on two aspects: authority and performance. There is no sole server in charge of a blockchain; therefore, to modify anything on it, the nodes will need to reach a consensus, which takes time and results in slower performance. In contrast, databases are highly time-efficient and continue to improve their speed <span class="No-Break">every day.</span></p>
+<p class="callout">Another consequence of this relates to the manipulation of stored information. In the case of a blockchain, it is not possible to update a data point that has been added to a block. On the other hand, databases offer <strong class="old">Create, Read, Update, Delete</strong> (<strong class="old">CRUD</strong>) operations, with their only limitation being dependent on <span class="No-Break">admin privileges.</span></p>
+<p class="callout">It is worth noting that these characteristics primarily apply to public blockchains. Hybrid blockchains, commonly used for corporate purposes, blur the distinction between traditional databases <span class="No-Break">and blockchains.</span></p>
+<p>Let’s visualize each transaction as a row in the blockchain ledger, and imagine that these rows fill up the pages of a book. Each completed page represents a block containing a collection of transactions. We will start our analysis by studying the data each <span class="No-Break">row contains.</span><a id="_idTextAnchor078"/></p>
+<h1 id="_idParaDest-42"><a id="_idTextAnchor079"/>Dissecting a transaction</h1>
+<p>As data analysts, it’s <a id="_idIndexMarker089"/>crucial for us to grasp the unique structure of each blockchain we analyze, as it influences how we search for and <span class="No-Break">interpret information.</span></p>
+<p>For instance, Bitcoin follows a structure based on spent and unspent transactions, while Ethereum operates on an account-based protocol. The underlying structure changes our approach to the data we want <span class="No-Break">to fetch.</span></p>
+<p>In the case of Ethereum, a transaction is a message initiated by an <strong class="old">Externally Owned Account</strong> (<strong class="old">EOA</strong>) that<a id="_idIndexMarker090"/> gets recorded on the network. A transaction is the kick-off moment that triggers the Ethereum machinery and leads to a change in <span class="No-Break">its state.</span></p>
+<p>To exemplify the concepts described in the subsequent sections, we will dissect a transaction associated with the <strong class="source-inline">0x1aD91ee08f21bE3dE0BA2ba6918E714dA6B45836</strong> Address. This address belongs to the mining pool <span class="No-Break">named </span><span class="No-Break"><em class="italic">Hiveon</em></span><span class="No-Break">.</span></p>
+<p>The transaction’s hash is <strong class="source-inline">0x032ed60363beb809a2b9c9790bb7dadd83b743040945a087aeecbe9e6b2dc2af</strong>. By pasting this hash into Etherscan, we can gather more information about <span class="No-Break">the transaction:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer015">
+<img alt="Figure 2.1 – Transaction details on Etherscan" height="1170" src="image/B19446_02_01.jpg" width="1518"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.1 – Transaction details on Etherscan</p>
+<p>Etherscan <a id="_idIndexMarker091"/>provides valuable metadata that offers context about when the transaction was executed, helping us understand it with its <span class="No-Break">user-friendly interface.</span></p>
+<p>We will begin by examining the basic transaction data, which consists of the following fields, as extracted <span class="No-Break">in</span><span class="No-Break"><strong class="source-inline"> Chapter01/Transaction.ipynb</strong></span><span class="No-Break">:</span></p>
+<table class="T---Table _idGenTablePara-1" id="table001-2">
+<colgroup>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Nonce</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">3460171</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Gas Price</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>0.000000019209576968 Ether (<span class="No-Break" lang="en-US" xml:lang="en-US">19.209576968 Gwei</span><span class="No-Break">)</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Gas Limit</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">100000</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Recipient</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x3c16183c1C0E28F1a0cB9F8ee4b21D0Db208cA46</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Value</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">48000000000000000000</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">Data</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="old">V,R,S</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>(<span class="No-Break">1, ‘0x2c1561644259bffe2872ea57690d103b</span>
+c57b611c8882ed7f2b5e0bfe40e4c807’, ‘<span class="No-Break">0x4bc9255e7b24d321edd9af354589140 acc7347e35d91fcffde07fb81c27741d8’)</span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 2.1 – Transaction information stored on-chain</p>
+<p>Let’s delve into the details of each of <span class="No-Break">these fields.</span></p>
+<h2 id="_idParaDest-43"><a id="_idTextAnchor080"/>Nonce</h2>
+<p>A nonce is a cumulative number that keeps track of the total transactions sent by the executing address. Smart contracts also have a nonce that keeps track of the number of <span class="No-Break">contract creations.</span></p>
+<p>The <em class="italic">Ethereum Yellow Paper</em> defines it as follows: “<em class="italic">nonce: A scalar value equal to the number of transactions sent from this address or, in the case of accounts with associated code, the number of contract-creations made by </em><span class="No-Break"><em class="italic">this account.</em></span><span class="No-Break">”</span></p>
+<p>As per the definition, the nonce provides information about the sending address. It serves <span class="No-Break">two purposes:</span></p>
+<ul>
+<li>It establishes the order of transaction processing for each address. A transaction with a higher nonce number will not be processed until all transactions with smaller nonces have <span class="No-Break">been validated.</span></li>
+<li>It identifies a transaction. Multiple transactions with the same nonce can be sent to <strong class="source-inline">mempool</strong>, but once a transaction with a particular nonce is added to the blockchain, subsequent transactions with the same nonce will not <span class="No-Break">be processed.</span></li>
+</ul>
+<p>We can extract the next nonce of an address with the <span class="No-Break">following code:</span></p>
+<pre class="console">
+web3.eth.getTransactionCount(address)</pre> <p>The nonce of a specific transaction can be extracted with the <span class="No-Break">following code:</span></p>
+<pre class="console">
+web3.eth.get_transaction(transaction).nonce</pre> <p>The nonce counting starts at zero, so the result of the transaction count always reflects the next available transaction for that specific address. We can refer to the <strong class="source-inline">First transaction</strong> notebook from <strong class="source-inline">Chapter01/First_transaction.ipynb</strong>, specifically the last cell, as <span class="No-Break">a reference:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer016">
+<img alt="Figure 2.2 – Screenshot displaying the first nonce of an address" height="357" src="image/B19446_02_02.jpg" width="952"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.2 – Screenshot displaying the first nonce of an address</p>
+<h2 id="_idParaDest-44"><a id="_idTextAnchor081"/>Gas price</h2>
+<p>Gas price (<strong class="source-inline">gasPrice</strong>, as seen in <span class="No-Break"><em class="italic">Figure 2</em></span><em class="italic">.2</em>) is determined by the sender of the transaction and represents the price they are willing to pay for each unit of gas. Transactions with higher gas prices are prioritized for confirmation. The gas price is denoted in <em class="italic">Wei per unit </em><span class="No-Break"><em class="italic">of gas</em></span><span class="No-Break">.</span></p>
+<p>To extract the gas price of a transaction, we can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+web3.eth.get_transaction(transaction).gasPrice</pre> <h2 id="_idParaDest-45"><a id="_idTextAnchor082"/>Gas limit</h2>
+<p>Gas limit (or <strong class="source-inline">gas</strong>) represents the maximum number of gas units (money invested) that the sender is willing to spend on the transaction. It is the upper limit of gas consumption for <span class="No-Break">a transaction.</span></p>
+<p>To extract the gas limit of a transaction, you can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+web3.eth.get_transaction(transaction).gas</pre> <h2 id="_idParaDest-46">R<a id="_idTextAnchor083"/>ecipient</h2>
+<p>The recipient of a transaction is specified in the <strong class="source-inline">to</strong> parameter, which contains the public address of the recipient. In the case of Ethereum, addresses are 42 characters long (40 hexadecimal characters beginning with <strong class="source-inline">0x</strong>) and can be either an EOA or a smart contract. At the public address level, there is no distinction between the two. On other blockchains, additional information may be required to identify the recipient (for example, a tag ID/memo for <span class="No-Break">EOS transfers).</span></p>
+<p>It is important to note that any combination of characters that meets the technical requirements mentioned in the preceding paragraph will generate a valid transaction. If we send tokens to an address that has no private key, we cannot access those tokens, resulting in them being effectively <em class="italic">burned</em>. Burning tokens can be a deliberate part of a token’s economy or may occur as a result of a mistake. To address the latter, protocols such as <strong class="old">Ethereum Name Service</strong> (<strong class="old">ENS</strong>) or <strong class="old">RIF Name Service</strong> (<strong class="old">RNS</strong>) have been created, following the idea of traditional DNS. These protocols enable the leasing of human-readable names on the blockchain, which can replace long <span class="No-Break">string addresses.</span></p>
+<p>To extract the <strong class="source-inline">to</strong> field of a transaction, we can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+web3.eth.get_transaction(transaction).to</pre> <p>Depending on what information this field has, we can classify transactions into <span class="No-Break">these categories:</span></p>
+<ul>
+<li><strong class="old">Regular</strong>: A transaction from one address to <span class="No-Break">another address.</span></li>
+<li><strong class="old">Contract deployment</strong>: A transaction where the <strong class="source-inline">to</strong> field is <strong class="source-inline">null</strong> and where the <strong class="source-inline">data</strong> field is used for the contract code. In this case, the sender is creating a <span class="No-Break">smart contract.</span></li>
+<li><strong class="old">Execution of a contract</strong>: The <strong class="source-inline">to</strong> field is a smart contract address, and therefore the transaction represents the interaction with a deployed <span class="No-Break">smart contract.</span></li>
+</ul>
+<h2 id="_idParaDest-47"><a id="_idTextAnchor084"/>Sender</h2>
+<p>This is the address that signs the transaction and will be found in the <strong class="source-inline">from</strong> parameter. The address will be an externally-owned account given that contract accounts cannot <span class="No-Break">send transactions.</span></p>
+<p>To extract the <strong class="source-inline">from</strong> field of a transaction, we can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+web3.eth.get_transaction(transaction).from</pre> <p>The sender address is derived from the signature (the V,R,S letters shown in <span class="No-Break"><em class="italic">Table 2.1</em></span><span class="No-Break">).</span></p>
+<h2 id="_idParaDest-48"><a id="_idTextAnchor085"/>Value</h2>
+<p>The <strong class="source-inline">value</strong> field denotes the quantity of the native currency transferred in the transaction, expressed with the number of decimal places particular to the specific blockchain. In this instance, the value represents Ether and it is expressed with 18 decimal places. In other blockchains, the native currency will vary; for instance, Rootstock Platform (RSK) employs RBTC, while Cardano uses ADA, and <span class="No-Break">so on.</span></p>
+<p>To extract the value and transform it into decimal values, we can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+value= web3.eth.get_transaction(transaction).value
+value*10**-18</pre> <p>The transfer of tokens is not stored in the <strong class="source-inline">value</strong> field; for that information, we need access to the <span class="No-Break">transaction logs.</span></p>
+<h2 id="_idParaDest-49">I<a id="_idTextAnchor086"/>nput data</h2>
+<p>The <strong class="source-inline">input data</strong> field contains “<em class="italic">Any extra information required by the transaction</em>," as defined by the Ethereum documentation. This field is mostly used when interacting with or deploying a <span class="No-Break">smart contract.</span></p>
+<p>W<a id="_idTextAnchor087"/>hen a transaction interacts with a smart contract, the input data comprises the function and parameters necessary for interacting with the contract. This input data adheres to the type format outlined in the smart contract’s <strong class="old">Application Binary Interface</strong> (<strong class="old">ABI</strong>). To decode the data field for our analysis, we will require <span class="No-Break">the ABI.</span></p>
+<p>In the case of a transaction that deploys a contract, the input data field contains the <span class="No-Break">contract bytecode.</span></p>
+<p>To extract the input data of a transaction, we can use the <span class="No-Break">following code:</span></p>
+<pre class="console">
+web3.eth.get_transaction(transaction).input</pre> <p>As you may have noticed, in the transaction we have been analyzing, there is no input data. However, let’s change that for example purposes. Let’s consider a transaction that mints a Bored Ape Yacht Club NFT (“Bored Ape” for future reference). For example, let’s take Bored Ape ID <strong class="source-inline">6633</strong> (as of the day of this writing, held by <span class="No-Break">Neymar Jr.).</span></p>
+<p>We can observe that the minting transaction is hashed as <span class="No-Break"><strong class="source-inline">0xb3827bb3cca1a693ec69edb744755f64d8ff8c90f89f69cbfbfafd17b0083159</strong></span><span class="No-Break">.</span></p>
+<p>In this transaction, the <strong class="source-inline">0x9909017A0F637380af916257D05c3e7dD2F6c68a</strong> address interacts with the smart contract at this address: <strong class="source-inline">0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D</strong>. This transaction has the following input data: <strong class="source-inline">'input': '</strong><span class="No-Break"><strong class="source-inline">0xa723533e0000000000000000000000000000000000000000000000000000000000000001'</strong></span><span class="No-Break">.</span></p>
+<p>This input data holds a meaning in the context of the Bored Ape ABI. An ABI documents the smart contract’s functions, state data, and events. Smart contracts are compiled at the machine code level, and ABIs serve as translators to decode them, as they include each function’s input and return parameters. ABIs enable the readability of all the functions of a <span class="No-Break">smart contract.</span></p>
+<p>In summary, to translate the input data, we need to access the ABI document. One way to do this is by following <span class="No-Break">these steps:</span></p>
+<ol>
+<li>Navigate to <strong class="source-inline">https://etherscan.io/address/[smart_contract_address]</strong>; in this case, this <span class="No-Break">is </span><span class="No-Break">https://etherscan.io/address/0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D</span><span class="No-Break">.</span></li>
+<li>Scroll down to the middle of the page and find the horizontal menu. Click <span class="No-Break">on </span><span class="No-Break"><strong class="old">Contract</strong></span><span class="No-Break">:</span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer017">
+<img alt="Figure 2.3 – Contract tab on Etherscan" height="690" src="image/B19446_02_03.jpg" width="1251"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.3 – Contract tab on Etherscan</p>
+<ol>
+<li value="3">Scroll down and you will find the <strong class="old">Contract </strong><span class="No-Break"><strong class="old">ABI</strong></span><span class="No-Break"> Section:</span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer018">
+<img alt="Figure 2.4 – Export ABI option selection" height="300" src="image/B19446_02_04.jpg" width="1658"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.4 – Export ABI option selection</p>
+<p>Now, you can copy and paste the ABI in a text or JSON format. Be cautious and delete the initial parts of the text where some metadata from Etherscan’s API is also written, as detailed in the following note. An alternative is to programmatically obtain it by creating a free account with an <span class="No-Break">API key.</span></p>
+<p>Note that, Etherscan adds extra text to the ABI JSON when its official API isn’t used. This text should be removed when incorporating it into our code in <span class="No-Break">Jupyter Notebook.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer019">
+<img alt="Figure 2.5 – Text to be deleted from the JSON data" height="223" src="image/B19446_02_05.jpg" width="1017"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.5 – Text to be deleted from the JSON data</p>
+<p>For simplicity purposes, we have also uploaded the Bored Ape ABI to the book’s <span class="No-Break">GitHub repository.</span></p>
+<p>There are alternative tools to retrieve the ABI when the code is not verified. These tools, although still in beta, are listed in the <em class="italic">Further </em><span class="No-Break"><em class="italic">reading</em></span><span class="No-Break"> section.</span></p>
+<p>With the <strong class="source-inline">decode_function_input</strong> method, we can combine the information from the ABI with the input data text and we will see the decoded version. The step-by-step process can be found <span class="No-Break">in </span><span class="No-Break"><strong class="source-inline">Chapter02/Transaction</strong></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer020">
+<img alt="Figure 2.6 – The decode_function_input method" height="99" src="image/B19446_02_06.jpg" width="676"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.6 – The decode_function_input method</p>
+<p>As we can see, the <strong class="source-inline">mintApe</strong> function was triggered by this transaction, and Ape 6633 was born. This is a simple function with one parameter, but we need to be prepared for more complex functions, such as swapping contracts, lending, bids, <span class="No-Break">and more.</span></p>
+<h2 id="_idParaDest-50"><a id="_idTextAnchor088"/>V,R,S</h2>
+<p>These are the components of the signature by the <strong class="source-inline">from</strong> address. The digital signature gives validity that the message sent was executed by the originating address. For more on this matter, you can read the <em class="italic">Mastering Ethereum</em> book. Depending on where we obtain our transaction data, we may not encounter this field (for example, Covalent does not provide it when querying for a <span class="No-Break">specific transaction).</span></p>
+<h2 id="_idParaDest-51">Tra<a id="_idTextAnchor089"/>nsaction receipt</h2>
+<p>Once the <a id="_idIndexMarker092"/>transaction is executed, we gain access to a valuable source of information, called a transaction receipt. This receipt stores information that results from executing <span class="No-Break">the transaction.</span></p>
+<p>Of particular interest to us are the following fields: <strong class="source-inline">status</strong>, <strong class="source-inline">gasUsed</strong>, <strong class="source-inline">cumulativeGasUsed</strong>, <span class="No-Break">and </span><span class="No-Break"><strong class="source-inline">logs</strong></span><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-52"><a id="_idTextAnchor090"/>Status</h2>
+<p>The status field<a id="_idIndexMarker093"/> can have a value of either 1 or 0. A value of 1 indicates a successful transaction, while a value of 0 indicates an unsuccessful transaction, leading to the transaction <span class="No-Break">being reverted.</span></p>
+<h2 id="_idParaDest-53"><a id="_idTextAnchor091"/>Gas used and Cumulative gas used</h2>
+<p>The Gas used field<a id="_idIndexMarker094"/> represents the amount of gas that was actually consumed by the transaction. This value will be below the gas limit. We can retrieve it with the <span class="No-Break">following code:</span></p>
+<pre class="console">
+web3.eth.getTransactionReceipt (transaction).gasUsed</pre> <p>Additionally, we have the <a id="_idIndexMarker095"/>Cumulative gas used field, which provides the total amount of gas consumed by all previous transactions within the same block, including the transaction <span class="No-Break">under analysis.</span></p>
+<p>Gas prices are crucial data points that analysts often consider. These fields represent the actual cost of using the blockchain for a specific transaction. Analyzing gas costs can help answer questions such as: What is the best time of the day to execute a set of transactions? When should we deploy a set of smart contracts to minimize gas expenses?.... and <span class="No-Break">so on.</span><a id="_idTextAnchor092"/></p>
+<h2 id="_idParaDest-54"><a id="_idTextAnchor093"/>Logs</h2>
+<p>Any change on<a id="_idIndexMarker096"/> the blockchain can be stored in state data or event logs. The latter is less expensive and provides a very rich source of information. We will analyze state data in the <span class="No-Break">following section.</span></p>
+<p>In the context of smart contract operations, logs are short pieces of information that record specific events at a given point <span class="No-Break">in time.</span></p>
+<p>An event log, or log record, can be created by providing specific instructions to the EVM. These instructions are known as <strong class="old">opcodes</strong>, and<a id="_idIndexMarker097"/> there are five opcodes that emit event logs. The <em class="italic">Ethereum Yellow Paper</em> provides more information about opcodes under the title <span class="No-Break"><em class="italic">Logging operations</em></span><span class="No-Break">.</span></p>
+<p>Log events consist of two components: topics and data. When examining the source code, we will find that log events are preceded by the <strong class="source-inline">event</strong> or <span class="No-Break"><strong class="source-inline">emit</strong></span><span class="No-Break"> keyword.</span></p>
+<p><strong class="old">Topics</strong> describe the nature of an event and can include up to a maximum of four topics per log. Typically, topics consist of the event’s signature or name, along with the type of <span class="No-Break">parameters passed.</span></p>
+<p>Topics are searchable but limited in terms of the number of bytes they can include. As a result, the information contained within topics is usually referential. In the context of a Python dictionary, topics can be considered <span class="No-Break">as keys.</span></p>
+<p><strong class="old">Data</strong>, the other component, has no such limit in terms of number of bytes and is less expensive to store on the blockchain. This allows for more flexibility in the information that can be included, such as larger strings. If we were to compare this with a Python dictionary, data would correspond to <span class="No-Break">the values.</span></p>
+<p>Let’s continue the examination of the minting of Bored Ape 6633. Depending on the data provider we use to query the blockchain, we may receive the logs already decoded or we might need to decode them ourselves. To be able to decode them, we will need the ABI, as extracted in the previously analyzed <em class="italic">Input data</em> section. The code essentially compares events from the ABI with events from the log. If there is a match, the code translates the log. In <strong class="source-inline">Chapter02/Transaction.ipynb</strong>, we will see the entire process, which is summarized in the <span class="No-Break">following steps:</span></p>
+<ol>
+<li>Creates a list of events from <span class="No-Break">the contract.</span></li>
+<li>Generates a hexadecimal value for each event extracted from <span class="No-Break">the ABI.</span></li>
+<li>Extracts the receipt for <span class="No-Break">the transaction.</span></li>
+<li>Iterates through each log and compares the hexadecimal value of the first parameter of the log (the topic) with the list created in <em class="italic">step 2</em>. If there is a match, the code uses the name within the <strong class="source-inline">processReceipt</strong> function, and it will return a tuple with the <span class="No-Break">decoded logs.</span></li>
+</ol>
+<p>In the <a id="_idIndexMarker098"/>Bored Ape transaction under analysis, the log contains some interesting information. It provides details about the minting of the NFT, the original holder, and the corresponding ID. We can use the ID to view the information in the gallery using the <strong class="old">BY ID</strong> search <span class="No-Break">filter (</span><a href="https://boredapeyachtclub.com/#/gallery"><span class="No-Break">https://boredapeyachtclub.com/#/gallery</span></a><span class="No-Break">).</span></p>
+<p>We have reviewed the main components of a transaction and the information they provide; we now shift our focus to the next vital element of the blockchain ecosystem: the block. As transactions are the purpose of a blockchain, blocks serve as the foundational units that bring together multiple transactions, creating a comprehensive ledger <span class="No-Break">of activi<a id="_idTextAnchor094"/>ty.</span></p>
+<h1 id="_idParaDest-55"><a id="_idTextAnchor095"/>Dissecting a block</h1>
+<p>A block is<a id="_idIndexMarker099"/> formed by combining a list of transactions with a header. As depicted in <a id="_idIndexMarker100"/>the flow diagram in <span class="No-Break"><em class="italic">Figure 2</em></span><em class="italic">.7</em>, when transactions are added to a block, they alter the state of <span class="No-Break">the blockchain:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer021">
+<img alt="Figure 2.7 – How a blockchain evolves (adapted from https://ethereum.org/en/developers/docs/blocks)" height="455" src="image/B19446_02_07.jpg" width="1006"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.7 – How a blockchain evolves (adapted from https://ethereum.org/en/developers/docs/blocks)</p>
+<p>The<a id="_idIndexMarker101"/> preceding diagram illustrates the progressive evolution of blockchain state data, one block at a time. Blocks are strictly ordered, allowing us to trace the history of each <span class="No-Break">state variation.</span></p>
+<p>In the <em class="italic">Ethereum Yellow Paper</em>, a block is defined as “<em class="italic">the collection of relevant pieces of information (known as block header) [...], together with information corresponding to the comprised transactions, [...] and a set of other block headers [...] that are known to have a parent equal to the present’s block’s parent (such blocks are known </em><span class="No-Break"><em class="italic">as ommers).</em></span><span class="No-Break">”</span></p>
+<p>Therefore, a block consists<a id="_idIndexMarker102"/> of three <span class="No-Break">main components:</span></p>
+<ul>
+<li>A <span class="No-Break">block header</span></li>
+<li>A list <span class="No-Break">of </span><span class="No-Break"><a id="_idIndexMarker103"/></span><span class="No-Break">transactions</span></li>
+<li>An uncle <span class="No-Break">block header</span></li>
+</ul>
+<p>Uncle blocks refer<a id="_idIndexMarker104"/> to blocks that were mined simultaneously. Since the Merge on September 15, 2022, when the Ethereum network transitioned <a id="_idIndexMarker105"/>from <strong class="old">Proof-of-Work</strong> (<strong class="old">PoW</strong>) to <strong class="old">Proof-of-Stake</strong> (<strong class="old">PoS</strong>) consensus, the <a id="_idIndexMarker106"/>uncle block header is now empty as uncle blocks no <span class="No-Break">longer occur.</span></p>
+<p>Let’s begin by understanding the information provided by the block header. For explanatory purposes, let’s consider block <strong class="source-inline">15813288</strong>. If we want to review the Etherscan version, we can access it through the following <span class="No-Break">URL: </span><span class="No-Break">https://etherscan.io/block/15813288</span><span class="No-Break">.</span></p>
+<p>In <strong class="source-inline">Chapter02/Block.ipynb</strong>, we <a id="_idIndexMarker107"/>programmatically access it, and we can observe the <span class="No-Break">following fields:</span></p>
+<table class="T---Table _idGenTablePara-1" id="table002">
+<colgroup>
+<col/>
+<col/>
+</colgroup>
+<tbody>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">parentHash</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x9b930569ef6794eb018d54d6a0768f4445f757d62ddffa79698cd5c1fea04b31</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">beneficiary</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x690B9A9E9aa1C9dB991C7721a92d351Db4FaC990</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">stateRoot</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x91c1b2292997a9aa87aa7bf75b387df4bc5a6869fa83b3ce9d4c6793d3acaaa1</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">transactionsRoot</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x7896f544f241e7aa3bae8e3f70b45d9db34794ddb60187c1d46dd80958ea3e41</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">receiptsRoot</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x6698a263fd7b24a301e1060c624e7aa7510db8d4d215779ee43ebe8f5c18889a</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">difficulty</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>0</p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">totalDifficulty</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">58750003716598352816469</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">number</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">15813288</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">size</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">63648</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">gasLimit</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">30000000</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">gasUsed</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">13247169</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">baseFeePerGas</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">15649778689</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">timestamp</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">1666557983</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">extraData</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x406275696c64657230783639</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">nonce</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break">0x0000000000000000</span></p>
+</td>
+</tr>
+<tr class="T---Table">
+<td class="T---Table T---Body T---Body">
+<p><span class="No-Break"><strong class="source-inline">transactions</strong></span></p>
+</td>
+<td class="T---Table T---Body T---Body">
+<p>List of <span class="No-Break">112 transactions</span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Table 2.2 – 15813288 block information</p>
+<p>Let’s understand <a id="_idIndexMarker108"/>what information each <span class="No-Break">field comprises:</span></p>
+<ul>
+<li><strong class="source-inline">parentHash</strong>: This is the hash of the previous block, establishing a link between blocks in the blockchain and providing historical order to <span class="No-Break">the network.</span></li>
+<li><strong class="source-inline">beneficiary</strong>: This field indicates the address of the miner or validator who successfully added the block to the chain and received rewards <span class="No-Break">and fees.</span></li>
+<li><strong class="source-inline">stateRoot</strong>/<strong class="source-inline">transactionRoot</strong>/<strong class="source-inline">receiptsRoot</strong>: These fields provide the hash of the trie structure containing information related to the modified state, transactions, and transaction receipts. A Merkle Patricia Trie is an internal structure utilized by Ethereum to expedite <span class="No-Break">data retrieval.</span></li>
+<li><strong class="source-inline">difficulty</strong> and <strong class="source-inline">totalDifficulty</strong>: <strong class="source-inline">difficulty</strong> represents the level of mining difficulty required for this block. <strong class="source-inline">totalDifficulty</strong> denotes the cumulative difficulty of the entire blockchain up to the specific block. These features changed after the Merge as they were associated with the previous PoW consensus. <strong class="source-inline">totalDifficulty</strong> has remained unchanged since the transition, and <strong class="source-inline">difficulty</strong> was set to zero. Refer to block <strong class="source-inline">15537393</strong> to have a look at the last block mined <span class="No-Break">using PoW.</span></li>
+<li><strong class="source-inline">number</strong>: This indicates the block height, as discussed in <a href="B19446_01.xhtml#_idTextAnchor020"><span class="No-Break"><em class="italic">Chapter 1</em></span></a>, following a sequential order of blocks. The genesis block, mined in July 2015, holds the block <span class="No-Break">number 0.</span></li>
+<li><strong class="source-inline">size</strong>: This denotes the data storage capacity of a block in bytes, with the limit imposed by the required gas <span class="No-Break">for validation.</span></li>
+<li><strong class="source-inline">gasLimit</strong>/<strong class="source-inline">gasUsed</strong>: <strong class="source-inline">gasLimit</strong> represents the maximum amount of gas allowed to be expended in the block, while <strong class="source-inline">gasUsed</strong> indicates the total gas consumed by all transactions within the analyzed block. If <strong class="source-inline">gasUsed</strong> if below <strong class="source-inline">gasLimit</strong>, we can observe that blocks are not fully utilized, leaving <span class="No-Break">idle space.</span></li>
+<li><strong class="source-inline">baseFeePerGas</strong>: This field represents the reserve price or minimum price required for a transaction to ensure its inclusion in a block. The calculation is based on previous blocks, aiming to provide more predictability for gas costs to <span class="No-Break">end users.</span></li>
+<li><strong class="source-inline">timestamp</strong>: This denotes the Unix timestamp at the time the block was mined, representing the cumulative number of seconds elapsed since January <span class="No-Break">1, 1970.</span></li>
+<li><strong class="source-inline">extraData</strong>: This <a id="_idIndexMarker109"/>arbitrary array contains data relevant to the specific block. It was previously written by miners and is now populated <span class="No-Break">by validators.</span></li>
+<li><strong class="source-inline">nonce</strong>: Short for “number used only once,” this field is a number added to the block that must generate a hash meeting the difficulty criteria. It is still used in Bitcoin to regulate difficulty. After the merge in Ethereum, this number was set <span class="No-Break">to 0.</span></li>
+<li><strong class="source-inline">transactions</strong>: This field returns a list of transactions added to the block; in the example under analysis, this is 112 transactions. The following code snippet provides a list of each transaction, along with the information reviewed in the <span class="No-Break">previous section:</span><pre class="source-code">
+<strong class="old">web3.eth.getBlock(block_identifier=15813288).transactions</strong></pre></li> </ul>
+<p>Analyzing block data is very useful when trying to grasp a general overview of the chain under analysis. Aggregating the data from the fields detailed previously, we are able to answer questions about how a chain is used, the average transaction per block, the time between blocks, how expensive the base fee is, and <span class="No-Break">so on.</span></p>
+<p>Having examined the structure and components of a transaction and a block in detail, we now shift our focus to the state data within the Ethereum blockchain. State data encompasses the current state of all accounts, contracts, and smart contracts on the network, reflecting the outcome of executed transactions and operations. It serves as a fundamental building block for the blockchain’s functionality and provides a comprehensive snapshot of the system at any given point <span class="No-Break">in time.</span></p>
+<h1 id="_idParaDest-56"><a id="_idTextAnchor096"/>Exploring state data</h1>
+<p>In the <em class="italic">Ethereum Yellow Paper</em>, the state, also known as the world state, is defined as “<em class="italic">a mapping between addresses and account states.</em>” Up to this point, we have been <a id="_idIndexMarker110"/>discussing transactional data that is permanent, meaning that once incorporated into the blockchain, it cannot be changed. Unlike transactional data, the state is dynamic and evolves with each <span class="No-Break">new block.</span></p>
+<p>To ensure accessibility for users<a id="_idIndexMarker111"/> interacting with accounts and contracts, Ethereum employs <strong class="old">trie</strong> data structures. Specifically, the state trie contains key-value pairs for every existing account that has engaged in a valid transaction. The key represents the Ethereum account’s address, while the value comprises hashed information encompassing the account balance, nonce, code, and <span class="No-Break">storage root.</span></p>
+<p>The concept of roots leads us to an <a id="_idIndexMarker112"/>explanation of tries and the special implementation of the <strong class="old">Merkle Patricia Trie</strong> on Ethereum (that exceeds the scope of this work). We will briefly mention that the trie structure or search tree is used for storing and searching a key in a set. It facilitates the searching, adding, and deleting complexities for sequences of characters. The trie starts with a root and connects characters in its branches. We have seen roots in our previous analysis: the state, transaction, and receipt’s roots hashes are part of the block information. The state root, together with additional information, is stored as the value of <span class="No-Break">the address.</span></p>
+<p>For a more in-depth understanding, please refer to the cited documentation in the <em class="italic">Further </em><span class="No-Break"><em class="italic">reading</em></span><span class="No-Break"> section.</span></p>
+<p>Why is this useful for <span class="No-Break">data analysis?</span></p>
+<p>The storage of state data in this manner enables us to easily retrieve the blockchain’s status at specific points in time—a capability leveraged by <span class="No-Break">smart contracts.</span></p>
+<p>To illustrate this, let’s consider the Bored Ape smart contract we <span class="No-Break">examined earlier.</span></p>
+<p>On the Jupyter notebook on <strong class="source-inline">Chapter02/State.ipynb</strong>, do <span class="No-Break">the following:</span></p>
+<ol>
+<li>Upload the ABI following the instructions outlined in the <em class="italic">Dissecting a </em><span class="No-Break"><em class="italic">transaction</em></span><span class="No-Break"> section.</span></li>
+<li>With the following code, we will gain access to all the <span class="No-Break">contract’s functions:</span></li>
+</ol>
+<pre class="console">
+baContract.all_functions()</pre> <p>We can <a id="_idIndexMarker113"/>see that each function tells us which parameter it needs to be able to execute the query. For example, <strong class="source-inline">&lt;Function ownerOf(uint256)&gt;</strong> tells us that it needs an integer, which in the context of this example is the Bored Ape ID under <span class="No-Break">analysis: 6633.</span></p>
+<p>The code will be <span class="No-Break">as follows:</span></p>
+<pre class="console">
+baContract.functions.ownerOf(6633).call()</pre> <p>After executing this cell, we will see that the current owner of the Bored Ape ID is <strong class="source-inline">0xC4505dB8CC490767fA6f4b6f0F2bDd668B357A5D</strong>. If no <strong class="source-inline">block_identifier</strong> parameter is specified, the call retrieves the current state data, assuming <strong class="source-inline">latest</strong> as the <span class="No-Break">default value.</span></p>
+<p>Let’s imagine that we want to know who was the previous owner of the Bored Ape 6633 ID. In that case, we would need to provide in the <strong class="source-inline">block_identifier</strong> parameter the number of the block previous to the transfer to the current owner occurring. In the case of Bored Ape 6633, the transfer took place in block <strong class="source-inline">14044022</strong>, so we query the state of the blockchain at block <strong class="source-inline">14044021</strong> with the <span class="No-Break">following code:</span></p>
+<pre class="console">
+baContract.functions.ownerOf(6633).call(block_identifier=14044021)</pre> <p>The result is that the previous owner was <strong class="source-inline">0xDE2b87d1539904f4b37E98C0d5CE383E890006eF</strong>. An alternative is using Etherscan’s <strong class="old">Read Contract</strong> function, which will only respond with the current <span class="No-Break">state data.</span></p>
+<p>The steps are <span class="No-Break">the following:</span></p>
+<ol>
+<li>Paste and search the smart contract address <span class="No-Break">on Etherscan:</span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer022">
+<img alt="Figure 2.8 – Etherscan search bar" height="300" src="image/B19446_02_08.jpg" width="1133"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.8 – Etherscan search bar</p>
+<ol>
+<li value="2">Navigate to the <strong class="old">Contract</strong> tab, shown in <span class="No-Break"><em class="italic">Figure 2</em></span><span class="No-Break"><em class="italic">.3</em></span><span class="No-Break">.</span></li>
+<li>Click on the <strong class="old">Read </strong><span class="No-Break"><strong class="old">Contract</strong></span><span class="No-Break"> tab:</span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer023">
+<img alt="Figure 2.9 – Read Contract tab" height="591" src="image/B19446_02_09.jpg" width="1262"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.9 – Read Contract tab</p>
+<ol>
+<li value="4">Locate <a id="_idIndexMarker114"/>the relevant function; in this case, the <span class="No-Break"><strong class="source-inline">ownerOf</strong></span><span class="No-Break"> function:</span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer024">
+<img alt="Figure 2.10 – ownerOf function" height="306" src="image/B19446_02_10.jpg" width="378"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.10 – ownerOf function</p>
+<ol>
+<li value="5">Add <strong class="source-inline">6633</strong> to<a id="_idIndexMarker115"/> it and click on <strong class="old">Query</strong>. The response provides the current owner of Bored Ape <span class="No-Break">ID 6633:</span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer025">
+<img alt="Figure 2.11 – Response to function execution" height="374" src="image/B19446_02_11.jpg" width="610"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.11 – Response to function execution</p>
+<p>This approach is useful for extracting state data <span class="No-Break">really fast.</span></p>
+<p>After studying state data and understanding its significance, the next step is to gain access to on-chain data for practical use. In the following section, we will explore multiple data sources and learn to connect <span class="No-Break">with the<a id="_idTextAnchor097"/>m.</span></p>
+<h1 id="_idParaDest-57"><a id="_idTextAnchor098"/>Reviewing data sources</h1>
+<p class="author-quote">Alice: Would you tell me, please, which way I ought to go from here?</p>
+<p class="author-quote">The Cheshire Cat: That depends a good deal on where you want to get to.- Lewis Carroll, Alice in Wonderland</p>
+<p>We will encounter a similar dilemma to Alice’s when trying to access <em class="italic">on-chain</em> data without context or a clear vision of the needs and resources that are at <span class="No-Break">our disposal.</span></p>
+<p>The choice<a id="_idIndexMarker116"/> of a data source relies on various factors, primarily driven by our needs and available resources. As discussed in <a href="B19446_01.xhtml#_idTextAnchor020"><span class="No-Break"><em class="italic">Chapter 1</em></span></a>, our approach to blockchain data will be shaped by the problems we aim to solve and the questions we seek to answer. If we need to add to a dashboard aggregated metrics that involve comprehensive scanning of the entire blockchain, we will need access to SQL-based solutions. On the other hand, integrating specific data points, such as balances or token prices, into our platform may lead us toward extracting information from a node <span class="No-Break">with </span><span class="No-Break"><strong class="source-inline">web3.py</strong></span><span class="No-Break">.</span></p>
+<p>Additionally, each data source carries its own set of costs and levels of flexibility. The expertise of the data scientists responsible for managing these resources also influences our decision-making process. Options ranging from traditional SQL-based datasets to MongoDB and GraphQL are at <span class="No-Break">our disposal.</span></p>
+<p>Importantly, our decision must consider whether integration of on-chain data with off-chain data is necessary, and the ease with which it can be achieved. Seamlessly merging these two worlds should be taken into account. A website that gives us continuous updates is <a href="http://primodata.org/blockchain_data">primodata.org/blockchain_data</a>, which is maintained by the X <span class="No-Break">account, </span><a href="http://twitter.org/primodata"><span class="No-Break">twitter.org/primodata</span></a><span class="No-Break">.</span></p>
+<p>Let us now present some available options, bearing in mind that this list requires periodic updates to keep pace with the ever-evolving landscape. We test each of the alternatives in <span class="No-Break"><strong class="source-inline">Chapter02/Data Sources.ip<a id="_idTextAnchor099"/>ynb</strong></span><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-58"><a id="_idTextAnchor100"/>Block explorers</h2>
+<p>A<a id="_idIndexMarker117"/> block explorer<a id="_idIndexMarker118"/> is a user-friendly tool that provides detailed analytics about a blockchain network. For Ethereum, we have been interacting with <a id="_idIndexMarker119"/>Etherscan (<a href="https://etherscan.io/">https://etherscan.io/</a>), and for RSK, Rootstock (<a href="https://rootstock.blockscout.com/">https://rootstock.blockscout.com/</a>) among many other examples . A block explorer acts as a search engine<a id="_idIndexMarker120"/> and browser where users can find information about individual blocks, public addresses, and transactions associated with a specific cryptocurrency. Each chain has its own block explorer. Of all the sources described here, this is the only one that is widely used by blockchain enthusiasts and everyday users to explore and monitor the activities happening on a <span class="No-Break">blockchain <a id="_idTextAnchor101"/>network.</span></p>
+<h2 id="_idParaDest-59"><a id="_idTextAnchor102"/>Infura</h2>
+<p>Infura is<a id="_idIndexMarker121"/> one of the providers that we have utilized throughout<a id="_idIndexMarker122"/> the book’s exercises and examples. It offers API access over HTTPS and WebSockets to a node, making it accessible for querying through clients such as <strong class="source-inline">web3.py</strong> <span class="No-Break">or </span><span class="No-Break"><strong class="source-inline">web3.js</strong></span><span class="No-Break">.</span></p>
+<p>For more detailed information, please <span class="No-Break">visit </span><a href="https://blog.infura.io/post/getting-started-with-infura-28e41844cc89"><span class="No-Break">https://blog.infura.io/post/getting-started-with-infura-28e41844cc89</span></a><span class="No-Break">.</span></p>
+<p>Additionally, a comprehensive step-by-step guide on how to start interacting with this source can be found in <em class="italic">Appendix 1</em>. It’s important to note that the node provided by Infura is situated within a developer suite specifically designed for dApp development. Consequently, the most effective approach to accessing this dataset is through programming languages such as Python or Java. The API’s response is in the widely used <span class="No-Break">JSON format.</span></p>
+<h2 id="_idParaDest-60"><a id="_idTextAnchor103"/>Moralis</h2>
+<p>Similar to <a id="_idIndexMarker123"/>Infura, Moralis is <a id="_idIndexMarker124"/>considered part of a developer suite for blockchain developers. It indexes EVM-based chains and Solana, but what sets it apart is its advanced features, including pre-built queries that enable cross-analysis. Accessing Moralis requires an API key, and the response data is in <span class="No-Break">JSON format.</span></p>
+<p>For more detailed information, please <span class="No-Break">visit </span><a href="https://docs.moralis.io/docs/quickstart"><span class="No-Break">https://docs.moralis.io/docs/quickstart</span></a><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-61"><a id="_idTextAnchor104"/>GetBlock</h2>
+<p>GetBlock<a id="_idIndexMarker125"/> is<a id="_idIndexMarker126"/> another <strong class="old">node as-a-service</strong> (<strong class="old">NaaS</strong>) provider, similar<a id="_idIndexMarker127"/> to Infura. However, Getblock offers access to a broader range of chains compared to Infura and Moralis. To use GetBlock, you’ll need to set up an account, and the response from the API will be in <span class="No-Break">JSON format.</span></p>
+<p>For more detailed information, please <span class="No-Break">visit </span><a href="https://getblock.io/"><span class="No-Break">https://getblock.io/</span></a><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-62"><a id="_idTextAnchor105"/>Dune</h2>
+<p>Dune is an <a id="_idIndexMarker128"/>excellent web-based data analysis tool for creating interactive dashboards<a id="_idIndexMarker129"/> and charts. It offers both free and premium versions, with the latter allowing the creation of private dashboards. The data is indexed at various stages of decoding, ranging from raw Ethereum data to tables enriched with extensive metadata contributed by the community. One notable aspect is the platform’s commitment to<a id="_idIndexMarker130"/> knowledge sharing, as queries and dashboards are openly accessible <span class="No-Break">to everyone.</span></p>
+<p>If we want to see how a query was built, we have to click on the title of the metric, as shown in <span class="No-Break"><em class="italic">Figure 2</em></span><em class="italic">.12</em>, and it will open the query space with the relevant query. Dune Analytics uses the DuneSQL query engine, based <span class="No-Break">on Trino:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer026">
+<img alt="Figure 2.12 – Dune Analytics access to query" height="240" src="image/B19446_02_12.jpg" width="625"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.12 – Dune Analytics access to query</p>
+<p>Additionally, Dune Analytics provides valuable resources such as tutorials, documentation, and a forum to support users on their <span class="No-Break">analytical journey.</span></p>
+<p>For more detailed information, please <span class="No-Break">visit </span><a href="https://dune.com/docs"><span class="No-Break">https://dune.com/docs</span></a><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-63"><a id="_idTextAnchor106"/>Covalent</h2>
+<p>Covalent is<a id="_idIndexMarker131"/> another API that necessitates users to create an account <a id="_idIndexMarker132"/>and acquire API keys. The company has indexed over 40 chains and consistently updates the data with minimal delay compared to the node. Similar to Infura, interaction with Covalent’s API follows a programmatic approach, and the response is in JSON format. Covalent provides a range of pre-defined basic endpoints that are valuable for data scientists. Furthermore, certain on-chain data endpoints offer enriched information, such as prices or 24-hour aggregations of specific metrics. For more detailed information, please <span class="No-Break">visit </span><a href="https://www.covalenthq.com/platform/#/auth/register/"><span class="No-Break">https://www.covalenthq.com/platform/#/auth/register/</span></a><span class="No-Break">.</span></p>
+<p>Notably, Covalent is<a id="_idIndexMarker133"/> currently developing a new <strong class="old">business intelligence</strong> (<strong class="old">BI</strong>) product called <strong class="old">Increment</strong>, which<a id="_idIndexMarker134"/> offers greater flexibility. Increment is a comprehensive database encompassing all the indexed chains (EVM compatible), enabling users to query the data using SQL or a simple no-code drag-and-drop system. The database contains all the data generated by all chains collectively, recognizing the growing number of blockchains and the necessity for companies to monitor users and value across multiple chains. Increment’s unified database provides a convenient solution for this purpose. It’s important to note that certain information stored in this database is encoded in hexadecimal format, including addresses, transaction input data, and transaction value. To access Increment, please visit <a href="https://www.covalenthq.com/platform/#/increment/">https://www.covalenthq.com/platform/#/increment/</a> and create <span class="No-Break">an account.</span></p>
+<p>Once we<a id="_idIndexMarker135"/> have access, we will notice that there are dashboards built by the community. If we come across a metric of interest and wish to understand how a query was constructed, click on the dots of the metric, select <strong class="old">Go to SQL</strong>, and it will open the SQL builder on a separate page with <span class="No-Break">the logic:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer027">
+<img alt="Figure 2.13 – Increment access to query" height="267" src="image/B19446_02_13.jpg" width="450"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.13 – Incr<a id="_idTextAnchor107"/>ement access to query</p>
+<h2 id="_idParaDest-64"><a id="_idTextAnchor108"/>Flipside</h2>
+<p>Flipside is <a id="_idIndexMarker136"/>another <a id="_idIndexMarker137"/>excellent provider that allows us to query on-chain tables using SQL for multiple chains, including some external tables maintained by market authorities such as <a id="_idIndexMarker138"/>DefiLlama for <strong class="old">Total Value </strong><span class="No-Break"><strong class="old">Locked</strong></span><span class="No-Break"> (</span><span class="No-Break"><strong class="old">TVL</strong></span><span class="No-Break">).</span></p>
+<p>Flipside offers two main products. The first one is <a id="_idIndexMarker139"/>Flipside Data Studio (<a href="https://www.flipsidecrypto.xyz/">https://www.flipsidecrypto.xyz/</a>), which enables dashboard visualizations in a social network environment with an impressive community. All the queries are open, and analysts compete to create useful dashboards for <span class="No-Break">the community.</span></p>
+<p>The other product is the<a id="_idIndexMarker140"/> Flipside API (<a href="http://flipsidecrypto.xyz">http://flipsidecrypto.xyz</a>), which allows us to submit queries directly from our developer environment. This service, included in the free tier, enables us to query the database and retrieve results that we can ingest in our systems, internal dashboards, and <span class="No-Break">so on.</span></p>
+<p>To use Flipside, we need to create an account and obtain the necessary API keys. For more detailed information, please <span class="No-Break">visit </span><a href="https://docs.flipsidecrypto.com/"><span class="No-Break">https://docs.flipsidecrypto.com/</span></a><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-65"><a id="_idTextAnchor109"/>The Graph</h2>
+<p>The Graph is<a id="_idIndexMarker141"/> based on GraphQL and is primarily focused on smart<a id="_idIndexMarker142"/> contracts. Currently, subgraphs are limited to the Ethereum blockchain. Subgraphs allow access to the ecosystem created by a specific protocol rather than the entire blockchain. It operates in a decentralized and collaborative manner to index blockchain information, with various roles such as <strong class="old">Developer</strong>, <strong class="old">Indexer</strong>, <strong class="old">Curator</strong>, and <strong class="old">Delegator</strong>, each incentivized <span class="No-Break">to participate.</span></p>
+<p>Queries can be accessed through a URL, making integration into our apps possible. It is particularly interesting that each subgraph comes with its own documentation and a playground where we can test <span class="No-Break">our queries.</span></p>
+<p>Numerous projects are actively developing subgraphs to facilitate decentralized access to their data. At present, I have come across ENS, Sablier, and Superfluid are examples of projects maintaining subgraphs on <span class="No-Break">this service.</span></p>
+<p>To test our queries, we can use the online playground, which requires creating an account and connecting our wallet to obtain the necessary <span class="No-Break">API keys:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer028">
+<img alt="Figure 2.14 – Screenshot of The Graph’s playground" height="451" src="image/B19446_02_14.jpg" width="1635"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 2.14 – Screenshot of The Graph’s playground</p>
+<p>For more <a id="_idIndexMarker143"/>detailed information, please <span class="No-Break">visit </span><a href="https://thegraph.com/explorer"><span class="No-Break">https://thegraph.com/explorer</span></a><span class="No-Break">.</span></p>
+<h2 id="_idParaDest-66"><a id="_idTextAnchor110"/>Google BigQuery</h2>
+<p>Google BigQuery<a id="_idIndexMarker144"/> maintains a table indexing for both the Ethereum<a id="_idIndexMarker145"/> and Bitcoin chains. You can access the data using Google Cloud. A limited tier is accessible through the Kaggle website. To access the data, please <span class="No-Break">visit </span><a href="https://bigquery.cloud.google.com/dataset/bigquery-public-data:crypto_ethereum"><span class="No-Break">https://bigquery.cloud.google.com/dataset/bigquery-public-data:crypto_ethereum</span></a><span class="No-Break">.</span></p>
+<p>Lastly, it’s important to note that each product uses its own terminology to refer to the same information. This brings us back to the first part of the chapter, which focuses on how data is presented. The data we observe from the aforementioned providers is subject to translation, and each indexer applies its own criteria. It will be our responsibility to determine the spe<a id="_idTextAnchor111"/>cific information <span class="No-Break">we require.</span></p>
+<p class="callout-heading">A note on decentralization</p>
+<p class="callout">These are information providers. With the exception of The Graph, whose product is a decentralized information protocol, the remaining companies primarily focus on keeping updated their indexes or node points, rather than <span class="No-Break">prioritizing decentralization.</span></p>
+<p class="callout">It is important to emphasize this point because, in a decentralized ecosystem, these providers serve as centralized points. Consequently, they can be influenced by regulations, leading to potential exposure of information or censorship, among other possibilities. A recent example involves Infura, which, while attempting to comply with international sanctions in the Ukraine-Russia conflict, also blocked MetaMask access to Venezuela. MetaMask relies on Infura’s suite, and this decision affected all IPs, even those located in countries geographically distant from the <span class="No-Break">sanctioned areas.</span></p>
+<p class="callout">It may or may not be relevant for the data area of our company but, as mentioned in <a href="B19446_01.xhtml#_idTextAnchor020"><span class="No-Break"><em class="italic">Chapter 1</em></span></a>, our job is typically aligned with a business that may have, as a product feature, respect for decentralization and all <span class="No-Break">its benefits.</span></p>
+<h1 id="_idParaDest-67"><a id="_idTextAnchor112"/>Summary</h1>
+<p>In conclusion, this chapter delved into the world of on-chain data, which serves as the primary data source in Web3. We started the chapter by dissecting individual transactions and gaining insights into their structure and components. This understanding was further expanded as we explored the anatomy <span class="No-Break">of blocks.</span></p>
+<p>Moving forward, we delved into an analysis of state data. By examining state variables and their significance, we gained a deeper understanding of how data is stored and accessed within <span class="No-Break">a blockchain.</span></p>
+<p>To further enhance our ability to work with on-chain data, we explored a range of data providers. From widely used block explorers such as Etherscan to powerful APIs such as Infura, Moralis, and Covalent, and SQL-accessible tables such us Dune and Flipside, we built a comprehensive list of resources that grant us access to on-chain data. Each provider offers unique features, data formats, and querying capabilities, allowing us to tailor our approach based on the specific needs of <span class="No-Break">our projects.</span></p>
+<p>Throughout this chapter, we have acquired the foundational knowledge necessary to navigate and interact with on-chain data effectively. In the next chapter, we will study how off-chain data can play a key role <span class="No-Break">in Web3.</span></p>
+<h1 id="_idParaDest-68"><a id="_idTextAnchor113"/>Further reading</h1>
+<p>To complement this chapter, the following links <span class="No-Break">may help:</span></p>
+<ul>
+<li>Dissecting <span class="No-Break">a transaction:</span><ul><li><em class="italic">Antonopoulos, Andreas</em>. <em class="italic">Mastering Ethereum</em> book, <a href="B19446_06.xhtml#_idTextAnchor210"><em class="italic">Chapter 6</em></a>: Transactions · GitBook, <span class="No-Break">2018, </span><a href="http://cypherpunks-core.github.io/ethereumbook/06transactions.xhtml"><span class="No-Break">cypherpunks-core.github.io/ethereumbook/06transactions.xhtml</span></a><span class="No-Break">.</span></li><li><em class="italic">Piper Merriam</em> and <em class="italic">Jason Carver</em>. <em class="italic">Ethereum Name Service — Web3.py documentation</em>, <span class="No-Break"><em class="italic">2018</em></span><span class="No-Break">, </span><a href="https://web3py.readthedocs.io/en/stable/ens_overview.xhtml"><span class="No-Break">https://web3py.readthedocs.io/en/stable/ens_overview.xhtml</span></a><span class="No-Break">.</span></li><li><em class="italic">KLmoney</em>. <em class="italic">Bitcoin: Dissecting Transactions | Crypto­Tokens</em>, <em class="italic">May 26,</em> <span class="No-Break"><em class="italic">2017</em></span><span class="No-Break">, </span><a href="https://klmoney.wordpress.com/bitcoin-dissecting-transactions"><span class="No-Break">https://klmoney.wordpress.com/bitcoin-dissecting-transactions</span></a><span class="No-Break">.</span></li><li>A very detailed analysis of the Bitcoin transaction can be found in Nick Furneaux’s book <span class="No-Break"><em class="italic">Investigating Cryptocurrencies</em></span><span class="No-Break">.</span></li><li><a href="https://abi-parser-nvk.vercel.app/">https://abi-parser-nvk.vercel.app/</a> <span class="No-Break">and </span><a href="https://github.com/shazow/whatsabi"><span class="No-Break">https://github.com/shazow/whatsabi</span></a><span class="No-Break">.</span></li></ul></li>
+<li>Dissecting <span class="No-Break">a block:</span><ul><li><em class="italic">Buterin, Vitalik</em>. <em class="italic">Merkling in Ethereum | Ethereum Foundation Blog</em>, <span class="No-Break"><em class="italic">2015</em></span><span class="No-Break">, </span><a href="https://blog.ethereum.org/2015/11/15/merkling-in-ethereum"><span class="No-Break">https://blog.ethereum.org/2015/11/15/merkling-in-ethereum</span></a><span class="No-Break">.</span></li><li><em class="italic">Furneaux, Nick</em>. <em class="italic">Investigating Cryptocurrencies, </em><a href="B19446_03.xhtml#_idTextAnchor114"><em class="italic">Chapter 3</em></a><em class="italic">: Understanding, Extracting, and Analyzing Blockchain Evidence</em>, <span class="No-Break"><em class="italic">Wiley</em></span><span class="No-Break">, </span><span class="No-Break"><em class="italic">2018</em></span><span class="No-Break">.</span></li></ul></li>
+<li><span class="No-Break">State data:</span><ul><li><em class="italic">Ethereum.org</em>. <em class="italic">Merkle Patricia Trie</em>, , <a href="https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/"><span class="No-Break">https://ethereum.org/en/developers/docs/data-structures-and-encoding/patricia-merkle-trie/</span></a><span class="No-Break">.</span></li><li><em class="italic">Day, Allen</em> and <em class="italic">Evgeny Medvedev</em>. <em class="italic">GitHub - Blockchain-etl/Awesome-bigquery-views: Useful SQL Queries for Blockchain ETL Datasets in BigQuery</em>, <em class="italic">GitHub</em>, <em class="italic">October 27, </em><span class="No-Break"><em class="italic">2022</em></span><span class="No-Break">, </span><a href="https://github.com/blockchain-etl/awesome-bigquery-views"><span class="No-Break">https://github.com/blockchain-etl/awesome-bigquery-views</span></a><span class="No-Break">.</span></li></ul></li>
+</ul>
+</div>
+</div></body></html>
