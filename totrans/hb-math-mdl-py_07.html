@@ -1,0 +1,152 @@
+<html><head></head><body>
+<div id="sbo-rt-content"><div id="_idContainer134">
+<h1 class="chapter-number" id="_idParaDest-82"><a id="_idTextAnchor081"/>7</h1>
+<h1 id="_idParaDest-83"><a id="_idTextAnchor082"/>Kalman Filter</h1>
+<p>In a dynamic system, there is uncertain information. To capture the uncertainty, yet another mathematical tool, called the Kalman filter, comes into play. One can utilize the Kalman filter to optimally<a id="_idIndexMarker204"/> estimate the system’s next state, and it is ideal for continuously changing systems. It is especially useful for handling noisy sensor data by collating sensor data to best estimate the parameter of interest. In other words, the Kalman filter is an estimator of the system’s states in the presence of imprecise and uncertain measurements. It is mostly useful for the estimation of unobserved variables in <span class="No-Break">real time.</span></p>
+<p>The Kalman filter algorithm is widely<a id="_idIndexMarker205"/> used in signal processing, target tracking, navigation, and control applications. In tracking and control systems, an accurate and precise estimation of location and velocity, which are hidden (unknown) states, is a challenge. The uncertainty in the measurement of hidden states is attributed to external factors, such as atmospheric effects and thermal noise. The Kalman filter is an algorithm to estimate the hidden states of a dynamic system and predict the future state of the system based on past estimations. It is named after Rudolf E. Kalman, who published his famous paper on a recursive solution to a discrete data linear-filtering problem <span class="No-Break">in 1960.</span></p>
+<p>A system is governed by a set of equations, and this <a id="_idIndexMarker206"/>set is called a dynamic model or state space model. If a system’s<a id="_idIndexMarker207"/> current state and the dynamic model are known, the subsequent state can be estimated. The uncertainty in the dynamic model is influenced by external factors and is called process noise. This is <a id="_idIndexMarker208"/>the error or misalignment between the equations of motion and the actual motion of the system. The random error or uncertainty in measurement is called measurement noise. In<a id="_idIndexMarker209"/> order to improve the estimation of the future state of the system, it becomes essential to account for process noise as well as measurement noise. The Kalman filter takes both of these uncertainties <span class="No-Break">into account.</span></p>
+<p>Any measured (or computed) parameter is an estimate and it can be significantly improved by the usage of multiple sensors. In this regard, two terms, namely, accuracy and precision, have to be understood well as they cannot be used interchangeably. Accuracy indicates the closeness of the measurement to the true value, while precision indicates the variability in measurements of the same parameter. Accuracy and precision form the basis of an estimate of a hidden state of the system. <span class="No-Break"><em class="italic">Figure 7</em></span><em class="italic">.1</em> shows the high <a id="_idIndexMarker210"/>accuracy and high precision of <span class="No-Break">an estimate:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer125">
+<img alt="Figure 7.1: High accuracy and high precision of measurement" height="320" src="image/Figure_07_01_B18943.jpg" width="368"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.1: High accuracy and high precision of measurement</p>
+<p>Unbiased systems have no or significantly low built-in systematic error (bias) and, hence, are high-accuracy systems. Real systems are biased and have process noise. High-precision systems have low variance (or low uncertainty). The influence of variance can be reduced by averaging (smoothing) measurements. The more measurements, the closer the estimate to the<a id="_idIndexMarker211"/> true value. A <strong class="bold">probability distribution function</strong> (<strong class="bold">PDF</strong>) describes a measurement as it is a random variable. The dispersion in distribution (<span class="No-Break"><em class="italic">Figure 7</em></span><em class="italic">.2</em>) shows the measurement noise. In a low-precision and low-accuracy system, the estimates are neither close to each other nor to the true value and they will be spread all over the four quadrants of <span class="No-Break">spatial coordinates.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer126">
+<img alt="Figure 7.2: Measurement distribution" height="436" src="image/Figure_07_02_B18943.jpg" width="805"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.2: Measurement distribution</p>
+<p>Now that the concepts of a measurement and its precision and accuracy are clear, we will discuss how the Kalman<a id="_idIndexMarker212"/> filter works. This chapter covers topics that are essentially the component steps of this estimation algorithm, concluding with an illustrative <span class="No-Break">Python code:</span></p>
+<ul>
+<li>Computation <span class="No-Break">of measurements</span></li>
+<li>Filtration <span class="No-Break">of measurements</span></li>
+<li>Implementation of the <span class="No-Break">Kalman filter</span></li>
+</ul>
+<p>The Kalman filter will be tested out with an example to estimate the position (displacement) and velocity of a moving object using Python in the <span class="No-Break">last section.</span></p>
+<h1 id="_idParaDest-84"><a id="_idTextAnchor083"/>Computation of measurements</h1>
+<p>We will start with a <a id="_idIndexMarker213"/>flow diagram of the Kalman filter algorithm, shown in <span class="No-Break"><em class="italic">Figure 7</em></span><em class="italic">.3a</em>. The Kalman filter requires an initial guess to start with. This input can be a very rough estimate. So, step 0 is the initial guess and step 1 is the measurement of the <span class="No-Break">state variable.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer127">
+<img alt="Figure 7.3a: Flow diagram of the Kalman filter" height="397" src="image/Figure_07_03_B18943.jpg" width="257"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.3a: Flow diagram of the Kalman filter</p>
+<p>When the input is a measured value, the output is the current state estimated using the state update equation in step 2, which is calculated from the predicted value of the current state and the residual scaled (updated) by a<a id="_idIndexMarker214"/> factor called the Kalman gain. The Kalman gain takes the input measurement uncertainty into account, the residual being the difference between the measured and predicted values. This update and estimate make the second step in <span class="No-Break">the algorithm.</span></p>
+<p>The output from step<a id="_idIndexMarker215"/> 2 is fed to predict the next state of the system. The state for the next iteration is predicted using the dynamic model. The prediction in step 3 is basically an extrapolation of the current state utilizing the set of equations of dynamism. This continues for several iterations and the Kalman gain is calculated at each iteration. An illustrative example of tracking the values (true, measured, estimated, and predicted) of a constant velocity aircraft in one dimension is shown in <span class="No-Break"><em class="italic">Figure 7</em></span><em class="italic">.3b</em>, which also exemplifies a univariate <span class="No-Break">Kalman filter:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer128">
+<img alt="Figure 7.3b: Estimated and predicted values (positions) of constant velocity aircraft" height="706" src="image/Figure_07_04_B18943.jpg" width="1299"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.3b: Estimated and predicted values (positions) of constant velocity aircraft</p>
+<p>It is evident from the figure that the estimation algorithm (Kalman filter) has a smoothing effect on the measurements and converges toward the true value with an increasing number of iterative steps. The next section describes the filtration of random variables in the form of measurements to optimize the uncertainty in <span class="No-Break">the estimate.</span></p>
+<h1 id="_idParaDest-85"><a id="_idTextAnchor084"/>Filtration of measurements</h1>
+<p>The Kalman filter has inputs and outputs like any filter. The inputs are noisy and inaccurate<a id="_idIndexMarker216"/> measurements, while the outputs are much less noisy and more accurate estimates. Mathematically speaking, the inputs to the filter are a measured value and measurement covariance matrix. The dynamic system model is the state transition matrix (representing equations) and process noise covariance matrix, the Kalman gain is internal and dependent on the system, and the outputs from the filter are the state variable and state covariance matrix. This is illustrated in <span class="No-Break"><em class="italic">Figure 7</em></span><span class="No-Break"><em class="italic">.4a</em></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer129">
+<img alt="Figure 7.4a: Input and output of the Kalman filter" height="204" src="image/Figure_07_05_B18943.jpg" width="1015"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.4a: Input and output of the Kalman filter</p>
+<p>When an estimate is propagated in time, the future state is inherently uncertain and hence, the error covariance matrix grows with time. The dynamic model (equations of motion) is approximate; the process noise (uncertainty) adds to the existing noise, and this is represented by the process noise covariance matrix. The estimate needs to be converted from the state space to the measurement space and this conversion is done via another matrix (state-to-measurement). For Kalman filters applied to linear systems discussed in this chapter, this transformation matrix is simple, whereas the transformation can be complex for non-linear (or extended) Kalman filters. If the system is non-linear, a non-linear state estimator or filter is utilized. For example, extended Kalman filters do a linearization of the distribution around the mean of the current estimate and use it in the predict and update states of <span class="No-Break">the algorithm.</span></p>
+<p>The Kalman gain is computed in each iteration and it determines the influence of the input measurement (new information) on the estimate. If the input measurement is very noisy, the Kalman gain will trust its current state estimate more than the input. The Kalman filter has the ability to recognize how to appropriately put weights on its current estimate and a new input measurement at each time step to produce an <span class="No-Break">optimal estimate.</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer130">
+<img alt="Figure 7.4b: Kalman filtering in the form of distribution functions" height="455" src="image/Figure_07_06_B18943.jpg" width="1112"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.4b: Kalman filtering in the form of distribution functions</p>
+<p>To summarize, the Kalman filter is an optimal filter that treats two random variables (prior estimate and measurement) to estimate the current state variable, as shown in <span class="No-Break"><em class="italic">Figure 7</em></span><em class="italic">.4b</em>, by minimizing<a id="_idIndexMarker217"/> the uncertainty. If we have a prior distribution with a high variance and a measured distribution with a lower variance, the Kalman filter combines the two to estimate a distribution with a higher peak and narrower variance than <span class="No-Break">the prior.</span></p>
+<p>In the following section, the computation and filtration of measurements leveraging the Kalman filter estimation algorithm are implemented with <span class="No-Break">Python code.</span></p>
+<h1 id="_idParaDest-86"><a id="_idTextAnchor085"/>Implementation of the Kalman filter</h1>
+<p>In this illustrative<a id="_idIndexMarker218"/> example, time-series data is used as input and the Kalman filter provides estimates at each time step. The example is of a moving vehicle for which initializations of velocity, displacement, and acceleration are made. Acceleration values at different time steps are also incorporated. The kinematic equation, which relates displacement, velocity, and acceleration of the vehicle, yields the <span class="No-Break">true values:</span></p>
+<pre class="source-code">
+import numpy as np
+import math, random
+import matplotlib.pyplot as plt
+current_vel, current_disp, current_accel = 2, 0, 0
+total_time = 100
+accel_dict = {0:0,5:2,10:8, 20: -2,40:5,45: 9, 60: -3,85:0}
+true_values = []
+for t in range (1, total_time+1):
+     current_disp = current_disp + current_vel + (1/2) * current_accel
+     try:
+         current_accel = accel_dict[t]
+     except KeyError:
+                    pass
+     current_vel = current_vel + current_accel
+     true_values.append((current_disp, current_vel, current_accel))</pre>
+<p>Random noise (error) is added to<a id="_idIndexMarker219"/> the true values in the form of small perturbations, and measurements <span class="No-Break">are determined:</span></p>
+<pre class="source-code">
+err_range = [700, 30, 15] #noise
+measurements = []
+for item in true_values:
+     d,v,a = item
+     random_err = [random.randint(-1*err_range[0], err_range[0]), random.randint(-1*err_range[1], err_range[1]), random.randint(-1*err_range[2], err_range[2])]
+      new_disp = d + random_err[0] if d+random_err[0] &gt; 0 else 0
+      new_vel = v + random_err[1]
+      new_accel = a + random_err[2]
+      measurements.append((new_disp, new_vel, new_accel))</pre>
+<p>We can compare the true values with the measured values of displacement. On running the following piece of code, we obtain a visual comparison (<span class="No-Break"><em class="italic">Figure 7</em></span><em class="italic">.5</em>). Similarly, we can make a visual <a id="_idIndexMarker220"/>comparison of true values with the measured values of velocity <span class="No-Break">as well:</span></p>
+<pre class="source-code">
+plt.plot([i for i in range(total_time)], [y[0] for y in true_values], 'r--', label = 'True Values')
+plt.plot([i for i in range(total_time)], [y[0] for y in measurements], 'b--', label = 'Measurements')
+plt.ylabel("Displacement")
+plt.xlabel("Time (s)")
+plt.legend()
+plt.show()</pre>
+<div>
+<div class="IMG---Figure" id="_idContainer131">
+<img alt="Figure 7.5: True values versus measurements for displacement" height="517" src="image/Figure_07_07_B18943.jpg" width="712"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.5: True values versus measurements for displacement</p>
+<p>We are, therefore, done with the computation of measurements. Next is the filtration of measurements for which the noisy data is fed into the Kalman filter. Displacement and velocity are initialized and the error covariance (<strong class="source-inline">Q</strong>) is estimated. The transition matrix (<strong class="source-inline">A</strong>) is also used wherein it is assumed acceleration of the vehicle is unknown. The measurement error (<strong class="source-inline">R</strong>) is higher than the estimation error due to noise in the data. <strong class="source-inline">H</strong> in the following code<a id="_idIndexMarker221"/> yields states and <strong class="source-inline">P</strong> is the <span class="No-Break">error matrix:</span></p>
+<pre class="source-code">
+x_k = np.asarray([30,20])
+Q = np.asarray([[0.004,0.002],[0.002,0.001]])
+A = np.asarray([[1,1],[0,1]])
+R = np.asarray([[0.4,0.01],[0.04,0.01]])
+H = np.asarray([[1,0],[0,1]])
+P = np.asarray([[0,0],[0,0]])
+estimation = []
+for k_loop in range(total_time):
+     z_k = np.asarray([measurements[k_loop][0], measurements[k_loop][1]])
+     x_k = A.dot(x_k)
+     P = (A.dot(P)).dot(A.T) + Q
+            K = (P.dot(H.T)).dot(np.linalg.inv((H.dot(P).dot(H.T)) + R))
+     x_k = x_k + K.dot((z_k - H.dot(x_k)))
+     P = (np.identity(2) - K.dot(H)).dot(P)
+     estimation.append((x_k[0], x_k[1]))</pre>
+<p>We can now compare the<a id="_idIndexMarker222"/> true values with an estimated value of displacement as well as velocity. On running the following piece of code, we obtain a visual comparison (<span class="No-Break"><em class="italic">Figure 7</em></span><em class="italic">.6</em>) of <span class="No-Break">only </span><span class="No-Break">displacement:</span></p>
+<pre class="source-code">
+plt.plot([i for i in range(total_time)], [y[0] for y in true_values], 'r--', label = 'True Values')
+plt.plot([i for i in range(total_time)], [y[0] for y in measurements], 'b--', label = 'Measurements')
+plt.plot([i for i in range(total_time)], [y[0] for y in estimation], 'g--', label = 'Estimated Values')
+plt.title('Estimation of displacement')
+plt.ylabel("Displacement")
+plt.xlabel("Time (s)")
+plt.legend()
+plt.show()</pre>
+<div>
+<div class="IMG---Figure" id="_idContainer132">
+<img alt="Figure 7.6: True values versus estimated values of displacement" height="540" src="image/Figure_07_08_B18943.jpg" width="729"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.6: True values versus estimated values of displacement</p>
+<p>It is evident that the <a id="_idIndexMarker223"/>Kalman filter provides estimates of the displacement of a moving vehicle that are very close to the true values when used on noisy data. The example of a moving vehicle used in the algorithm implementation is illustrated in <span class="No-Break"><em class="italic">Figure 7</em></span><span class="No-Break"><em class="italic">.7</em></span><span class="No-Break">:</span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer133">
+<img alt="Figure 7.7: Optimal state estimate of a moving vehicle" height="210" src="image/Figure_07_09_B18943.jpg" width="566"/>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.7: Optimal state estimate of a moving vehicle</p>
+<p>Though synthetic data was utilized in the Python code, the usage and application are generic, and the <a id="_idIndexMarker224"/>algorithm works for a dynamic system provided the matrices governing the system dynamics are set <span class="No-Break">up </span><span class="No-Break">properly</span><span class="No-Break">.</span></p>
+<h1 id="_idParaDest-87"><a id="_idTextAnchor086"/>Summary</h1>
+<p>In this chapter, we explored the Kalman filter – the estimation and prediction algorithm utilized to solve problems in signal processing, navigation, and control systems. There are linear and univariate (one-dimensional) Kalman filters in which the system dynamics are assumed to be linear. Many dynamic processes, however, have more than one dimension, and in such cases, we utilize multivariate and mostly non-linear (or extended) Kalman filters. For example, the state vector that describes a moving object’s position and velocity in space is six-dimensional, and a non-linear Kalman filter is utilized to determine the displacement (and velocity) in space of such an object. Also, the Kalman filter consumes low computational power (leading to a shorter runtime) due to the usage of matrices in its operation that occupy less computer memory. The Kalman filter is arguably the best estimation algorithm with noisy data as it mitigates the uncertainty by combining the information we have and providing us with a distribution we can feel more <span class="No-Break">confident about.</span></p>
+<p>The next chapter is the last one in this part (<em class="italic">Mathematical Tools</em>) of the book and is about the Markov chain, an algorithm to sample states from a population with a complex probability distribution. It is a probabilistic tool to traverse a system of states. In other words, it randomly walks across a graph and helps predict the next state just from knowledge of <span class="No-Break">the present.</span></p>
+</div>
+</div></body></html>
