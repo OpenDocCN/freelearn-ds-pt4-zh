@@ -1,0 +1,315 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Attention Mechanisms</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the preceding two chapters, we learned about convolutional neural networks and recurrent neural networks, both of which have been very effective for sequential tasks such as machine translation, image captioning, object recognition, and so on. But we have also seen that they have limitations. RNNs have problems with long-term dependencies. In this chapter, we will cover attention mechanisms, which have been increasing in popularity and have shown incredible results in language- and vision-related tasks.</p>
+<p>The following topics will be covered in this chapter:</p>
+<ul>
+<li>Overview of attention</li>
+<li><span>Understanding neural Turing machines</span></li>
+<li>Exploring the types of attention</li>
+<li>Transformers</li>
+</ul>
+<p>Let's get started!</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Overview of attention</h1>
+                </header>
+            
+            <article>
+                
+<p>When we go about our lives (in the real world), our brains don't observe every detail in our environment at all times; instead, we focus on (or pay greater attention to) information that is relevant to the task at hand. For example, when we are driving, we are able to adjust our focal length to focus on different details, some of which are closer and others are further away, and then act on what we observe. Similarly, when we are conversing with others, we usually don't listen carefully to each and every word; we listen to only part of what is spoken and use it to infer the relationships with some of the words to figure out what the other person is saying. Often, when we are reading/listening to someone, we can use some words to infer what the person is going to say next based on what we have already read/heard. </p>
+<p>But why do we need these attention mechanisms in deep learning? Let's take a stroll down memory lane to <a href="70ef350e-d1bd-4348-b5ec-aae11454bd69.xhtml">Chapter 10</a>, <em>Recurrent Neural Networks</em>, where we learned about sequence-to-sequence models (RNNs), which, as we saw, can be used for tasks such as language-to-language translation. We should recall that these types of models have an encoder-decoder architecture where the encoder takes in the input and compresses the information into an embedding space (or context vector), while the decoder takes in the context vector and transforms it back into the desired output. Both the encoder and decoder are RNNs (possibly with LSTMs or GRUs for long-term memory). </p>
+<p>In the previous chapter, we also came across a few limitations that RNNs have <span>–</span> in particular, the problem of vanishing or exploding gradients, which hinders long-term dependencies. And thus, the attention mechanism was created. It was created for the sole purpose of solving this very problem of memorizing long sentences that RNNs face. </p>
+<p>In RNNs, the hidden state at each time step takes the previous hidden state as input (which contains the context of the sequence it has seen so far) and the input for that time step, and then the final hidden state is passed to the decoder sequence. Attention mechanisms differ by creating connections between the context vector and the whole sequence of inputs. This way, we no longer have to worry about how much will end up being forgotten. And similar to all the other connections in ANNs, these attention connections are weighted, which means they can be adjusted for each output. Essentially, the context vector controls the alignment between the input and target (output). </p>
+<p>Let's suppose we have an input, <sub><img class="fm-editor-equation" src="Images/413fee1b-9c96-4ebb-b7a6-891b310bf9de.png" style="width:8.67em;height:1.25em;"/>,</sub> and a target, <sub><img class="fm-editor-equation" src="Images/3ad54583-0855-4162-816a-9258c7deb0b8.png" style="width:8.67em;height:1.25em;"/></sub>, where the hidden states produced by the encoder (a vanilla RNN for simplicity, though this could be any RNN architecture) will be <sub><img class="fm-editor-equation" src="Images/ef65b64f-2805-4934-af79-4a87e722fc13.png" style="width:8.75em;height:1.25em;"/></sub>. The hidden states for the decoder here are slightly different from what we have previously seen:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/75092bed-dc07-4216-93f8-bbad1af80139.png" style="width:9.67em;height:1.33em;"/></p>
+<p class="mce-root">For all <sub><img class="fm-editor-equation" src="Images/582257a5-b5d8-4325-95f4-ebc9a5eecf71.png" style="width:7.17em;height:1.17em;"/></sub>. Here, <em>c<sub>t</sub></em> (the context vector) is a sum of all hidden states from the input. This is weighted by the alignment scores so that <sub><img class="fm-editor-equation" src="Images/a299bc60-e389-40a1-ad66-9b7dc1102e23.png" style="width:5.92em;height:2.83em;"/></sub> and <sub><img class="fm-editor-equation" src="Images/3f88f612-9a6e-4b6c-afa1-3065390e28d6.png" style="width:12.42em;height:3.25em;"/>,</sub> which determine the alignment of <em>y<sub>t</sub></em> and <em>x<sub>i</sub></em> by assigning a score based on how well the two match. Each <em>α<sub>t,i</sub></em> here is a weight that decides the extent to which each source's hidden state should have an impact on each output. </p>
+<p>The preceding score function is parameterized by an MLP with a single hidden layer and is calculated using the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/cd8fe6a1-807b-4538-a06c-300672586fc9.png" style="width:17.58em;height:1.58em;"/></p>
+<p>Here, <strong>V</strong><sub>a</sub> and <strong>W</strong><sub>a</sub> are weight matrices to be learned. </p>
+<p>Before we dive deep into the inner workings of various attention mechanisms, let's take a look at neural Turing machines. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Understanding neural Turing machines</h1>
+                </header>
+            
+            <article>
+                
+<p>The <strong>Turing machine (TM)</strong> was proposed by Alan Turing in 1936, and it is a mathematical model of computation made up of an infinitely long tape and a head that interacts with the tape by reading, editing, and moving symbols on it. It works by manipulating symbols on the strip according to a predefined set of rules. The tape is made up of an endless number of cells, each of which can contain one of three symbols <span>– </span>0, 1, or blank (" "). Therefore, this is referred to as a <strong>three-symbol Turing machine</strong>. Regardless of how simple it seems, it is capable of simulating any computer algorithm, regardless of complexity. The tape that these computations are done on can be considered to be the machine's memory, akin to how our modern-day computers have memory. However, the Turing machine differs from modern-day computers as it has limited memory and computational limitations.</p>
+<p>In <a href="70ef350e-d1bd-4348-b5ec-aae11454bd69.xhtml">Chapter 10</a>, <em>Recurrent Neural Networks</em>, we learned that this type of ANN is Turing complete, which means that when they are properly trained, they can simulate any arbitrary procedure. But this is only in theory. In practice, we have seen that this is not the case because they do have their limitations. To overcome these limitations, in 2014, Alex Graves et al. proposed augmenting an RNN with a large, addressable memory (similar to the tape in a TM), thereby giving it the name <strong>neural Turing machine</strong> (<strong>NTM</strong>). This model, as the authors stated, <em>is a differentiable computer that can be trained by gradient descent, yielding a practical mechanism for learning programs</em>.</p>
+<p>The NTM borrows the idea of working memory (a process in human cognition), which is the same as short-term memory, and applies it to RNNs, thereby giving it the ability to selectively read from and write to memory using an attentional controller. We can see what the NTM looks like in the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-994 image-border" src="Images/f4a1ea46-836f-40e8-930f-97194df0c5f4.png" style="width:23.50em;height:21.33em;"/></p>
+<p>In the preceding diagram, we can see that there are two main components to the NTM <span>– </span>the controller, which is a neural network, and the memory, which contains <span>processed information</span>. The controller interacts with the external world by receiving an input vector and outputting an output vector, but it differs from the ANNs from previous chapters in that it also interacts with the memory matrix using the selective read and write operations. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Reading</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's suppose our memory is an <em>N</em>×<em>M</em> matrix and that it is denoted by <sub><img class="fm-editor-equation" src="Images/89ed3e76-7c89-472c-baa9-0719fa281259.png" style="width:5.75em;height:1.33em;"/></sub>, where <em>t</em> is the time step, <em>N</em> is the number of rows (memory locations), and <em>M</em> is the size of the vector at each location. Then, we have another vector of weights, <strong>w</strong><em><sub>t</sub></em>, which determines how much attention to designate to various locations in the memory (that is, the rows of the matrix). Each of the <em>N</em> weightings in the weight vector is normalized, which tells us that <sub><img class="fm-editor-equation" src="Images/f0751cb7-2506-4c20-a962-5770f6760dee.png" style="width:5.67em;height:2.33em;"/></sub> and that for all <em>i</em>, we have <sub><img class="fm-editor-equation" src="Images/ff03c942-ed7d-4fd4-98dd-0107e30786ca.png" style="width:6.50em;height:1.33em;"/></sub>, where <sub><img class="fm-editor-equation" src="Images/8c79fda9-6f9b-4578-877e-779aed81de97.png" style="width:3.08em;height:1.67em;"/></sub> is the <em>i<sup>th</sup></em> element of <strong>w</strong><em><sub>t</sub></em>.</p>
+<p>The read vector, <strong>r</strong><em><sub>t</sub></em>, which is returned by the head, can be calculated as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/c44483be-ed81-472b-8e8d-00fdf2e411b4.png" style="width:9.17em;height:2.50em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/df41d01e-24c7-462e-b773-70d193858dad.png" style="width:2.83em;height:1.33em;"/></sub> is the<span> <em>i</em></span><span><em><sup>th</sup></em> memory vector. From the preceding equation, we can also see that <strong>r</strong><em><sub>t</sub></em> can </span>be differentiated with respect to both the weight and the memory. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Writing</h1>
+                </header>
+            
+            <article>
+                
+<p>The writing operation takes inspiration from the input and forget gates of LSTMs, where some information is erased and then replaced (or added). </p>
+<p>The memory is then updated using two formulas, the first of which erases the memory and the second of which adds memory:</p>
+<ul>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/822fbdb1-fcc6-4d44-8fe5-ad3d0d8c3e07.png" style="width:13.75em;height:1.42em;"/></sub> </li>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/989ecad8-4f02-44fc-9254-b44a6ec316d2.png" style="width:12.33em;height:1.50em;"/></sub></li>
+</ul>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/7c145547-1bdf-4c9f-bfcd-2e6896726b26.png" style="width:4.58em;height:1.25em;"/></sub> is the erase vector, <strong>a</strong><em><sub>t</sub></em> is the add vector, and <strong>1</strong> is a vector containing only ones. From these equations, we can see that the memory at a specific location is only erased when both the weight and erase vector are equal to one, and it is left unchanged otherwise. Since both the erase and add operations are differentiable, so is the entire write operation.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Addressing mechanisms</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we know how the reading and writing operations work, let's dive into how the weights are produced. The weights are outputs that are a combination of two mechanisms—a content-based addressing mechanism and a location-based addressing mechanism.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Content-based addressing mechanism</h1>
+                </header>
+            
+            <article>
+                
+<p>This addressing mechanism focuses on the similarity between the key values, <strong>k</strong><em><sub>t</sub></em>, which are output by the controller based on the input it receives, and the memory rows. Based on this similarity, it creates an attention vector. It is calculated using the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/b222ee36-4589-454c-82ee-19c6e0154f62.png" style="width:35.33em;height:5.83em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/1f70300a-f477-43ac-9aea-422931307a42.png" style="width:1.58em;height:1.58em;"/></sub> is a normalized weight and <em>β<sub>t</sub></em> is a strength multiplier.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Location-based address mechanism</h1>
+                </header>
+            
+            <article>
+                
+<p>Before we learn how location-based addressing works, we need to define our interpolation gate, which blends together the content-based attention at the current time step with the weights in the attention vector from the previous time step. This can be done using the following formula:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/36836a94-5a7c-49ce-8879-58328cb3b19f.png" style="width:13.50em;height:1.50em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/faa5bda9-522d-4210-90c3-fdb43444d11d.png" style="width:6.00em;height:1.67em;"/></sub> is the scalar interpolation gate.</p>
+<p><span>Location-based addressing works by summing the values in the attention vector, each of which are weighted by a</span> shifting weight, <strong>s</strong><em><sub>t</sub></em>, which is a distribution of the allowable integer shifts. For example, if it can shift between -1 and +1, then the allowable shifts that can be performed are -1, 0, and +1. Now, we can formulate this rotation so that the shifting weight applies to <sub><img class="fm-editor-equation" src="Images/aacecb17-2a38-4a64-b209-f1af249e8a94.png" style="width:1.58em;height:1.50em;"/></sub> as a circular convolution. We can observe this in the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/b8bf7525-a591-4646-b6d4-6ea2f03911a5.png" style="width:12.17em;height:3.58em;"/></p>
+<p class="CDPAlignLeft CDPAlign">To prevent any leakage or blurriness being caused by the shifting weight, we sharpen the attention vector, <strong>w</strong><em><sub>t</sub></em>, using the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/68981f9d-1a84-4010-9f72-699945912555.png" style="width:10.08em;height:3.33em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/3d7b5ad2-d552-41b0-b704-7a70110a8fb0.png" style="width:2.75em;height:1.08em;"/></sub> is a positive scalar value.</p>
+<p>And lastly, the values that are output by the controller are unique for each read and write head.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Exploring the types of attention</h1>
+                </header>
+            
+            <article>
+                
+<p>Attention has proven to be so effective in machine translation that it has been expanded into natural language processing, statistical learning, speech understanding, object detection and recognition, image captioning, and visual question answering.</p>
+<p>The purpose of attention is to estimate how correlated (connected) two or more elements are to one another.</p>
+<p>However, there isn't just one kind of attention. There are many types, such as the following:</p>
+<ul>
+<li><strong>Self-attention</strong>: Captures the relationship between different positions of a sequence of inputs</li>
+<li><strong>Global or soft attention</strong>: Focuses on the entire sequence of inputs</li>
+<li><strong>Local or hard attention</strong>: Focuses on only part of the sequence of inputs</li>
+</ul>
+<p>Let's take a look at these in more detail.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Self-attention</h1>
+                </header>
+            
+            <article>
+                
+<p>Self-attention finds relationships between different positions of the input sequence and then computes a representation of the same sequence of inputs. You can think of this as summarizing the input. This is somewhat similar to how the LSTM we saw in the previous chapter works, where it tries to learn a correlation between the previous inputs and the current one and decide what is relevant and what isn't.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Comparing hard and soft attention</h1>
+                </header>
+            
+            <article>
+                
+<p>These types of attention were created for generating captions for images. A CNN is first used to extract features and then compress them into an encoding. To decode it, an LSTM is used to produce words that describe the image. But that isn't important right now—distinguishing between soft and hard attention is. </p>
+<p>In soft attention, the alignment weights that are learned during training are softly placed over patches in an image so that it focuses on part(s) of an image more than others. </p>
+<p>On the other hand, in hard attention, we focus only on part of the image at a time. This only makes a binary decision about where to focus on, and it is much harder to train in comparison to soft attention. This is because it is non-differentiable and needs to be trained using reinforcement learning. Since reinforcement learning is beyond the scope of this book, we won't be covering hard attention. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Comparing global and local attention</h1>
+                </header>
+            
+            <article>
+                
+<p>Global attention shares some similarities with how soft attention works in that it takes all of the input into consideration. </p>
+<p>Local attention differs from global attention <span>as it</span> can be seen as a mix of hard and soft attention and considers only a subset of the input. It starts by predicting a single aligned position for the current output. Then, a window centered around the current input is used to create a context vector.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Transformers</h1>
+                </header>
+            
+            <article>
+                
+<p>For those of you who got excited at the title (transformers), this section sadly has nothing to do with Optimus Prime or Bumblebee. In all seriousness now, we have seen that attention mechanisms work well with architectures such as RNNs and CNNs, but they are also powerful enough to be used on their own, as evidenced by Vaswani in 2017, in his paper <em>Attention Is All you Need</em>.</p>
+<p>The transformer model is made entirely out of self-attention mechanisms to perform sequence-to-sequence tasks without the need for any form of recurrent unit. Wait, but how? Let's break down the architecture and find out how this is possible.</p>
+<p>RNNs take in the encoded input and then decode it in order to map it to a target output. However, the transformer differs here by instead treating the encoding as a set of key-value pairs (<strong>K</strong>, <strong>V</strong>) which has dimensions (=<em>n</em>) equal to the length of (the sequence of) the inputs. The decoder is treated as a query, <em>Q</em>, that has dimensions (=<em>m</em>) equal to the length of (the sequence of) the outputs. Each output is created by mapping the key-value pair to a query.</p>
+<p>The attention here is calculated using a scaled dot product that calculates the weighted sum of the values using the formula:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/15adfd36-aa62-4691-88c6-2f3fb55816b1.png" style="width:20.25em;height:3.00em;"/></p>
+<p>Now, instead of calculating the attention just once, we do it multiple times in parallel. This is referred to as multi-head attention. In the following diagram, we can see a visualization of the scaled-dot product attention and multi-head attention calculations:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-995 image-border" src="Images/ef2a08a1-b527-4b82-9c3e-45482680fffa.png" style="width:32.00em;height:20.83em;"/></p>
+<p>The output from each of these attention calculations is then concatenated and we apply a linear transformation to them to ensure their dimensions match what is expected. The reason for this is that multi-head attention enables the model to focus on information from different subspaces at different positions at the same time, which single attention is unable to do. This works as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/576b2c53-92df-47f7-99ec-72ab718cee0b.png" style="width:23.42em;height:1.25em;"/></p>
+<p>Here, each head is calculated as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/a9c5f484-f6d4-40f5-9db9-04ab09f37ee2.png" style="width:20.50em;height:1.67em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/3c17b956-2a69-4754-9395-12648bb86c05.png" style="width:8.00em;height:1.67em;"/></sub>, <sub><img class="fm-editor-equation" src="Images/c62b23de-a698-40f1-92ef-b3e231814ff3.png" style="width:7.17em;height:1.42em;"/></sub>, <sub><img class="fm-editor-equation" src="Images/bc0a1890-75a3-4f9d-ab82-003990c33e59.png" style="width:7.50em;height:1.50em;"/></sub>, and <sub><img class="fm-editor-equation" src="Images/bda05be2-efc2-405e-b383-366cff0cb582.png" style="width:8.17em;height:1.25em;"/></sub> are trainable parameters.</p>
+<p class="mce-root">Let's now turn our attention to the encoder and decoder.</p>
+<p class="mce-root">The encoder is composed of a stack of six identical layers, each of which is made up of two sub-layers. The first of these sub-layers is a multi-head self-attention layer, while the second is an FNN that applies identical weights individually to each element in the entire sequence. This is similar to a convolution, which would apply the same kernel at each position. The FNN can be represented as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/3b931e2a-73e3-4e27-8fb5-2720f129dfd3.png" style="width:18.92em;height:1.33em;"/></p>
+<p class="mce-root">Each has a residual connection to a layer normalization. What this does is identify particular pieces of information in the text/image from the whole, that is, the most important parts that we need to pay greater attention to. The computation for this encoder is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/2ded83e2-93f0-443d-949c-72393172e3d8.png" style="width:13.17em;height:1.25em;"/></p>
+<p>The encoder architecture looks as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-996 image-border" src="Images/4b77edc5-bb87-46be-b191-0a5fa9cf6bfb.png" style="width:13.67em;height:15.75em;"/></p>
+<p>The preceding layer normalization transforms the input so that it has zero mean and a variance of one. It does this using the following formulas:</p>
+<ul>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/cccb8ef3-b601-4fae-b7d8-e1e61632c20f.png" style="width:6.58em;height:3.33em;"/></sub> </li>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/ffe595af-befe-4705-b4aa-607a95331212.png" style="width:10.67em;height:3.50em;"/></sub></li>
+</ul>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/ed7445b2-b7b8-4903-8110-2df9990b9276.png" style="width:12.33em;height:2.75em;"/></sub>.</p>
+<p class="mce-root"/>
+<p>The decoder (whose architecture is shown in the following diagram) is also composed of a stack of six identical layers; however, each of these layers is made up of three sub-layers. The first two of these sub-layers is a multi-head attention layer, and each is followed by a layer normalization, which is where the residual connection is. The first of the sub-layers is modified with a mask so that the positions don't go to the subsequent positions and try to use future predictions to predict the current one:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-997 image-border" src="Images/0102dd9b-ba8a-43b9-9da7-cf30151f5a7c.png" style="width:14.92em;height:25.00em;"/></p>
+<p>The output of the decoder is then passed to a linear layer, which is what we apply a softmax to.</p>
+<p>In the architecture, we can quite easily notice that there are no convolutions or recurrent connections for the model to make use of in the sequence, which is where it sees this information. To deal with this, the authors of this method used positional encodings to inject information about the absolute and relative positions of the elements in the sequence into the input embeddings of the input embeddings, which are at the bottom of the encoder and decoder.</p>
+<p>This gives us the full transformer architecture, which can be seen in the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-998 image-border" src="Images/e0d59783-c120-47ba-8063-8cd4e283eb99.png" style="width:25.25em;height:35.67em;"/></p>
+<p>The position encodings are calculated using the following two equations:</p>
+<ul>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/2c14a7e8-9ba0-42cf-9cb3-4e59c36b3fe9.png" style="width:15.42em;height:3.50em;"/></sub></li>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/d39565ad-0607-41f8-b379-d86d677c9120.png" style="width:17.42em;height:3.50em;"/></sub></li>
+</ul>
+<p>Here, <em>pos</em> is the position and <em>i</em> is the dimension. </p>
+<p>Now, let's conclude this chapter.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we learned about a hot new area in deep learning known as attention mechanisms. These are used to allow networks to focus on specific parts of input. This helps the network overcome the problem of long-term dependencies. We also learned about how these attention mechanisms can be used instead of sequential models such as RNNs to produce state-of-the-art results on tasks such as machine translation and sentence generation. However, they can also be used to focus on relevant parts of images. This can be used for tasks such as visual question answering, where we may want our network to tell us what is happening in a given scene.</p>
+<p>In the next chapter, we will learn about generative models.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div></body></html>

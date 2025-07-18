@@ -1,0 +1,334 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Geometric Deep Learning</h1>
+                </header>
+            
+            <article>
+                
+<p>Throughout this book, we have learned about various types of neural networks that are used in deep learning, such as convolutional neural networks and recurrent neural networks, and they have achieved some tremendous results in a variety of tasks, such as computer vision, image reconstruction, synthetic data generation, speech recognition, language translation, and so on. All of the models we have looked at so far have been trained on Euclidean data, that is, data that can be represented in grid (matrix) format—images, text, audio, and so on. </p>
+<p>However, many of the tasks that we would like to apply deep learning to use non-Euclidean data (more on this shortly) <span>–</span> the kind that the neural networks we have come across so far are unable to process and deal with. This includes dealing with sensor networks, mesh surfaces, point clouds, objects (the kind used in computer graphics), social networks, and so on. In general, geometric deep learning is designed to help deep neural networks generalize to graphs and manifolds (we learned about graphs in <a href="758f1209-7a1d-474c-b494-bbf905a25afd.xhtml">Chapter 5</a>, <em>Graph Theory</em>, and we will learn about manifolds shortly in this chapter). </p>
+<p>We will cover the following topics in this chapter:</p>
+<ul>
+<li>Comparing Euclidean and non-Euclidean data</li>
+<li>Graph neural networks</li>
+<li>Spectral graph CNNs</li>
+<li>Mixture model networks</li>
+<li>Facial recognition in 3D</li>
+</ul>
+<p>Let's get started!</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Comparing Euclidean and non-Euclidean data</h1>
+                </header>
+            
+            <article>
+                
+<p>Before we learn about geometric deep learning techniques, it is important for us to understand the differences between Euclidean and non-Euclidean data, and why we need a separate approach to deal with it. </p>
+<p>Deep learning architectures such as FNNs, CNNs, and RNNs have proven successful for a variety of tasks, such as speech recognition, machine translation, image reconstruction, object recognition and segmentation, and motion tracking, in the last 8 years. This is because of their ability to exploit and use the local statistical properties that exist within data. These properties include stationarity, locality, and compositionality. In the case of CNNs, the data they take as input can be represented in a grid form (such as images, which can be represented by matrices and tensors). </p>
+<p>The stationarity, in this case (images), comes from the fact that CNNs have the following:</p>
+<ul>
+<li>Shift invariance, owing to the use of convolutions.</li>
+<li>The locality can be attributed to local connectivity since the kernels are observing not just singular pixels but neighboring pixels as well.</li>
+<li>The compositionality comes from it being made up of multiple scales (or hierarchies) where simpler structures are combined to represent more abstract structures. </li>
+</ul>
+<p>However, not all data can be expressed in the format required for deep neural networks, and if it can be contorted into grid form, this means that we have had to sacrifice a lot of the relationships that existed in the complex data in favor of a much more simple representation that our neural networks can take as input.</p>
+<p>These three properties limit what neural networks can learn and the kinds of problems we can use them for. </p>
+<p>A lot of the data that exists in the real world, as you may have guessed, cannot be properly captured in a grid. This kind of data can, however, be represented using graphs or manifolds. Examples of data that can be represented by graphs include social networks, academic paper citation networks, communication networks, knowledge graphs, molecules, and road maps. On the other hand, we can make use of Riemannian manifolds (more on this in the next section) to represent three-dimensional objects (which are volumetric) such as animals, human bodies, faces, airplanes, chairs, and so on. In a nutshell, both are methods of capturing the relationships that may exist between nodes. </p>
+<p>This type of data is difficult for neural networks to deal with because it lacks the structure they are used to being fed during training. For example, we may want to use the weight (or strength) between two nodes to represent the closeness of two people in a social network. In this scenario, we would do this to make a suggestion regarding a new friend for a user to add to their existing network. However, there is no straightforward method we can use to represent this information in a feature vector.</p>
+<p>Before we learn about the methods used in geometric deep learning, let's learn what exactly a manifold is. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Manifolds</h1>
+                </header>
+            
+            <article>
+                
+<p><span>A <strong>manifold</strong></span><span> is any topological space where, in the neighborhood of any point, </span><span>(<em>p</em></span><span>), it is topologically equivalent (or homeomorphic) to a <em>k</em>-dimensional Euclidean space. We encountered the term manifold earlier in this book, but we didn't define it properly, so we will do that now. </span>The preceding definition probably sounds a bit daunting, but it will make a lot more sense in a moment.</p>
+<p>Suppose we have a one-dimensional manifold. For simplicity, we will work with a circle, or a disk, (which we denote as <em>S<sup>1</sup></em>) that exists in <sub><img class="fm-editor-equation" src="Images/4e3146ed-66b4-497c-9b63-51b8c8ba347e.png" style="width:1.67em;height:1.50em;"/></sub> (there are other one-dimensional manifolds, as well, such as parabolas, hyperbolas, and cubic curves, but that doesn't concern us right now).</p>
+<p>Let's suppose we have the following manifold:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1006 image-border" src="Images/f19d5c8b-4fee-44ad-b004-1007d3b26c0b.png" style="width:19.33em;height:19.17em;"/></p>
+<p>Now, if we were to zoom into the curve of the circle on the top-left quadrant a bunch of times, eventually, we would arrive at a magnification where the curve appears to look like a straight line (sort of like a tangent at that point):</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1007 image-border" src="Images/7fbac093-a8ff-4737-8fa9-a4501890b4f5.png" style="width:17.42em;height:18.00em;"/></p>
+<p>As shown in the preceding image, we have zoomed into the top left and have drawn a tangent at a point, and at that point, the curve is almost parallel to the tangent line. The more we zoom in, the more the line appears to be straight.</p>
+<p>Similarly, if we have a two-dimensional manifold such as a sphere (which we denote as <em>S<sup>2</sup></em>) that exists in <img class="fm-editor-equation" src="Images/a88efc3f-540c-4329-bfa0-7e4913d7e181.png" style="width:1.67em;height:1.50em;"/> and we zoom into it, then at any point on the surface, it will appear to look like a flat disk. A<span> manifold</span> <span>does not necessarily have to be a sphere; it can be any topological space that has the characteristics of a manifold. </span>To visualize this, consider the Earth to be a manifold. From anywhere you stand and look, the Earth appears to look flat (or planar), even though it is curved.</p>
+<p>We can write the unit circle and unit sphere, respectively, as follows:</p>
+<ul>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/776c47dd-f6f4-41e6-98e1-c4892f3174cd.png" style="width:15.92em;height:1.50em;"/></sub></li>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/0b27b163-fc14-4890-8e3c-66dae3f3650e.png" style="width:19.42em;height:1.50em;"/></sub></li>
+</ul>
+<p>Similarly, we can also write higher-dimensional manifolds as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/861681f0-6438-4b7e-ae51-e1d119888371.png" style="width:12.58em;height:1.42em;"/></p>
+<p>Formally, a (differentiable) <span><em>k</em></span><span>-dimensional </span>manifold M in <img class="fm-editor-equation" src="Images/4abead96-71b5-459c-a8e5-acfec1e0956a.png" style="width:1.75em;height:1.25em;"/> is a set of points in <img class="fm-editor-equation" src="Images/199aafe4-8acd-4773-ad40-ce8a6cd522b2.png" style="width:1.75em;height:1.25em;"/> where for every point, <em>p ∈ M</em>, there is a small open neighborhood, <em>U,</em> of <em>p</em>, a vector-valued differentiable function, <sub><img class="fm-editor-equation" src="Images/1edc1871-73ae-4a40-bca9-c45f1df0357e.png" style="width:5.75em;height:1.17em;"/></sub>, and an open set, <sub><img class="fm-editor-equation" src="Images/21facf0b-47d6-4497-82f8-d02f52982a8a.png" style="width:4.00em;height:1.42em;"/>,</sub> with the following:</p>
+<ul>
+<li><sub><img class="fm-editor-equation" src="Images/6380669c-017a-478c-b300-7e3fdc3000b3.png" style="width:7.33em;height:1.33em;"/></sub></li>
+<li>The Jacobian of <em>F</em> has rank, <em>k</em>, at each of the points in <em>V</em>, where the Jacobian of <em>F</em> is an <em>n</em> × <em>k</em> matrix that looks as follows:</li>
+</ul>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/f82e32d1-226f-48be-be39-b66f6fec5249.png" style="width:13.50em;height:8.58em;"/></p>
+<p style="padding-left: 90px">Here, <em>F</em> is the local parameterization of the manifold.</p>
+<p>We can also use existing topological spaces to create new ones using Cartesian products. Suppose we have two topological spaces, <em>X</em> and <em>Y</em>, and that their Cartesian product is <sub><img src="Images/446e52b9-f6a2-45c0-b788-49434486063a.png" style="width:1.83em;height:0.67em;"/></sub>, where each <sub><img src="Images/e9301b2e-c144-432d-988a-149cac1d8795.png" style="width:2.50em;height:0.83em;"/></sub> and <sub><img class="fm-editor-equation" src="Images/4cb05171-f9d3-42f6-986e-69cf0ccc8d2f.png" style="width:2.25em;height:1.00em;"/> </sub>generates a point, <sub><img class="fm-editor-equation" src="Images/9f7ce26e-9a4d-4863-860f-0e93f4940ce7.png" style="width:4.42em;height:0.83em;"/></sub>. A familiar Cartesian product is a three-dimensional Euclidean space, where <sub><img class="fm-editor-equation" src="Images/a80f3506-bf84-4d76-a727-cd55644d4777.png" style="width:7.75em;height:1.17em;"/></sub>. However, it is important to note that <sub><img class="fm-editor-equation" src="Images/5d7e1519-bb3d-436d-b728-55c34a6487b8.png" style="width:6.25em;height:1.33em;"/></sub> (it is actually equal to <em>T<sup>2</sup></em>, which is a ring torus, but we will avoid going into why since that goes beyond the scope of this book). </p>
+<p>In computer graphics, we use two<span>-dimensional manifolds embedded in </span><sub><img class="fm-editor-equation" src="Images/1ffa25ed-6992-4650-8e18-355dbcec494c.png" style="width:1.67em;height:1.50em;"/></sub><span> to represent boundary surfaces of three-dimensional objects.</span></p>
+<p>Since these parametric manifolds are objects, they will have an orientation, and to define this, we will need what is known as the tangent space to the manifold. However, before we're able to define the tangent space, we need to clarify some concepts. Suppose again that we have a <em>k</em>-dimensional manifold, <em>M</em>, defined in <sub><img class="fm-editor-equation" src="Images/8300eb70-f0bd-4f7f-8163-b3c2bd63edd0.png" style="width:1.25em;height:0.92em;"/></sub> (where <em>k &lt; n</em>). Here, for each <em>p ∈ M,</em> there is an open set, <em>U</em>, containing <em>p</em> and (<em>n-k</em>) real-valued functions, <sub><img class="fm-editor-equation" src="Images/3bd04522-57a3-423e-93b8-d97d860897f2.png" style="width:6.25em;height:1.00em;"/>,</sub> defined on <em>U</em> such that <sub><img class="fm-editor-equation" src="Images/d7a5df0f-d5ab-4472-ad06-83d34857fd5c.png" style="width:18.67em;height:1.42em;"/></sub> and at each point, <sub><img class="fm-editor-equation" src="Images/8e18cbb8-f7f5-48a1-a29d-b25b44b2e14e.png" style="width:5.25em;height:1.17em;"/></sub>, we have the following linearly independent vectors:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/33f61fd5-e37b-467f-b9fb-3a0876e93f1b.png" style="width:11.08em;height:1.42em;"/></p>
+<p>Now, the normal space to <em>M</em> at <em>p</em> is written as <em>N<sub>p</sub>(M)</em> and is spanned by the following vectors:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/f5fd8010-61bd-4488-98bf-92a57ae81a58.png" style="width:10.50em;height:1.33em;"/></p>
+<p>As we already know, tangents are perpendicular to normal vectors, and so the tangent space, <em>T<sub>p</sub>(M)</em>, to the manifold at <em>p</em> consists of all the vectors, <img class="fm-editor-equation" src="Images/450ca9f7-273b-4656-acec-40ac7e64f512.png" style="width:3.50em;height:1.00em;"/>, that are perpendicular to each of the normal vectors, <em>N<sub>p</sub>(M)</em>. However, <sub><img class="fm-editor-equation" src="Images/1a41d505-069e-4531-9f1b-66b0f2f2944a.png" style="width:7.25em;height:1.25em;"/></sub> is only in <em>T<sub>p</sub>(M)</em> if—and only if—for all of <sub><img class="fm-editor-equation" src="Images/7087577e-51ef-47d4-a38e-50c920de691c.png" style="width:7.33em;height:1.17em;"/></sub>, we have the following:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/6858642f-5757-42d6-8301-82d56dac604e.png" style="width:14.67em;height:3.50em;"/></p>
+<p>Once we have our tangent space, we can use it to define a Riemannian metric, which is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/19f564e1-1bf7-4322-bd3b-fbd180f0995e.png" style="width:15.92em;height:1.50em;"/></p>
+<p>This metric allows us to perform local measurements of angles, distances, and volumes, as well as any manifold that this metric is defined on. This is known as a <strong>Riemannian manifold</strong>.</p>
+<p>Before we move on, there are two terms that are important for us to become familiar with:</p>
+<ul>
+<li><strong>Isometry</strong>: Metric preserving shape deformation</li>
+<li><strong>Geodesic</strong>: Shortest path on <em>M</em> between <em>p</em> and <em>p'</em></li>
+</ul>
+<p>Interestingly, we can define manifolds using scalar fields and vector fields, which means we can extend calculus to manifolds. In this case, we need to introduce three new concepts, as follows:</p>
+<ul>
+<li><strong>Scalar field</strong>: <span><sub><img style="text-align: center;color: #333333;width:5.58em;height:1.33em;" class="fm-editor-equation" src="Images/13707b05-a444-466e-a624-7ba9a72ba18d.png"/></sub></span></li>
+</ul>
+<ul>
+<li><strong>Vector field</strong>: <span><sub><img style="text-align: center;color: #333333;width:6.67em;height:1.00em;" class="fm-editor-equation" src="Images/a24fd592-73ac-44d9-90a5-fae76e0a026f.png"/></sub></span></li>
+</ul>
+<ul>
+<li><strong>Hilbert space with inner products</strong>: </li>
+</ul>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/ddf57b4a-3a0f-45fc-855d-8045cd32f95a.png" style="width:16.67em;height:5.00em;"/></p>
+<div class="packt_infobox">A Hilbert space is an abstract vector space that merely generalizes the concept of Euclidean space. So, the methods we learned about regarding vector algebra and calculus can be extended from two-dimensional and three-dimensional Euclidean space to an arbitrary or infinite number of dimensions.</div>
+<p>Naturally, if we are going to define calculus on manifolds, we want to be able to take derivatives, but this isn't as clear as it is for curves. For manifolds, we make use of the tangent space, such that <sub><img class="fm-editor-equation" src="Images/dfbb68ad-04ce-428b-a4a5-6ab651fad1e1.png" style="width:10.75em;height:1.50em;"/></sub> and the directional derivative is <sub><img class="fm-editor-equation" src="Images/8c001bcc-abf2-4a66-b5d9-68aa26063bba.png" style="width:16.00em;height:1.58em;"/></sub>, which tells us how much <em>f</em> changes at point <em>p</em> in the direction <em>F(p)</em>. And the intrinsic gradient operator, which tells us the direction that the change of <em>f</em> is most steep in, is calculated from the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/44cc4c31-e751-4ac4-aea9-d263cee4c7c8.png" style="width:11.83em;height:1.50em;"/></p>
+<p>The intrinsic divergence operator calculates the net flow of the field, <em>F</em>, at point <em>p</em> through the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/f2fc8c34-7107-4889-b4b6-3dfc89a8995f.png" style="width:11.83em;height:1.50em;"/></p>
+<p>Using this, we can find the formal adjoint of the gradient, as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/28e372d9-aa55-4837-8c63-1b2388d06eba.png" style="width:23.83em;height:1.58em;"/></p>
+<p>Now, we can find the Laplacian, <sub><img class="fm-editor-equation" src="Images/fb8fa0f4-d4f7-4cb7-8500-e8d2508781da.png" style="width:10.50em;height:1.50em;"/></sub>, which calculates the difference between <em>f(x)</em> and the average value of <em>f</em> in the vicinity of point <em>p</em> using <sub><img class="fm-editor-equation" src="Images/55683a44-1593-4b5f-89fb-5b861a470aa2.png" style="width:7.42em;height:1.25em;"/></sub>, which tells us that the Laplacian is isometry-invariant (an isometry is a distance preserving transformation between metric spaces. However, in geometry, we sometimes want the shape of an object to be defined in a way that is invariant to isometries. This means the object can be deformed so that it gets bent but not stretched, thus not affecting the intrinsic distances), positive-definite, and symmetric, as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/49e07a88-52ec-4e0f-9872-5e8e436dc0c8.png" style="width:14.67em;height:1.75em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Discrete manifolds</h1>
+                </header>
+            
+            <article>
+                
+<p>For a moment, let's think back to <a href="758f1209-7a1d-474c-b494-bbf905a25afd.xhtml">Chapter 5</a>, <em>Graph Theory</em>, where we learned about graph theory. As a quick refresher, a graph, <em>G</em>, is made up of vertices, <sub><img class="fm-editor-equation" src="Images/0a1c8e80-d4db-4a6a-badb-f1371002406b.png" style="width:7.25em;height:1.17em;"/>,</sub> and edges, <sub><img class="fm-editor-equation" src="Images/5cb513ce-a51c-49db-bf2e-ab7019b8f509.png" style="width:5.17em;height:1.00em;"/></sub>, and the undirected edge, <sub><img class="fm-editor-equation" src="Images/cd412fdb-b4bc-4c0b-87a7-230dc8429bdd.png" style="width:4.50em;height:1.33em;"/></sub> iff <sub><img class="fm-editor-equation" src="Images/601bcf06-f0b0-4119-8b19-383ed43fcd20.png" style="width:4.50em;height:1.33em;"/></sub>. The edges of weighted graphs have weights, <sub><img class="fm-editor-equation" src="Images/89368c78-3fdf-47b5-bd43-efd3ac74d9e0.png" style="width:3.50em;height:1.17em;"/>,</sub> for all <sub><img class="fm-editor-equation" src="Images/0cfbdd02-0a0f-4646-a981-359137ab4984.png" style="width:3.92em;height:1.17em;"/></sub>, and vertexes can have weights as well for all <sub><img class="fm-editor-equation" src="Images/ab2e1bf0-8a77-4c4c-a50f-29110105a27f.png" style="width:2.58em;height:1.00em;"/></sub>, the vertex weight, <sub><img class="fm-editor-equation" src="Images/abaac773-d23c-4cf4-95d6-32291fcaee00.png" style="width:2.92em;height:1.08em;"/></sub>.</p>
+<p>The reason we care about graphs here is because we can also do calculus on graphs. To do this, we will need to define a vertex field, <sub><img class="fm-editor-equation" src="Images/8bafb317-9f00-4700-9e6d-a1cf8920e7d5.png" style="width:4.25em;height:1.08em;"/>,</sub> and an edge field, <sub><img class="fm-editor-equation" src="Images/eb51847d-1030-4244-84a8-80793d6bb397.png" style="width:4.83em;height:1.25em;"/></sub> (we also assume that <sub><img class="fm-editor-equation" src="Images/9944d77e-4518-475c-9257-714271e21334.png" style="width:5.58em;height:1.25em;"/></sub>). The Hilbert spaces with inner products are <sub><img class="fm-editor-equation" src="Images/8a3ff850-eddd-433e-b3d3-63c8d49c012d.png" style="width:10.08em;height:2.42em;"/></sub> and <sub><img class="fm-editor-equation" src="Images/850965d1-3be6-4a1d-a6af-aaf6d661b825.png" style="width:12.75em;height:2.42em;"/></sub>.</p>
+<p>As we no doubt know by now, in calculus, we are very fond of gradients, and naturally, we can define a gradient operator for graphs, <sub><img class="fm-editor-equation" src="Images/9ce89fe2-09e2-4577-992b-10308d259484.png" style="width:7.00em;height:1.08em;"/>,</sub> giving us <img class="fm-editor-equation" src="Images/bfc5e81e-880b-42a0-800e-5b3f3ad591be.png" style="width:6.67em;height:1.08em;"/> and a divergence operator, <sub><img class="fm-editor-equation" src="Images/53c83825-69c9-4fe1-850d-9925c5285dd1.png" style="width:7.50em;height:1.08em;"/>,</sub> that produces <sub><img class="fm-editor-equation" src="Images/f23beb13-655a-4be1-8e47-73f7e9e85dc7.png" style="width:10.83em;height:2.67em;"/></sub> and is adjoint to the gradient operator, <sub><img class="fm-editor-equation" src="Images/e7617edc-54ce-4289-808d-4375bb76c66a.png" style="width:19.08em;height:1.33em;"/></sub>.</p>
+<p>The graph Laplacian operator, <sub><img class="fm-editor-equation" src="Images/7c808823-0000-4369-bce7-7c2fe4eb49b0.png" style="width:9.92em;height:1.50em;"/>,</sub> is defined as <sub><img class="fm-editor-equation" src="Images/66cf8822-52ab-4c0e-81e2-7055ae9dbdf9.png" style="width:5.42em;height:1.00em;"/>.</sub> By combining the preceding two equations, we can obtain the following:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/c3e3ae6f-5340-4553-a51e-537e2bc123bb.png" style="width:14.25em;height:3.08em;"/></p>
+<p>As in the case of manifolds, this calculates the difference between <em>f</em> and its local average (that is, of the neighboring nodes). We can rewrite this as a positive semi-definite square matrix:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/d5733be0-8ff7-43d1-b0b1-c08ab2952149.png" style="width:9.50em;height:1.58em;"/></p>
+<p>We can also write this as an unnormalized Laplacian, where <em>A = I</em>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/321c0d87-c9d6-468b-9852-cceb336cbc52.png" style="width:5.58em;height:1.00em;"/></p>
+<p>Finally, we can write it for the random walk Laplacian, where <em>A = D</em>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/59f6a2cf-cbf7-4e41-a938-d142ede11f5a.png" style="width:8.58em;height:1.42em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/0b9ed71c-07d1-454e-a493-89023d5fa1a0.png" style="width:4.92em;height:1.25em;"/></sub>, <sub><img class="fm-editor-equation" src="Images/952608f4-edec-4d4f-82a4-216605174c18.png" style="width:11.58em;height:1.33em;"/></sub>, and <sub><img class="fm-editor-equation" src="Images/b086c116-ae2f-44c1-bb3c-6d6730bb8bed.png" style="width:8.58em;height:3.17em;"/></sub>.</p>
+<p>Using graphs, we can formulate discrete manifolds, that is, describe three-dimensional objects using vertices, <sub><img class="fm-editor-equation" src="Images/acc21909-6103-47d4-9ae4-9717090bd894.png" style="width:7.17em;height:1.33em;"/></sub>, edges, <sub><img class="fm-editor-equation" src="Images/38592001-96db-499a-ab82-d609512a506a.png" style="width:5.58em;height:1.08em;"/></sub>, and faces, <sub><img src="Images/bf61c7d8-0a94-4d8a-b729-c82f43f57073.png" style="width:24.17em;height:1.33em;"/></sub>. This is generally referred to as a triangular mesh. In a manifold mesh, each edge is shared by two faces and each vertex has one loop. </p>
+<p class="CDPAlignLeft CDPAlign">Before we move on, let's redefine the Laplacian on triangular meshes using the cotangent formula, which can be defined for an embedded mesh that has the<span> coordinates </span><sub><img class="fm-editor-equation" src="Images/f782098f-6a3d-4d2d-be2f-8442e5a12995.png" style="width:3.92em;height:0.92em;"/></sub> and in terms of the lengths of the edges.</p>
+<p class="CDPAlignLeft CDPAlign">The cotangent Laplacian for the embedded mesh is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/3206731b-bcb1-4047-bcfb-cfb7ce49ac99.png" style="width:20.67em;height:3.33em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/2efc8d27-83ab-4ef6-970c-8c5c64fdaaba.png" style="width:3.33em;height:2.42em;"/></sub> (since we're dealing with triangles) and the cotangent Laplacian, in terms of edge length, is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/3f7581b2-cf32-4657-9d61-176d9bf04457.png" style="width:31.58em;height:3.67em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/6fc42cf4-83f1-4a16-8488-cd68a1d545ee.png" style="width:16.75em;height:2.17em;"/></sub>, <em>s</em> is a semi-perimeter, and <sub><img class="fm-editor-equation" src="Images/82a358ae-fa52-49b7-9ae1-78af8887afcb.png" style="width:7.42em;height:1.25em;"/></sub>.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Spectral decomposition</h1>
+                </header>
+            
+            <article>
+                
+<p>To understand spectral analysis, we must first define the Laplacian on a compact manifold, <em>M</em>, which has countably many eigenfunctions:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/0f5fde60-90ab-4929-9505-1af686dd75b5.png" style="width:9.67em;height:1.42em;"/></p>
+<p>This is for <sub><img class="fm-editor-equation" src="Images/c53cd608-af09-493a-b23f-c809d837db39.png" style="width:5.42em;height:1.17em;"/></sub>.</p>
+<p>Due to the symmetry property, the eigenfunctions will be both real and orthonormal, which gives us the following:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/1661df2c-231f-4d4c-a10a-b47cf6e725e0.png" style="width:12.25em;height:2.00em;"/></p>
+<p>Here, the eigenvalues are non-negative, that is, <sub><img class="fm-editor-equation" src="Images/505fa5fe-6d00-46c0-beff-8daf8488477f.png" style="width:9.00em;height:1.25em;"/></sub>.</p>
+<p>For two-dimensional manifolds, we often use Weyl's law to describe the asymptotic behavior of eigenvalues, which looks as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/1a1f15cf-eac4-4868-a918-83e64e3d1a5c.png" style="width:11.25em;height:2.75em;"/></p>
+<p>Using the eigenfunctions and eigenvalues, we can eigendecompose the graph Laplacian into the following:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/1d8f0606-c775-4e79-a77d-38a4a17757b5.png" style="width:5.25em;height:1.08em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/02cc3698-f8f9-4a6f-bcca-bd18087b2405.png" style="width:8.08em;height:1.33em;"/></sub> and <sub><img class="fm-editor-equation" src="Images/5edc0284-56d8-4286-abae-9bdf61bc7eb1.png" style="width:10.67em;height:1.42em;"/></sub>. </p>
+<p>Now, if we were to pose this as a generalized eigenproblem, we would obtain the following from the preceding equation <span>with </span><em>A</em><span>-orthogonal eigenvectors, </span><sub><img class="fm-editor-equation" src="Images/6f210cae-ee66-4c91-bdcf-3a166c9b7f62.png" style="width:5.17em;height:1.25em;"/></sub>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/e9d25719-3a6f-48ba-b112-5e66782042d2.png" style="width:9.08em;height:1.33em;"/></p>
+<p>If we were to change the variables through substituting, <sub><img class="fm-editor-equation" src="Images/bcd2494e-d333-4f40-b72e-43e2de78a1cd.png" style="width:5.50em;height:1.42em;"/></sub>, we would find ourselves with the standard eigenproblem:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/e36ee789-095f-48f7-812a-55d614c60d48.png" style="width:12.83em;height:1.67em;"/></p>
+<p>Here, the eigenvectors are orthogonal, that is, <sub><img class="fm-editor-equation" src="Images/59101960-e8af-445c-8201-70d96e883deb.png" style="width:4.08em;height:1.17em;"/></sub>.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Graph neural networks</h1>
+                </header>
+            
+            <article>
+                
+<p>Graph neural networks are the quintessential neural network for geometric deep learning, and, as the name suggests, they work particularly well on graph-based data such as meshes. </p>
+<p>Now, let's assume we have a graph, <em>G</em>, that has a binary adjacency matrix, <em>A</em>. Then, we have another matrix, <em>X</em>, that contains all the node features. These features could be text, images, or categorical, node degrees, clustering coefficients, indicator vectors, and so on. The goal here is to generate node embeddings using local neighborhoods.</p>
+<p>As we know, nodes on graphs have neighboring nodes, and, in this case, each node tries to aggregate the information from its neighbors using a neural network. We can think of the network neighborhood as a computation graph. Since each node has edges with different nodes, each node has a unique computation graph.</p>
+<p>If we think back to convolutional neural networks, we learned that convolutions are a window of sorts and that we can slide across the input and summarize the data into a reduced form. The aggregator operation works similarly to how the convolution operation works. </p>
+<p>Let's dive right in and see how they work mathematically.</p>
+<p>At each layer, nodes have embeddings, and initial embeddings are equivalent to the node features:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/e7b67efb-7660-446a-9d62-0e2e18464a0e.png" style="width:4.00em;height:1.33em;"/></p>
+<p>The embedding of the <em>k<sup>th</sup></em> layer embedding of <em>v</em> is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/f4872f56-34d3-4f48-bdfd-0468eaadcd6d.png" style="width:16.67em;height:3.58em;"/></p>
+<p>This is done for all <em>k &gt; 0</em>, where <sub><img class="fm-editor-equation" src="Images/1e5ab5b8-1515-4fd3-bd4f-f87612b4224f.png" style="width:2.33em;height:1.50em;"/></sub> is the previous layer embedding of <em>v</em> and <sub><img class="fm-editor-equation" src="Images/6564f28d-06a8-44c6-a80c-583780c690e9.png" style="width:4.67em;height:2.67em;"/></sub> is the average of the neighbor's previous layer embeddings. During training, the model learns <em>W<sub>k</sub></em> and <em>B<sub>k</sub></em>, and the output embeddings for each node after <em>K</em> layers of neighborhood aggregation is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/7688317c-813f-4f07-b5ef-fc48d5629605.png" style="width:4.25em;height:1.33em;"/></p>
+<p>To generate embeddings that are of a high quality, we define a loss function on <em>z<sub>v</sub></em> and feed the embeddings into it, after which we perform gradient descent to train the aggregation parameters.</p>
+<p>In the case of a supervised task, we can define the loss as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/7f31732f-a34e-48ca-ba39-1a72c6072c06.png" style="width:23.08em;height:2.58em;"/></p>
+<p>Let's suppose we have the following undirected graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1008 image-border" src="Images/7288fb23-dcf2-40f1-aaf8-c4e7437e3dd7.png" style="width:15.67em;height:16.00em;"/></p>
+<p>With this, we want to calculate the update for the solid node, as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1009 image-border" src="Images/23adde1e-0ec8-4996-9df8-7874b2d043e7.png" style="width:15.58em;height:15.83em;"/></p>
+<p>To calculate the update, we can use the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/cd9a53b0-5789-4a3c-9412-0f150a1baad4.png" style="width:20.58em;height:4.00em;"/></p>
+<p>Here, <em>N<sup>(i)</sup></em> is the neighbor of node <em>i</em> and <em>c<sub>i,j</sub></em> is the normalized constant. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Spectral graph CNNs</h1>
+                </header>
+            
+            <article>
+                
+<p>Spectral graph CNNs, as the name suggests, use a spectral convolution, which we defined as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/555b3fcf-9882-4616-8db5-947a927c9dc1.png" style="width:17.50em;height:5.17em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/881e0f2d-f672-4c70-b7c0-30cb18409376.png" style="width:7.92em;height:1.83em;"/></sub>. We can rewrite this in matrix form as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/30588bf4-df9a-460b-8c6c-3ae4d0a072dc.png" style="width:21.83em;height:2.92em;"/></p>
+<p>This is not shift-invariant since <em>G</em> does not have a circulant structure. </p>
+<p>Now, in the spectral domain, we define a convolutional layer as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/cfdaee09-4d66-424d-a3fe-281545536dc1.png" style="width:11.25em;height:3.33em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/4391da57-4c66-4a1b-abe8-f3e61ecf7cfb.png" style="width:5.67em;height:1.25em;"/></sub>, <sub><img class="fm-editor-equation" src="Images/fdfac598-12fa-4c13-b13a-9d3c65a4c6a5.png" style="width:6.08em;height:1.33em;"/></sub>, and <sub><img class="fm-editor-equation" src="Images/7b94b285-1f1f-41de-b4dd-b55642df8f5a.png" style="width:2.00em;height:1.25em;"/></sub> is an n×n diagonal matrix of spectral filter coefficients (which are basis-dependent, meaning that they don't generalize over different graphs and are limited to a single domain), and ξ is the nonlinearity that's applied to the vertex-wise function values. </p>
+<p>What this means is that if we learn a convolutional filter with the basis Φ on one domain, it will not be transferable or applicable to another task that has the basis Ψ. This isn't to say we can't create bases that can be used for different domains—we can—however, this requires using a joint diagonalizable procedure. But doing this would require having prior knowledge of both domains and how they relate to one another. </p>
+<p>We can also define the pooling function in non-Euclidean domains. We refer to this as graph coarsening, and in it, only a fraction, <em>α &lt; 1</em>, of the vertices of the graph are left. If we were to have the eigenvectors of graph Laplacians at different resolutions, then they would be related through the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/4b9e24c2-18d5-40fa-b091-07ad85aab625.png" style="width:7.17em;height:2.67em;"/></p>
+<p>Here, Φ is an <em>n</em> × <em>n</em> matrix, <img class="fm-editor-equation" src="Images/d639d1fb-3de6-4144-a008-3c103bf91d09.png" style="width:0.83em;height:1.17em;"/> is an <span>α</span><em>n</em> × α<em>n</em> matrix, and <em>P</em> is an <span>α</span><em>n</em> × <em>n</em> binary matrix representing the position of the <em>i<sup>th</sup></em> vertex of the coarsened graph on the original graph. </p>
+<p>Graph neural networks, like the neural networks we learned about in previous chapters, can also overfit, and in an effort to avoid this from happening, we adapt the learning complexity to try and reduce the total number of free parameters in the model. For this, we use spatial localization of the filters in the frequency domain. In the Euclidean domain, we can write this as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/8ed46abf-c8c2-4839-8b0d-5ad99412e8d7.png" style="width:19.58em;height:3.42em;"/></p>
+<p>What this tells us is that in order to learn a layer in which the features aren't just well localized in the original domain but also shared across other locations, we must learn smooth spectral multipliers. Spectral multipliers are parameterized as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/352c53df-02f7-4e61-a97c-28e5176de009.png" style="width:8.92em;height:1.50em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/8129fb07-25c2-4b3e-b15e-f5e84cb7eb1f.png" style="width:9.33em;height:1.25em;"/></sub>, which is a fixed interpolation matrix of size <em>k </em>× <em>q</em>, and α is a vector of interpolation coefficients of size <em>q</em>. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Mixture model networks</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we've seen a few examples of how GNNs work, let's go a step further and see how we can apply neural networks to meshes.</p>
+<p>First, we use a patch that is defined at each point in a local system of <em>d</em>-dimensional pseudo-coordinates, <sub><img class="fm-editor-equation" src="Images/852595ac-4a06-4289-8881-9734f439fc26.png" style="width:3.42em;height:1.33em;"/></sub>, around <em>x</em>. This is referred to as a geodesic polar. On each of these coordinates, we apply a set of parametric kernels, <sub><img class="fm-editor-equation" src="Images/b931854e-0df3-4d86-b9ce-c381e4da12a5.png" style="width:6.75em;height:1.17em;"/></sub>, that produces local weights. </p>
+<p>The kernels here differ in that they are Gaussian and not fixed, and are produced using the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/02710616-5143-41f4-8c69-626624399c19.png" style="width:14.58em;height:2.00em;"/></p>
+<p>These parameters (<sub><img class="fm-editor-equation" src="Images/8c0f473f-4df8-4e71-9886-4550d1a91e12.png" style="width:1.58em;height:1.58em;"/></sub> and <sub><img class="fm-editor-equation" src="Images/55e50983-bcd7-46b4-bbfa-4b49178fe023.png" style="width:1.42em;height:1.25em;"/></sub>) are trainable and learned. </p>
+<p> </p>
+<p>A spatial convolution with a filter, <em>g</em>, can be defined as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/010c1e88-6c90-4c7d-84a6-d3830cf9eeae.png" style="width:19.75em;height:4.92em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/c4f2eccd-9e5d-4d57-96f3-0b38c60923df.png" style="width:3.58em;height:1.33em;"/></sub> is a feature at vertex <em>i</em>.</p>
+<p>Previously, we mentioned geodesic polar coordinates, but what are they? Let's define them and find out. We can write them as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/865efff9-b4bd-4c07-9af3-5b72ec0e4ab6.png" style="width:7.83em;height:1.42em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/4dbbfce0-4f81-40b1-ab02-727159b94024.png" style="width:1.50em;height:1.00em;"/></sub> is the geodesic distance between <em>i</em> and <em>j</em> and <sub><img class="fm-editor-equation" src="Images/e3cfa0d7-1143-4932-9d73-672ac80c7eac.png" style="width:1.58em;height:1.33em;"/></sub> is the direction of the geodesic from <em>i</em><span><em> </em>to <em>j</em></span>. However, here, the orientation is somewhat ambiguous. </p>
+<p>Now, we can define angular max-pooling (which is a rotating filter), as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/af8f824f-5de0-49e4-bdbb-6fc54072190a.png" style="width:30.08em;height:3.58em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Facial recognition in 3D</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's go ahead and see how this translates to a real-world problem such as 3D facial recognition, which is used in phones, security, and so on. In 2D images, this would be largely dependent on the pose and illumination, and we don't have access to depth information. Because of this limitation, we use 3D faces instead so that we don't have to worry about lighting conditions, head orientation, and various facial expressions. For this task, the data we will be using is meshes. </p>
+<p>In this case, our meshes make up an undirected, connected graph, <em>G = (V, E, A)</em>, where |<em>V</em>| = <em>n</em> is the vertices, <em>E</em> is a set of edges, and <sub><img class="fm-editor-equation" src="Images/46f079cd-8c6f-4247-b332-e8f5faf6a32a.png" style="width:6.08em;height:1.25em;"/></sub> contains the <em>d</em>-dimensional pseudo-coordinates, <sub><img class="fm-editor-equation" src="Images/aaa202b8-4c72-412e-8882-c1922f6eff73.png" style="width:5.42em;height:1.50em;"/></sub>, where <sub><img class="fm-editor-equation" src="Images/586d29f9-43f2-438d-9a7f-b4aac0535a11.png" style="width:4.42em;height:1.42em;"/></sub>. The node feature matrix is denoted as <sub><img class="fm-editor-equation" src="Images/dc24f964-bf5d-4855-8bc2-47c52e9dc607.png" style="width:4.83em;height:1.25em;"/></sub>, where each of the nodes contains <em>d</em>-dimensional features. We then define the <em>l<sup>th</sup></em> channel of the feature map as <em>f<sub>l</sub></em>, of which the <em>i<sup>th</sup></em> node is denoted as <em>f<sub>l</sub>(i)</em>. </p>
+<p>The pseudo-coordinates, <em>u(i, j)</em>, determine how the features in the mesh are aggregated, and since, as we know, meshes are constructed from smaller triangles, we can compute the pseudo-coordinates from all the nodes, <em>i</em> to node <em>j</em>. Here, we will use the globally normalized Cartesian coordinates:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/cc244183-d0f7-43f5-a536-397fc0482bb6.png" style="width:20.92em;height:3.08em;"/></p>
+<p>This gives us the ability to map spatial relations to fixed regions. </p>
+<p>We initialize the weights using <sub><img class="fm-editor-equation" src="Images/b8488374-61e5-4ae6-8974-c5c709150765.png" style="width:5.75em;height:3.00em;"/></sub>, where <em>l<sub>in</sub></em> is the dimensions of the input feature for the <em>k<sup>th</sup></em> layer. </p>
+<p>Now, we can compute the feature aggregation into node <em>i</em> from the neighboring nodes, <sub><img class="fm-editor-equation" src="Images/5dd098db-522a-4b76-aedc-b08dcc5c9d79.png" style="width:3.92em;height:1.25em;"/></sub>, as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/6e1304dc-c7c4-4854-97c6-538187ba6b0d.png" style="width:25.67em;height:3.17em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/1297f9df-8e57-4f75-ae87-7d9bfe58f1fc.png" style="width:6.58em;height:1.33em;"/></sub>.<sub><span> </span></sub><sub><img class="fm-editor-equation" src="Images/ef3c4505-4a70-4d3b-a0a0-4187e40cc1f8.png" style="width:2.50em;height:1.67em;"/></sub> is the basis of the <em>B</em>-spline over degree <em>m</em>, and <sub><img class="fm-editor-equation" src="Images/98d3364d-4e49-4884-974b-03b8a649a4cc.png" style="width:2.75em;height:1.33em;"/></sub> are parameters that can be learned. </p>
+<p>This being a classification task, we will use cross-entropy as our loss function. We do this as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/e2e14f1e-3f8a-4682-b534-3d2a8e3d537d.png" style="width:11.92em;height:3.42em;"/></p>
+<p>Here, <sub><img class="fm-editor-equation" src="Images/eeec0a71-7683-4bce-bcc6-a3bc69142b08.png" style="width:12.67em;height:3.42em;"/></sub> and <em>Y</em> is the label matrix.</p>
+<p>And with that, we can conclude this chapter on geometric deep learning.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we learned about some important mathematical topics, such as the difference between Euclidean and non-Euclidean data and manifolds. We then went on to learn about a few fascinating and emerging topics in the field of deep learning that have widespread applications in a plethora of domains in which traditional deep learning algorithms have proved to be ineffective. This new class of neural networks, known as graph neural networks, greatly expand on the usefulness of deep learning by extending it to work on non-Euclidean data. Toward the end of this chapter, we saw an example use case for graph neural networks—facial recognition in 3D.</p>
+<p><span>This brings us to the end of this book. Congratulations on successfully completing the lessons that were provided!</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div></body></html>

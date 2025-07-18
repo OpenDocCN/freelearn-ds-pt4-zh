@@ -1,0 +1,410 @@
+<html><head></head><body><div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Recurrent Neural Networks</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will take an in-depth look at <strong>Recurrent Neural Networks</strong> (<strong>RNNs</strong>). In the previous chapter, we looked at <strong>Convolutional Neural Networks</strong> (<strong>CNNs</strong>), which are a powerful class of neural networks for computer vision tasks because of their ability to capture spatial relationships. The neural networks we will be studying in this chapter, however, are very effective for sequential data and are used in applications such as algorithmic trading, image captioning, sentiment classification, language translation, video classification, and so on. </p>
+<p>In regular neural networks, all the inputs and outputs are assumed to be independent, but in RNNs, each output is dependent on the previous one, which allows them to capture dependencies in sequences, such as in language, where the next word depends on the previous word and the one before that.</p>
+<p>We will start by taking a look at the vanilla RNN, then the bidirectional RNN, deep RNNs, <strong>long short-term memory</strong> (<strong>LSTM</strong>), and <strong>gated recurrent units</strong> (<strong>GRUs</strong>), as well as some of the state-of-the-art architectures used in industry today. </p>
+<p>In this chapter, we will cover the following topics:</p>
+<ul>
+<li>The need for RNNs</li>
+<li>The types of data used in RNNs</li>
+<li>Understanding RNNs</li>
+<li>Long short-term memory</li>
+<li>Gated recurrent units</li>
+<li>Deep RNNs</li>
+<li>Training and optimization</li>
+<li>Popular architecture</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">The need for RNNs</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous chapter, we learned about CNNs and their effectiveness on image- and time series-related tasks that have data with a grid-like structure. We also saw how CNNs are inspired by how the human visual cortex processes visual input. Similarly, the RNNs that we will learn about in this chapter are also biologically inspired. </p>
+<p>The need for this form of neural network arises from the fact that <strong>fuzzy neural networks</strong> (<strong>FNNs</strong>) are unable to capture time-based dependencies in data. </p>
+<p>The first model of an RNN was created by John Hopfield in 1982 in an attempt to understand how associative memory in our brains works. This is known as a <strong>Hopfield network</strong>. It is a fully connected single-layer recurrent network and it stores and accesses information similarly to how we think our brains do.</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">The types of data used in RNNs</h1>
+                </header>
+            
+            <article>
+                
+<p>As mentioned in the introduction to this chapter, RNNs are used frequently for—and have brought about tremendous results in—tasks such as natural language processing, machine translation, and algorithmic trading. For these tasks, we need sequential or time-series data—that is, the data has a fixed order. For example, languages and music have a fixed order. When we speak or write sentences, they follow a framework, which is what enables us to understand them. If we break the rules and mix up words that do not correlate, then the sentence no longer makes sense. </p>
+<p>Suppose we have the sentence <span><kbd>The greatest glory in living lies not in never falling, but in rising every time we fall</kbd> and we pass it through a sentence randomizer. The output that we get is <kbd>fall. falling, in every in not time but in greatest lies The we living glory rising never</kbd>, which clearly doesn't make sense. Another example is</span> ordering stock prices by date and prices at opening and closing or daily prices at fixed time intervals (possibly every hour). </p>
+<p><span>Other examples of sequential data are rainfall measurements over a number of successive days, nucleotide base pairs in a DNA strand, or the daily tick values for a stock.</span></p>
+<p>We would structure this sort of data in a similar way to how we would for one-dimensional convolutions. However, instead of having a kernel that convolves over the data, the RNN (which we will become well acquainted with shortly) will take the same input, where the node corresponds to the time step of the data (this will become clearer momentarily).</p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Understanding RNNs</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root"><span>The word <strong>recurrent</strong> in the name of this neural network comes from the fact that it has cyclic connections and the same computation is performed on each element of the sequence. This allows it to learn (or memorize) parts of the data to make predictions about the future. An RNN's advantage is that it can scale to much longer sequences than non-sequence based models are able to.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Vanilla RNNs</h1>
+                </header>
+            
+            <article>
+                
+<p>Without further ado, let's take a look at the most basic version of an RNN, referred to as a vanilla RNN. It looks as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-964 image-border" src="Images/1562a2fd-dd46-44a3-8579-2b8502c3d12d.png" style="width:8.58em;height:10.08em;"/></p>
+<p>This looks somewhat familiar, doesn't it? It should. If we were to remove the loop, this would be the same as a traditional neural network, but with one hidden layer, which we've encountered already. Now, if we unroll the loop and view the full network, it looks as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-956 image-border" src="Images/f1194bb6-7d82-43c8-ac46-154e3fdd42ea.png" style="width:30.75em;height:16.75em;"/></p>
+<p>Here, we have the following parameters:</p>
+<ul>
+<li><em>x<sub>t</sub></em> is the input at time step <em>t</em></li>
+<li><em><span>h</span><sub>t</sub></em> is the hidden state at <span>time step <em>t</em></span></li>
+<li><em>o<sub>t</sub></em> is the output at <span>time step <em>t</em></span></li>
+</ul>
+<p>From the preceding diagram, we can observe that the same calculation is performed on the input at each time step and this is what differentiates it from the FNNs we came across earlier. The parameters (weights and biases) at each layer of an FNN are different, but in this architecture, the parameters (<em>U</em>, <em>V</em>, and <em>W</em>) remain the same at each time step. Because of this, RNNs are more memory intensive and need to be trained for longer in comparison to CNNs. It is also important that you note that in RNNs, the time step doesn't necessarily correspond to the time in the real world; it merely means the input sequence is of length <em>t</em>.</p>
+<p>But why do these weights remain the same across all the time steps? Why can't we have separate parameters that need to be learned at different time steps? The reason for this is that separate parameters are unable to generalize to sequence lengths that aren't encountered during the training process. Having the same three weights shared across the sequence and at different time steps enables the network to deal with information that can occur at multiple positions, as it tends to in language. For example, <kbd>the</kbd> can appear at a number of positions in a given sentence and the RNN should be able to recognize and extract it regardless of the position(s) it is in. This shared statistical strength property is advantageous in comparison to an FNN because an FNN would need to learn the language's rules at every position, which—as you can imagine—can be very challenging to train.</p>
+<p><span>Intuitively, we can think of this as having a sequence </span><sub><img class="fm-editor-equation" src="Images/1c9d1ac3-2fcc-400e-b78c-9ef9f0e41a05.png" style="width:9.00em;height:1.67em;"/></sub><span> where we are trying to find <sub><img class="fm-editor-equation" src="Images/21a4f626-7aba-4c9e-a583-e31fdc52b49b.png" style="width:14.83em;height:1.67em;"/></sub>, which we are already familiar with</span> <span>from</span> <a href="719fc119-9e7a-4fce-be04-eb1e49bed753.xhtml"><span>C</span>hapter 3</a>, <em>Probability and Statistics</em>. This is not exactly what is happening; we have simplified it to help you understand what the RNN is trying to learn to do.</p>
+<p>Using the knowledge we have now gained, we can create some very complex RNNs for a variety of tasks, such as language translation or converting audio into text. Depending on the type of task we want to build our model for, we can choose from one of the following types of RNNs:</p>
+<ul>
+<li>One-to-one (one input and one output)</li>
+<li>One-to-many (one input and many outputs)</li>
+<li>Many-to-one (many inputs and one output)</li>
+</ul>
+<ul>
+<li>Many-to-many (multiple inputs and outputs, where the number of inputs and outputs are equal)</li>
+<li>Many-to-many (multiple inputs and outputs, where the number of inputs and outputs are not equal)</li>
+</ul>
+<p>Let's take a deeper dive into RNNs and see what is happening at each time step from the input to the output through all the hidden layers.</p>
+<p><span>Mathematically, we can calculate the hidden state at each time step using the following equation:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/c8e66371-838c-4dcf-a551-67f7bcd43fb0.png" style="width:12.83em;height:1.33em;"/></p>
+<p>Here, <em>f<sub>1</sub></em> is a non-linearity, such as ReLU, tanh, or sigmoid. The output is calculated as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/2b338fbf-0c33-4e8a-ad0e-ffccb997bbc2.png" style="width:5.58em;height:1.08em;"/>.</p>
+<p>We can calculate the probability vector of the output using a nonlinear function, <em>f<sub>2</sub></em>, (such as softmax), as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/d140200d-2dda-40fb-9925-94d69f95e944.png" style="width:5.42em;height:1.33em;"/></p>
+<p>By using these equations and applying them repeatedly, we can calculate the hidden states and outputs at each time step. </p>
+<p>So, the RNN then looks as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-957 image-border" src="Images/e7d358a3-33ee-45ee-a0b6-518ca0c71a83.png" style="width:24.50em;height:17.25em;"/></p>
+<p>By looking at the preceding diagram and the equations, you should be able to venture a guess as to the shape of our weight matrices and our bias vectors—<sub><img class="fm-editor-equation" src="Images/b13ffd01-6acb-4470-aa97-d5b9a4d5e587.png" style="width:4.83em;height:1.17em;"/></sub> (connects the input to the hidden layer), <sub><img class="fm-editor-equation" src="Images/b5da4763-2964-4cba-a61e-444c8286e49b.png" style="width:5.75em;height:1.17em;"/></sub> (connects the previously hidden layer to the current hidden layer), <sub><img class="fm-editor-equation" src="Images/b1cc40f4-682f-43cf-8c01-6f1a12ef5abd.png" style="width:4.42em;height:1.08em;"/></sub> (connects the hidden layer and the output), <sub><img class="fm-editor-equation" src="Images/58631c14-e746-4cb9-a213-66e672e4cb83.png" style="width:3.33em;height:1.17em;"/></sub> (the bias vector for the hidden layer), and <sub><img class="fm-editor-equation" src="Images/26884a78-3b83-493e-9299-aed75440ed44.png" style="width:3.17em;height:0.92em;"/></sub> (the bias vector for the output layer). </p>
+<p>From the preceding equations, we can clearly tell that the hidden state at time step <em>t</em> depends on the current input and the previous hidden state. However, the initial hidden state, <em>h<sub>0</sub></em>, must be initialized in a similar way to how we initialized the weights and kernels in FNNs and CNNs. The output<span> </span><span>at each time step</span><span>, on the other hand, is dependent on the current hidden state. Additionally,</span> <em>a</em><span> and</span> <em>b</em><span> are biases and so they are trainable parameters. </span></p>
+<p>In RNNs, <em>h<sub>t</sub></em> contains information about everything that has occurred at the previous time steps (but in practice, we limit this to a few time steps, instead of all previous ones, because of the vanishing/exploding gradient problem) and <em>o<sub>t</sub></em> is calculated based on the most recent information. This allows the RNN to exploit relationships between the sequence and use it to predict the most likely output, which is not entirely dissimilar to how CNNs capture spatial relationships in sequential data using one-dimensional convolutions.</p>
+<p>However, this isn't the only way to construct RNNs. Instead of passing outputs from hidden layer to hidden layer (<sub><img class="fm-editor-equation" src="Images/91060362-403a-472c-9c7d-40c23d4df645.png" style="width:4.83em;height:1.25em;"/></sub>) as in the preceding diagram, we could pass the output from the previous output into the next hidden state (<sub><img class="fm-editor-equation" src="Images/31706299-f030-4ca8-b85c-1dd61fb22ff2.png" style="width:4.33em;height:1.17em;"/></sub>), changing how we calculate the hidden state. It now becomes the following:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/c54622b9-245b-4978-9d37-8caedfd5c212.png" style="width:11.92em;height:1.25em;"/></p>
+<p>In the following diagram, we can see the various operations taking place in a hidden state cell at time step <em>t</em>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-958 image-border" src="Images/f7c2f057-de92-4542-95e9-b04988aa507a.png" style="width:29.83em;height:17.83em;"/></p>
+<p>When working with FNNs, we calculate the loss at the end of each forward pass through the network and then backpropagate the errors to update the weights. However, in RNNs, we calculate the loss at each time step, as follows:</p>
+<p>                       <img src="Images/ef54fcf0-8729-4b96-b4be-9345d20d4bf1.png" style="width:33.25em;height:3.75em;"/></p>
+<p>Here, <em>L</em> is the cross-entropy loss function (which we are already familiar with), <em>y<sub>t</sub></em> is the target, <sub><img class="fm-editor-equation" src="Images/4076ec47-3e82-4d91-89e4-39470c086152.png" style="width:1.08em;height:1.25em;"/></sub> is a probability vector, and <em>n</em> is the number of outputs/targets. </p>
+<p><span>While effective, these vanilla RNNs aren't perfect. They do have a few problems that we usually encounter during training, particularly the vanishing gradient problem. This occurs when the weights become very small, preventing the neuron from firing, which prevents hidden neurons at later time steps from firing because each one depends on the last, and the one before that, and so on.</span></p>
+<p><span>To get a better understanding of this, let's consider the following example. Suppose we have a very simple vanilla RNN without any nonlinear activations and or inputs. We can express this network as <sub><img class="fm-editor-equation" src="Images/98c4a2d5-7a0a-4d2f-b683-36bf669d44e9.png" style="width:5.92em;height:1.42em;"/></sub>. As you can see, we are applying the same weight over and over again at each unit from time step to time step. However, let's focus our attention on the weights.</span></p>
+<p>To understand the vanishing and exploding gradient problem, let's suppose that our weight matrix has a shape of 2 × 2 and is diagonalizable. You should remember from <a href="6a34798f-db83-4a32-9222-06ba717fc809.xhtml">Chapter 2</a>, <em>Linear Algebra</em>, that if our matrix is diagonalizable, then it can be decomposed into the form <sub><img class="fm-editor-equation" src="Images/893fef47-6833-4bd9-9e88-0bbbaf2989ac.png" style="width:5.92em;height:1.25em;"/></sub>, where <em>Q</em> is a matrix containing the eigenvectors and Λ is a square matrix that contains eigenvalues along the diagonal. As previously, if we have eight hidden layers, then our weight would be <sub><img class="fm-editor-equation" src="Images/dc392677-29f6-45e0-bc98-08e55db5158d.png" style="width:6.92em;height:1.25em;"/></sub>. We can see this as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/5ab20487-fcfb-410a-83f5-6c7ea439ea0b.png" style="width:24.08em;height:2.83em;"/></p>
+<p>In the preceding equation, we get a good glimpse of both the vanishing and the exploding gradient problems. We assumed we have eight hidden units and by multiplying them over and over, we can see that the values become either very small or very large, which makes training RNNs rather challenging because of their instability. The small weights make it difficult for our RNN to learn long-term dependencies and is why innovations in the cells, such as <strong>Long short-term models</strong> (<strong>LSTMs</strong>) and <strong>gated recurrent units</strong> (<strong>GRUs</strong>) were created (we'll learn about these two RNN cell variants shortly). </p>
+<p><span>Now, if we have an RNN with 20 time steps or more and we want our network to remember the first, second, or third input, it is more than likely it won't be able to remember them, but it will remember the most recent inputs. For example, we could have the sentence <kbd>I remember when I visited Naples a few years ago...I had the best pizza of my life</kbd>. In this case, we need to understand the context of Naples from further back to understand where this magnificent pizza is from, but looking this far back is challenging for RNNs.</span></p>
+<p>Similarly, if <span>our weight is greater than 1</span><span>, it can get much larger, which results in exploding gradients. We can, however, deal with this by using gradient clipping, where we rescale the weights so that the norm is at most η. We use the following </span>formula to do so:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/fb36263c-c264-4cc7-938a-be318291fbf1.png" style="width:4.58em;height:2.67em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Bidirectional RNNs</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we know how RNNs work at their most basic level, let's take a look at a variant of them—the bidirectional RNN. The preceding RNN is feedforward; that is, the data passes through the network from left (<img class="fm-editor-equation" src="Images/b2e68ba7-20c7-4893-ab76-ce2ff624bc5d.png" style="width:2.25em;height:0.92em;"/>) to right (<img class="fm-editor-equation" src="Images/53ae4383-5d6f-4ba4-a6fe-0d587d0cfe4a.png" style="width:2.42em;height:0.92em;"/>), which creates a dependency on the past. However, for some of the problems that we may want to work with, it could help to look into the future, as well. </p>
+<p>This allows us to feed the network training data both forward and backward into two separate recurrent layers, respectively. It is important to note that both of these layers share the same output layer. This approach allows us to contextualize the input data with respect to the past and the future, which produces much better results than the previous, unidirectional RNN for tasks relating to speech and translation. Naturally, however, bidirectional RNNs are not the answer to every time-series task, such as predicting stock prices, because we don't know what will happen in the future.  </p>
+<p>In the following diagram, we can see what a bidirectional RNN looks like:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-959 image-border" src="Images/a61fb748-6287-47d3-82c1-9d490b0f47b3.png" style="width:24.67em;height:19.58em;"/></p>
+<p>As you can see, the network now contains two parallel layers running in opposite directions and there are now six different sets of weights applied at every time step; namely, input-to-hidden (<em>U</em> and <em>C</em>), hidden-to-hidden <span>(<em>A</em></span><span> and <em>W</em></span><span>), and hidden-to-output (<em>V</em> and <em>B</em>). It is important that we note that there is no information shared between the forward layer and the backward layer. </span></p>
+<p>Now, the operations taking place at each of the hidden states at time <img class="fm-editor-equation" src="Images/f7176f55-6205-4278-88ed-b8b8e5821873.png" style="width:0.42em;height:0.83em;"/> are as follows:</p>
+<ul>
+<li class="CDPAlignLeft CDPAlign"><sub><img class="fm-editor-equation" src="Images/c3d40ed6-caba-4a59-ba60-aba2a621cf87.png" style="width:12.83em;height:1.33em;"/></sub></li>
+<li class="CDPAlignLeft CDPAlign"><img style="font-size: 1em;text-align: center;color: #333333;width:12.17em;height:1.33em;" class="fm-editor-equation" src="Images/a471826e-2d60-4223-9050-c103b13ff3e2.png"/></li>
+</ul>
+<p>Here, <em>f<sub>1</sub></em> is a non-linearity and <em>a</em> and <em>b</em> are biases. The output unit can be calculated as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/b277585d-dd9c-4e51-b936-17f2bb0f2a91.png" style="width:9.25em;height:1.25em;"/></p>
+<p>Here, <em>d</em> is a bias. Then, we can find the probability vector using the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/751358e0-c8e3-4885-a90d-027a4b775462.png" style="width:5.42em;height:1.33em;"/></p>
+<p>The preceding equations show us that the hidden states in the forward layer receive information from the previous hidden states and the hidden states in the backward layer receive information from the future states. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Long short-term memory</h1>
+                </header>
+            
+            <article>
+                
+<p>As we saw earlier, the standard RNN does have some limitations; in particular, they suffer from the vanishing gradient problem. The LSTM architecture was proposed by Jürgen Schmidhuber (<a href="ftp://ftp.idsia.ch/pub/juergen/lstm.pdf">ftp://ftp.idsia.ch/pub/juergen/lstm.pdf</a>) as a solution to the long-term dependency problem that RNNs face. </p>
+<p>LSTM cells differ from vanilla RNN cells in a few ways. Firstly, they contain what we call a memory block, which is basically a set of recurrently connected subnets. Secondly, each of the memory blocks contains not only self-connected memory cells but also three multiplicative units that represent the input, output, and forget gates.</p>
+<p>Let's take a look at what a single LSTM cell looks like, then we will dive into the nitty-gritty of it to gain a better understanding. In the following diagram, you can see what an LSTM block looks like and the operations that take place inside it:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-961 image-border" src="Images/076993fb-4bc3-4461-9abb-600ab3523f8e.png" style="width:31.58em;height:17.17em;"/></p>
+<p>As you can see in the preceding LSTM cell, a bunch of operations take place at each time step and it has the following components:</p>
+<ul>
+<li><em>f</em>: The forget gate (an NN with sigmoid)</li>
+<li><sub><img class="fm-editor-equation" src="Images/ad68a289-373f-44b4-a0fd-3026563cdbf8.png" style="width:0.67em;height:0.83em;"/></sub>: The candidate layer (an NN with tanh)</li>
+<li><em>I</em>: The input gate (an NN with sigmoid)</li>
+<li><em>O</em>: The output gate (an NN with sigmoid)</li>
+<li><em>H</em>: The hidden state (a vector)</li>
+<li><em>C</em>: The memory state (a vector)</li>
+<li><em>W</em> and <em>U</em>: The weights for the forget gate, candidate, input gate, and output gate</li>
+</ul>
+<p>At each time step, the memory cell takes <span>the current input (</span><em>X<sub>t</sub></em><span>)</span><span>,</span><span> the previous hidden state (</span><em>H<sub>t-1</sub></em><span>), and the previous memory state (</span><em>C<sub>t-1</sub></em><span>)</span><span> as input</span><span> and it outputs the current hidden state (</span><em>H<sub>t</sub></em><span>) and the current memory state (</span><em>C<sub>t</sub></em><span>).</span></p>
+<p>As you can see in the preceding diagram, there are a lot more operations happening here than were taking place in the hidden cell of the vanilla RNN. The significance of this is that it preserves the gradients throughout the network and allows longer-term dependencies, as well as providing a solution to the vanishing gradient problem. </p>
+<p>But how exactly do LSTMs do this? Let's find out. The memory state stores information and continues to do so until the old information is overridden by the new information. Each cell can make a decision as to whether or not it wants to output this information or store it. Before we go deeper into the explanations, let's first take a look at the mathematical operations that take place in each LSTM cell. They are as follows:</p>
+<ul>
+<li><sub><img class="fm-editor-equation" src="Images/d6efa777-e4c4-40e6-802c-e655c8816c48.png" style="width:13.58em;height:1.33em;"/></sub></li>
+<li><sub><img class="fm-editor-equation" src="Images/6d35903b-cab4-40d1-9076-23f9ec363b89.png" style="width:15.67em;height:1.42em;"/></sub></li>
+<li><sub><img class="fm-editor-equation" src="Images/39d6e2ef-fba3-4d73-829f-0666e30a640e.png" style="width:13.67em;height:1.33em;"/></sub></li>
+<li><sub><img class="fm-editor-equation" src="Images/f3b38e96-c284-45fa-95bd-b303a7cec238.png" style="width:14.42em;height:1.33em;"/></sub></li>
+<li><sub><img class="fm-editor-equation" src="Images/c6ca1e21-a5f5-4585-9bfc-103cd8a47a6d.png" style="width:9.92em;height:1.42em;"/></sub></li>
+<li><sub><img class="fm-editor-equation" src="Images/2b8795af-0a2c-4fa8-aa4e-cae69a6b754b.png" style="width:9.08em;height:1.42em;"/></sub></li>
+</ul>
+<p>Now that we know the different operations that take place in each cell, let's really understand what each of the preceding equations represents. They are as follows:</p>
+<ul>
+<li>The candidate layer (<sub><img class="fm-editor-equation" src="Images/43ea863f-463b-4a35-bd3f-97eecbaa0784.png" style="width:1.08em;height:1.50em;"/></sub>) takes as input a word (<em>X<sub>t</sub></em>) and the output from the previous hidden state <em>H<sub>t-1</sub></em> and creates a new memory, which includes the new word. </li>
+<li>The input gate (<em>I</em>) performs a very important function. It determines whether or not the new input word is worth preserving based on the output of the previous hidden state.</li>
+<li>The forget gate (<em>f</em>), even though it looks very similar to the input gate, performs a different function. It determines the relevance (or usefulness) of the previous memory cell when computing the current one.</li>
+</ul>
+<ul>
+<li>The memory state (sometimes referred to as the final memory) is produced after taking in the forget gate and the input gate as input and then gates the new memory and sums the output to product <em>C<sub>t</sub></em>.</li>
+<li>The output gate differentiates the memory from the hidden state and determines how much of the information present in the memory should be present in the hidden state. This produces <em>O<sub>t</sub></em>, which we then use to gate tanh (<em>C<sub>t</sub></em>). </li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Gated recurrent units</h1>
+                </header>
+            
+            <article>
+                
+<p>Similar to the LSTM, GRUs are also an improvement on the hidden cells in vanilla RNNs. GRUs were also created to address the vanishing gradient problem by storing memory from the past to help make better future decisions. The motivation for the GRU stemmed from questioning whether all the components that are present in the LSTM are necessary for controlling the forgetfulness and time scale of units. </p>
+<p>The main difference here is that this architecture uses one gating unit to decide what to forget and when to update the state, which gives it a more persistent memory.</p>
+<p>In the following diagram, you can see what the GRU architecture looks like:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-955 image-border" src="Images/284492cc-e1ec-4ab3-b760-836388db7399.png" style="width:25.00em;height:15.83em;"/></p>
+<p>As you can see in the preceding diagram, it takes in the current input (<em>X<sub>t</sub></em>) and the previous hidden state (<em>H<sub>t-1</sub></em>), and there are a lot fewer operations that take place here in comparison to the preceding LSTM. It has the following components:</p>
+<ul>
+<li><em>Z<sub>t</sub></em>: The update gate</li>
+<li><em>R<sub>t</sub></em>: The reset gate</li>
+</ul>
+<ul>
+<li><sub><img class="fm-editor-equation" src="Images/5872a37f-3bd5-42f2-83eb-e8035dd1559d.png" style="width:1.42em;height:1.33em;"/></sub>: The new memory</li>
+<li><em>H<sub>t</sub></em>: The hidden state</li>
+</ul>
+<p>To produce the current hidden state, the GRU uses the following operations:</p>
+<ul>
+<li><sub><img class="fm-editor-equation" src="Images/7d8ea1bc-1315-44e8-abc0-3f7274128e34.png" style="width:10.92em;height:1.25em;"/></sub></li>
+<li><sub><img class="fm-editor-equation" src="Images/0cb747b3-a746-41b3-bf8e-76342e121253.png" style="width:11.25em;height:1.25em;"/></sub></li>
+<li><sub><img class="fm-editor-equation" src="Images/607d3719-69fd-4c0c-bfcb-06ca2632a1c3.png" style="width:14.83em;height:1.42em;"/></sub></li>
+<li><sub><img class="fm-editor-equation" src="Images/cafab2cc-ceee-4fea-b2ae-d3a0800e2800.png" style="width:13.67em;height:1.33em;"/></sub></li>
+</ul>
+<p>Now, let's break down the preceding equations to get a better idea of what the GRU is doing to its two inputs. They are as follows:</p>
+<ul>
+<li>The GRU takes in the current input (<em>X<sub>t</sub></em>) and the previous hidden state (<em>H<sub>t-1</sub></em>) and contextualizes the word based on the information it has about the previous words to produce <sub><img class="fm-editor-equation" src="Images/c5fa89f4-32d3-48aa-b737-e505b9a81e00.png" style="width:1.75em;height:1.67em;"/></sub>—the new memory.</li>
+<li>The reset gate (<em>R<sub>t</sub></em>) decides the importance of the previous hidden state in computing the current hidden state; that is, whether or not it is relevant to obtaining the new memory, which helps capture short-term dependencies. </li>
+<li>The update gate (<em>Z<sub>t</sub></em>) determines how much of the previous hidden state should be passed on to the next state to capture long-term dependencies. In a nutshell, if <em>Z<sub>t</sub>≈1</em>, then most of the previous hidden state is incorporated into the current hidden state; but if <em>Z<sub>t</sub>≈0</em>, then most of the new memory is passed forward.</li>
+<li>Finally, the present hidden state (<em>H<sub>t</sub></em>) is computed using the new memory and the previous hidden state, contingent on the results of the update gate.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Deep RNNs</h1>
+                </header>
+            
+            <article>
+                
+<p><span>In the previous chapters, we saw how adding depth to our neural networks helps achieve much greater results; the same is true with RNNs, where adding more layers allows us to learn even more complex information. </span></p>
+<p>Now that we have seen what RNNs are and have an understanding of how they work, let's go deeper and see what deep RNNs look like and what kind of benefits we gain from adding additional layers. Going deeper into RNNs is not as straightforward as it was when we were dealing with FNNs and CNNs; we have to make a few different kinds of considerations here, particularly about how and where we should add the nonlinearity between layers. </p>
+<p><span>If we want to go deeper, we can stack more hidden recurrent layers on top of each other, which allows our architecture to capture and learn complex information at multiple timescales, and before the information is passed from layer to layer, we can add either non-linearity or gates. </span></p>
+<p>Let's start with a two-hidden-layer bidirectional RNN, which is shown in the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-962 image-border" src="Images/4d5d6afe-3202-4192-a0fb-7f894280db2b.png" style="width:30.25em;height:22.42em;"/></p>
+<p>As you can see, it looks like three <strong>multilayer perceptrons</strong> (<strong>MLPs</strong>) stacked together side by side, and the hidden layers are connected, as before, forming a lattice. There are also no connections between the forward and backward hidden units in the same layer. Each hidden node feeds into the node directly above it at the same time step and each hidden node takes two parameters from the correlated hidden node in the previous layer<span> </span><span>as input—</span><span>one from the forward layer and the other from the backward layer. </span></p>
+<p>We can generalize and write the equations for the deep bidirectional RNN as follows:</p>
+<ul>
+<li>In the forward layer, we have the following:</li>
+</ul>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/3e071034-b2cb-4682-a766-726a012088d5.png" style="width:22.42em;height:1.67em;"/></p>
+<ul>
+<li>In the backward layer, we have the following:</li>
+</ul>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/b8b25b2c-ae7a-4e9d-9754-443447208983.png" style="width:21.58em;height:1.67em;"/></p>
+<ul>
+<li>In the output layer, we have the following:</li>
+</ul>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/9147e982-3c41-4ba3-a1de-11326a0dfc23.png" style="width:14.42em;height:1.58em;"/></p>
+<p>Using this as a guideline, we can do the same for LSTMs or GRUs and add them in. </p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Training and optimization</h1>
+                </header>
+            
+            <article>
+                
+<p>As in the neural networks we have already encountered, RNNs also update their parameters using backpropagation by finding the gradient of the error (loss) with respect to the weights. Here, however, it is referred to as <strong>Backpropagation Through Time</strong> (<strong>BPTT</strong>) because each node in the RNN has a time step. I know the name sounds cool, but it has nothing to do with time travel—it's still just good old backpropagation with gradient descent for the parameter updates.</p>
+<p>Here, using BPTT, we want to find out how much the hidden units and output affect the total error, as well as how much changing the weights (<em>U, V, W</em>) affects the output. <em>W</em>, as we know, is constant throughout the network, so we need to traverse all the way back to the initial time step to make an update to it. </p>
+<p>When backpropagating in RNNs, we again apply the chain rule. What makes training RNNs tricky is that the loss function is dependent not only on the activation of the output layer but also on the activation of the current hidden layer and its effect on the hidden layer at the next time step. In the following equation, we can see how backpropagation works in RNNs. </p>
+<p>As you can see, we first find the cross-entropy loss (defined in the <em>Vanilla RNNs</em> section); our total error is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/088da816-0209-435f-9a9d-fe81b4e4d512.png" style="width:7.33em;height:3.08em;"/></p>
+<p>We can expand the preceding equation using the chain rule with respect to the losses and hidden layers, as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/a8fd0426-7be3-4e72-8ade-7febd2e04c2e.png" style="width:14.08em;height:3.42em;"/></p>
+<p>Let's focus in on the third term on the right-hand side and expand on it:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/ba47a8d3-6f32-48fa-857e-fc4b39805f67.png" style="width:8.58em;height:3.33em;"/></p>
+<p>You should note that each partial here is a Jacobian matrix. </p>
+<p>We can now combine the preceding equations together to get a holistic view of how to calculate the error, which looks as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/9cf21858-6ec5-4dca-a0db-ccc21bc3664e.png" style="width:18.50em;height:3.17em;"/></p>
+<p>We know from earlier on in this chapter that <em>h<sub>t</sub></em> is calculated using the following equation:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/5e7067dd-9b64-4c9c-97bd-a1e177c271b4.png" style="width:12.83em;height:1.33em;"/></p>
+<p>So, we can calculate the gradient of <em>h<sub>t</sub></em>, as shown:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/4408bf9d-c095-4d80-82c9-f9d56dded2ec.png" style="width:18.17em;height:2.58em;"/></p>
+<p>Since the hidden neurons also take <em>x<sub>t</sub></em><span> </span><span>as input, </span><span>we need to take the derivative with respect to</span> <em>U</em><span> as well. We can do this as follows:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/d8c2f879-a50e-471c-9489-b2d6274bac29.png" style="width:9.08em;height:2.50em;"/></p>
+<p>But wait—the hidden units, as we have seen, take in two inputs. So, let's backpropagate one time step using what we have just seen and see how it works:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/6d74dac3-3b1a-4da1-bdbc-8a12c9ca83a0.png" style="width:20.92em;height:2.67em;"/></p>
+<p>Using this, we can <span>now</span><span> </span><span>sum over all the previous gradients up to the present one, as follows:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/948d3884-d535-47a1-bae2-028506d42ea1.png" style="width:14.42em;height:3.00em;"/></p>
+<p><span>The backward pass in LSTM or GRU is much like what we did with regular RNNs, but there are some additional complexities here because of the gates (we will not go through the differences between the backward passes in LSTMs or GRUs here).</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Popular architecture</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have learned about all the components that are used to contrast RNNs, let's explore a popular architecture that has been developed by researchers in the field—the <strong>clockwork RNN </strong><span>(</span><strong>CW-RNN</strong><span>).</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Clockwork RNNs</h1>
+                </header>
+            
+            <article>
+                
+<p>As we have learned, it is very challenging to discover long-term dependencies in RNNs, and LSTMs and GRUs were designed to overcome this limitation. CW-RNN, created by a group at IDSIA led by Jürgen Schmidhuber, modifies the vanilla RNN module such that the hidden layer is partitioned into separate modules, each of which processes its inputs at different temporal granularities. What this means is that the hidden layers perform computations at their preset clock rate (which is where the name comes from). The effect of this is a reduced number of trainable parameters and greater accuracy when compared to regular RNNs and LSTMs. </p>
+<p>Just as our earlier RNNs had input-to-hidden and hidden-to-output connections, a CW-RNN also has the same, except the neurons in the hidden layer are partitioned into <em>g</em> modules of size <em>k</em>, each of which has an assigned clock period, <sub><img class="fm-editor-equation" src="Images/5e608460-a533-437b-b23b-8bf58c320341.png" style="width:8.08em;height:1.25em;"/></sub>.</p>
+<p>These modules are fully connected together, but the recurrent connections from modules <em>j</em> to <em>i</em> are not if period <sub><img class="fm-editor-equation" src="Images/17d47dfc-b3eb-4917-9a75-5543a327bfc5.png" style="width:3.33em;height:1.17em;"/></sub>. These modules are sorted by increasing period and, therefore, the connections move from slower to faster (right to left).</p>
+<p>In the following diagram, we can see the architecture of the CW-RNN:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-963 image-border" src="Images/92317b85-89c9-49d9-a965-8b89ecdfc2cf.png" style="width:33.50em;height:14.42em;"/></p>
+<p>The clock period of module <em>i</em> can be calculated as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/34b764e1-b9a1-4c40-bb95-d76ce35b41ea.png" style="width:4.75em;height:1.42em;"/></p>
+<p>The input and hidden weight matrices are partitioned into <em>g</em> block rows, as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/e9fd2f57-215a-4b89-a645-2ef863af3e32.png" style="width:5.67em;height:4.42em;"/> and <img class="fm-editor-equation" src="Images/d1b93cb4-09ba-4375-9777-bf337318b18f.png" style="width:5.25em;height:4.50em;"/></p>
+<p>In the preceding equation, <em>W</em> is an upper-triangular matrix and each <em>W<sub>i</sub> </em>value<em> </em>is partitioned into block columns:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/4112c3b1-df4f-4059-a5fe-deccb3e037e4.png" style="width:12.67em;height:1.25em;"/></p>
+<p>During the forward pass, only the block rows of the hidden weight matrix and the input weight matrix correspond to the executed modules, where the following is true:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/bf6576cc-a983-4923-a2dd-576e32f5b693.png" style="width:13.25em;height:2.42em;"/></p>
+<p>The modules with lower clock rates learn and maintain long-term information from the input and the modules with the higher clock rates learn local information. </p>
+<p>We mentioned in the preceding equation that each <span>hidden layer is partitioned into <em>g</em></span><span> modules of size <em>k</em></span>, which means there are a total of <em>n = kg</em> neurons. Since neurons are only connected to those that have a similar or larger period, the number of parameters within the hidden-to-hidden matrix is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/7a7eb4fd-7f60-4ad2-8e97-13cda5f91413.png" style="width:18.00em;height:3.33em;"/></p>
+<p>Let's compare this with our vanilla RNNs, which have <em>n<sup>2</sup></em> parameters. <span>Let's see how this is the case:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="Images/354d64a6-bb01-49e1-8720-5cc70f819a29.png" style="width:16.08em;height:2.75em;"/></p>
+<p><span>The CW-RNN has approximately half as many parameters.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div>
+<div id="sbo-rt-content"><section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we covered a very powerful type of neural network—RNNs. We also learned about several variations of the RNN cell, such as LSTM cells and GRUs. Like the neural networks in prior chapters, these too can be extended to deep neural networks, which have several advantages. In particular, they can learn a lot more complex information about sequential data, for example, in language.</p>
+<p><span>In the next chapter, we will learn about attention mechanisms and their increasing popularity in language- and vision-related tasks.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </div></body></html>
