@@ -1,0 +1,3123 @@
+<html><head></head><body>
+  <div id="_idContainer034">
+   <h1 class="chapter-number" id="_idParaDest-69">
+    <a id="_idTextAnchor079">
+    </a>
+    <span class="koboSpan" id="kobo.1.1">
+     3
+    </span>
+   </h1>
+   <h1 id="_idParaDest-70">
+    <a id="_idTextAnchor080">
+    </a>
+    <span class="koboSpan" id="kobo.2.1">
+     Managing Data Quality Using Delta Live Tables
+    </span>
+   </h1>
+   <p>
+    <span class="koboSpan" id="kobo.3.1">
+     This
+    </span>
+    <a id="_idIndexMarker134">
+    </a>
+    <span class="koboSpan" id="kobo.4.1">
+     chapter introduces several techniques for managing the data quality of datasets in a data pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.4.2">
+     We’ll introduce
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.5.1">
+      expectations
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.6.1">
+     in
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.7.1">
+      Delta Live Tables
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.8.1">
+     (
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.9.1">
+      DLT
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.10.1">
+     ), which is
+    </span>
+    <a id="_idIndexMarker135">
+    </a>
+    <span class="koboSpan" id="kobo.11.1">
+     a way to enforce certain data quality constraints on arriving data before merging the data into downstream tables.
+    </span>
+    <span class="koboSpan" id="kobo.11.2">
+     Later in the chapter, we’ll look at more advanced techniques such as quarantining bad data for human intervention.
+    </span>
+    <span class="koboSpan" id="kobo.11.3">
+     Next, we’ll also see how we can decouple constraints so that they can be managed separately by non-technical personas within your organization.
+    </span>
+    <span class="koboSpan" id="kobo.11.4">
+     By the end of the chapter, you should have a firm understanding of how you can take measures to ensure the data integrity of datasets in your lakehouse and how to take appropriate action on data not meeting the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.12.1">
+      expected criteria.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.13.1">
+     In this chapter, we’re going to cover the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.14.1">
+      following topics:
+     </span>
+    </span>
+   </p>
+   <ul>
+    <li>
+     <span class="koboSpan" id="kobo.15.1">
+      Defining data constraints in
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.16.1">
+       Delta Lake
+      </span>
+     </span>
+    </li>
+    <li>
+     <span class="koboSpan" id="kobo.17.1">
+      Using temporary datasets to validate
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.18.1">
+       data processing
+      </span>
+     </span>
+    </li>
+    <li>
+     <span class="koboSpan" id="kobo.19.1">
+      An introduction
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.20.1">
+       to expectations
+      </span>
+     </span>
+    </li>
+    <li>
+     <span class="koboSpan" id="kobo.21.1">
+      Hands-on exercise: writing your first data
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.22.1">
+       quality expectation
+      </span>
+     </span>
+    </li>
+    <li>
+     <span class="koboSpan" id="kobo.23.1">
+      Taking action on
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.24.1">
+       failed expectations
+      </span>
+     </span>
+    </li>
+    <li>
+     <span class="koboSpan" id="kobo.25.1">
+      Applying multiple data
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.26.1">
+       quality expectations
+      </span>
+     </span>
+    </li>
+    <li>
+     <span class="koboSpan" id="kobo.27.1">
+      Decoupling expectations from a
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.28.1">
+       DLT pipeline
+      </span>
+     </span>
+    </li>
+    <li>
+     <span class="koboSpan" id="kobo.29.1">
+      Hands-on exercise – quarantining poor-quality data
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.30.1">
+       for correction
+      </span>
+     </span>
+    </li>
+   </ul>
+   <h1 id="_idParaDest-71">
+    <a id="_idTextAnchor081">
+    </a>
+    <span class="koboSpan" id="kobo.31.1">
+     Technical requirements
+    </span>
+   </h1>
+   <p>
+    <span class="koboSpan" id="kobo.32.1">
+     To follow along with this chapter, it’s recommended to have Databricks workspace permissions to create an all-purpose cluster and a DLT pipeline using a cluster policy.
+    </span>
+    <span class="koboSpan" id="kobo.32.2">
+     It’s also recommended to have Unity Catalog permissions to create and use catalogs, schemas, and tables.
+    </span>
+    <span class="koboSpan" id="kobo.32.3">
+     All code samples can be downloaded from this chapter’s GitHub repository, located at
+    </span>
+    <a href="https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter03">
+     <span class="koboSpan" id="kobo.33.1">
+      https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter03
+     </span>
+    </a>
+    <span class="koboSpan" id="kobo.34.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.34.2">
+     We’ll be using the NYC yellow taxi dataset, which can be found on the Databricks FileSystem at
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.35.1">
+      /databricks-datasets/nyctaxi/tripdata/yellow
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.36.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.36.2">
+     This chapter will create and run several new notebooks and DLT pipelines using the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.37.1">
+      Advanced
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.38.1">
+     product edition.
+    </span>
+    <span class="koboSpan" id="kobo.38.2">
+     As a result, the
+    </span>
+    <a id="_idIndexMarker136">
+    </a>
+    <span class="koboSpan" id="kobo.39.1">
+     pipelines are estimated to consume around 10-20
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.40.1">
+      Databricks
+     </span>
+    </strong>
+    <span class="No-Break">
+     <strong class="bold">
+      <span class="koboSpan" id="kobo.41.1">
+       Units
+      </span>
+     </strong>
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.42.1">
+      (
+     </span>
+    </span>
+    <span class="No-Break">
+     <strong class="bold">
+      <span class="koboSpan" id="kobo.43.1">
+       DBUs
+      </span>
+     </strong>
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.44.1">
+      ).
+     </span>
+    </span>
+   </p>
+   <h1 id="_idParaDest-72">
+    <a id="_idTextAnchor082">
+    </a>
+    <span class="koboSpan" id="kobo.45.1">
+     Defining data constraints in Delta Lake
+    </span>
+   </h1>
+   <p>
+    <span class="koboSpan" id="kobo.46.1">
+     Data
+    </span>
+    <a id="_idIndexMarker137">
+    </a>
+    <span class="koboSpan" id="kobo.47.1">
+     constraints are an effective way of defining criteria that incoming data must satisfy before being inserted into a Delta table.
+    </span>
+    <span class="koboSpan" id="kobo.47.2">
+     Constraints are defined per column in a Delta table and are stored as additional
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.48.1">
+      table metadata.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.49.1">
+     There are four different types of constraints available within the Databricks Data
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.50.1">
+      Intelligence Platform:
+     </span>
+    </span>
+   </p>
+   <ul>
+    <li>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.51.1">
+       NOT NULL
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.52.1">
+      : Ensures that the data for a particular column in a table is not null.
+     </span>
+     <span class="koboSpan" id="kobo.52.2">
+      The
+     </span>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.53.1">
+       NOT NULL
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.54.1">
+      constraint was first introduced in the
+     </span>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.55.1">
+       StructField
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.56.1">
+      class definition of
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.57.1">
+       Apache Spark.
+      </span>
+     </span>
+    </li>
+    <li>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.58.1">
+       CHECK
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.59.1">
+      : A Boolean expression that must evaluate to
+     </span>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.60.1">
+       True
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.61.1">
+      for each row before being inserted.
+     </span>
+     <span class="koboSpan" id="kobo.61.2">
+      Check constraints allow data engineers to enforce complex validation logic that a particular column
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.62.1">
+       must satisfy.
+      </span>
+     </span>
+    </li>
+    <li>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.63.1">
+       PRIMARY KEY
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.64.1">
+      : Establishes uniqueness for a particular column across all the rows in a table.
+     </span>
+     <span class="koboSpan" id="kobo.64.2">
+      The
+     </span>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.65.1">
+       PRIMARY KEY
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.66.1">
+      constraint is a special kind of constraint as it is purely informative and is not enforced on the incoming data.
+     </span>
+     <span class="koboSpan" id="kobo.66.2">
+      As we’ll see in the following example, a
+     </span>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.67.1">
+       NOT NULL
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.68.1">
+      constraint must accompany a
+     </span>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.69.1">
+       PRIMARY
+      </span>
+     </strong>
+     <span class="No-Break">
+      <strong class="source-inline">
+       <span class="koboSpan" id="kobo.70.1">
+        KEY
+       </span>
+      </strong>
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.71.1">
+       constraint.
+      </span>
+     </span>
+    </li>
+    <li>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.72.1">
+       FOREIGN KEY
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.73.1">
+      : Establishes a relationship between a particular column and another table.
+     </span>
+     <span class="koboSpan" id="kobo.73.2">
+      Like the
+     </span>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.74.1">
+       PRIMARY KEY
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.75.1">
+      constraint, a
+     </span>
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.76.1">
+       FOREIGN KEY
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.77.1">
+      constraint is also
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.78.1">
+       purely informative.
+      </span>
+     </span>
+    </li>
+   </ul>
+   <p>
+    <span class="koboSpan" id="kobo.79.1">
+     In addition, only
+    </span>
+    <a id="_idIndexMarker138">
+    </a>
+    <span class="koboSpan" id="kobo.80.1">
+     the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.81.1">
+      NOT NULL
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.82.1">
+     and
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.83.1">
+      CHECK
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.84.1">
+     constraints are enforced on the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.85.1">
+      incoming data.
+     </span>
+    </span>
+   </p>
+   <table class="No-Table-Style _idGenTablePara-1" id="table001-2">
+    <colgroup>
+     <col/>
+     <col/>
+     <col/>
+    </colgroup>
+    <tbody>
+     <tr class="No-Table-Style">
+      <td class="No-Table-Style">
+       <p>
+        <span class="No-Break">
+         <strong class="bold">
+          <span class="koboSpan" id="kobo.86.1">
+           Constraint
+          </span>
+         </strong>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span class="No-Break">
+         <strong class="bold">
+          <span class="koboSpan" id="kobo.87.1">
+           Enforced
+          </span>
+         </strong>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span class="No-Break">
+         <strong class="bold">
+          <span class="koboSpan" id="kobo.88.1">
+           Informative
+          </span>
+         </strong>
+        </span>
+       </p>
+      </td>
+     </tr>
+     <tr class="No-Table-Style">
+      <td class="No-Table-Style">
+       <p>
+        <span class="No-Break">
+         <strong class="source-inline">
+          <span class="koboSpan" id="kobo.89.1">
+           NOT NULL
+          </span>
+         </strong>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span lang="en-US" xml:lang="en-US">
+         <span class="koboSpan" id="kobo.90.1">
+          ✔️
+         </span>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span lang="en-US" xml:lang="en-US">
+         <span class="koboSpan" id="kobo.91.1">
+          ✖️
+         </span>
+        </span>
+       </p>
+      </td>
+     </tr>
+     <tr class="No-Table-Style">
+      <td class="No-Table-Style">
+       <p>
+        <span class="No-Break">
+         <strong class="source-inline">
+          <span class="koboSpan" id="kobo.92.1">
+           CHECK
+          </span>
+         </strong>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span lang="en-US" xml:lang="en-US">
+         <span class="koboSpan" id="kobo.93.1">
+          ✔️
+         </span>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span lang="en-US" xml:lang="en-US">
+         <span class="koboSpan" id="kobo.94.1">
+          ✖️
+         </span>
+        </span>
+       </p>
+      </td>
+     </tr>
+     <tr class="No-Table-Style">
+      <td class="No-Table-Style">
+       <p>
+        <span class="No-Break">
+         <strong class="source-inline">
+          <span class="koboSpan" id="kobo.95.1">
+           PRIMARY KEY
+          </span>
+         </strong>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span lang="en-US" xml:lang="en-US">
+         <span class="koboSpan" id="kobo.96.1">
+          ✖️
+         </span>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span lang="en-US" xml:lang="en-US">
+         <span class="koboSpan" id="kobo.97.1">
+          ✔️
+         </span>
+        </span>
+       </p>
+      </td>
+     </tr>
+     <tr class="No-Table-Style">
+      <td class="No-Table-Style">
+       <p>
+        <span class="No-Break">
+         <strong class="source-inline">
+          <span class="koboSpan" id="kobo.98.1">
+           FOREIGN KEY
+          </span>
+         </strong>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span lang="en-US" xml:lang="en-US">
+         <span class="koboSpan" id="kobo.99.1">
+          ✖️
+         </span>
+        </span>
+       </p>
+      </td>
+      <td class="No-Table-Style">
+       <p>
+        <span lang="en-US" xml:lang="en-US">
+         <span class="koboSpan" id="kobo.100.1">
+          ✔️
+         </span>
+        </span>
+       </p>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+   <p class="IMG---Caption" lang="en-US" xml:lang="en-US">
+    <span class="koboSpan" id="kobo.101.1">
+     Table 3.1 – Data quality constraints can either be enforced or not enforced on the Databricks Data Intelligence Platform
+    </span>
+   </p>
+   <p class="callout-heading">
+    <span class="koboSpan" id="kobo.102.1">
+     Important note
+    </span>
+   </p>
+   <p class="callout">
+    <span class="koboSpan" id="kobo.103.1">
+     The
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.104.1">
+      PRIMARY KEY
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.105.1">
+     constraint and the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.106.1">
+      FOREIGN KEY
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.107.1">
+     constraint require the Delta tables to be stored in Unity Catalog, otherwise a runtime error will
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.108.1">
+      be thrown.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.109.1">
+     Let’s look at how we can use constraints to define a hierarchical relationship between two Delta tables in our lakehouse.
+    </span>
+    <span class="koboSpan" id="kobo.109.2">
+     First, create a new SQL-based notebook within your Databricks notebook.
+    </span>
+    <span class="koboSpan" id="kobo.109.3">
+     Let’s start by defining a child table that will contain data about the taxicab drivers, called
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.110.1">
+      drivers
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.111.1">
+     , with a primary key defined on the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.112.1">
+      driver_id
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.113.1">
+     column.
+    </span>
+    <span class="koboSpan" id="kobo.113.2">
+     Add the following code snippet to a new
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.114.1">
+      notebook cell:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.115.1">
+%sql
+CREATE CATALOG IF NOT EXISTS yellow_taxi_catalog;
+CREATE SCHEMA IF NOT EXISTS yellow_taxi_catalog.yellow_taxi;
+CREATE TABLE yellow_taxi_catalog.yellow_taxi.drivers(
+    driver_id INTEGER NOT NULL,
+    first_name STRING,
+    last_name STRING,
+    CONSTRAINT drivers_pk PRIMARY </span><a id="_idTextAnchor083"/><span class="koboSpan" id="kobo.116.1">KEY(driver_id));</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.117.1">
+     Next, let’s
+    </span>
+    <a id="_idIndexMarker139">
+    </a>
+    <span class="koboSpan" id="kobo.118.1">
+     define a parent table,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.119.1">
+      rides
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.120.1">
+     , having a primary key defined for the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.121.1">
+      ride_id
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.122.1">
+     column and a foreign key that references the
+    </span>
+    <a id="_idTextAnchor084">
+    </a>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.123.1">
+      drivers
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.124.1">
+     table.
+    </span>
+    <span class="koboSpan" id="kobo.124.2">
+     Add the following code snippet below the first
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.125.1">
+      notebook cell:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.126.1">
+%sql
+CREATE TABLE yellow_taxi_catalog.yellow_taxi.rides(
+    ride_id INTEGER NOT NULL,
+    driver_id INTEGER,
+    passenger_count INTEGER,
+    total_amount DOUBLE,
+    CONSTRAINT rides_pk PRIMARY KEY (ride_id),
+    CONSTRAINT drivers_fk FOREIGN KEY (driver_id)
+    REFERENCES yellow_taxi_catalog.yellow_taxi.drivers);</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.127.1">
+     Attach the newly created notebook to an all-purpose cluster and execute the notebook cells to create the parent and child tables.
+    </span>
+    <span class="koboSpan" id="kobo.127.2">
+     Finally, let’s navigate to the newly defined tables in Catalog Explorer to generate an
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.128.1">
+      Entity Relationship Diagram
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.129.1">
+     (
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.130.1">
+      ERD
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.131.1">
+     ) directly from the
+    </span>
+    <a id="_idIndexMarker140">
+    </a>
+    <span class="koboSpan" id="kobo.132.1">
+     Databricks Data Intelligence Platform.
+    </span>
+    <span class="koboSpan" id="kobo.132.2">
+     From our Databricks workspace, click on
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.133.1">
+      Catalog Explorer
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.134.1">
+     on the left sidebar.
+    </span>
+    <span class="koboSpan" id="kobo.134.2">
+     Navigate to the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.135.1">
+      yellow_taxi_catalog
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.136.1">
+     catalog in Unity Catalog, in the preceding example.
+    </span>
+    <span class="koboSpan" id="kobo.136.2">
+     Click on the defined schema and, finally, click on the parent table.
+    </span>
+    <span class="koboSpan" id="kobo.136.3">
+     A side pane will expand, displaying metadata about our Delta table.
+    </span>
+    <span class="koboSpan" id="kobo.136.4">
+     Click on the button titled
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.137.1">
+      View Relationships
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.138.1">
+     to view
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.139.1">
+      the ERD.
+     </span>
+    </span>
+   </p>
+   <div>
+    <div class="IMG---Figure" id="_idContainer027">
+     <span class="koboSpan" id="kobo.140.1">
+      <img alt="Figure 3.1 – Data constraints can be used to define primary key and foreign key relationships between Delta tables" src="image/B22011_03_001.jpg"/>
+     </span>
+    </div>
+   </div>
+   <p class="IMG---Caption" lang="en-US" xml:lang="en-US">
+    <span class="koboSpan" id="kobo.141.1">
+     Figure 3.1 – Data constraints can be used to define primary key and foreign key relationships between Delta tables
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.142.1">
+     As previously
+    </span>
+    <a id="_idIndexMarker141">
+    </a>
+    <span class="koboSpan" id="kobo.143.1">
+     mentioned, the primary key and foreign key constraints are purely informative and are not enforced on the incoming data.
+    </span>
+    <span class="koboSpan" id="kobo.143.2">
+     Instead, it’s recommended to implement additional safeguards to ensure the data integrity of a primary key column in a Delta table.
+    </span>
+    <span class="koboSpan" id="kobo.143.3">
+     Let’s look at a few effective strategies we can employ to maintain the integrity of primary key columns defined in our
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.144.1">
+      lakehouse tables.
+     </span>
+    </span>
+   </p>
+   <h1 id="_idParaDest-73">
+    <a id="_idTextAnchor085">
+    </a>
+    <span class="koboSpan" id="kobo.145.1">
+     Using temporary datasets to validate data processing
+    </span>
+   </h1>
+   <p>
+    <span class="koboSpan" id="kobo.146.1">
+     As we’ll see in this section, creating
+    </span>
+    <a id="_idIndexMarker142">
+    </a>
+    <span class="koboSpan" id="kobo.147.1">
+     a view is an effective method for validating the uniqueness of a primary key column.
+    </span>
+    <span class="koboSpan" id="kobo.147.2">
+     Additionally, we can also define alerts in the Databricks Data Intelligence Platform to notify the data stewards of potential data quality issues so that they can take appropriate measures to correct the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.148.1">
+      data integrity.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.149.1">
+     We can leverage a view to validate the uniqueness of the primary key column.
+    </span>
+    <span class="koboSpan" id="kobo.149.2">
+     Recall the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.150.1">
+      rides
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.151.1">
+     and
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.152.1">
+      drivers
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.153.1">
+     tables we defined in the previous section.
+    </span>
+    <span class="koboSpan" id="kobo.153.2">
+     In this example, we’re going to define a view on the incoming data to ensure the uniqueness of a primary key column across the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.154.1">
+      rides
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.155.1">
+     Delta table.
+    </span>
+    <span class="koboSpan" id="kobo.155.2">
+     Create a new query in Databricks by navigating back to your workspace and right-clicking to open a dialog box.
+    </span>
+    <span class="koboSpan" id="kobo.155.3">
+     Select
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.156.1">
+      New
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.157.1">
+     |
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.158.1">
+      Query
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.159.1">
+     to open a new query in the editor.
+    </span>
+    <span class="koboSpan" id="kobo.159.2">
+     Next, rename the query with a meaningful name, such as
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.160.1">
+      rides_pk_validation_vw
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.161.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.161.2">
+     Finally, add the following query text to the open query and click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.162.1">
+      Run
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.163.1">
+     button to validate that the query runs
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.164.1">
+      as expected:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.165.1">
+CREATE VIEW yellow_taxi_catalog.yellow_taxi.rides_pk_validation_vw AS
+SELECT *
+FROM (
+    SELE</span><a id="_idTextAnchor086"/><span class="koboSpan" id="kobo.166.1">CT count(*) AS num_occurrences
+    FROM  yellow_taxi_catalog.yellow_taxi.rides
+    GROUP BY ride_id
+) WHERE num_occurrences &gt; 1</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.167.1">
+     As it turns out, primary
+    </span>
+    <a id="_idIndexMarker143">
+    </a>
+    <span class="koboSpan" id="kobo.168.1">
+     key uniqueness is essential in downstream reports for the Yellow Taxi Corporation.
+    </span>
+    <span class="koboSpan" id="kobo.168.2">
+     Let’s create a new alert in the Databricks Data Intelligence Platform to alert our data stewards of possible data corruption so that they can take appropriate action when a duplicate primary key
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.169.1">
+      is inserted.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.170.1">
+     First, let’s create a query that will be run by our alert.
+    </span>
+    <span class="koboSpan" id="kobo.170.2">
+     From the sidebar, click on the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.171.1">
+      Queries
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.172.1">
+     button and click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.173.1">
+      Create query
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.174.1">
+     button, which will take us to the query editor in the Databricks Data Intelligence Platform.
+    </span>
+    <span class="koboSpan" id="kobo.174.2">
+     Rename the query to something meaningful, such as
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.175.1">
+      Rides Primary Key Uniqueness
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.176.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.176.2">
+     Enter the following SQL text as the query body, click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.177.1">
+      Save
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.178.1">
+     button, and select a workspace folder to save the query.
+    </span>
+    <span class="koboSpan" id="kobo.178.2">
+     Click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.179.1">
+      Run
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.180.1">
+     button and ensure that the query
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.181.1">
+      runs successfully:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.182.1">
+SELECT count(*) AS num_invalid_pks
+  FROM yellow_taxi_catalog.yellow_taxi.rides_pk_validation_vw;</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.183.1">
+     Next, from the sidebar, click on the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.184.1">
+      Alerts
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.185.1">
+     button to navigate to the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.186.1">
+      Alerts
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.187.1">
+     UI.
+    </span>
+    <span class="koboSpan" id="kobo.187.2">
+     Then, click on the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.188.1">
+      Create alert
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.189.1">
+     button to begin creating a new alert and enter a descriptive name in the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.190.1">
+      Alert name
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.191.1">
+     textbox, such as
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.192.1">
+      Invalid Primary Key on Rides Table
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.193.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.193.2">
+     In the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.194.1">
+      Query
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.195.1">
+     dropdown, select the query we just created.
+    </span>
+    <span class="koboSpan" id="kobo.195.2">
+     Click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.196.1">
+      Send notification
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.197.1">
+     checkbox and accept the default settings by clicking the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.198.1">
+      Create alert
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.199.1">
+     button.
+    </span>
+    <span class="koboSpan" id="kobo.199.2">
+     In a real-world scenario, this could be an email chain for on-call data engineers or other popular notification destinations such as Slack or
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.200.1">
+      Microsoft Teams.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.201.1">
+     This example is quite practical in real-world data pipelines.
+    </span>
+    <span class="koboSpan" id="kobo.201.2">
+     However, views require the latest table state to be calculated each time a pipeline is run, as well as the maintenance overhead of
+    </span>
+    <a id="_idIndexMarker144">
+    </a>
+    <span class="koboSpan" id="kobo.202.1">
+     having to configure the notification alerts.
+    </span>
+    <span class="koboSpan" id="kobo.202.2">
+     That’s a lot of configuration to maintain, which simply won’t scale as we add more tables to our pipelines.
+    </span>
+    <span class="koboSpan" id="kobo.202.3">
+     What if there’s an easier way to declare data quality as a part of our DLT
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.203.1">
+      pipeline declaration?
+     </span>
+    </span>
+   </p>
+   <h1 id="_idParaDest-74">
+    <a id="_idTextAnchor087">
+    </a>
+    <span class="koboSpan" id="kobo.204.1">
+     An introduction to expectations
+    </span>
+   </h1>
+   <p>
+    <span class="koboSpan" id="kobo.205.1">
+     Expectations are
+    </span>
+    <a id="_idIndexMarker145">
+    </a>
+    <span class="koboSpan" id="kobo.206.1">
+     data quality rules defined alongside a dataset definition in a DLT pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.206.2">
+     The data quality rule is a Boolean expression applied to each record passing through a particular dataset definition.
+    </span>
+    <span class="koboSpan" id="kobo.206.3">
+     The expression must evaluate to
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.207.1">
+      True
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.208.1">
+     for the record to be marked as passing, else it will result in a failed record indicating that the record has not passed data
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.209.1">
+      quality validation.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.210.1">
+     Furthermore, the DLT pipeline will record data quality metrics for each row that gets processed in a data pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.210.2">
+     For example, DLT will record the number of records that have passed data quality validation, as well as the number of records that
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.211.1">
+      have not.
+     </span>
+    </span>
+   </p>
+   <h2 id="_idParaDest-75">
+    <a id="_idTextAnchor088">
+    </a>
+    <span class="koboSpan" id="kobo.212.1">
+     Expectation composition
+    </span>
+   </h2>
+   <p>
+    <span class="koboSpan" id="kobo.213.1">
+     Each expectation is comprised of three major
+    </span>
+    <a id="_idIndexMarker146">
+    </a>
+    <span class="koboSpan" id="kobo.214.1">
+     components: a description, a Boolean expression, and an action
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.215.1">
+      to take.
+     </span>
+    </span>
+   </p>
+   <div>
+    <div class="IMG---Figure" id="_idContainer028">
+     <span class="koboSpan" id="kobo.216.1">
+      <img alt="Figure 3.2 – The main components of a DLT expectation" src="image/B22011_03_002.jpg"/>
+     </span>
+    </div>
+   </div>
+   <p class="IMG---Caption" lang="en-US" xml:lang="en-US">
+    <span class="koboSpan" id="kobo.217.1">
+     Figure 3.2 – The main components of a DLT expectation
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.218.1">
+     An expectation is declared using a DLT function decorator.
+    </span>
+    <span class="koboSpan" id="kobo.218.2">
+     The function decorator specifies the type of action that should be taken whenever a particular constraint or set of constraints eval
+    </span>
+    <a id="_idTextAnchor089">
+    </a>
+    <span class="koboSpan" id="kobo.219.1">
+     uates to
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.220.1">
+      False
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.221.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.221.2">
+     Additionally, the function decorator accepts two input parameters, a short description that describes the data quality constraint and a Boolean expression that must evaluate to
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.222.1">
+      True
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.223.1">
+     for a row to be marked as
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.224.1">
+      passing validation.
+     </span>
+    </span>
+   </p>
+   <h2 id="_idParaDest-76">
+    <a id="_idTextAnchor090">
+    </a>
+    <span class="koboSpan" id="kobo.225.1">
+     Hands-on exercise – writing your first data quality expectation
+    </span>
+   </h2>
+   <p>
+    <span class="koboSpan" id="kobo.226.1">
+     To get a feel for the
+    </span>
+    <a id="_idIndexMarker147">
+    </a>
+    <span class="koboSpan" id="kobo.227.1">
+     DLT syntax, let’s work through a real-world example of writing a data pipeline for a New York City cab company called the Yellow Taxi Corporation.
+    </span>
+    <span class="koboSpan" id="kobo.227.2">
+     We’ll write a simple data pipeline, enforcing a data quality constraint that can be applied to our incoming NYC Taxi data and warn us when there are records that don’t adhere to our data quality specifications.
+    </span>
+    <span class="koboSpan" id="kobo.227.3">
+     In this scenario, we want to ensure that the incoming trip data does not have any trips with a negative total amount, since it would not be possible for our cab drivers to owe the riders
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.228.1">
+      any money.
+     </span>
+    </span>
+   </p>
+   <h3>
+    <span class="koboSpan" id="kobo.229.1">
+     Generating taxi trip data
+    </span>
+   </h3>
+   <p>
+    <span class="koboSpan" id="kobo.230.1">
+     Let’s begin by
+    </span>
+    <a id="_idIndexMarker148">
+    </a>
+    <span class="koboSpan" id="kobo.231.1">
+     logging into our Databricks workspace.
+    </span>
+    <span class="koboSpan" id="kobo.231.2">
+     For this exercise, you will need to use the accompanying NYC Yellow Taxi trip data generator, which can be downloaded from the chapter’s GitHub repo.
+    </span>
+    <span class="koboSpan" id="kobo.231.3">
+     Either import the data generator notebook into your Databricks workspace or create a new Python notebook with the following
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.232.1">
+      code snippet.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.233.1">
+     First, we’ll need to download the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.234.1">
+      dbldatagen
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.235.1">
+     Python library, which will help us randomly generate new taxi trip data.
+    </span>
+    <span class="koboSpan" id="kobo.235.2">
+     Add the following code snippet to your notebook, which uses the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.236.1">
+      %pip
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.237.1">
+     magic command to download
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.238.1">
+      the library:
+     </span>
+    </span>
+   </p>
+   <pre class="console"><span class="koboSpan" id="kobo.239.1">
+%pip install dbldatagen==0.4.0</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.240.1">
+     Now that the library has been installed, let’s define a Python function for generating new taxi trip data according to our schema.
+    </span>
+    <span class="koboSpan" id="kobo.240.2">
+     We’ll specify columns for typical taxi trip details, including the number of passengers, the fare amount, the trip distance,
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.241.1">
+      and more:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.242.1">
+def generate_taxi_trip_data():
+    """Generates random taxi trip data"""
+    import dbldatagen as dg
+    from pyspark.sql.types import (
+        IntegerType, StringType, FloatType, DateType
+    )
+    ds = (
+        dg.DataGenerator(spark, name="random_taxi_trip_dataset",
+                         rows=100000, partitions=8)
+        .withColumn("trip_id", IntegerType(),
+                    minValue=1000000, maxValue=2000000)
+        .withColumn("taxi_number", IntegerType(),
+                    uniqueValues=10000, random=True)
+        .withColumn("passenger_count", IntegerType(),
+                    minValue=1, maxValue=4)
+        .withColumn("trip_amount", FloatType(), minValue=-100.0,
+                    maxValue=1000.0, random=True)
+        .withColumn("trip_distance", FloatType(),
+                    minValue=0.1, maxValue=1000.0)
+        .withColumn("trip_date", DateType(),
+                    uniqueValues=300, random=True))
+    return ds.build()</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.243.1">
+     Now that we’ve
+    </span>
+    <a id="_idIndexMarker149">
+    </a>
+    <span class="koboSpan" id="kobo.244.1">
+     defined a way to randomly generate new trip data, we’ll need to define a location to store the new data so that it can be processed by a DLT pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.244.2">
+     In a new notebook cell, let’s create an empty directory on
+    </span>
+    <a id="_idIndexMarker150">
+    </a>
+    <span class="koboSpan" id="kobo.245.1">
+     the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.246.1">
+      Databricks File System
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.247.1">
+     (
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.248.1">
+      DBFS
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.249.1">
+     ) for storing our
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.250.1">
+      trip data:
+     </span>
+    </span>
+   </p>
+   <pre class="console"><span class="koboSpan" id="kobo.251.1">
+dbutils.fs.mkdirs("/tmp/chp_03/taxi_data")</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.252.1">
+     Lastly, we’ll need a
+    </span>
+    <a id="_idIndexMarker151">
+    </a>
+    <span class="koboSpan" id="kobo.253.1">
+     way to tie everything together.
+    </span>
+    <span class="koboSpan" id="kobo.253.2">
+     In a new notebook cell, add the following
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.254.1">
+      for
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.255.1">
+     loop, which will call the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.256.1">
+      generate_taxi_trip_data
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.257.1">
+     function and write the data to the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.258.1">
+      DBFS location:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.259.1">
+import random
+max_num_files = 100
+for i in range(int(max_num_files)):
+    df = generate_taxi_trip_data()
+    file_name = f"/tmp/chp_03/taxi_data/taxi_data_{random.randint(1, 1000000)}.json"
+    df.write.mode("append").json(file_name)</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.260.1">
+     Next, create an all-purpose cluster to execute the trip data generator notebook.
+    </span>
+    <span class="koboSpan" id="kobo.260.2">
+     Once the all-purpose cluster has been created, navigate to the new notebook and click the cluster dropdown in the top navigation bar of the Databricks Data Intelligence Platform.
+    </span>
+    <span class="koboSpan" id="kobo.260.3">
+     Select the name of the cluster you created and select
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.261.1">
+      Attach
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.262.1">
+     to attach the trip data generator notebook to the cluster and execute all the cells.
+    </span>
+    <span class="koboSpan" id="kobo.262.2">
+     The taxi trip data generator will append several new JSON files containing the randomly generated trip data to the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.263.1">
+      DBFS location.
+     </span>
+    </span>
+   </p>
+   <h3>
+    <span class="koboSpan" id="kobo.264.1">
+     Creating a new DLT pipeline definition
+    </span>
+   </h3>
+   <p>
+    <span class="koboSpan" id="kobo.265.1">
+     Now that we’ve generated
+    </span>
+    <a id="_idIndexMarker152">
+    </a>
+    <span class="koboSpan" id="kobo.266.1">
+     new data, let’s create another new notebook for our DLT pipeline definition.
+    </span>
+    <span class="koboSpan" id="kobo.266.2">
+     Navigate to the workspace tab on the sidebar, drill down to your user’s home directory, and create a new notebook by right-clicking and selecting
+    </span>
+    <span class="No-Break">
+     <strong class="bold">
+      <span class="koboSpan" id="kobo.267.1">
+       Add Notebook
+      </span>
+     </strong>
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.268.1">
+      .
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.269.1">
+     Give the new notebook a meaningful name such as
+    </span>
+    <span class="No-Break">
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.270.1">
+       Chapter 3
+      </span>
+     </strong>
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.271.1">
+      – Enforcing Data Quality
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.272.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.272.2">
+     Begin by importing the DLT Python module as well as the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.273.1">
+      PySpark functions:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.274.1">
+import dlt
+from pyspark.sql.functions import *</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.275.1">
+     Next, let’s define a bronze table,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.276.1">
+      yellow_taxi_raw
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.277.1">
+     , that will ingest the taxi trip data that was written to the DBFS location by our taxi trip
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.278.1">
+      data generator:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.279.1">
+@dlt.table(
+    comment="The randomly generated taxi trip dataset"
+)
+def yellow_taxi_raw():
+    path = "/tmp/chp_03/taxi_data"
+    schema = "trip_id INT, taxi_number INT, passenger_count INT, trip_amount FLOAT, trip_distance FLOAT, trip_date DATE"
+    return (spark.readStream
+                 .schema(schema)
+                 .format("json")
+                 .load(path))</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.280.1">
+     For the next layer of our data pipeline, the stakeholders within our organization have asked us to provide a way for their business to report real-time financial analytics of our incoming trip data.
+    </span>
+    <span class="koboSpan" id="kobo.280.2">
+     As a result, let’s add a silver table that will transform the incoming stream of trip data, calculating the expected profits and losses of our cab company, Yellow Taxi Corporation.
+    </span>
+    <span class="koboSpan" id="kobo.280.3">
+     In this example, we’re going to take the total amount that was paid by the passengers and begin to calculate how that money is allocated to fund different parts of the business and calculate
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.281.1">
+      potential profits.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.282.1">
+     Let’s define our silver
+    </span>
+    <a id="_idIndexMarker153">
+    </a>
+    <span class="koboSpan" id="kobo.283.1">
+     table definition,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.284.1">
+      trip_data_financials
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.285.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.285.2">
+     The table definition begins just like any normal streaming table definition.
+    </span>
+    <span class="koboSpan" id="kobo.285.3">
+     We begin by defining a Python function that returns a streaming table.
+    </span>
+    <span class="koboSpan" id="kobo.285.4">
+     Next, we use the DLT function annotations to declare this function as a streaming table with an optional name,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.286.1">
+      trip_data_financials
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.287.1">
+     , as well as a comment with descriptive text about the streaming table.
+    </span>
+    <span class="koboSpan" id="kobo.287.2">
+     Create a new notebook cell, adding the following DLT dataset definition for the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.288.1">
+      silver table:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.289.1">
+@dlt.table(name="trip_data_financials",
+           comment="Financial information from incoming taxi trips.")
+@dlt.expect("valid_total_amount", "trip_amount &gt; 0.0")
+def trip_data_financials():
+    return (dlt.readStream("yellow_taxi_raw")
+               .withColumn("driver_payment",
+                           expr("trip_amount * 0.40"))
+               .withColumn("vehicle_maintenance_fee",
+                           expr("trip_amount * 0.05"))
+               .withColumn("adminstrative_fee",
+                           expr("trip_amount * 0.1"))
+               .withColumn("potential_profits",
+                           expr("trip_amount * 0.45")))</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.290.1">
+     One thing that you may have noticed in our silver table declaration is a new function decorator for enforcing a data quality constraint.
+    </span>
+    <span class="koboSpan" id="kobo.290.2">
+     In this case, we want to ensure that the total amount reported in our trip data is greater
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.291.1">
+      than zero.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.292.1">
+     When our data
+    </span>
+    <a id="_idIndexMarker154">
+    </a>
+    <span class="koboSpan" id="kobo.293.1">
+     pipeline is triggered to run and update the bronze and silver datasets, the DLT system will inspect each row that is processed and evaluate whether the Boolean expression for our data quality constraint evaluates to
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.294.1">
+      True
+     </span>
+    </strong>
+    <a id="_idTextAnchor091">
+    </a>
+    <span class="koboSpan" id="kobo.295.1">
+     for
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.296.1">
+      the row:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.297.1">
+@dlt.expect("valid_total_amount", "trip_amount &gt; 0.0")</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.298.1">
+     Within the body of the function definition, we are using the built-in PySpark
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.299.1">
+      withColumn()
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.300.1">
+     and
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.301.1">
+      expr()
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.302.1">
+     functions to add four new columns to the output of our bronze table –
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.303.1">
+      driver_payment
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.304.1">
+     ,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.305.1">
+      vehicle_maintenance_fee
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.306.1">
+     ,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.307.1">
+      adminstrative_fee
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.308.1">
+     , and
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.309.1">
+      potential_profits
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.310.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.310.2">
+     These columns are calculated by taking a percentage of the original
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.311.1">
+      trip_amount
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.312.1">
+     column.
+    </span>
+    <span class="koboSpan" id="kobo.312.2">
+     In business terms, we are splitting the total amount that was collected from the passengers into the driver’s payment, fees collected to run the company, and potential profits for
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.313.1">
+      the company.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.314.1">
+     In the following section, we’ll look at the different types of actions that the DLT system will take if an expectation Boolean expression
+    </span>
+    <a id="_idTextAnchor092">
+    </a>
+    <span class="koboSpan" id="kobo.315.1">
+     is evaluated to
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.316.1">
+      False
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.317.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.317.2">
+     By default, the DLT system will simply record that the row failed the Boolean expression for a particular row in the system logs and record the data quality metrics in the system.
+    </span>
+    <span class="koboSpan" id="kobo.317.3">
+     In our silver table declaration, let’s assume the default behavior of logging a
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.318.1">
+      warning message.
+     </span>
+    </span>
+   </p>
+   <h3>
+    <span class="koboSpan" id="kobo.319.1">
+     Running the data pipeline
+    </span>
+   </h3>
+   <p>
+    <span class="koboSpan" id="kobo.320.1">
+     Let’s create a new data pipeline from
+    </span>
+    <a id="_idIndexMarker155">
+    </a>
+    <span class="koboSpan" id="kobo.321.1">
+     our dataset declarations in our notebook.
+    </span>
+    <span class="koboSpan" id="kobo.321.2">
+     Execute the notebook cells and ensure that there are no syntax errors.
+    </span>
+    <span class="koboSpan" id="kobo.321.3">
+     Next, the Databricks Data Intelligence Platform will prompt you to create a new data pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.321.4">
+     Click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.322.1">
+      Create pipeline
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.323.1">
+     button to create a new DLT data pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.323.2">
+     Next, under the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.324.1">
+      Destination
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.325.1">
+     settings, select a catalog and schema in Unity Catalog where you would like to store the pipeline datasets.
+    </span>
+    <span class="koboSpan" id="kobo.325.2">
+     Under the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.326.1">
+      Compute
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.327.1">
+     settings, set
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.328.1">
+      Min workers
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.329.1">
+     to
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.330.1">
+      1
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.331.1">
+     and
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.332.1">
+      Max workers
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.333.1">
+     to
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.334.1">
+      2
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.335.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.335.2">
+     Accept the defaults by clicking the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.336.1">
+      Create
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.337.1">
+     button.
+    </span>
+    <span class="koboSpan" id="kobo.337.2">
+     Finally, click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.338.1">
+      Start
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.339.1">
+     button to execute the data pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.339.2">
+     You will be taken to a visual representation of the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.340.1">
+      dataflow graph.
+     </span>
+    </span>
+   </p>
+   <div>
+    <div class="IMG---Figure" id="_idContainer029">
+     <span class="koboSpan" id="kobo.341.1">
+      <img alt="Figure 3.3 – The dataflow graph for our NYC Yellow Taxi Corp. pipeline" src="image/B22011_03_003.jpg"/>
+     </span>
+    </div>
+   </div>
+   <p class="IMG---Caption" lang="en-US" xml:lang="en-US">
+    <span class="koboSpan" id="kobo.342.1">
+     Figure 3.3 – The dataflow graph for our NYC Yellow Taxi Corp.
+    </span>
+    <span class="koboSpan" id="kobo.342.2">
+     pipeline
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.343.1">
+     Behind the scenes, the DLT system will begin by creating and initializing a new Databricks cluster and begin parsing the dataset definitions in our notebook into a dataflow graph.
+    </span>
+    <span class="koboSpan" id="kobo.343.2">
+     As you can see, the DLT system will ingest the raw trip data files from our DBFS location into the streaming table,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.344.1">
+      yellow_taxi_raw
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.345.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.345.2">
+     Next, the system detects the dependency of our silver table,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.346.1">
+      trip_data_financials
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.347.1">
+     , and will immediately begin calculating our additional four columns in our silver table.
+    </span>
+    <span class="koboSpan" id="kobo.347.2">
+     Along the way, our data quality constraint is being evaluated on the incoming data in
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.348.1">
+      real time.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.349.1">
+     Let’s look at the
+    </span>
+    <a id="_idIndexMarker156">
+    </a>
+    <span class="koboSpan" id="kobo.350.1">
+     data quality in real time.
+    </span>
+    <span class="koboSpan" id="kobo.350.2">
+     Click on the silver table, and the DLT UI will expand a pane on the right-hand side summarizing the silver table.
+    </span>
+    <span class="koboSpan" id="kobo.350.3">
+     Click on the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.351.1">
+      Data quality
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.352.1">
+     tab to view the data quality metrics.
+    </span>
+    <span class="koboSpan" id="kobo.352.2">
+     Notice that the graph is being updated in real time as our data is processed.
+    </span>
+    <span class="koboSpan" id="kobo.352.3">
+     Of all the data that has been processed by the data pipeline, you’ll notice that around 10% has failed the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.353.1">
+      valid_total_amount
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.354.1">
+     expectation – which is expected.
+    </span>
+    <span class="koboSpan" id="kobo.354.2">
+     The data generator notebook will purposely publish records with a negative total amount to our cloud storage location.
+    </span>
+    <span class="koboSpan" id="kobo.354.3">
+     We can easily see how much of our data is validating against our defined data quality criteria and how much
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.355.1">
+      is not.
+     </span>
+    </span>
+   </p>
+   <div>
+    <div class="IMG---Figure" id="_idContainer030">
+     <span class="koboSpan" id="kobo.356.1">
+      <img alt="Figure 3.4 – The DLT UI will summarize the data quality metrics of our data pipeline in real time" src="image/B22011_03_004.jpg"/>
+     </span>
+    </div>
+   </div>
+   <p class="IMG---Caption" lang="en-US" xml:lang="en-US">
+    <span class="koboSpan" id="kobo.357.1">
+     Figure 3.4 – The DLT UI will summarize the data quality metrics of our data pipeline in real time
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.358.1">
+     Congratulations!
+    </span>
+    <span class="koboSpan" id="kobo.358.2">
+     You’ve written your first data quality constraint in Delta Live Tables.
+    </span>
+    <span class="koboSpan" id="kobo.358.3">
+     By now, you should see just how easy yet powerful the DLT framework is.
+    </span>
+    <span class="koboSpan" id="kobo.358.4">
+     In just a few lines of code, we’re able to enforce data quality constraints on our incoming data, as well as to monitor the data quality in real time.
+    </span>
+    <span class="koboSpan" id="kobo.358.5">
+     This gives data engineering teams more control over their
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.359.1">
+      data pipelines.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.360.1">
+     In the next section, we’ll see how data engineering teams can leverage DLT expectations to react to potential data quality issues before leading to potential
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.361.1">
+      data corruption.
+     </span>
+    </span>
+   </p>
+   <h2 id="_idParaDest-77">
+    <a id="_idTextAnchor093">
+    </a>
+    <span class="koboSpan" id="kobo.362.1">
+     Acting on failed expectations
+    </span>
+   </h2>
+   <p>
+    <span class="koboSpan" id="kobo.363.1">
+     There are three types of actions that
+    </span>
+    <a id="_idIndexMarker157">
+    </a>
+    <span class="koboSpan" id="kobo.364.1">
+     DLT can take when a particular record violates the data constraints defined on a
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.365.1">
+      DLT dataset:
+     </span>
+    </span>
+   </p>
+   <ul>
+    <li>
+     <strong class="bold">
+      <span class="koboSpan" id="kobo.366.1">
+       Warn
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.367.1">
+      : When DLT encounters an expression violation, the record will be recorded as a metric and will continue to be written to the downstream
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.368.1">
+       target dataset
+      </span>
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.369.1">
+       .
+      </span>
+     </span>
+    </li>
+    <li>
+     <strong class="bold">
+      <span class="koboSpan" id="kobo.370.1">
+       Drop
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.371.1">
+      : When DLT encounters an expression violation, the record will be recorded as a metric and will be prevented from entering the downstream
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.372.1">
+       target dataset
+      </span>
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.373.1">
+       .
+      </span>
+     </span>
+    </li>
+    <li>
+     <strong class="bold">
+      <span class="koboSpan" id="kobo.374.1">
+       Fail
+      </span>
+     </strong>
+     <span class="koboSpan" id="kobo.375.1">
+      : When DLT encounters an expression violation, the pipeline update will fail entirely until a data engineering team member can investigate and correct the data violation or possible
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.376.1">
+       data corruption
+      </span>
+     </span>
+     <span class="No-Break">
+      <span class="koboSpan" id="kobo.377.1">
+       .
+      </span>
+     </span>
+    </li>
+   </ul>
+   <p>
+    <span class="koboSpan" id="kobo.378.1">
+     You should always choose one of the actions based on the individual use case and on how you want to handle data that does not meet data quality rules.
+    </span>
+    <span class="koboSpan" id="kobo.378.2">
+     For example, there may be times when data does not meet the defined data quality constraints but logging the violating rows in the DLT system and monitoring the data quality meets the requirements for a particular use case.
+    </span>
+    <span class="koboSpan" id="kobo.378.3">
+     On the other hand, there may be scenarios where specific data quality constraints must be met, otherwise the incoming data will break downstream processes.
+    </span>
+    <span class="koboSpan" id="kobo.378.4">
+     In that scenario, more aggressive action such as failing the data pipeline run and rolling back transactions is the appropriate behavior.
+    </span>
+    <span class="koboSpan" id="kobo.378.5">
+     In either scenario, the Delta Live Tables framework gives data engineering teams full control to decide the fate of violating rows and the power to define how the system
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.379.1">
+      should react.
+     </span>
+    </span>
+   </p>
+   <h2 id="_idParaDest-78">
+    <a id="_idTextAnchor094">
+    </a>
+    <span class="koboSpan" id="kobo.380.1">
+     Hands-on example – failing a pipeline run due to poor data quality
+    </span>
+   </h2>
+   <p>
+    <span class="koboSpan" id="kobo.381.1">
+     There may be
+    </span>
+    <a id="_idIndexMarker158">
+    </a>
+    <span class="koboSpan" id="kobo.382.1">
+     scenarios when you want to immediately halt the execution of a data pipeline update to intervene and correct the data, for example.
+    </span>
+    <span class="koboSpan" id="kobo.382.2">
+     In this case, DLT expectations offer the ability to immediately fail a data pipeline
+    </span>
+    <a id="_idTextAnchor095">
+    </a>
+    <span class="koboSpan" id="kobo.383.1">
+     run using the
+    </span>
+    <a id="_idTextAnchor096">
+    </a>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.384.1">
+      @dlt.expect_or_fail()
+     </span>
+    </strong>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.385.1">
+      function decorator.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.386.1">
+     If the operation is a table update, the transaction is immediately rolled back to prevent contamination of bad data.
+    </span>
+    <span class="koboSpan" id="kobo.386.2">
+     Furthermore, DLT will track additional metadata about processed records so that data engineering teams can pinpoint which record in the dataset caused
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.387.1">
+      the failure.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.388.1">
+     Let’s look at how we can update the earlier example of our Yellow Taxi Corporation data pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.388.2">
+     In this scenario, having a negative total amount would break downstream financial reports.
+    </span>
+    <span class="koboSpan" id="kobo.388.3">
+     In this case, rather than simply record the rows that violate the expectation, we’d like to fail the pipeline run, so that our data engineering team can investigate potential issues in the data and take appropriate action such as the manual correction of
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.389.1">
+      the data.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.390.1">
+     In the Delta Live Tables framework, adjusting the behavior of our data pipeline is as simple as updating the function decorator of our silver table definition.
+    </span>
+    <span class="koboSpan" id="kobo.390.2">
+     Let’s update the expectation with the
+    </span>
+    <span class="No-Break">
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.391.1">
+       expect_or_fail
+      </span>
+     </strong>
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.392.1">
+      action:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.393.1">
+@dlt.expect_or_fail("valid_total_amount", "trip_amount &gt; 0.0")</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.394.1">
+     The full dataset definition for the silver table,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.395.1">
+      trip_data_financials
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.396.1">
+     , should look like the following
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.397.1">
+      code snippet:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.398.1">
+@dlt.table(
+    name="trip_data_financials",
+    comment="Financial information from completed taxi trips."
+</span><span class="koboSpan" id="kobo.398.2">)
+@dlt.expect_or_fail("valid_total_amount", "trip_amount &gt; 0.0")
+def trip_data_financials():
+    return (
+        dlt.readStream("yellow_taxi_raw")
+           .withColumn("driver_payment",
+                       expr("trip_amount*0.40"))
+           .withColumn("vehicle_maintenance_fee",
+                       expr("trip_amount*0.05"))
+           .withColumn("adminstrative_fee",
+                       expr("trip_amount*0.1"))
+           .withColumn("potential_profits",
+                       expr("trip_amount*0.45")))</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.399.1">
+     Next, let’s rerun the trip data generator to append additional files to the raw landing zone in the Databricks file system.
+    </span>
+    <span class="koboSpan" id="kobo.399.2">
+     Once the trip data generator has finished, navigate back to the Yellow Taxi Corporation data pipeline created earlier and click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.400.1">
+      Start
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.401.1">
+     button to trigger another execution of the data pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.401.2">
+     For this chapter’s examples, the trip data generator will randomly generate trip data with negative
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.402.1">
+      total amounts.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.403.1">
+     You should observe for this
+    </span>
+    <a id="_idIndexMarker159">
+    </a>
+    <span class="koboSpan" id="kobo.404.1">
+     run of the data pipeline that the data pipeline update failed with an
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.405.1">
+      error status.
+     </span>
+    </span>
+   </p>
+   <div>
+    <div class="IMG---Figure" id="_idContainer031">
+     <span class="koboSpan" id="kobo.406.1">
+      <img alt="Figure 3.5 – The dataflow graph will update to display an error when the data quality constraint is violated" src="image/B22011_03_005.jpg"/>
+     </span>
+    </div>
+   </div>
+   <p class="IMG---Caption" lang="en-US" xml:lang="en-US">
+    <span class="koboSpan" id="kobo.407.1">
+     Figure 3.5 – The dataflow graph will update to display an error when the data quality constraint is violated
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.408.1">
+     Expanding the
+    </span>
+    <a id="_idIndexMarker160">
+    </a>
+    <span class="koboSpan" id="kobo.409.1">
+     failure message, you can see that the cause of the pipeline failure was a violation of the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.410.1">
+      expectation constraint.
+     </span>
+    </span>
+   </p>
+   <div>
+    <div class="IMG---Figure" id="_idContainer032">
+     <span class="koboSpan" id="kobo.411.1">
+      <img alt="Figure 3.6 – The data pipeline logs will display the failed update due to a violated expectation check" src="image/B22011_03_006.jpg"/>
+     </span>
+    </div>
+   </div>
+   <p class="IMG---Caption" lang="en-US" xml:lang="en-US">
+    <span class="koboSpan" id="kobo.412.1">
+     Figure 3.6 – The data pipeline logs will display the failed update due to a violated expectation check
+    </span>
+   </p>
+   <h2 id="_idParaDest-79">
+    <a id="_idTextAnchor097">
+    </a>
+    <span class="koboSpan" id="kobo.413.1">
+     Applying multiple data quality expectations
+    </span>
+   </h2>
+   <p>
+    <span class="koboSpan" id="kobo.414.1">
+     There may be times when a
+    </span>
+    <a id="_idIndexMarker161">
+    </a>
+    <span class="koboSpan" id="kobo.415.1">
+     dataset author may want to apply more than one business rule or data quality constraint on each row of a dataset.
+    </span>
+    <span class="koboSpan" id="kobo.415.2">
+     In that event, DLT provides a special set of function decorators for specifying multiple data quality
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.416.1">
+      constraint d
+     </span>
+     <a id="_idTextAnchor098">
+     </a>
+     <span class="koboSpan" id="kobo.417.1">
+      efinitions.
+     </span>
+    </span>
+    <a id="_idTextAnchor099">
+    </a>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.418.1">
+     The
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.419.1">
+      @dlt.expect_all()
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.420.1">
+     function decorator can be used to combine more than one data quality constraint for a particular dataset.
+    </span>
+    <span class="koboSpan" id="kobo.420.2">
+     Similarly,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.421.1">
+      expect_all_or_drop()
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.422.1">
+     can be specified when incoming data should be dropped from entering a target table unless all the criteria in the set of data quality constraints are satisfied.
+    </span>
+    <span class="koboSpan" id="kobo.422.2">
+     Lastly,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.423.1">
+      expect_all_or_fail()
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.424.1">
+     will fail a run of a data pipeline if any of the criteria in a set of data quality constraints are not met by the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.425.1">
+      incoming data.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.426.1">
+     Let’s look at how we might drop invalid taxicab trip data entries from entering downstream datasets in our pipeline when the values don’t pass the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.427.1">
+      validation criteria:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.428.1">
+assertions = {
+    "total_amount_constraint": "trip_amount &gt; 0.0",
+    "passenger_count": "passenger_count &gt;= 1"
+}
+@dlt.table(
+    name="yellow_taxi_validated",
+    comment="A dataset containing trip data that has been validated.")
+@dlt.expect_all_or_drop(assertions)
+def yellow_taxi_validated():
+    return (
+        dlt.readStream("yellow_taxi_raw")
+           .withColumn("nyc_congestion_tax",
+                       expr("trip_amount * 0.05")))</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.429.1">
+     In the preceding example, we’ve defined a set of data constraints using the expectations function decorators and we are applying them collectively to the incoming data.
+    </span>
+    <span class="koboSpan" id="kobo.429.2">
+     Let’s imagine that losing a few records of the taxicab trip data will not pose a threat to downstream processes.
+    </span>
+    <span class="koboSpan" id="kobo.429.3">
+     As a result, we’ve decided to drop records that don’t pass the validation step in our expectation declaration.
+    </span>
+    <span class="koboSpan" id="kobo.429.4">
+     With just a few extra lines of configuration, our data pipeline can enforce data quality constraints on the incoming data and
+    </span>
+    <a id="_idIndexMarker162">
+    </a>
+    <span class="koboSpan" id="kobo.430.1">
+     automatically react to data that doesn’t pass the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.431.1">
+      defined criteria.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.432.1">
+     While we’ve only looked at data within the context of our DLT data pipeline, let’s see how the DLT framework can validate data across multiple systems
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.433.1">
+      of data.
+     </span>
+    </span>
+   </p>
+   <h1 id="_idParaDest-80">
+    <a id="_idTextAnchor100">
+    </a>
+    <span class="koboSpan" id="kobo.434.1">
+     Decoupling expectations from a DLT pipeline
+    </span>
+   </h1>
+   <p>
+    <span class="koboSpan" id="kobo.435.1">
+     Up until now, we’ve
+    </span>
+    <a id="_idIndexMarker163">
+    </a>
+    <span class="koboSpan" id="kobo.436.1">
+     only worked with defining data
+    </span>
+    <a id="_idIndexMarker164">
+    </a>
+    <span class="koboSpan" id="kobo.437.1">
+     quality constraints within the table definition.
+    </span>
+    <span class="koboSpan" id="kobo.437.2">
+     However, there may be scenarios when you’d like to decouple the data quality constraints from data pipeline definitions, allowing the data engineering teams to work separately from the data analyst teams.
+    </span>
+    <span class="koboSpan" id="kobo.437.3">
+     This is especially useful when a group of non-technical individuals determine the data quality criteria.
+    </span>
+    <span class="koboSpan" id="kobo.437.4">
+     Furthermore, this design also provides even more flexibility to maintain and change business rules as the business changes.
+    </span>
+    <span class="koboSpan" id="kobo.437.5">
+     For example, a real-world example would be validating seasonal discount codes that change
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.438.1">
+      over time.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.439.1">
+     Let’s imagine that we have a group of non-technical business analysts who would like to interact with the data quality constraints using a UI such as a web portal in a browser window.
+    </span>
+    <span class="koboSpan" id="kobo.439.2">
+     In that case, we can load and save our data quality constraints into a separate Delta table and then dynamically load the data quality constraints
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.440.1">
+      at runtime.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.441.1">
+     Let’s begin by
+    </span>
+    <a id="_idIndexMarker165">
+    </a>
+    <span class="koboSpan" id="kobo.442.1">
+     defining a data quality rules table.
+    </span>
+    <span class="koboSpan" id="kobo.442.2">
+     We’ll introduce three columns: a column for the rule name, a column defining the data
+    </span>
+    <a id="_idIndexMarker166">
+    </a>
+    <span class="koboSpan" id="kobo.443.1">
+     quality rule expression, and a column identifying the dataset name – everything needed to create an expectation
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.444.1">
+      using DLT:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.445.1">
+%sql
+CREATE TABLE IF NOT EXISTS&lt;catalog_name&gt;.&lt;schema_name&gt;.data_quality_rules
+(rule_name STRING, rule_expression STRING, dataset_name STRING)
+USING DELTA</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.446.1">
+     Let’s revisit the previous example for specifying multiple expectations using a Python dictionary.
+    </span>
+    <span class="koboSpan" id="kobo.446.2">
+     In that example, we defined a
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.447.1">
+      dict
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.448.1">
+     data structure called
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.449.1">
+      assertions
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.450.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.450.2">
+     In this example, let’s convert it into a tabular format, inserting the entries into our Delta table.
+    </span>
+    <span class="koboSpan" id="kobo.450.3">
+     Add the following SQL statement to a new
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.451.1">
+      notebook cell:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.452.1">
+%sql
+INSERT INTO
+    data_quality_rules
+VALUES
+    (
+        'valid_total_amount',
+        'trip_amount &gt; 0.0',
+        'yellow_taxi_raw'
+    ),(
+        'valid_passenger_count',
+        'passenger_count &gt; 0',
+        'yellow_taxi_raw'
+    );</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.453.1">
+     Next, within the data pipeline notebook, we can create a helper function that will read directly from our data quality rules table and translate each row to a format that the DLT Expectation
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.454.1">
+      can interpret:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.455.1">
+def compile_data_quality_rules(rules_table_name, dataset_name):
+    """A helper function that reads from the data_quality_rules table and coverts to a format interpreted by a DLT Expectation."""
+</span><span class="koboSpan" id="kobo.455.2">    rules = spark.sql(f"""SELECT * FROM {rules_table_name} WHERE dataset_name='{dataset_name}'""").collect()
+    rules_dict = {}
+    # Short circuit if there are no rules found
+    if len(rules) == 0:
+        raise Exception(f"No rules found for dataset '{dataset_name}'")
+    for rule in rules:
+        rules_dict[rule.rule_name] = rule.rule_expression
+    return rules_dict</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.456.1">
+     We now have a
+    </span>
+    <a id="_idIndexMarker167">
+    </a>
+    <span class="koboSpan" id="kobo.457.1">
+     Delta table that our non-technical data
+    </span>
+    <a id="_idIndexMarker168">
+    </a>
+    <span class="koboSpan" id="kobo.458.1">
+     analysts can update using a UI separate from our data pipeline, and we also have a helper function that can read from the Delta table and translate the entries into a format that a DLT expectation can interpret.
+    </span>
+    <span class="koboSpan" id="kobo.458.2">
+     Let’s see how these pieces tie together to create a new dataset in our pipeline that dynamically loads the data
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.459.1">
+      quality requirements:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.460.1">
+import dlt
+from pyspark.sql.functions import *
+RULES_TABLE = "&lt;catalog_name&gt;.&lt;schema_name&gt;.data_quality_rules"
+DATASET_NAME = "yellow_taxi_raw"
+@dlt.table(
+    comment="Randomly generated taxi trip data."
+</span><span class="koboSpan" id="kobo.460.2">)
+def yellow_taxi_raw():
+    path = "/tmp/chp_03/taxi_data"
+    schema = "trip_id INT, taxi_number INT, passenger_count INT, trip_amount FLOAT, trip_distance FLOAT, trip_date DATE"
+    return (spark.readStream
+                 .schema(schema)
+                 .format("json")
+                 .load(path))
+@dlt.table(
+    name="yellow_taxi_validated",
+    comment="A dataset containing trip data that has been validated.")
+@dlt.expect_all(compile_data_quality_rules(RULES_TABLE, DATASET_NAME))
+def yellow_taxi_validated():
+    return (
+        dlt.readStream("yellow_taxi_raw")
+           .withColumn("nyc_congestion_tax",
+                       expr("trip_amount * 0.05"))
+    )</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.461.1">
+     This design
+    </span>
+    <a id="_idIndexMarker169">
+    </a>
+    <span class="koboSpan" id="kobo.462.1">
+     pattern provides the flexibility to maintain
+    </span>
+    <a id="_idIndexMarker170">
+    </a>
+    <span class="koboSpan" id="kobo.463.1">
+     the data quality rules separately from the data pipeline definition so that non-technical individuals determine the data quality criteria.
+    </span>
+    <span class="koboSpan" id="kobo.463.2">
+     But what if we have a technical group of individuals who want to stay involved in the quality of the data passing through our data pipeline?
+    </span>
+    <span class="koboSpan" id="kobo.463.3">
+     Moreover, what if this group of individuals needs to be notified of poor-quality data so that they can intervene and even manually correct the data for the downstream processes to function?
+    </span>
+    <span class="koboSpan" id="kobo.463.4">
+     Let’s take a look at how we might implement such a recovery process in the next
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.464.1">
+      hands-on exercise.
+     </span>
+    </span>
+   </p>
+   <h1 id="_idParaDest-81">
+    <a id="_idTextAnchor101">
+    </a>
+    <span class="koboSpan" id="kobo.465.1">
+     Hands-on exercise – quarantining bad data for correction
+    </span>
+   </h1>
+   <p>
+    <span class="koboSpan" id="kobo.466.1">
+     In this example, we’re going to
+    </span>
+    <a id="_idIndexMarker171">
+    </a>
+    <span class="koboSpan" id="kobo.467.1">
+     build a conditional data flow for data that doesn’t meet our data quality requirements.
+    </span>
+    <span class="koboSpan" id="kobo.467.2">
+     This will allow us to isolate the data that violates our data quality rules so that we can take appropriate action later or even report on the data that violates the data
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.468.1">
+      quality constraints.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.469.1">
+     We’ll use the same Yellow Taxi Corporation example to illustrate building a data quarantine zone concept.
+    </span>
+    <span class="koboSpan" id="kobo.469.2">
+     Let’s start off with a bronze table that ingests the raw JSON data written to the DBFS location by the trip
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.470.1">
+      data generator:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.471.1">
+%py
+import dlt
+from pyspark.sql.functions import *
+@dlt.table(
+    name="yellow_taxi_raw",
+    comment="The randomly generated taxi trip dataset"
+)
+def yellow_taxi_raw():
+    path = "/tmp/chp_03/taxi_data"
+    schema = "trip_id INT, taxi_number INT, passenger_count INT, trip_amount FLOAT, trip_distance FLOAT, trip_date DATE"
+    return (spark.readStream
+                 .schema(schema)
+                 .format("json")
+                 .load(path))</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.472.1">
+     Next, let’s begin by defining a few data quality rules on incoming data.
+    </span>
+    <span class="koboSpan" id="kobo.472.2">
+     Let’s make sure that the trip data published to our DBFS location is sensible.
+    </span>
+    <span class="koboSpan" id="kobo.472.3">
+     We’ll ensure that the total fare amount is greater than $
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.473.1">
+      0
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.474.1">
+     and that the ride has at least
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.475.1">
+      1
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.476.1">
+     passenger, otherwise, we’ll quarantine the trip data for
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.477.1">
+      further review:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.478.1">
+data_quality_rules = {
+    "total_amount_assertion": "trip_amount &gt; 0.0",
+    "passenger_count": "passenger_count &gt;= 1"
+}</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.479.1">
+     Now, let’s apply the
+    </span>
+    <a id="_idIndexMarker172">
+    </a>
+    <span class="koboSpan" id="kobo.480.1">
+     two data quality rules to the incoming data by creating another dataset with a calculated column,
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.481.1">
+      is_valid
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.482.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.482.2">
+     This column will contain the results of the data quality rules evaluated for
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.483.1">
+      each row:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.484.1">
+@dlt.table(
+    name="yellow_taxi_validated",
+    comment="Validation table that applies data quality rules to the incoming data"
+)
+def yellow_taxi_validated():
+    return (
+        dlt.readStream("yellow_taxi_raw")
+           .withColumn("is_valid",
+                when(expr(" AND ".join(data_quality_rules.values())),
+                lit(True)).otherwise(lit(False)))
+    )</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.485.1">
+     Finally, we can use the
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.486.1">
+      is_valid
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.487.1">
+     calculated column to split the streaming table into two data flows – a data flow for all incoming data that has passed the data quality assertions and a separate data flow for the incoming data that
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.488.1">
+      has not.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.489.1">
+     Let’s define a
+    </span>
+    <a id="_idIndexMarker173">
+    </a>
+    <span class="koboSpan" id="kobo.490.1">
+     quarantine table in our data pipeline that will route the data according to the evaluated data
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.491.1">
+      quality rules:
+     </span>
+    </span>
+   </p>
+   <pre class="source-code"><span class="koboSpan" id="kobo.492.1">
+@dlt.table(
+    name="yellow_taxi_quarantine",
+    comment="A quarantine table for incoming data that has not met the validation criteria"
+)
+def yellow_taxi_quarantine():
+    return (
+        dlt.readStream("yellow_taxi_validated")
+           .where(expr("is_valid == False"))
+    )
+@dlt.table(
+    name="yellow_taxi_passing"
+)
+def yellow_taxi_passing():
+    return (
+        dlt.readStream("yellow_taxi_validated")
+           .where(expr("is_valid == True"))
+    )</span></pre>
+   <p>
+    <span class="koboSpan" id="kobo.493.1">
+     Finally, create a new
+    </span>
+    <a id="_idIndexMarker174">
+    </a>
+    <span class="koboSpan" id="kobo.494.1">
+     DLT pipeline using the new notebook as the source.
+    </span>
+    <span class="koboSpan" id="kobo.494.2">
+     Provide a meaningful name for the pipeline, such as
+    </span>
+    <span class="No-Break">
+     <strong class="source-inline">
+      <span class="koboSpan" id="kobo.495.1">
+       Chapter 3
+      </span>
+     </strong>
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.496.1">
+      Quarantining Invalid Data
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.497.1">
+     .
+    </span>
+    <span class="koboSpan" id="kobo.497.2">
+     Select
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.498.1">
+      Core
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.499.1">
+     as the product edition and
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.500.1">
+      Triggered
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.501.1">
+     as the execution mode.
+    </span>
+    <span class="koboSpan" id="kobo.501.2">
+     Next, select a target catalog and schema in Unity Catalog to store the pipeline datasets.
+    </span>
+    <span class="koboSpan" id="kobo.501.3">
+     Accept the remaining default values and click the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.502.1">
+      Create
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.503.1">
+     button to create the new DLT pipeline.
+    </span>
+    <span class="koboSpan" id="kobo.503.2">
+     Finally, click on the
+    </span>
+    <strong class="bold">
+     <span class="koboSpan" id="kobo.504.1">
+      Start
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.505.1">
+     button to trigger a new pipeline execution run.
+    </span>
+    <span class="koboSpan" id="kobo.505.2">
+     Notice how the data is split into two downstream tables – one table containing the rows that passed the data quality rules, and a quarantine table containing the rows that have failed the data
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.506.1">
+      quality rules.
+     </span>
+    </span>
+   </p>
+   <div>
+    <div class="IMG---Figure" id="_idContainer033">
+     <span class="koboSpan" id="kobo.507.1">
+      <img alt="Figure 3.7 – Data that fails data quality rules is split into a quarantine table" src="image/B22011_03_007.jpg"/>
+     </span>
+    </div>
+   </div>
+   <p class="IMG---Caption" lang="en-US" xml:lang="en-US">
+    <span class="koboSpan" id="kobo.508.1">
+     Figure 3.7 – Data that fails data quality rules is split into a quarantine table
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.509.1">
+     By implementing a
+    </span>
+    <a id="_idIndexMarker175">
+    </a>
+    <span class="koboSpan" id="kobo.510.1">
+     quarantine table, we can report on the real-time metrics so that stakeholders within our organization can be kept up to date on the quality of our incoming data.
+    </span>
+    <span class="koboSpan" id="kobo.510.2">
+     Furthermore, the data stewards of our lakehouse can review the data that has not passed the validation logic and even take appropriate action, such as manually correcting the
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.511.1">
+      invalid data.
+     </span>
+    </span>
+   </p>
+   <h1 id="_idParaDest-82">
+    <a id="_idTextAnchor102">
+    </a>
+    <span class="koboSpan" id="kobo.512.1">
+     Summary
+    </span>
+   </h1>
+   <p>
+    <span class="koboSpan" id="kobo.513.1">
+     In this chapter, we covered a lot of topics surrounding the data quality of the data in our lakehouse.
+    </span>
+    <span class="koboSpan" id="kobo.513.2">
+     We learned how the integrity of a table can be enforced using
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.514.1">
+      NOT NULL
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.515.1">
+     and
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.516.1">
+      CHECK
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.517.1">
+     constraints in Delta Lake.
+    </span>
+    <span class="koboSpan" id="kobo.517.2">
+     We also defined relationships between the tables in our lakehouse using
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.518.1">
+      PRIMARY KEY
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.519.1">
+     and
+    </span>
+    <strong class="source-inline">
+     <span class="koboSpan" id="kobo.520.1">
+      FOREIGN KEY
+     </span>
+    </strong>
+    <span class="koboSpan" id="kobo.521.1">
+     constraints.
+    </span>
+    <span class="koboSpan" id="kobo.521.2">
+     Next, we saw how we could enforce primary key uniqueness across our Delta tables using views to validate the data in our tables.
+    </span>
+    <span class="koboSpan" id="kobo.521.3">
+     We also saw just how easy it was to update the behavior of our data pipeline when incoming rows violated data quality constraints, allowing data engineering teams to react to downstream processes that have the potential to break from poor-quality data.
+    </span>
+    <span class="koboSpan" id="kobo.521.4">
+     Finally, we saw a practical example of how we can use expectations to create a conditional data flow in our pipeline, allowing our data stewards to quarantine and correct data that doesn’t meet the expected
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.522.1">
+      data quality.
+     </span>
+    </span>
+   </p>
+   <p>
+    <span class="koboSpan" id="kobo.523.1">
+     In the next chapter, we’re going to get into more advanced topics of maintaining data pipelines in production.
+    </span>
+    <span class="koboSpan" id="kobo.523.2">
+     We’ll see how we can tune many different aspects of data pipelines to scale to large volumes of data and meet real-time stream processing demands such as high throughput and
+    </span>
+    <span class="No-Break">
+     <span class="koboSpan" id="kobo.524.1">
+      low latency.
+     </span>
+    </span>
+   </p>
+  </div>
+ </body></html>
