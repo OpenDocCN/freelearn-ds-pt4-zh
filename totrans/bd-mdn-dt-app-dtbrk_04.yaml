@@ -283,6 +283,8 @@
   id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，你可以通过从 DLT UI 进入流水线设置，将流水线的自动扩展模式更新为 **ENHANCED**。现在我们已经将 DLT 流水线更新为使用增强型自动扩展，让我们执行流水线更新。进入新创建的数据流水线的
+    UI，在右上角选择 **Start** 按钮触发流水线更新。
 - en: Meanwhile, let’s also simulate spikes in processing demand using a random data
     generator. Import the data generator notebook, titled **Random Taxi Trip Data
     Generator.py** , from the chapter’s GitHub repository. As the name suggests, **Random
@@ -294,27 +296,34 @@
   id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 与此同时，我们也可以使用随机数据生成器来模拟处理需求的峰值。导入名为 **Random Taxi Trip Data Generator.py** 的数据生成器笔记本，该笔记本位于本章的
+    GitHub 仓库中。顾名思义，**Random Taxi Trip Data Generator.py** 将随机生成新的出租车行程数据，且数据的数量和频率各不相同，从而模拟生产环境中的典型工作负载。将该笔记本附加到一个多用途集群，并点击
+    **Run all** 按钮执行所有单元格。确保笔记本单元格都已成功完成。
 - en: Next, switch back to the DLT UI for the pipeline we created. We’ll monitor the
     event log of our pipeline to ensure that our DLT cluster will automatically increase
     the number of worker instances.
   id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，切换回我们创建的 DLT 流水线的 DLT UI。我们将监控流水线的事件日志，以确保我们的 DLT 集群会自动增加工作实例的数量。
 - en: '![Figure 4.1 – Autoscaling events will be recorded in the event log from the
     DLT UI](img/B22011_04_001.jpg)'
   id: totrans-37
   prefs: []
   type: TYPE_IMG
+  zh: '![图 4.1 – 自动扩展事件将记录在 DLT UI 的事件日志中](img/B22011_04_001.jpg)'
 - en: Figure 4.1 – Autoscaling events will be recorded in the event log from the DLT
     UI
   id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.1 – 自动扩展事件将记录在 DLT UI 的事件日志中
 - en: Similarly, monitor the event log to ensure that the DLT update cluster scales
     back down after the flow of additional data terminates and processing demand dwindles.
   id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样，监控事件日志，以确保在额外数据流结束并且处理需求减少后，DLT 更新集群能够自动缩小规模。
 - en: By now, you should have a strong foundation in understanding how DLT clusters
     scale up and down to accommodate the peaks and valleys in processing demands.
     As you can see, our DLT pipeline will only provision the compute it needs to efficiently
@@ -325,11 +334,14 @@
   id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 到现在为止，你应该已经对如何让 DLT 集群根据处理需求的波动自动扩展和收缩有了坚实的基础。如你所见，我们的 DLT 流水线只会配置它所需的计算资源，以高效地保持我们的数据集最新，然后释放额外的计算实例以降低我们的运营成本。接下来，让我们关注一下
+    DLT 系统自动为我们完成的其他效率优化任务，比如 DLT 系统如何自动维护底层 Delta 表的最佳状态。
 - en: Automated table maintenance tasks
   id: totrans-41
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 自动化的表格维护任务
 - en: As mentioned in previous chapters, each DLT pipeline will be associated with
     two clusters – one cluster for performing updates to each of the datasets in a
     pipeline definition, as well as another cluster for performing maintenance activities
@@ -699,6 +711,7 @@
   id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 优化Delta表格布局的一种方法是组织每个表格文件中的数据，以便在文件扫描操作期间可以高效读取。这通常被称为数据聚类。幸运的是，Delta Lake提供了一种数据聚类算法，称为Z-order聚类。Z-order聚类通过将相关数据聚集在一起，形成“Z”形模式来写入表格数据。根据这种模式存储表格数据，将提高DLT引擎跳过表格文件中不相关数据的概率，仅读取符合更新匹配条件的数据。
 - en: Traditionally, without Z-order clustering, Delta Lake will store the data in
     a linear pattern. As a result, during the update matching process, Delta Lake
     will need to open each file of the table and scan each of the rows in a linear
@@ -708,6 +721,7 @@
   id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 传统上，在没有Z-order聚类的情况下，Delta Lake将以线性模式存储数据。因此，在更新匹配过程中，Delta Lake需要打开表格的每个文件并以线性排序顺序扫描每一行。有时，只有一行可能匹配合并条件。反过来，DLT引擎将读取所有不匹配的多余行，最终也许只能找到1或2行匹配更新条件。
 - en: By clustering the data within a file using the Z-order clustering technique,
     the DLT engine can pinpoint where in a particular file the relevant data exists,
     limiting the amount of data that it must scan. For large tables that require a
@@ -715,16 +729,19 @@
   id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过使用Z-order聚类技术将文件中的数据进行聚类，DLT引擎可以准确定位特定文件中相关数据所在的位置，从而限制它必须扫描的数据量。对于需要大量扫描的大型表格，这可以显著提高DLT管道的更新过程。
 - en: '![Figure 4.6 – Z-order clustering data within table files can be visualized
     as data clusters forming “Z” shapes](img/B22011_04_006.jpg)'
   id: totrans-87
   prefs: []
   type: TYPE_IMG
+  zh: '![图4.6 – 表格文件中的Z-order聚类数据可以可视化为数据聚集形成“Z”形状](img/B22011_04_006.jpg)'
 - en: Figure 4.6 – Z-order clustering data within table files can be visualized as
     data clusters forming “Z” shapes
   id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 图4.6 – 表格文件中的Z-order聚类数据可以可视化为数据聚集形成“Z”形状
 - en: Z-order clustering can be enabled on DLT datasets by setting the appropriate
     table property within the dataset definition. Let’s look at how we might configure
     the Z -order clustering for our silver table, **yellow_taxi_transformed** , which
@@ -732,6 +749,7 @@
   id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过在数据集定义中设置适当的表格属性，可以启用DLT数据集上的Z-order聚类。让我们看看如何为我们接收大量更新的银表**yellow_taxi_transformed**配置Z-order聚类：
 - en: 'We first begin by defining the dataset like any dataset within our DLT pipelines.
     You’ll notice that we’ve included a name for the dataset, **yellow_taxi_transormed**
     , as well as a comment, which adds some descriptive text about the table. However,
@@ -745,6 +763,7 @@
   id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们首先像定义DLT管道中的任何数据集一样定义数据集。你会注意到，我们为数据集指定了一个名称**yellow_taxi_transformed**，并添加了一个注释，提供了一些关于表格的描述性文本。然而，在DLT功能注释中，我们添加了更多的参数，用于设置此数据集的表格属性。在表格属性参数中，我们添加了几个描述数据集的属性。首先，我们添加了一个表格属性，描述了此数据集的质量，这是我们在金字塔架构中的银表。接下来，我们还添加了另一个表格属性，指定我们希望应用Z-order聚类的表格列：
 - en: '[PRE7]'
   id: totrans-91
   prefs: []
@@ -756,6 +775,7 @@
   id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 在执行我们日常的维护任务时，维护任务将动态解析这些Z-order列，并将在该DLT数据集后面的基础Delta表上运行以下Z-order命令：
 - en: '[PRE8]'
   id: totrans-93
   prefs: []
@@ -769,6 +789,7 @@
   id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么，你应该根据哪些表列来进行 Z-order 排序，应该指定多少列呢？一个合适的范围是 1 到 3 列，最多不超过 5 列。随着你添加更多的列，会使得表文件内的数据聚类变得更复杂，从而降低可能发生的数据跳过效果。
 - en: Furthermore, you should strive to choose columns that are numerical in data
     type. The reason for this is that whenever new data is written to a Delta table,
     the Delta engine will capture statistical information about the first 32 columns
@@ -781,6 +802,7 @@
   id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，你应当尽量选择数据类型为数值型的列。原因在于，每当新数据写入 Delta 表时，Delta 引擎会捕捉前 32 列的统计信息——包括最小值、最大值和空值数量等列信息。这些统计信息将被用于更新搜索过程中，帮助有效地定位哪些行符合更新条件。对于字符串类型的数据，这些统计信息并不会提供太多有用的信息，因为例如没有一个“平均字符串”。然而，对于浮动数据类型的列，比如浮点数列，就可以计算出平均值。
 - en: In addition, columns that are used in **APPLY CHANGES** predicates, join columns,
     and columns where aggregations are performed all serve as ideal Z-order candidates.
     Lastly, these columns should have a higher cardinality than the columns used to
@@ -788,10 +810,12 @@
   id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，在**APPLY CHANGES**谓词中使用的列、连接列以及进行聚合操作的列，都是理想的 Z-order 排序候选列。最后，这些列的基数应该高于用于创建表分区方案的列。
 - en: Important note
   id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 重要提示
 - en: There may be times when you may want to experiment with different columns or
     a different set of columns to Z-order your table by. Changing this Z-order scheme
     is trivial – it’s as simple as updating the **table_properties** parameter in
@@ -805,6 +829,9 @@
   id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，你可能想尝试使用不同的列或不同的列集来进行 Z-order 排序。更改这个 Z-order 排序方案是非常简单的——只需更新 DLT 管道定义中的**table_properties**参数即可。然而，需要注意的是，新的
+    Z-order 聚类只会对写入表中的新数据生效。若要将新的 Z-order 聚类应用于现有数据，必须完全刷新整个表，以便根据聚类模式重新组织表文件。因此，你可能需要在重新写入表数据所需的时间和成本与表
+    Z-order 优化所带来的性能收益之间做出权衡。
 - en: As you can see by now, Z-order optimization is a great way to optimize the layout
     of your DLT tables to boost the performance of your data pipelines. Having an
     effective data layout can improve the data skipping of the DLT engine and limit
@@ -816,6 +843,8 @@
   id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如你现在看到的，Z-order 优化是优化 DLT 表布局的一个极佳方式，可以提升数据管道的性能。拥有有效的数据布局可以提高 DLT 引擎的数据跳过能力，限制
+    DLT 引擎在应用更新到数据管道中目标表时需要扫描的数据量。结合 Hive 风格的表分区，这是一种确保最大化数据管道性能的好方法，从而缩短执行时间，并减少维护更新集群的时间和成本。
 - en: However, what if you are only updating a small amount of data within a particular
     table file? That translates to rewriting an entire file for the sake of updating
     maybe 1 or 2 rows, for example. Let’s look at how we might be able to optimize
@@ -823,11 +852,13 @@
   id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果你只是在特定的表文件中更新少量数据呢？这意味着你需要重写整个文件，仅仅是为了更新例如 1 或 2 行。让我们看看如何进一步优化 DLT 管道的性能，以避免这种代价高昂的操作。
 - en: Improving write performance using deletion vectors
   id: totrans-101
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用删除向量提高写入性能
 - en: During a table update, the DLT engine applies the update by rewriting the matched
     file with the newly changed rows in the new, target file. In this type of table
     update strategy, known as **Copy-on-Write** ( **COW** ), the rows not receiving
@@ -837,6 +868,7 @@
   id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 在表格更新期间，DLT 引擎通过将匹配的文件与新更改的行写入新目标文件来应用更新。在这种表格更新策略中，称为**写时复制**（**COW**），没有接收到任何更新的行需要按名称所示被复制到新文件中。对于需要在多个文件中仅更改少量行的表更新，这种方式效率较低。
 - en: A better optimization technique would be to keep track of all the rows that
     have changed in a separate data structure and write the newly updated rows into
     separate file(s). Then, during a table query, the table client can use this data
@@ -845,6 +877,8 @@
   id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 一种更好的优化技术是将所有已更改的行跟踪到一个单独的数据结构中，并将更新后的行写入单独的文件中。然后，在查询表格时，表格客户端可以使用该数据结构来过滤掉任何已更新的行。这种技术称为**读取时合并**（**MOR**），并通过名为删除向量的功能在
+    Delta Lake 中实现。
 - en: '**Deletion vectors** are a special data structure that keeps track of all the
     row IDs that are updated during an **UPDATE** or **MERGE** operation on a Delta
     table. Deletion vectors can be enabled by setting a table property of the underlying
@@ -853,16 +887,20 @@
   id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: '**删除向量**是一种特殊的数据结构，用于跟踪在 Delta 表上的**更新**或**合并**操作中所有更新的行 ID。可以通过设置底层 Delta
+    表的表属性来启用删除向量。与 Delta 表列的统计信息类似，删除向量与表数据一起存储在云存储上。'
 - en: '![Figure 4.7 – Delta Lake tables will keep track of the row IDs of each row
     in a separate data structure](img/B22011_04_007.jpg)'
   id: totrans-105
   prefs: []
   type: TYPE_IMG
+  zh: '![图 4.7 – Delta Lake 表将跟踪每行的行 ID，并将其存储在单独的数据结构中](img/B22011_04_007.jpg)'
 - en: Figure 4.7 – Delta Lake tables will keep track of the row IDs of each row in
     a separate data structure
   id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.7 – Delta Lake 表将跟踪每行的行 ID，并将其存储在单独的数据结构中
 - en: Furthermore, deletion vectors can be automatically enabled by default for all
     new tables created within a Databricks workspace. A workspace administrator can
     enable or disable this behavior from the **Advanced** tab of the workspace admin
@@ -870,21 +908,25 @@
   id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，删除向量可以默认自动启用，适用于在 Databricks 工作区中创建的所有新表。工作区管理员可以在工作区管理员设置界面的**高级**选项卡中启用或禁用此行为。
 - en: "![Figure 4.8 – Deletion vectors can be automatically enabled in the \uFEFF\
     Databricks Data Intelligence Platform](img/B22011_04_008.jpg)"
   id: totrans-108
   prefs: []
   type: TYPE_IMG
+  zh: '![图 4.8 – 删除向量可以在 Databricks 数据智能平台中自动启用](img/B22011_04_008.jpg)'
 - en: Figure 4.8 – Deletion vectors can be automatically enabled in the Databricks
     Data Intelligence Platform
   id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.8 – 删除向量可以在 Databricks 数据智能平台中自动启用
 - en: 'Deletion vectors can be explicitly set on a dataset by setting the **enableDeletionVectors**
     table property in the DLT table definition:'
   id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以通过在 DLT 表定义中设置**enableDeletionVectors**表属性，显式地为数据集设置删除向量：
 - en: '[PRE9]'
   id: totrans-111
   prefs: []
@@ -899,6 +941,7 @@
   id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，删除向量在 Databricks 数据智能平台上解锁了一类新的更新性能特性，统称为**预测性 I/O**。预测性 I/O 利用深度学习和文件统计信息，准确预测与更新条件匹配的行在文件中的位置。因此，扫描匹配文件并在更新、合并和删除期间重写数据所需的时间大幅减少。
 - en: Hive-style table partitioning, Z-order data clustering, and deletion vectors
     are all great optimization techniques for efficiently storing our table data and
     improving the speed of our pipeline updates. Let’s turn our attention back to
@@ -908,11 +951,14 @@
   id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: Hive 风格的表分区、Z-order 数据聚类和删除向量都是非常好的优化技术，可以高效地存储我们的表数据，并提高管道更新的速度。让我们再次将注意力转向数据管道的计算资源，并分析另一种提高生产环境中
+    DLT 管道性能的技术，尤其是在处理需求可能激增并变得不可预测时。
 - en: Serverless DLT pipelines
   id: totrans-114
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 无服务器 DLT 管道
 - en: In [*Chapter 2*](B22011_02.xhtml#_idTextAnchor052) , we briefly described what
     serverless DLT clusters were and how they can quickly and efficiently scale computational
     resources up to handle spikes in demand, as well as scale down to save cloud costs.
@@ -922,6 +968,8 @@
   id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 [*第 2 章*](B22011_02.xhtml#_idTextAnchor052) 中，我们简要描述了无服务器 DLT 集群是什么以及它们如何快速高效地扩展计算资源以应对需求的激增，同时又能缩减规模以节省云成本。虽然我们不会再次讨论无服务器集群的架构，但我们将讨论无服务器
+    DLT 集群如何帮助组织在增加更多数据管道时扩展数据管道。
 - en: With serverless DLT clusters, the cluster infrastructure and settings are automatically
     handled by the Databricks cloud provider account. This translates to removing
     the burden of having to select VM instance types to balance performance with costs.
@@ -933,6 +981,9 @@
   id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用无服务器 DLT 集群时，集群的基础设施和设置由 Databricks 云服务提供商账户自动处理。这意味着无需选择虚拟机实例类型来平衡性能与成本。无服务器计算的费用是固定的、统一的定价，使得成本具有可预测性。此外，由于计算资源由
+    Databricks 云服务提供商账户管理，Databricks 可以通过每个云服务提供商以折扣价预留大量虚拟机实例。这些折扣价可以传递给无服务器 DLT
+    消费者。
 - en: Furthermore, serverless DLT clusters *simplify data pipeline maintenance* by
     reducing the amount of configuration that’s needed per data pipeline. With less
     configuration, data engineer teams can focus less on the maintenance of their
@@ -947,6 +998,8 @@
   id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，无服务器 DLT 集群通过减少每个数据管道所需的配置量，从而*简化数据管道维护*。配置的减少使得数据工程团队可以将精力从数据管道的维护中解放出来，更加专注于业务中的关键事项，例如修改业务逻辑、数据验证以及增加更多数据管道等。此外，随着数据管道的增长和数据集体积的不断增加，您可能需要配置更多的虚拟机实例。最终，您可能会遇到某些实例类型的云服务提供商限制，这时需要额外的流程去提高这些限制。使用无服务器
+    DLT 计算时，这些限制已经与云服务提供商协商过了，这意味着 DLT 无服务器消费者无需担心这一负担。
 - en: Serverless data pipelines can also help *reduce costs* for data pipelines. For
     example, with traditional, customer-managed compute, a cluster can only add additional
     VM instances as quickly as the cloud provider can provision additional instances
@@ -969,6 +1022,11 @@
   id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 无服务器数据管道还可以帮助*减少成本*。例如，在传统的客户管理计算中，集群只能按照云服务提供商能够提供额外实例的速度，快速增加虚拟机（VM）实例，并定期运行诊断检查。而且，Databricks
+    运行时容器和用户库需要安装到这些额外实例上，这会消耗更多时间。这可能导致很多分钟——有时会超过15分钟，具体取决于云服务提供商——才能扩展 DLT 集群以应对不可预测的计算需求峰值。因此，传统计算上运行的
+    DLT 管道与无服务器 DLT 集群相比，执行时间会显著更长。在无服务器 DLT 集群中，虚拟机实例已经预配置好，安装并启动了最新的 Databricks
+    运行时容器，并且在预分配的实例池中已经启动。在处理需求激增时，DLT 管道可以在几秒钟内响应额外资源以满足需求，而非几分钟。这些额外的分钟数在多个数据管道运行和整个云计费周期中会累计起来。通过缩短扩展所需的时间并通过增强的自动扩缩能力积极地进行缩减，无服务器
+    DLT 管道可以大幅降低运营成本，同时提高数据湖仓中 ETL 处理的效率。
 - en: Removing the infrastructure burden of managing compute settings for data pipelines
     as well as controlling cloud costs are great motivating factors behind choosing
     serverless DLT pipelines over traditional, customer-managed compute. However,
@@ -977,11 +1035,14 @@
   id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 移除管理数据管道计算设置的基础设施负担以及控制云成本，是选择无服务器 DLT（数据传输层）管道而非传统的客户管理计算的主要动因之一。然而，我们也可以看看选择无服务器
+    DLT 集群的另一个动因，比如这种计算资源所带来的性能特性。
 - en: Introducing Enzyme, a performance optimization layer
   id: totrans-120
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 引入 Enzyme，性能优化层
 - en: There may be certain scenarios where a data pipeline has been deployed into
     a production environment. However, down the road, there may be significant changes
     in the business requirements, requiring the datasets to be recomputed from scratch.
@@ -990,6 +1051,7 @@
   id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 在某些场景中，数据管道可能已经部署到生产环境中。然而，随着时间的推移，业务需求可能会发生重大变化，导致需要从头开始重新计算数据集。在这些场景下，重新计算这些数据集的历史数据可能会非常昂贵。
 - en: Enzyme, a brand-new optimization layer that is only available for serverless
     DLT pipelines, aims to reduce ETL costs by dynamically calculating a cost model
     for keeping the materialized results of a dataset up to date. Like the cost model
@@ -1003,16 +1065,22 @@
   id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: Enzyme 是一个全新的优化层，仅适用于无服务器 DLT 管道，旨在通过动态计算成本模型来保持数据集的物化结果最新，从而降低 ETL 成本。像 Spark
+    查询规划中的成本模型一样，Enzyme 会在多种 ETL 技术之间计算成本模型，从传统的 DLT 物化视图到 Delta 流表，再到另一个 Delta 流表，或手动
+    ETL 技术。例如，Enzyme 引擎可能会模拟使用物化技术刷新数据集的成本，这相当于 10 个 Spark 作业，每个作业包含 200 个 Spark 任务。这个成本模型可能会节省两次
+    Spark 作业，并预测另一种 ETL 技术会将整体执行时间减少五分钟，因此 Enzyme 引擎会选择第一种技术。
 - en: '![Figure 4.9 – The Enzyme optimization layer will automatically select the
     most cost-efficient ETL refresh technique using a cost model](img/B22011_04_009.jpg)'
   id: totrans-123
   prefs: []
   type: TYPE_IMG
+  zh: '![图 4.9 – Enzyme 优化层将使用成本模型自动选择最具成本效益的 ETL 刷新技术](img/B22011_04_009.jpg)'
 - en: Figure 4.9 – The Enzyme optimization layer will automatically select the most
     cost-efficient ETL refresh technique using a cost model
   id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.9 – Enzyme 优化层将使用成本模型自动选择最具成本效益的 ETL 刷新技术
 - en: The Enzyme layer will dynamically choose the most efficient and cost-effective
     method for recomputing the results for a given dataset at runtime. Since Enzyme
     is a serverless DLT feature, it is already enabled by default, removing the need
@@ -1020,17 +1088,21 @@
   id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: Enzyme 层将在运行时动态选择最有效且具成本效益的方法，以重新计算给定数据集的结果。由于 Enzyme 是一种无服务器 DLT 特性，它默认已启用，免去了
+    DLT 管理员管理管道集群设置的需求。
 - en: By now, you should understand the powerful features that come with serverless
     DLT pipelines, such as the Enzyme optimization layer, as well as the infrastructure
     management and cost-saving benefits.
   id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 到现在为止，您应该已经了解了无服务器 DLT 管道所带来的强大功能，例如 Enzyme 优化层，以及它的基础设施管理和节省成本的优势。
 - en: Summary
   id: totrans-127
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 概述
 - en: In this chapter, we looked at various methods for scaling our data pipelines
     to handle large volumes of data and perform well under periods of high and unpredictable
     processing demand. We looked at two attributes of scaling our DLT pipelines –
@@ -1045,6 +1117,8 @@
   id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们探讨了扩展数据管道以处理大规模数据并在高峰期和不可预测的处理需求下保持良好性能的各种方法。我们研究了扩展 DLT 管道的两个属性——计算和数据布局。我们考察了
+    Databricks 数据智能平台的增强型自动扩展特性，该特性可以自动扩展数据管道执行时的计算资源。我们还研究了优化底层表数据存储的方式，通过将相关数据聚类到表文件中，从而实现更快的表查询和更短的管道处理时间。此外，我们还探讨了定期的维护活动，以保持高性能的表查询，并防止过时数据文件导致的云存储成本膨胀。
 - en: Data security is of the utmost importance and is often overlooked until the
     end of a lakehouse implementation. However, this could mean the difference between
     a successful lakehouse and making the front page of a newspaper – and not for
@@ -1054,11 +1128,13 @@
   id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 数据安全至关重要，但常常在湖仓实施的最后阶段才被重视。然而，这可能意味着湖仓成功与否的差异，甚至可能成为新闻头条——而且并不是因为好消息。下一章中，我们将探讨如何在湖仓中有效实施强有力的数据治理，无论是在单一地理区域内，还是跨越全球不同地区的故障转移区域。
 - en: Part 2:Securing the Lakehouse Using the Unity Catalog
   id: totrans-130
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第二部分：使用 Unity Catalog 保护湖仓
 - en: In this part, we’ll explore how to implement an effective data governance strategy
     using the Unity Catalog in the Databricks Data Intelligence Platform. We’ll look
     at how you can enforce fine-grained data access policies across various roles
@@ -1068,25 +1144,31 @@
   id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本部分，我们将探讨如何在 Databricks 数据智能平台中使用 Unity Catalog 实现有效的数据治理策略。我们将讨论如何在组织中的不同角色和部门之间执行细粒度的数据访问策略。最后，我们将探讨如何追溯
+    Unity Catalog 中数据资产的来源，确保数据来自可信的来源。
 - en: 'This part contains the following chapters:'
   id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 本部分包含以下章节：
 - en: '[*Chapter 5*](B22011_05.xhtml#_idTextAnchor126) , *Mastering Data Governance
     in the Lakehouse* *with* *Unity Catalog*'
   id: totrans-133
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[*第五章*](B22011_05.xhtml#_idTextAnchor126)，*在湖仓中掌握数据治理* *与* *Unity Catalog*'
 - en: '[*Chapter 6*](B22011_06.xhtml#_idTextAnchor148) , *Managing Data Locations
     in Unity Catalog*'
   id: totrans-134
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[*第六章*](B22011_06.xhtml#_idTextAnchor148)，*在 Unity Catalog 中管理数据位置*'
 - en: '[*Chapter 7*](B22011_07.xhtml#_idTextAnchor165) , *Viewing Data Lineage Using
     Unity Catalog*'
   id: totrans-135
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[*第七章*](B22011_07.xhtml#_idTextAnchor165)，*使用 Unity Catalog 查看数据血缘*'
