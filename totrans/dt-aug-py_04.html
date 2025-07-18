@@ -1,0 +1,539 @@
+<html><head></head><body>
+		<div id="_idContainer105">
+			<h1 id="_idParaDest-82" class="chapter-number"><a id="_idTextAnchor082"/>4</h1>
+			<h1 id="_idParaDest-83"><a id="_idTextAnchor083"/>Image Augmentation for Segmentation</h1>
+			<p>Image segmentation, like image classification, is the cornerstone in the computer vision domain. Image segmentation involves grouping parts of an image that belong to the same object, also known as pixel-level classification. Unlike image classification, which identifies and predicts the subject or label of a photo, image segmentation determines whether a pixel belongs to a list of objects – for example, an urban photograph has streets, street signs, cars, trucks, bicycles, buildings, trees, and pedestrians. Image segmentation’s job is to decide whether this image pixel belongs to a car, tree, or <span class="No-Break">other objects.</span></p>
+			<p><strong class="bold">Deep learning</strong> (<strong class="bold">DL</strong>), an <strong class="bold">artificial neural network</strong> (<strong class="bold">ANN</strong>) algorithm, has made a tremendous breakthrough in image segmentation. For example, image segmentation in DL makes it possible for autonomous vehicles and <strong class="bold">Advanced Driver Assistance Systems</strong> (<strong class="bold">ADASes</strong>) to detect navigable surfaces or pedestrians. Many medical applications use segmentation for tumor boundary drawing or measuring tissue volumes, <span class="No-Break">for example.</span></p>
+			<p>The image augmentation methods for segmentation or classification are the same, except segmentation comes with an additional mask image or ground-truth image. Therefore, most of what we learned about augmenting images for classification in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a> applies to <span class="No-Break">augmenting segmentation.</span></p>
+			<p>This chapter aims to provide continuing geometric and photometric transformations for image segmentation. In particular, you will learn about the <span class="No-Break">following topics:</span></p>
+			<ul>
+				<li>Geometric and <span class="No-Break">photometric transformations</span></li>
+				<li>Real-world <span class="No-Break">segmentation datasets</span></li>
+				<li>Reinforcing your learning through <span class="No-Break">Python code</span></li>
+			</ul>
+			<p class="callout-heading">Fun fact</p>
+			<p class="callout">Image segmentation or semantic segmentation is used in many self-driving car AI controllers. It is used to identify objects and people on a street. Worldwide competition wins or losses primarily due to image segmentation augmentation techniques, such as the <em class="italic">Udacity and Lyft Perception Challenge</em> winner of the <em class="italic">Kaggle</em> competition, use random resized crop, horizontal flip, and random color jitter in brightness, contrast, <span class="No-Break">and saturation.</span></p>
+			<p>Let’s begin with the geometric and photometric transformations <span class="No-Break">for segmentation.</span></p>
+			<h1 id="_idParaDest-84"><a id="_idTextAnchor084"/>Geometric and photometric transformations</h1>
+			<p>As <a id="_idIndexMarker378"/>discussed in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>, geometric <a id="_idIndexMarker379"/>transformations alter a picture’s geometry, such as by flipping, cropping, padding, rotating, or <a id="_idIndexMarker380"/>resizing it. For segmentation, when <a id="_idIndexMarker381"/>horizontally <strong class="bold">flipping</strong> an image, the same must be done for the mask. Pluto will show you how to flip an original and accompanying mask image; here is a <span class="No-Break">sneak peek:</span></p>
+			<div>
+				<div id="_idContainer079" class="IMG---Figure">
+					<img src="image/B17990_04_01.jpg" alt="Figure 4.1 – Image segmentation horizontal flip"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.1 – Image segmentation horizontal flip</p>
+			<p>Many of the <strong class="bold">safe</strong> values discussed in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a> stay mostly the same. For example, if the picture’s subject is people or an urban cityscape, the classification augmentation can’t flip vertically because the prediction of people’s age or the city’s name relies on the picture not being upside down. However, segmentation aims to group or draw an outline of the people or cars. Thus, vertical flipping <span class="No-Break">is acceptable.</span></p>
+			<p>The safe range needs further investigation for many real-world applications. For example, for self-driving automobiles, what if you are in a car accident and your vehicle is upside down? Does the AI still need to classify its <span class="No-Break">surroundings correctly?</span></p>
+			<p>Photometric transformations, such as brightness, saturation, contrast, hue shifting, and FancyPCA, are more problematic to apply to segmentation because the original image is distorted but not the mask image. The big question is, would augmenting the original but not the mask image increase the <span class="No-Break">prediction’s accuracy?</span></p>
+			<p><strong class="bold">Noise injection</strong>, <strong class="bold">random erasing</strong>, <strong class="bold">snow</strong>, and <strong class="bold">rain</strong> transformations are not applicable to segmentation because they introduce new pixels. The mask image can’t compensate<a id="_idIndexMarker382"/> for the replacement pixels. Similarly, blurring or <a id="_idIndexMarker383"/>embossing filters are not suitable for segmentation. In the <strong class="source-inline">Albumentations</strong> library, 37 transformations are defined as safe for distorting both original and <span class="No-Break">mask images.</span></p>
+			<p>Technically, you<a id="_idIndexMarker384"/> can use photometric transformations for segmentation with Python code, but it is wise to research published scholarly papers<a id="_idIndexMarker385"/> for confirmation. The golden augmentation rule that we discussed in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a> is applied here as well – you select a filter that improves the prediction accuracy described in a published <span class="No-Break">academic paper.</span></p>
+			<p>Learning by using Python code is another angle you can use to understand image segmentation. However, before we do that, let’s ask Pluto to download a few real-world segmentation datasets <span class="No-Break">from Kaggle.</span></p>
+			<h1 id="_idParaDest-85"><a id="_idTextAnchor085"/>Real-world segmentation datasets</h1>
+			<p>The <em class="italic">Kaggle</em> website <a id="_idIndexMarker386"/>is an online community platform for data scientists and ML devotees. It contains thousands of real-world datasets, as mentioned in <em class="italic">Chapters 1</em>, <em class="italic">2</em>, <span class="No-Break">and </span><span class="No-Break"><em class="italic">3</em></span><span class="No-Break">.</span></p>
+			<p>When searching <a id="_idIndexMarker387"/>for image segmentation datasets, Pluto found about 500 useable real-world segmentation datasets. The topics range from self-driving automobiles and medicine to micro-fossils. Pluto picked two segmentation datasets from popular <span class="No-Break">market segments.</span></p>
+			<p>The other consideration is that the image type must be easy to work with in the Albumentations library. Pluto uses<a id="_idIndexMarker388"/> the <strong class="bold">PIL</strong> and <strong class="bold">NumPy</strong> libraries<a id="_idIndexMarker389"/> to read and convert the photos into a three-dimensional array. The original image’s <strong class="bold">shape</strong> is (width, height, and depth), where depth is usually equal to three. The mask image’s <strong class="bold">shape</strong> is (width, height), where the value is 0, 1, 2, and so on up to the number <span class="No-Break">of labels.</span></p>
+			<p class="callout-heading">Fun fact</p>
+			<p class="callout">The PIL library can read image formats such as <strong class="source-inline">.jpg</strong>, <strong class="source-inline">.gif</strong>, <strong class="source-inline">.tiff</strong>, <strong class="source-inline">.png</strong>, and about 50 other image formats. Still, sometimes, the real-world segmentation datasets come with an image format that PIL can’t read. In those cases, Pluto relies on the Python <strong class="bold">ImageIO</strong> library, which<a id="_idIndexMarker390"/> can read over 100 <span class="No-Break">image types.</span></p>
+			<p>The two<a id="_idIndexMarker391"/> selected segmentation datasets are <span class="No-Break">as follows:</span></p>
+			<ul>
+				<li>The <em class="italic">Cambridge-Driving Labeled Video (CamVid)</em> database is the first real-world segmentation dataset. The context on the <em class="italic">Kaggle</em> website is <span class="No-Break">as follows:</span></li>
+			</ul>
+			<p>“<em class="italic">The Cambridge-Driving Labeled Video Database (CamVid) provides ground truth labels that associate each pixel with one of 32 semantic classes. This dataset is often used in (real-time) semantic segmentation research.</em>”</p>
+			<p>It was published in 2020 by the <strong class="bold">University of Cambridge</strong>, and the license is <strong class="bold">CC BY-NC-SA 4.0</strong>: <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">https://creativecommons.org/licenses/by-nc-sa/4.0/</a>.</p>
+			<ul>
+				<li>The second real-world dataset is called <em class="italic">Semantic segmentation of aerial imagery</em>. The description from the <em class="italic">Kaggle</em> website is <span class="No-Break">as follows:</span></li>
+			</ul>
+			<p>“<em class="italic">The dataset consists of aerial imagery of Dubai obtained by MBRSC satellites and annotated with pixel-wise semantic segmentation in 6 classes. The total volume of the dataset is 72 images grouped into 6 larger tiles.</em>”</p>
+			<p>It was published in 2020 by the <strong class="bold">Roia Foundation in Syria</strong>, and the license is <strong class="bold">CC0: Public Domain</strong>: <a href="https://creativecommons.org/publicdomain/zero/1.0/">https://creativecommons.org/publicdomain/zero/1.0/</a>.</p>
+			<p>After selecting the two segmentation datasets, the following four steps should be familiar to you by now. Review <em class="italic">Chapters 2</em> and <em class="italic">3</em> if you need clarification. The steps are <span class="No-Break">as follows:</span></p>
+			<ol>
+				<li>Retrieve the Python Notebook <span class="No-Break">and Pluto.</span></li>
+				<li>Download <span class="No-Break">real-world data.</span></li>
+				<li>Load the data <span class="No-Break">into pandas.</span></li>
+				<li>View the <span class="No-Break">data images.</span></li>
+			</ol>
+			<p class="callout-heading">Fun challenge</p>
+			<p class="callout">Find and download two additional image segmentation datasets from the <em class="italic">Kaggle</em> website or other sources. <em class="italic">Kaggle</em> competitions and data consist of hundreds of image segmentation datasets. Thus, finding image segmentation datasets that are meaningful to you or your job shouldn’t be challenging. Hint: use Pluto’s <strong class="source-inline">fetch_kaggle_dataset()</strong> <strong class="source-inline">or</strong> <span class="No-Break"><strong class="source-inline">fetch_kaggle_comp_data()</strong></span><span class="No-Break"> function.</span></p>
+			<p>Let’s start <span class="No-Break">with Pluto.</span></p>
+			<h2 id="_idParaDest-86"><a id="_idTextAnchor086"/>Python Notebook and Pluto</h2>
+			<p>Start by loading the <strong class="source-inline">data_augmentation_with_python_chapter_4.ipynb</strong> file into <a id="_idIndexMarker392"/>Google Colab or your chosen Jupyter Notebook or JupyterLab environment. From this point onward, the code snippets will be from the Python Notebook, which contains the <span class="No-Break">complete functions.</span></p>
+			<p>Next, you must clone the repository and use the <strong class="source-inline">%run</strong> command to <span class="No-Break">start Pluto:</span></p>
+			<pre class="source-code">
+<strong class="bold"># clone the github</strong>
+!git clone 'https://github.com/PacktPublishing/Data-Augmentation-with-Python'
+<strong class="bold"># instantiate Pluto</strong>
+%run 'Data-Augmentation-with-Python/pluto/pluto_chapter_3.py'</pre>
+			<p>The output will be as follows <span class="No-Break">or similar:</span></p>
+			<pre class="console">
+---------------------------- : ---------------------------
+            Hello from class : &lt;class '__main__.PacktDataAug'&gt; Class: PacktDataAug
+                   Code name : Pluto
+                   Author is : Duc Haba
+---------------------------- : ---------------------------
+                fastai 2.6.3 :  actual 2.7.9
+---------------------------- : ---------------------------
+        albumentations 1.2.1 : actual 1.2.1
+---------------------------- : ---------------------------</pre>
+			<p>Double-check that Pluto has <span class="No-Break">loaded correctly:</span></p>
+			<pre class="source-code">
+<strong class="bold"># display Python and libraries version number</strong>
+pluto.say_sys_info()</pre>
+			<p>The output will be as follows or something similar, depending on <span class="No-Break">your system:</span></p>
+			<pre class="console">
+---------------------------- : ---------------------------
+                 System time : 2022/10/21 15:46
+                    Platform : linux
+     Pluto Version (Chapter) : 3.0
+       Python version (3.7+) : 3.7.13 (default, Apr 24 2022, 01:04:09) [GCC 7.5.0]
+            PyTorch (1.11.0) : actual: 1.12.1+cu113
+              Pandas (1.3.5) : actual: 1.3.5
+                 PIL (9.0.0) : actual: 7.1.2
+          Matplotlib (3.2.2) : actual: 3.2.2
+                   CPU count : 2
+                  CPU speed : NOT available
+---------------------------- : ---------------------------</pre>
+			<p>Pluto has verified that the Python Notebook is working correctly. The next step is downloading real-world image datasets <span class="No-Break">from Kaggle.</span></p>
+			<h2 id="_idParaDest-87"><a id="_idTextAnchor087"/>Real-world data</h2>
+			<p>The <a id="_idIndexMarker393"/>following download function is from <a href="B17990_02.xhtml#_idTextAnchor038"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>. Pluto has reused <span class="No-Break">this here:</span></p>
+			<pre class="source-code">
+<strong class="bold"># Fetch Camvid photo</strong>
+url = 'https://www.kaggle.com/datasets/carlolepelaars/camvid'
+pluto.fetch_kaggle_dataset(url)
+<strong class="bold"># Fetch Aerial image</strong>
+url = 'https://www.kaggle.com/datasets/humansintheloop/semantic-segmentation-of-aerial-imagery'
+pluto.fetch_kaggle_dataset(url)</pre>
+			<p>Before viewing the downloaded photos, Pluto needs to load the information into a <span class="No-Break">pandas DataFrame.</span></p>
+			<h2 id="_idParaDest-88"><a id="_idTextAnchor088"/>Pandas</h2>
+			<p>A few cleanup <a id="_idIndexMarker394"/>tasks need to be done here, such as replacing a space character with an underscore character in the directories or filenames and separating original and mask images. After the cleanup, Pluto reuses the <strong class="source-inline">make_dir_dataframe()</strong> function to read the original image data into a pandas DataFrame. The command for the CamVid data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># import data to Pandas</strong>
+f = 'kaggle/camvid/CamVid/train'
+pluto.df_camvid = pluto.make_dir_dataframe(f)</pre>
+			<p>The output of the first three records is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer080" class="IMG---Figure">
+					<img src="image/B17990_04_02.jpg" alt="Figure 4.2 – CamVid pandas DataFrame, first three rows"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.2 – CamVid pandas DataFrame, first three rows</p>
+			<p>The mask images are in a different folder, and the mask image’s name has <strong class="source-inline">_L</strong> appended to <span class="No-Break">the filename.</span></p>
+			<p>The<a id="_idIndexMarker395"/> primary reason for Pluto using pandas is that adding a new column for the matching mask and original filename is a trivial task. There are only two key code lines. The first is in the helper function to generate the correct mask image path, while the second is to create a new column for applying the helper function. The code for this is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># define helper function</strong>
+@add_method(PacktDataAug)
+def _make_df_mask_name(self,fname):
+  p = pathlib.Path(fname)
+  return (str(p.parent.parent) +
+    '/' + str(p.parent.name) + '_labels/' +
+    str(p.stem) + '_L' + str(p.suffix))
+<strong class="bold"># method definition</strong>
+@add_method(PacktDataAug)
+def make_df_mask_name(self,df):
+  df['mask_name'] = df.fname.apply(self._make_df_mask_name)
+  return</pre>
+			<p>The command to complete the CamVid DataFrame is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># create mask file name</strong>
+pluto.make_df_mask_name(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer081" class="IMG---Figure">
+					<img src="image/B17990_04_03.jpg" alt="Figure 4.3 – Complete CamVid DataFrame, first three rows"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.3 – Complete CamVid DataFrame, first three rows</p>
+			<p>Once Pluto<a id="_idIndexMarker396"/> has gathered all the information squared away in the DataFrame, the next step is to display the original and <span class="No-Break">mask images.</span></p>
+			<h2 id="_idParaDest-89"><a id="_idTextAnchor089"/>Viewing data images</h2>
+			<p>Pluto <a id="_idIndexMarker397"/>could reuse the <strong class="source-inline">draw_batch()</strong> function from <a href="B17990_02.xhtml#_idTextAnchor038"><span class="No-Break"><em class="italic">Chapter 2</em></span></a> to display the original and mask images in separate batches, but the result does not reinforce the combination of original and mask images. Therefore, Pluto will hack the <strong class="source-inline">draw_batch()</strong> method and create a new <strong class="source-inline">draw_batch_segmentation()</strong> and a helper function <span class="No-Break">called </span><span class="No-Break"><strong class="source-inline">_draw_batch_segmentation()</strong></span><span class="No-Break">.</span></p>
+			<p>The result shows the original image, then the mask image, and repeats this process. The command for displaying the CamVid segmentation photos is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use new batch display method for segmentation</strong>
+pluto.draw_batch_segmentation(pluto.df_camvid,
+  is_shuffle=True)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer082" class="IMG---Figure">
+					<img src="image/B17990_04_04.jpg" alt="Figure 4.4 – CamVid’s original and mask image batch"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.4 – CamVid’s original and mask image batch</p>
+			<p>The segmentation batch looks correct, so Pluto repeats the same process for the aerial <span class="No-Break">segmentation data.</span></p>
+			<p>Download <a id="_idIndexMarker398"/>the data with the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+<strong class="bold"># fetch real-world data</strong>
+url = 'https://www.kaggle.com/datasets/humansintheloop/semantic-segmentation-of-aerial-imagery'
+pluto.fetch_kaggle_dataset(url)</pre>
+			<p>Clean the directory and filenames, then import them into pandas with the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+<strong class="bold"># import to Pandas</strong>
+f = 'kaggle/semantic-segmentation-of-aerial-imagery'
+pluto.df_aerial = pluto.make_dir_dataframe(f)</pre>
+			<p>The output for the first five records is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer083" class="IMG---Figure">
+					<img src="image/B17990_04_05.jpg" alt="Figure 4.5 – Aerial pandas DataFrame, first three rows"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.5 – Aerial pandas DataFrame, first three rows</p>
+			<p>Add the <a id="_idIndexMarker399"/>mask’s filename using the new help function, <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># create mask filename</strong>
+pluto.make_df_mask_name_aerial(pluto.df_aerial)</pre>
+			<p>The output for the first three records is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer084" class="IMG---Figure">
+					<img src="image/B17990_04_06.jpg" alt="Figure 4.6 – Complete aerial DataFrame, first three rows"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.6 – Complete aerial DataFrame, first three rows</p>
+			<p>Display the segmentation image batch with the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+<strong class="bold"># draw batch image</strong>
+pluto.draw_batch_segmentation(pluto.df_aerial,
+  is_shuffle=True)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer085" class="IMG---Figure">
+					<img src="image/B17990_04_07.jpg" alt="Figure 4.7 – Aerial pandas DataFrame, first five rows"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.7 – Aerial pandas DataFrame, first five rows</p>
+			<p class="callout-heading">Fun challenge</p>
+			<p class="callout">Here is a thought experiment: given an image dataset, how do you create the mask for the photos? Hint: you could use fancy image software to auto-trace the objects or outlines, then label them. The other options are Mechanical Turk or crowd-sourced. You should think about cost <span class="No-Break">versus time.</span></p>
+			<p>Pluto has <a id="_idIndexMarker400"/>successfully downloaded and displayed the CamVid and aerial segmentation photos. Now, let’s do some image augmentation <span class="No-Break">with Python.</span></p>
+			<h1 id="_idParaDest-90"><a id="_idTextAnchor090"/>Reinforcing your learning</h1>
+			<p>The same <a id="_idIndexMarker401"/>concepts for classification image transformations apply to segmentation image transformations. Here, Pluto reuses or slightly hacks the wrapper functions in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>. In particular, Pluto hacks the following methods <span class="No-Break">for segmentation:</span></p>
+			<ul>
+				<li><span class="No-Break">Horizontal flip</span></li>
+				<li><span class="No-Break">Vertical flip</span></li>
+				<li><span class="No-Break">Rotating</span></li>
+				<li>Random resizing <span class="No-Break">and cropping</span></li>
+				<li><span class="No-Break">Transpose</span></li>
+				<li><span class="No-Break">Lighting</span></li>
+				<li><span class="No-Break">FancyPCA</span></li>
+			</ul>
+			<p class="callout-heading">Fun fact</p>
+			<p class="callout">You can’t complete or understand this chapter unless you have read <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>. This is because Pluto reuses or slightly modifies the existing image augmentation <span class="No-Break">wrapper functions.</span></p>
+			<p>Pluto chose these filters because the Albumentations library marked them as <strong class="bold">safe</strong> for segmentation. So, let’s start with <span class="No-Break">horizontal flip.</span></p>
+			<h2 id="_idParaDest-91"><a id="_idTextAnchor091"/>Horizontal flip</h2>
+			<p>Pluto<a id="_idIndexMarker402"/> demonstrated horizontal flip using the PIL library in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a> because the code is easy to understand. Thus, he will hack <strong class="source-inline">draw_image_flip_pil()</strong> into the <strong class="source-inline">draw_image_flip_pil_segmen()</strong> function. The transformation code is the same – that is, <strong class="source-inline">PIL.ImageOps.mirror(img)</strong>. The change is to display the images next to <span class="No-Break">each other.</span></p>
+			<p>The command for flipping an image in the CamVid dataset in the Python Notebook is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use wrapper function to flip image</strong>
+pluto.draw_image_flip_pil_segmen(pluto.df_camvid.fname[0])</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer086" class="IMG---Figure">
+					<img src="image/B17990_04_08.jpg" alt="Figure 4.8 – Flipping an image using the PIL library"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.8 – Flipping an image using the PIL library</p>
+			<p>Pluto<a id="_idIndexMarker403"/> uses the same function for the mask image and passes the <strong class="source-inline">mask_image</strong> column into the pandas DataFrame. It is that easy. Pluto has to transform the original and mask images with the <span class="No-Break">same filter.</span></p>
+			<p>The command for flipping the mask image is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use wrapper function to flip image mask</strong>
+pluto.draw_image_flip_pil_segmen(pluto.df_camvid.mask_name[0]</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer087" class="IMG---Figure">
+					<img src="image/B17990_04_09.jpg" alt="Figure 4.9 – Flipping the mask using the PIL library"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.9 – Flipping the mask using the PIL library</p>
+			<p class="callout-heading">Fun fact</p>
+			<p class="callout">Pluto only shows relevant code snippets in this book, but the fully functional object-oriented methods can be found in the Python Notebook. The code for this chapter looks remarkably similar to the code for <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>. Pluto designed the software architecture using the principle layout provided in <a href="B17990_01.xhtml#_idTextAnchor016"><span class="No-Break"><em class="italic">Chapter 1</em></span></a>. Thus, the code looks clean but contains high complexity under <span class="No-Break">the hood.</span></p>
+			<p>Under the <a id="_idIndexMarker404"/>hood, a color image is a three-dimensional array or <a id="_idIndexMarker405"/>a <strong class="bold">Rank 3 tensor</strong>. The image’s shape is (width, height, and depth), where depth is usually equal to three, while the mask image’s shape is (width, height), where the value is 0, 1, 2, and so on up to the number of labels. Therefore, mirroring a <strong class="bold">Rank 3 tensor</strong> follows the same operation<a id="_idIndexMarker406"/> as mirroring a <strong class="bold">Rank </strong><span class="No-Break"><strong class="bold">1 tensor</strong></span><span class="No-Break">.</span></p>
+			<p>For the Albumentations library, the wrapper function for segmentation is as simple as the one provided in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>. The code for the <strong class="source-inline">draw_image_flip_segmen()</strong> method is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># method definition</strong>
+@add_method(PacktDataAug)
+def draw_image_flip_segmen(self,df):
+  aug_album = albumentations.HorizontalFlip(p=1.0)
+  self._draw_image_album_segmentation(df,aug_album,
+    'Horizontal Flip')
+  return</pre>
+			<p>It is the same as the <strong class="source-inline">draw_image_flip()</strong> function that we provided in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>. The difference is that a different helper function is used. Instead of using the <strong class="source-inline">_draw_image_album()</strong> helper function, it uses the <span class="No-Break"><strong class="source-inline">_draw_image_album_segmentation()</strong></span><span class="No-Break"> method.</span></p>
+			<p>The command for performing a horizontal flip on the CamVid segmentation data in the Python Notebook is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use wrapper function to flip both image and image mask</strong>
+pluto.draw_image_flip_segmen(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer088" class="IMG---Figure">
+					<img src="image/B17990_04_10.jpg" alt="Figure 4.10 – Horizontal flip on the CamVid dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.10 – Horizontal flip on the CamVid dataset</p>
+			<p>The command<a id="_idIndexMarker407"/> for performing a horizontal flip on the aerial segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use the same flip segmentation wrapper function on arial</strong>
+pluto.draw_image_flip_segmen(pluto.df_aerial)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer089" class="IMG---Figure">
+					<img src="image/B17990_04_11.jpg" alt="Figure 4.11 – Horizontal flip on the aerial dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.11 – Horizontal flip on the aerial dataset</p>
+			<p>Like in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>, the wrapper functions in this chapter randomly select a new image batch <span class="No-Break">every time.</span></p>
+			<p class="callout-heading">Fun challenge</p>
+			<p class="callout">Here is a thought experiment: how can you use image segmentation to support environmental organizations such as a wildlife conservation group? Hint: consider how customs agents can spot people selling parts of an endangered species, such as elephant ivory or saga horn, in an open market using their<a id="_idIndexMarker408"/> iPhones or <strong class="bold">Close-Circuit Television</strong> (<strong class="bold">CCTV</strong>) <span class="No-Break">monitoring system.</span></p>
+			<p>Pluto completes the flipping transformation with the vertical <span class="No-Break">flip filter.</span></p>
+			<h2 id="_idParaDest-92"><a id="_idTextAnchor092"/>Vertical flip</h2>
+			<p>The vertical flip<a id="_idIndexMarker409"/> wrapper function is almost the same as the horizontal flip method. Pluto could write one uber function instead of each wrapper method individually. Still, the goal is to explain each transformation, not refactor it into more compact or efficient code. The key code line for the wrapper function is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use albumentations library function</strong>
+aug_album = albumentations.Flip(p=1.0)</pre>
+			<p>The command for performing a vertical flip on the CamVid segmentation data in the Python Notebook is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use flip wrapper function for camvid data</strong>
+pluto.draw_image_flip_both_segmen(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer090" class="IMG---Figure">
+					<img src="image/B17990_04_12.jpg" alt="Figure 4.12 – Vertical flip on the CamVid dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.12 – Vertical flip on the CamVid dataset</p>
+			<p>The <a id="_idIndexMarker410"/>command for performing a vertical flip on the aerial segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use flip wrapper function for aerial image</strong>
+pluto.draw_image_flip_both_segmen(pluto.df_aerial)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer091" class="IMG---Figure">
+					<img src="image/B17990_04_13.jpg" alt="Figure 4.13 – Vertical flip on the aerial dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.13 – Vertical flip on the aerial dataset</p>
+			<p>That concludes flipping. Now, let’s look <span class="No-Break">at rotating.</span></p>
+			<h2 id="_idParaDest-93"><a id="_idTextAnchor093"/>Rotating</h2>
+			<p>The<a id="_idIndexMarker411"/> rotating safe parameter can go 45 degrees clockwise or counter-clockwise in direction. The Albumentations method is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use albumentation library function for rotating</strong>
+aug_album = albumentations.Rotate(limit=45, p=1.0)</pre>
+			<p>The command for rotating the CamVid segmentation data in the Python Notebook is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use rotate wrapper function for camvid image</strong>
+pluto.draw_image_rotate_segmen(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer092" class="IMG---Figure">
+					<img src="image/B17990_04_14.jpg" alt="Figure 4.14 – Rotating the CamVid dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.14 – Rotating the CamVid dataset</p>
+			<p>The command for rotating the aerial segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use rotate wrapper function for aerial image</strong>
+pluto.draw_image_rotate_segmen(pluto.df_aerial)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer093" class="IMG---Figure">
+					<img src="image/B17990_04_15.jpg" alt="Figure 4.15 – Rotating the aerial dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.15 – Rotating the aerial dataset</p>
+			<p>The next filter <a id="_idIndexMarker412"/>is resizing <span class="No-Break">and cropping.</span></p>
+			<h2 id="_idParaDest-94"><a id="_idTextAnchor094"/>Resizing and cropping</h2>
+			<p>The <a id="_idIndexMarker413"/>classification model aims to identify the subject, while the <a id="_idIndexMarker414"/>segmentation model groups object per pixel. Hence, cropping and resizing are acceptable transformations at relatively higher safe parameters. The key code line for the wrapper function is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use albumentations function for resizing and cropping</strong>
+aug_album = albumentations.RandomSizedCrop(
+  min_max_height=(500, 600),
+  height=500,
+  width=500,
+  p=1.0)</pre>
+			<p>The command for randomly resizing and cropping the CamVid segmentation data in the Python Notebook is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use resize and crop wrapper functiion for camvid photo</strong>
+pluto.draw_image_resize_segmen(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer094" class="IMG---Figure">
+					<img src="image/B17990_04_16.jpg" alt="Figure 4.16 – Resizing and cropping the CamVid dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.16 – Resizing and cropping the CamVid dataset</p>
+			<p>The <a id="_idIndexMarker415"/>command for randomly resizing and cropping the aerial <a id="_idIndexMarker416"/>segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use resize and crop wrapper functiion for aerialphoto</strong>
+pluto.draw_image_resize_segmen(pluto.df_aerial)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer095" class="IMG---Figure">
+					<img src="image/B17990_04_17.jpg" alt="Figure 4.17 – Resizing and cropping the aerial dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.17 – Resizing and cropping the aerial dataset</p>
+			<p>Next, we’ll cover the <span class="No-Break">transpose filter.</span></p>
+			<h2 id="_idParaDest-95"><a id="_idTextAnchor095"/>Transpose</h2>
+			<p>Pluto didn’t use<a id="_idIndexMarker417"/> a transpose filter in <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a> for classification, but it is permissible for segmentation. Transposing involves switching the <em class="italic">x axis</em> with the <em class="italic">y axis</em>. The key code line for the wrapper function is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use albumentations library for transpose</strong>
+aug_album = albumentations.Transpose(p=1.0)</pre>
+			<p>The command for transposing the CamVid segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use transpose wrapper function for camvid data</strong>
+pluto.draw_image_transpose_segmen(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer096" class="IMG---Figure">
+					<img src="image/B17990_04_18.jpg" alt="Figure 4.18 – Transposing the CamVid dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.18 – Transposing the CamVid dataset</p>
+			<p>The command for transposing the aerial segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use transpose wrapper function for aerial data</strong>
+pluto.draw_image_transpose_segmen(pluto.df_aerial)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer097" class="IMG---Figure">
+					<img src="image/B17990_04_19.jpg" alt="Figure 4.19 – Transposing the aerial dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.19 – Transposing the aerial dataset</p>
+			<p class="callout-heading">Fun challenge</p>
+			<p class="callout">Implement optical distortion in the Python Notebook. Hint: use a similar Pluto wrapper function to the Albumentations library function’s <span class="No-Break"><strong class="source-inline">albumentations.OpticalDistortion()</strong></span><span class="No-Break"> method.</span></p>
+			<p>Transpose<a id="_idIndexMarker418"/> is the last example Pluto uses for geometric transformations. Lighting, also known as brightness, belongs to the photometric <span class="No-Break">transformations class.</span></p>
+			<h2 id="_idParaDest-96"><a id="_idTextAnchor096"/>Lighting</h2>
+			<p>Lighting <a id="_idIndexMarker419"/>or brightness is acceptable for segmentation in the Albumentations library, but it belongs to the photometric transformations class. The original image changes to a random brightness level up to a safe level, but the mask image will not change. For both datasets, the safe parameter is a brightness of 0.5. The key code line in the wrapper function is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use albumentations library for brightness</strong>
+aug_album = albumentations.ColorJitter(
+  brightness=brightness,
+  contrast=0.0,
+  saturation=0.0,
+  hue=0.0,
+  always_apply=True,
+  p=1.0)</pre>
+			<p>The command<a id="_idIndexMarker420"/> for using lighting on the CamVid segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use the brightmess wrapper function for camvid image</strong>
+pluto.draw_image_brightness_segmen(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer098" class="IMG---Figure">
+					<img src="image/B17990_04_20.jpg" alt="Figure 4.20 – Using lighting on the CamVid dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.20 – Using lighting on the CamVid dataset</p>
+			<p>The command for using lighting on the aerial segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use the brightmess wrapper function for aerial image</strong>
+pluto.draw_image_brightness_segmen(pluto.df_aerial)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer099" class="IMG---Figure">
+					<img src="image/B17990_04_21.jpg" alt="Figure 4.21 – Using lightning on the aerial dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.21 – Using lightning on the aerial dataset</p>
+			<p>Similar <a id="_idIndexMarker421"/>to the lighting filter, FancyPCA belongs to the photometric <span class="No-Break">transformations class.</span></p>
+			<h2 id="_idParaDest-97"><a id="_idTextAnchor097"/>FancyPCA</h2>
+			<p>FancyPCA is<a id="_idIndexMarker422"/> the last example Pluto demonstrates for photometric transformations. For both datasets, the safe parameter is an alpha value of 0.3. Once again, FancyPCA will not alter the mask image. The key code line in the wrapper function is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use albumentations library for fancyPCA</strong>
+aug_album = albumentations.FancyPCA(
+  alpha=alpha,
+  always_apply=True,
+  p=1.0)</pre>
+			<p>The command for using FancyPCA on the CamVid segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use the fancyPCA wrapper function for camvid image</strong>
+pluto.draw_image_fancyPCA_segmen(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer100" class="IMG---Figure">
+					<img src="image/B17990_04_22.jpg" alt="Figure 4.22 – Using FancyPCA on the CamVid dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.22 – Using FancyPCA on the CamVid dataset</p>
+			<p>The<a id="_idIndexMarker423"/> command for using FancyPCA on the aerial segmentation data is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use the fancyPCA wrapper function for aerial image</strong>
+pluto.draw_image_fancyPCA_segmen(pluto.df_aerial)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer101" class="IMG---Figure">
+					<img src="image/B17990_04_23.jpg" alt="Figure 4.23 – Using FancyPCA on the aerial dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.23 – Using FancyPCA on the aerial dataset</p>
+			<p class="callout-heading">Fun challenge</p>
+			<p class="callout">Here is a thought experiment or maybe a practice one too: what can you do that appears acceptable in image augmentation but has a high probability of a <strong class="bold">false-positive</strong> or <strong class="bold">false-negative</strong> prediction in real-world deployment? Sorry, <span class="No-Break">no hint.</span></p>
+			<p>Pluto finds<a id="_idIndexMarker424"/> that segmentation augmentation is not that different from classification augmentation. The wrapper functions are virtually the same, and only the helper methods display the images differently. Pluto has demonstrated segmentation for the flipping, resizing, cropping, rotating, transposing, lighting, and FancyPCA transformations. Similarly to <a href="B17990_03.xhtml#_idTextAnchor058"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>, next, Pluto will combine individual filters into an <span class="No-Break">uber function.</span></p>
+			<h2 id="_idParaDest-98"><a id="_idTextAnchor098"/>Combining</h2>
+			<p>Before <a id="_idIndexMarker425"/>coding the uber combination methods in Python, Pluto needs to use pandas to summarize the filters in this chapter. Many more transformations are applicable for segmentation, so if you experiment with other filters in the Python Notebook, expand the pandas table with your <span class="No-Break">new filters.</span></p>
+			<p>Pluto displays the summary table using the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use Pandas to display the combination filters</strong>
+pluto.print_safe_parameters_segmen()</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer102" class="IMG---Figure">
+					<img src="image/B17990_04_24.jpg" alt="Figure 4.24 – Summary segmentation filters"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.24 – Summary segmentation filters</p>
+			<p>Using<a id="_idIndexMarker426"/> the summary table, Pluto writes the wrapper function. The key code line is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use albumentations library</strong>
+aug_album = albumentations.Compose([
+  albumentations.ColorJitter(brightness=0.5,
+    contrast=0.0,
+    saturation=0.0,
+    hue=0.0,p=0.5),
+  albumentations.HorizontalFlip(p=0.5),
+  albumentations.Flip(p=0.5),
+  albumentations.Rotate(limit=45, p=0.5),
+  albumentations.RandomSizedCrop(
+    min_max_height=(500, 600),
+    height=500,
+    width=500,
+    p=0.5),
+  albumentations.Transpose(p=0.5),
+  albumentations.FancyPCA(alpha=0.2, p=0.5)])</pre>
+			<p>Pluto displays the<a id="_idIndexMarker427"/> combination segmentation transformations for the CamVid dataset <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use combination wrapper function for camvid photo</strong>
+pluto.draw_uber_segmen(pluto.df_camvid)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer103" class="IMG---Figure">
+					<img src="image/B17990_04_25.jpg" alt="Figure 4.25 – Combining the filters for the CamVid dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.25 – Combining the filters for the CamVid dataset</p>
+			<p>The command for the aerial dataset in the Python Notebook is <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+<strong class="bold"># use combination wrapper function for aerial photo</strong>
+pluto.draw_uber_segmen(pluto.df_aerial)</pre>
+			<p>The output is <span class="No-Break">as follows:</span></p>
+			<div>
+				<div id="_idContainer104" class="IMG---Figure">
+					<img src="image/B17990_04_26.jpg" alt="Figure 4.26 – Combining filters for the aerial dataset"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 4.26 – Combining filters for the aerial dataset</p>
+			<p class="callout-heading">Fun challenge</p>
+			<p class="callout">Pluto challenges you to refactor<a id="_idIndexMarker428"/> the <strong class="bold">Pluto class</strong> to make it faster and more compact. You are encouraged to create and upload your library to <em class="italic">GitHub and PyPI.org</em>. Furthermore, you don’t have to name <a id="_idIndexMarker429"/>the class <strong class="bold">PacktDataAug</strong>, but it would give Pluto and his human companion a great big smile if you cited or mentioned this book. The code goals were for ease of understanding, reusable patterns, and teaching on the  <strong class="bold">–Python Notebook</strong>. Thus, refactoring the code as a Python library would be relatively painless <span class="No-Break">and fun.</span></p>
+			<p>With that, you’ve <a id="_idIndexMarker430"/>learned how to combine segmentation transformations. Next, we’ll summarize what was covered in <span class="No-Break">this chapter.</span></p>
+			<h1 id="_idParaDest-99"><a id="_idTextAnchor099"/>Summary</h1>
+			<p>Image segmentation consists of the original image and an accompanying mask image. The goal is to determine whether a pixel belongs to a list of objects. For example, an urban photograph consists of streets, street signs, cars, trucks, bicycles, buildings, trees, and pedestrians. Image segmentation’s job is to decide whether this pixel belongs to a car, tree, or <span class="No-Break">other objects.</span></p>
+			<p>Image segmentation and image classification share the same transformations. In other words, most geometric transformations, such as flipping, rotating, resizing, cropping, and transposing, work with the original image and mask image in image segmentation. Photometric transformations, such as brightness, contrast, and FancyPCA, can technically be done with Python, but the filter does not alter the mask image. On the other hand, filters such as noise injection and random erasing are unsuitable for segmentation because they add or replace pixels in the <span class="No-Break">original image.</span></p>
+			<p>Throughout this chapter, there have been <em class="italic">fun facts</em> and <em class="italic">fun challenges</em>. Pluto hopes you will take advantage of these and expand your experience beyond the scope of <span class="No-Break">this chapter.</span></p>
+			<p>Switching gear, the next chapter will cover text augmentation. Pluto can’t use any image augmentation functions, but he can reuse the wrapper functions for downloading datasets from the <span class="No-Break"><em class="italic">Kaggle </em></span><span class="No-Break">website.</span></p>
+		</div>
+	
+
+		<div id="_idContainer106" class="Content">
+			<h1 id="_idParaDest-100"><a id="_idTextAnchor100"/>Part 3: Text Augmentation</h1>
+			<p>This part includes the <span class="No-Break">following chapters:</span></p>
+			<ul>
+				<li><a href="B17990_05.xhtml#_idTextAnchor101"><em class="italic">Chapter 5</em></a>, <em class="italic">Text Augmentation</em></li>
+				<li><a href="B17990_06.xhtml#_idTextAnchor116"><em class="italic">Chapter 6</em></a>, <em class="italic">Text Augmentation with Machine Learning</em></li>
+			</ul>
+		</div>
+	</body></html>
