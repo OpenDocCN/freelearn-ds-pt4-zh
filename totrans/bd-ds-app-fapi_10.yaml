@@ -1,0 +1,700 @@
+- en: '8'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Defining WebSockets for Two-Way Interactive Communication in FastAPI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'HTTP is a simple yet powerful technique for sending data to and receiving data
+    from a server. As we’ve seen, the principles of request and response are at the
+    core of this protocol: when developing our API, our goal is to process the incoming
+    request and build a response for the client. Thus, in order to get data from the
+    server, the client always has to initiate a request first. In some contexts, however,
+    this may not be very convenient. Imagine a typical chat application: when a user
+    receives a new message, we would like them to be notified immediately by the server.
+    Working only with HTTP, we would have to make requests every second to check whether
+    new messages had arrived, which would be a massive waste of resources. This is
+    why a new protocol has emerged: **WebSocket**. The goal of this protocol is to
+    open a communication channel between a client and a server so that they can exchange
+    data in real time, in both directions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the principles of two-way communication with WebSockets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a WebSocket with FastAPI
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling multiple WebSocket connections and broadcasting messages
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this chapter, you’ll require a Python virtual environment, just as we set
+    up in [*Chapter 1*](B19528_01.xhtml#_idTextAnchor024), *Python Development* *Environment
+    Setup*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the *Handling multiple WebSocket connections and broadcasting messages*
+    section, you’ll need a running Redis server on your local computer. The easiest
+    way is to run it as a Docker container. If you’ve never used Docker before, we
+    recommend you read the *Getting started* tutorial in the official documentation
+    at [https://docs.docker.com/get-started/](https://docs.docker.com/get-started/).
+    Once done, you’ll be able to run a Redis server with this simple command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: You’ll find all the code examples for this chapter in the dedicated GitHub repository
+    at [https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter08](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter08).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the principles of two-way communication with WebSockets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You have probably noticed that the name WebSockets is a direct reference to
+    the traditional concept of **sockets** in Unix systems. While technically unrelated,
+    they achieve the same goal: to open a *communication channel between two applications*.
+    As we said in the introduction, HTTP works only on a request-response principle,
+    which makes the implementation of applications that need real-time communication
+    between the client and the server difficult and inefficient.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: WebSockets try to solve that by opening a full-duplex communication channel,
+    meaning that messages can be sent in both directions and possibly at the same
+    time. Once the channel is opened, the server can send messages to the client without
+    having to wait for a request from the client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even if HTTP and WebSocket are different protocols, WebSockets have been designed
+    to work with HTTP. Indeed, when opening a WebSocket, the connection is first initiated
+    using an HTTP request and then upgraded to a WebSocket tunnel. This makes it compatible
+    out of the box with the traditional ports `80` and `443`, which is extremely convenient
+    because we can easily add this feature over existing web servers without the need
+    for an extra process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'WebSockets also share another similarity with HTTP: URIs. As with HTTP, WebSockets
+    are identified through classic URIs, with a host, a path, and query parameters.
+    Furthermore, we also have two schemes: `ws` (WebSocket) for insecure connections
+    and `wss` (WebSocket Secure) for SSL-/TLS-encrypted connections.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, this protocol is well supported in browsers nowadays, and opening a
+    connection with a server involves just a few lines of JavaScript, as we’ll see
+    in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, handling this two-way communication channel is quite different from
+    handling traditional HTTP requests. Since things happen in real time and in both
+    directions, we’ll see that we have to think differently from what we are used
+    to. In FastAPI, the asynchronous nature of the WebSocket implementation will greatly
+    help us in finding our way through that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a WebSocket with FastAPI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Thanks to Starlette, FastAPI has built-in support for WebSockets. As we’ll see,
+    defining a WebSocket endpoint is quick and easy, and we’ll be able to get started
+    in minutes. However, things will get more complex as we try to add more features
+    to our endpoint logic. Let’s start simple, with a WebSocket that waits for messages
+    and simply echoes them back.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, you’ll see the implementation of such a simple case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/echo/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/echo/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code is quite understandable by itself, but let’s focus on the important
+    parts that differ from classic HTTP endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First of all, you see that FastAPI provides a special `websocket` decorator
+    to create a WebSocket endpoint. As with regular endpoints, it takes the path at
+    which it’ll be available as an argument. However, other arguments that don’t make
+    sense in this context, such as the status code or response model, are not available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, in the path operation function, we can inject a `WebSocket` object, which
+    will provide us with all the methods to work with the WebSocket, as we’ll see.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first method we are calling in the implementation is `accept`. This method
+    should be called first as it tells the client that we agree to open the tunnel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After that, you can see that we start an infinite loop. That’s the main difference
+    with an HTTP endpoint: since we are opening a communication channel, it’ll remain
+    open until the client or the server decides to close it. While it’s open, they
+    can exchange as many messages as they need; hence, the infinite loop is here to
+    remain open and repeat the logic until the tunnel is closed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inside the loop, we make the first call to the `receive_text` method. As you
+    may have guessed, this returns the data sent by the client in plain text format.
+    It’s important here to understand that *this method will block until data is received
+    from the client*. Until that event, we won’t proceed with the rest of the logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see here the importance of asynchronous input/output, as we presented
+    in [*Chapter 2*](B19528_02.xhtml#_idTextAnchor032), *Python Programming Specificities*.
+    By creating an infinite loop waiting for incoming data, we could have blocked
+    the whole server process in a traditional blocking paradigm. Here, thanks to the
+    event loop, the process is able to answer other requests made by other clients
+    while we are waiting for this one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When data is received, the method returns the text data and we can proceed with
+    the next line. Here, we simply send back the message to the client thanks to the
+    `send_text` method. Once done, we are going back to the beginning of the loop
+    to wait for another message.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You probably noticed that the whole loop is wrapped inside a `try...except`
+    statement. This is necessary to *handle client disconnection*. Indeed, most of
+    the time, our server will be blocked at the `receive_text` line, waiting for client
+    data. If the client decides to disconnect, the tunnel will be closed and the `receive_text`
+    call will fail, with a `WebSocketDisconnect` exception. That’s why it’s important
+    to catch it to break the loop and properly finish the function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s try it! You can run the FastAPI application, as usual, thanks to the
+    Uvicorn server. Here’s the command you’ll need:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our client will be a simple HTML page with some JavaScript code to interact
+    with the WebSocket. We’ll quickly go through this code after the demonstration.
+    To run it, we can simply serve it with the built-in Python server, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Starting several terminals
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On Linux and macOS, you should be able to simply start a new Terminal by creating
+    a new window or tab. On Windows and WSL, you can also have several tabs if you’re
+    using the Windows terminal application: [https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Otherwise, you can simply click on the Ubuntu shortcut in your **Start** menu
+    to start another terminal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will serve our HTML page on port `9000` of your local machine. If you
+    open the `http://localhost:9000` address, you’ll see a simple interface like the
+    one shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.1 – Simple application for trying the WebSocket](img/Figure_8.1_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.1 – Simple application for trying the WebSocket
+  prefs: []
+  type: TYPE_NORMAL
+- en: You have a simple input form, allowing you to send messages to the server through
+    the WebSocket. They appear in green in the list, as seen in the screenshot. The
+    server echoes back your messages, which then appear in yellow in the list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see what’s happening under the hood by opening the **Network** tab in
+    the developer tools of your browser. Reload the page to force the WebSocket to
+    reconnect. You should then see a row for the WebSocket connection. If you click
+    on it, you’ll see a **Messages** tab where you can see all the messages passing
+    through the WebSocket. You can see this interface in *Figure 8**.2*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.2 – WebSocket messages visualization within the browser developer
+    tools](img/Figure_8.2_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.2 – WebSocket messages visualization within the browser developer tools
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, you’ll see the JavaScript code used to open the WebSocket
+    connection and to send and receive messages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: script.js
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/echo/script.js](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/echo/script.js)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, modern browsers provide a very simple API to interact with
+    WebSockets. You just have to instantiate a new `WebSocket` object with the URL
+    of your endpoint and wire some event listeners: `open` when the connection is
+    ready and `message` when data is received from the server. Finally, the `send`
+    method allows you to send data to the server. You can view more details on the
+    WebSocket API in the MDN documentation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Handling concurrency
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the previous example, we assumed that the client was always sending a message
+    first: we wait for its message before sending it back. Once again, it’s the client
+    that takes the initiative in the conversation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, in usual scenarios, the server can have data to send to the client
+    without being at the initiative. In a chat application, another user can typically
+    send one or several messages that we want to forward to the first user immediately.
+    In this context, the blocking call to `receive_text` we showed in the previous
+    example is a problem: while we are waiting, the server could have messages to
+    forward to the client.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To solve this, we’ll rely on more advanced tools of the `asyncio` module. Indeed,
+    it provides functions that allow us to schedule several coroutines concurrently
+    and wait until one of them is complete. In our context, we can have a coroutine
+    that waits for client messages and another one that sends data to it when it arrives.
+    The first one that is fulfilled wins and we can start again with another loop
+    iteration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make this clearer, let’s build another example, in which the server will
+    once again echo the message of the client. Besides that, it’ll regularly send
+    the current time to the client. You can see the implementation in the following
+    code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/concurrency/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/concurrency/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, we defined two coroutines: the first one, `echo_message`, waits
+    for text messages from the client and sends them back, while the second one, `send_time`,
+    waits for 10 seconds before sending the current time to the client. Both of them
+    expect a WebSocket instance in the argument.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The most interesting part lives under the infinite loop: as you can see, we
+    call our two functions, wrapped by the `create_task` function of `asyncio`. This
+    transforms the coroutine into a `task` object. Under the hood, a task is how the
+    event loop manages the execution of the coroutine. Put more simply, it gives us
+    full control over the execution of the coroutine – we can retrieve its result
+    or even cancel it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Those `task` objects are necessary to work with `asyncio.wait`. This function
+    is especially useful for running tasks concurrently. It expects a set of tasks
+    to run in the first argument. By default, this function will block until all given
+    tasks are completed. However, we can control that thanks to the `return_when`
+    argument: in our case, we want it to block until one of the tasks is completed,
+    which corresponds to the `FIRST_COMPLETED` value. The effect is the following:
+    our server will launch the coroutines concurrently. The first one will block waiting
+    for a client message, while the other one will block for 10 seconds. If the client
+    sends a message before 10 seconds have passed, it’ll send the message back and
+    complete. Otherwise, the `send_time` coroutine will send the current time and
+    complete.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At that point, `asyncio.wait` will return us two sets: the first one, `done`,
+    contains a set of completed tasks, while the other one, `pending`, contains a
+    set of tasks not yet completed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We want to now go back to the start of the loop to start again. However, we
+    need to first cancel all the tasks that have not been completed; otherwise, they
+    would pile up at each iteration, hence the iteration over the `pending` set to
+    `cancel` those tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we also make an iteration over the `done` tasks and call the `result`
+    method on them. This method returns the result of the coroutine but also re-raises
+    an exception that could have been raised inside. This is especially useful for
+    once again handling the disconnection of the client: when waiting for client data,
+    if the tunnel is closed, an exception is raised. Thus, our `try...except` statement
+    can catch it to properly terminate the function.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you try this example as we did previously, you’ll see that the server will
+    regularly send you the current time but is also able to echo the messages you
+    send.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This `send_time` example shows you how you can implement a process to send
+    data to the client when an event happens on the server: new data is available
+    in the database, an external process has finished a long computation, and so on.
+    In the next section, we’ll see how we can properly handle the case of multiple
+    clients sending messages to the server, which then broadcasts them to all the
+    clients.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s basically how you can handle concurrency with `asyncio`’s tools. So far,
+    everyone is able to connect to those WebSocket endpoints without any restriction.
+    Of course, as with classic HTTP endpoints, you’ll likely need to authenticate
+    a user before opening the connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using dependencies
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Just as with regular endpoints, you can use dependencies in WebSocket endpoints.
+    They basically work the same way, as FastAPI is able to adapt its behavior to
+    a WebSocket context.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The only drawback is that can’t use security dependencies, as we showed in [*Chapter
+    7*](B19528_07.xhtml#_idTextAnchor448), *Managing Authentication and Security in
+    FastAPI*. Indeed, under the hood, most of them work by injecting the `Request`
+    object, which only works for HTTP requests (we saw that WebSockets are injected
+    in a `WebSocket` object instead). Trying to inject those dependencies in a WebSocket
+    context will result in an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, basic dependencies such as `Query`, `Header`, or `Cookie` work transparently.
+    Let’s try them in our next example. In this one, we’ll inject two dependencies,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A `username` query parameter, which we’ll use to greet the user on connection.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A `token` cookie, which we’ll compare with a static value to keep the example
+    simple. Of course, a proper strategy would be to have a proper user lookup, as
+    we implemented in [*Chapter 7*](B19528_07.xhtml#_idTextAnchor448), *Managing Authentication
+    and Security in FastAPI*. If this cookie doesn’t have the required value, we’ll
+    raise an error.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s see the implementation in the following sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/dependencies/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/dependencies/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, injecting dependencies is no different from standard HTTP endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we can have our dummy authentication logic. If it fails, we can raise
+    a `WebSocketException`. It’s the WebSocket equivalent of `HTTPException,` which
+    we saw in previous sections. Under the hood, FastAPI will handle this exception
+    by closing the WebSocket with the specified status code. WebSockets have their
+    own set of status codes. You can view a complete list of these on this MDN documentation
+    page: [https://developer.mozilla.org/fr/docs/Web/API/CloseEvent](https://developer.mozilla.org/fr/docs/Web/API/CloseEvent).
+    The most generic one when an error occurs is `1008`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If it passes, we can start our classic echo server. Notice that we can use
+    the `username` value as we wish in our logic. Here, we send a first message to
+    greet the user on connection. If you try this with the HTML application, you’ll
+    see this message first, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.3 – Greeting message on connection](img/Figure_8.3_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.3 – Greeting message on connection
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the browser WebSocket API, query parameters can be passed into the URL
+    and the browser automatically forwards the cookies. However, there is *no way
+    to pass custom headers*. This means that if you rely on headers for authentication,
+    you’ll have to either add one using cookies or implement an authentication message
+    mechanism in the WebSocket logic itself. However, if you don’t plan to use your
+    WebSocket with a browser, you can still rely on headers since most WebSocket clients
+    support them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You now have a good overview of how to add WebSockets to your FastAPI application.
+    As we said, they are generally useful when several users are involved in real
+    time and we need to broadcast messages to all of them. We’ll see in the next section
+    how to implement this pattern reliably.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Handling multiple WebSocket connections and broadcasting messages
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As we said in the introduction to this chapter, a typical use case for WebSockets
+    is to implement real-time communication across multiple clients, such as a chat
+    application. In this configuration, several clients have an open WebSocket tunnel
+    with the server. Thus, the role of the server is to *manage all the client connections
+    and broadcast messages to all of them*: when a user sends a message, the server
+    has to send it to all other clients in their WebSockets. We show you a schema
+    of this principle here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.4 – Multiple clients connected through a WebSocket to a server](img/Figure_8.4_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.4 – Multiple clients connected through a WebSocket to a server
+  prefs: []
+  type: TYPE_NORMAL
+- en: A first approach could be simply to keep a list of all WebSocket connections
+    and iterate through them to broadcast messages. This would work but would quickly
+    become problematic in a production environment. Indeed, most of the time, server
+    processes run multiple workers when deployed. This means that instead of having
+    only one process serving requests, we can have several ones so that we can answer
+    more requests concurrently. We could also think of deployments on multiple servers
+    spread over several data centers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Hence, nothing guarantees you that two clients opening a WebSocket are served
+    by the same process. Our simple approach would fail in this configuration: since
+    connections are kept in the process memory, the process receiving the message
+    would not be able to broadcast the message to clients served by another process.
+    We schematize this problem in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.5 – Multiple server workers without a message broker](img/Figure_8.5_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.5 – Multiple server workers without a message broker
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To solve this, we generally rely on **message brokers**. Message brokers are
+    pieces of software whose role is to receive messages published by a first program
+    and broadcast them to programs that are subscribed to it. Usually, this **publish-subscribe**
+    (**pub-sub**) pattern is organized into different channels so that messages are
+    clearly organized following their topic or usage. Some of the best-known message
+    broker software includes Apache Kafka, RabbitMQ, and cloud-based implementations
+    from **Amazon Web Services** (**AWS**), **Google Cloud Platform** (**GCP**), and
+    Microsoft Azure: Amazon MQ, Cloud Pub/Sub, and Service Bus, respectively.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Hence, our message broker will be unique in our architecture, and several server
+    processes will connect to it to either publish or subscribe to messages. This
+    architecture is schematized in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.6 – Multiple server workers with a message broker](img/Figure_8.6_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.6 – Multiple server workers with a message broker
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we’ll see how to set up a simple system using the `broadcaster`
+    library from Encode (the creators of Starlette) and *Redis*, which will act as
+    a message broker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A word on Redis
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At its core, Redis is a data store designed to achieve maximum performance.
+    It’s widely used in the industry for storing temporary data that we want to access
+    very quickly, such as caches or distributed locks. It also supports a basic pub/sub
+    paradigm, which makes it a good candidate to be used as a message broker. You
+    can learn more about this technology at its official website: [https://redis.io](https://redis.io).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First of all, let’s install the library with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: This library will abstract away all the complexities of publishing and subscribing
+    with Redis for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s see the details of the implementation. In the following example, you’ll
+    see the instantiation of the `Broadcaster` object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/broadcast/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/broadcast/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, it only expects a URL to our Redis server. Notice also that
+    we define a `CHANNEL` constant. This will be the name of the channel to publish
+    and subscribe to messages. We choose a static value here for the sake of the example,
+    but you could have dynamic channel names in a real-world application—to support
+    several chat rooms, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we define two functions: one to subscribe to new messages and send them
+    to the client and another one to publish messages received in the WebSocket. You
+    can see these functions in the following sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/broadcast/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/broadcast/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First of all, notice that we defined a Pydantic model, `MessageEvent`, to help
+    us structure the data contained in a message. Instead of just passing raw strings
+    as we’ve been doing up to now, we have an object bearing both the message and
+    the username.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first function, `receive_message`, subscribes to the broadcast channel and
+    waits for messages called `event`. The data of the message contains serialized
+    JSON that we deserialize to instantiate a `MessageEvent` object. Notice that we
+    use the `parse_raw` method of the Pydantic model, allowing us to parse the JSON
+    string into an object in one operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we check whether the message username is different from the current username.
+    Indeed, since all users are subscribed to the channel, they will also receive
+    the messages they sent themselves. That’s why we discard them based on the username
+    to avoid this. Of course, in a real-world application, you’ll likely want to rely
+    on a unique user ID rather than a simple username.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we can send the message through the WebSocket thanks to the `send_json`
+    method, which takes care of serializing the dictionary automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second function, `send_message`, is there to publish a message to the broker.
+    Quite simply, it waits for new data in the socket, structures it into a `MessageEvent`
+    object, and then publishes it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That’s about it for the `broadcaster` part. We then have the WebSocket implementation
+    in itself, which is very similar to what we saw in the previous sections. You
+    can see it in the following sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/broadcast/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/broadcast/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we need to tell FastAPI to open the connection with the broker when
+    it starts the application and to close it when exiting, as you can see in the
+    following extract:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/broadcast/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/chapter08/broadcast/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s now try this application! First, we’ll run the Uvicorn server. Be sure
+    that your Redis container is running before starting, as we explained in the *Technical
+    requirements* section. Here’s the command you’ll need:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We also provided a simple HTML client in the examples. To run it, we can simply
+    serve it with the built-in Python server, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can now access it through `http://localhost:9000`. If you open it twice
+    in your browser, in two different windows, you can see whether the broadcasting
+    is working. Input a username in the first window and click on **Connect**. Do
+    the same in the second window with a different username. You can now send messages
+    and see that they are broadcast to the other client, as depicted in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.7 – Multiple WebSockets clients broadcasting messages](img/Figure_8.7_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.7 – Multiple WebSockets clients broadcasting messages
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That was a very quick overview of how you can implement broadcasting systems
+    involving message brokers. Of course, we only covered the basics here, and much
+    more complex things can be done with those powerful technologies. Once again,
+    we see that FastAPI gives us access to powerful building bricks without locking
+    us inside specific technologies or patterns: it’s very easy to include new libraries
+    to expand our possibilities.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, you learned how to work with one of the latest web technologies
+    available: WebSockets. You are now able to open a two-way communication channel
+    between a client and a server, allowing you to implement applications with real-time
+    constraints. As you’ve seen, FastAPI makes it very easy to add such endpoints.
+    Still, the way of thinking inside WebSockets logic is quite different from traditional
+    HTTP endpoints: managing an infinite loop and handling several tasks at a time
+    are completely new challenges. Fortunately, the asynchronous nature of the framework
+    makes our life easier in this matter and helps us write concurrent code that is
+    easily understandable.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we also had a quick overview of the challenges to solve when handling
+    multiple clients that share messages between them. You saw that message broker
+    software such as Redis is necessary to make this use case reliable across several
+    server processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You are now acquainted with all the features of FastAPI. Up to now, we’ve shown
+    very simple examples focused on a specific point. In the real world, however,
+    you’ll likely develop big applications that can do a lot of things and grow larger
+    over time. To make them reliable and maintainable and keep high-quality code,
+    it’s necessary to test them to make sure they behave as intended and that you
+    don’t introduce bugs when adding new things.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you’ll see how to set up an efficient test environment
+    for FastAPI.
+  prefs: []
+  type: TYPE_NORMAL

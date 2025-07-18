@@ -1,0 +1,587 @@
+- en: '4'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Understanding MLflow Components on Databricks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we learned about Feature Store, what problem it solves,
+    and how Databricks provides the built-in Feature Store as part of the Databricks
+    **machine learning** (**ML**) workspace, which we can use to register our feature
+    tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will look into managing our model training, tracking, and
+    experimentation. In a software engineer’s world, code development and productionization
+    have established best practices; however, such best practices are not generally
+    adopted in the ML engineering/data science world. While working with many Databricks
+    customers, I observed that each data science team has its own way of managing
+    its projects. This is where MLflow comes in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLflow is an umbrella project developed at Databricks, by Databricks engineers,
+    to bring a standardized ML life cycle management tool to the Databricks platform.
+    It is now an open source project with more than 500,000 daily downloads on average
+    as of September 2023 and has broad industry and community support. MLflow provides
+    features to manage the end-to-end ML project life cycle. Some of the features
+    are only available on Databricks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overview of MLflow
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MLflow Tracking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MLflow Projects
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MLflow Models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MLflow Model Registry
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Example code showing how to track ML model training in Databricks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These components play an essential role in standardizing and streamlining your
+    ML project’s life cycle. When we use MLflow with Databricks, some MLflow features
+    are more helpful than others. We’ll point out the most useful ones as we go through
+    this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: All the code is available in this book’s GitHub repository [https://github.com/PacktPublishing/Practical-Machine-Learning-on-Databricks](https://github.com/PacktPublishing/Practical-Machine-Learning-on-Databricks)
+    and is self-contained. To execute the notebooks, you can import the code repository
+    directly into your Databricks workspace using repos. We discussed repos in our
+    previous chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter also assumes that you have a preliminary understanding of what
+    user-defined functions are in Apache Spark. You can read more about them here:
+    [https://docs.databricks.com/en/udf/index.html](https://docs.databricks.com/en/udf/index.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overview of MLflow
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The ML life cycle is complex. It starts with ingesting raw data into the data/Delta
+    lake in raw format from various batch and streaming sources. The data engineers
+    create data pipelines using tools such as Apache Spark with Python, R, SQL, or
+    Scala to process a large amount of data in a scalable, performant, and cost-effective
+    manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data scientists then utilize the various curated datasets in the data lake
+    to generate feature tables to train their ML models. The data scientists prefer
+    programming languages such as Python and R for feature engineering and libraries
+    such as scikit-learn, pandas, NumPy, PyTorch, or any other popular ML or deep
+    learning libraries for training and tuning ML models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the models have been trained, they need to be deployed in production either
+    as a **re****presentational state transfer** (**REST**) **application programming
+    interface** (**API**) for real-time inference, or a **user-defined function**
+    (**UDF**) for batch and stream inference on Apache Spark. We also need to apply
+    monitoring and governance around the deployed model. In case of drift in model
+    performance or data, we may need to retrain and redeploy the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This process is iterative and brings a lot of development challenges to organizations
+    looking to start working on ML projects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A zoo of software tools needs to be managed to provide a stable working environment
+    for the data scientists. A large number of libraries need to be manually installed
+    and configured.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tracking and reproducing the results of ML experiments is also a challenge.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Managing the services and governance around productionizing models is difficult.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scaling the training of the models with the increase in the amount of data is
+    a challenge.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'MLflow, with its components, provides a solution to each of these challenges.
+    In the Databricks environment, MLflow is integrated with workspace components
+    such as notebooks, Feature Store, and AutoML. This integration provides a seamless
+    experience for data scientists and ML engineers who are looking to get productive
+    without getting into the operational overhead of managing the installation of
+    MLflow on their own:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.1 – The various components of MLflow](img/B17875_04_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.1 – The various components of MLflow
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Four software components make up MLflow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**MLflow Tracking**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**MLflow Projects**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**MLflow Models**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**MLflow** **Model Registry**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In Databricks, all these components except MLflow Projects are integrated, fully
+    managed, and provided as services as part of the Databricks workspace. As our
+    primary focus is on MLflow features seamlessly integrated with Databricks, we
+    won’t delve extensively into MLflow Projects. Rest assured, this won’t impact
+    your ML project workflow when using Databricks. The Databricks ML workspace also
+    offers high availability, automated updates, and access controls for all the integrated
+    MLflow components.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s take a look at each of these components in detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLflow Tracking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: MLflow Tracking allows you to track the training of your ML models. It also
+    improves the observability of the model-training process. The MLflow Tracking
+    feature allows you to log the generated metrics, artifacts, and the model itself
+    as part of the model training process. MLflow Tracking also keeps track of model
+    lineage in the Databricks environment. In Databricks, we can see the exact version
+    of the notebook responsible for generating the model listed as the source.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLflow also provides **automatic logging** (**autolog**) capabilities that automatically
+    log many metrics, parameters, and artifacts while performing model training. We
+    can also add our own set of metrics and artifacts to the log.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using MLflow Tracking, we can chronologically track model training. Certain
+    terms are specific to MLflow Tracking. Let’s take a look at them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Experiments**: Training and tuning the ML model for a business problem is
+    an experiment. By default, each Python notebook in Databricks has an experiment
+    with the same name. This is called a notebook-scoped experiment. You can easily
+    change and set the experiment’s name using the MLflow API. Defining an experiment
+    like this will create a workspace-scoped MLflow experiment that will now be visible
+    in your workspace. Customizing the names of MLflow experiments offers valuable
+    benefits in ML workflows – for example, it enhances organizational clarity by
+    helping you categorize and differentiate experiments, acting as a form of documentation
+    that aids communication and collaboration. Custom names facilitate version control
+    and the tracking of experiment evolution, which is particularly useful for comparing
+    performance or revisiting past configurations. Additionally, they simplify the
+    process of accessing specific experiments through MLflow’s user interface or programmatic
+    queries, ultimately contributing to more efficient and effective ML project management.
+    We will be using a custom experiment name for our example code.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Runs**: We can have multiple models training with different hyperparameters
+    logged under each experiment. Each of the unique combinations of ML model training
+    logged under an experiment is called a run. The accompanying MLflow Tracking UI
+    allows us to compare and contrast the different runs and get the best model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Metrics**: Each run will have critical offline metrics that we want to log
+    while training our models. Unlike online metrics, which are calculated in real
+    time as a model interacts with live data and users, offline metrics are computed
+    retrospectively using a fixed dataset that was collected before the model’s deployment.
+    These metrics are crucial during the model development and testing phases to gauge
+    how well a model generalizes to unseen data and to guide model refinement. Common
+    examples of offline metrics include accuracy, precision, recall, F1-score, **mean
+    squared error** (**MSE**), and **area under the receiver operating characteristic
+    curve** (**AUC-ROC**), among others. They provide insights into a model’s performance
+    and can inform decisions regarding hyperparameter tuning, feature engineering,
+    and model selection to improve overall predictive accuracy and effectiveness.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Artifacts**: MLflow artifacts play a pivotal role in MLflow’s experiment
+    tracking system by facilitating the storage and versioning of supplementary files
+    and data linked to ML experiments. These versatile artifacts can encompass a variety
+    of resources, including ML model files, datasets, configuration files, data visualizations
+    (for example, plots), documentation (for example, READMEs and Jupyter notebooks),
+    custom scripts, and even reports summarizing experiment findings. Crucially, artifacts
+    are versioned alongside experiment runs, ensuring precise tracking of changes
+    over time. They support remote storage solutions and are programmatically accessible
+    via MLflow’s API. This comprehensive approach enhances reproducibility, organization,
+    and collaboration in ML projects, making it possible to recreate experiments accurately
+    and access all relevant resources.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Parameters**: Parameters are user-defined configuration settings or hyperparameters
+    associated with ML experiment runs. They play a vital role in tracking, comparing,
+    and reproducing experiments by recording the specific configuration settings used
+    in each run. This allows for easy visualization and analysis of how parameter
+    values impact experiment outcomes, making it simpler to identify optimal configurations
+    and manage experiments effectively.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Tags**: Tags are user-defined or automatically generated metadata labels
+    that can be attached to ML experiment runs. They serve to provide context, categorization,
+    and organization for runs, aiding in searching for, filtering, and analyzing experiments.
+    Tags help document and distinguish different runs, making it easier to understand
+    and manage ML projects, and they can be used for custom workflow integration or
+    automation.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Next, we will understand one of the key components of MLflow called MLflow Models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLflow Models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: MLflow Models is a standard packaging format for ML models. It provides a standardized
+    abstraction on top of the ML model created by the data scientists. Each MLflow
+    model is essentially a directory containing an `MLmodel` file in the directory’s
+    root that can define multiple flavors that the model can be viewed in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Flavors represent a fundamental concept that empowers MLflow Models by providing
+    a standardized approach for deployment tools to comprehend and interact with ML
+    models. This innovation eliminates the need for each deployment tool to integrate
+    with every ML library individually. MLflow introduces several “standard” flavors,
+    universally supported by its built-in deployment tools. For instance, the “Python
+    function” flavor outlines how to execute the model as a Python function. However,
+    the versatility of flavors extends beyond these standards. Libraries have the
+    flexibility to define and employ their own flavors. As an example, MLflow’s `mlflow.sklearn`
+    library allows you to load models as scikit-learn pipeline objects, suitable for
+    use in scikit-learn-aware code, or as generic Python functions, catering to tools
+    requiring a model application, such as the MLflow deployments tool with the `-t
+    sagemaker` option for deploying models on Amazon SageMaker. So, flavors serve
+    as a bridge between ML libraries and deployment tools, enhancing interoperability
+    and ease of use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can register an MLflow model from a run in an experiment using the `mlflow.<model-flavor>.log_mode``l`
+    method. This method serializes the underlying ML model in a specific format and
+    persists it in the underlying storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the official documentation for a complete list of ML libraries supported
+    by MLflow Models: [https://www.mlflow.org/docs/latest/models.html#built-in-model-flavors](https://www.mlflow.org/docs/latest/models.html#built-in-model-flavors).
+    If you have some existing models that were developed using any Python ML library,
+    MLflow provides a method to create custom models via the `mlflow.pyfunc` module.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional files are logged, such as `conda.yaml` and `requirements.txt`, that
+    contain the library dependencies for recreating the runtime environment when needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The ML model YAML file contains the following attributes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`time_created`: The date and time in UTC ISO 8601 format describing when the
+    model was created.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`flavors`: This defines how downstream applications can use this model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`run_id`: This represents the unique identifier for the MLflow run; this model
+    was logged under B.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`signature`: The model signature in JSON format. This signature defines the
+    expected format of input and output data for an ML model. It is automatically
+    inferred from datasets representing valid input and output examples, such as the
+    training dataset and model predictions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`input_example`: This is for if we provide sample records as input while training
+    the model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The MLflow Models API provides a method called `mlflow.evaluate()` that automatically
+    evaluates our trained model on an evaluation dataset and logs the necessary metrics,
+    such as accuracy, R2, and SHAP feature importance based on what kind of problem
+    we are trying to solve. You can also create custom metrics and provide them as
+    input to `mlflow.evaluate(custom_metrics=[<your custom metric>])` as a parameter.
+    Links have been provided in the *Further reading* section if you want to learn
+    more about it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'MLflow Models also provide APIs to deploy the packaged ML models as a REST
+    endpoint for real-time inference, as a Python function that can be used to perform
+    batch and stream inference, or as a Docker container that can then be deployed
+    to Kubernetes, Azure ML, or AWS SageMaker. The MLflow API provides convenient
+    methods such as `mlflow.models.build_docker` to build and configure a Docker image.
+    You can read more about the various methods that are available here: “[https://www.mlflow.org/docs/latest/python_api/mlflow.models.html?highlight=docker#mlflow.models.build_docker](https://www.mlflow.org/docs/latest/python_api/mlflow.models.html?highlight=docker#mlflow.models.build_docker)”.
+    We will look into the various available deployment options as part of Databricks
+    integrated with MLflow in [*Chapter 7*](B17875_07.xhtml#_idTextAnchor108), *Model*
+    *Deployment Approaches*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s look at the next feature on the list: MLflow Model Registry.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLflow Model Registry
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: MLflow Model Registry is a tool that collaboratively manages the life cycle
+    of all the MLflow Models in a centralized manner across an organization. In Databricks,
+    the integrated Model Registry provides granular access control over who can transition
+    models from one stage to another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLflow Model Registry allows multiple versions of the models in a particular
+    stage. It enables the transition of the best-suited model between staging, prod,
+    and archived states either programmatically or by a human-in-the-loop deployment
+    model. Choosing one strategy over another for model deployment will depend on
+    the use case and how comfortable teams are in automating the entire process of
+    managing ML model promotion and testing process. We will take a deeper look into
+    this in [*Chapter 6*](B17875_06.xhtml#_idTextAnchor100), *Model Versioning* *and
+    Webhooks*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Model Registry also logs model descriptions, lineage, and promotion activity
+    from one stage to another, providing full traceability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will look into the Model Registry feature more in detail in [*Chapter 6*](B17875_06.xhtml#_idTextAnchor100),
+    *Model Versioning* *and Webhooks*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure summarizes the interaction between various MLflow components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.2 – How the various MLflow components interact with each other](img/B17875_04_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.2 – How the various MLflow components interact with each other
+  prefs: []
+  type: TYPE_NORMAL
+- en: You have the flexibility to choose your preferred Python ML libraries for model
+    training within MLflow, while the MLflow Tracking server diligently logs metrics,
+    tags, and artifacts, and then packages your model into the MLflow Models format.
+    Once you’ve honed a candidate model ready for integration into Model Registry,
+    it’s a straightforward process to register it there. Model Registry not only furnishes
+    APIs but also offers governance mechanisms for smooth model transitioning between
+    stages. Additionally, MLflow Model Registry introduces webhooks, which enable
+    automated notifications to be triggered by specific user actions; we’ll delve
+    into this further in[*Chapter 6*](B17875_06.xhtml#_idTextAnchor100), *Model Versioning
+    and Webhooks*. In the end, downstream applications can harness APIs to fetch the
+    latest models from the registry and deploy them in various flavors, including
+    Python functions, Docker containers, or other supported deployment options that
+    accommodate batch, streaming, and real-time use cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You have the freedom to independently manage your ML project life cycle by employing
+    the features we’ve discussed thus far, even without utilizing Databricks Feature
+    Store. However, utilizing Feature Store in ML projects offers numerous advantages,
+    including centralized data management for streamlined access and consistency,
+    feature reusability across projects, version control for reproducibility, data
+    quality checks, collaborative teamwork, scalability to handle growing data complexity,
+    real-time feature serving, model monitoring integration, regulatory compliance
+    support, and significant time and cost savings. In essence, Feature Store enhances
+    the efficiency and effectiveness of ML workflows by providing a structured and
+    efficient approach to data management and feature handling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s look at an end-to-end code example that goes through the entire flow of
+    training an ML model in the Databricks environment and utilizes all the features
+    of integrated MLflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example code showing how to track ML model training in Databricks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before proceeding, it’s important to ensure that you’ve already cloned the
+    code repository that accompanies this book, as outlined in [*Chapter 3*](B17875_03.xhtml#_idTextAnchor063).
+    Additionally, please verify that you have executed the associated notebook for
+    [*Chapter 3*](B17875_03.xhtml#_idTextAnchor063). These preparatory steps are essential
+    to fully engage with the content and exercises presented here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go to `Chapter 04` and click on the `mlflow-without-featurestore` notebook:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.3 – The code that accompanies this chapter](img/B17875_04_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.3 – The code that accompanies this chapter
+  prefs: []
+  type: TYPE_NORMAL
+- en: Make sure you have a cluster up and running and that the cluster is attached
+    to this notebook, as you did with the notebook from [*Chapter 3*](B17875_03.xhtml#_idTextAnchor063),
+    *Utilizing the* *Feature Store.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Cmd 3` demonstrates the use of notebook-scoped libraries. These can be installed
+    using the `%pip` magic command. As best practice, keep the `%pip` command as one
+    of the topmost cells in your notebook as it restarts the Python interpreter. We
+    are just upgrading the version of the `scikit-learn` library here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In `Cmd 5` and `Cmd 6`, we are just defining some constant values we will be
+    using to track our ML model training. Change the `USER_EMAIL` value to the email
+    you’ve used to log into the Databricks workspace. In this notebook, we are not
+    going to use the Feature Store API; however, every feature table is stored as
+    a Delta table, which can be read as a regular hive table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To use Mlflow, we had to import the `mlflow` package. `mlflow.setExperiment(…)`
+    creates a named experiment to track all the MLflow runs that we will execute in
+    this notebook. After executing this code, you should be able to see a new type
+    of entity listed in your workspace directory where `EXPERIMENT_NAME` points to.
+    As mentioned earlier, this creates a workspace-scoped experiment:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '![Figure 4.4 – The new experiment that was created in the workspace](img/B17875_04_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.4 – The new experiment that was created in the workspace
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Calling `mlflow.start_run()` starts a run under the listed experiment. The
+    rest of the code simply trains a scikit learn model. With just a few lines of
+    code, we are now using the features of MLflow Tracking:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following code utilizes the MLflow Tracking server to log artifacts and
+    hyperparameter values while setting `tag` to the `sklearn` model that is being
+    logged to the MLflow Tracking server:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once we’ve finished executing the code in this cell, we will be able to see
+    the run and all its artifacts, parameters, and hyperparameters listed under the
+    experiment:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.5 – The runs listed under the experiments](img/B17875_04_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.5 – The runs listed under the experiments
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can check the details of each run in the Tracking UI by clicking the shortcut
+    icon:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.6 – The shortcut for accessing the integrated MLflow Tracking UI](img/B17875_04_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.6 – The shortcut for accessing the integrated MLflow Tracking UI
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Tracking UI displays information about each run in a lot more detail. Along
+    with the serialized model, you can access logged artifacts, metrics, hyperparameters,
+    the model signature, or the sample input that your model expects as input if you
+    logged them during the run. At the top, you can see the path to the experiment
+    under which this run is being tracked. Each run is uniquely identified with an
+    ID that is also visible at the top. The tracking server provides lineage and links
+    this model run back to the exact version of the notebook that was used to execute
+    this run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.7 – The details of the run in the Tracking UI](img/B17875_04_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.7 – The details of the run in the Tracking UI
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clicking on the experiment path at the top will take you to the experiment
+    view where, if you have executed more than one run, you can select and compare
+    various runs to get the best model or compare the best combinations of the hyperparameters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.8 – All the runs associated with our experiment](img/B17875_04_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.8 – All the runs associated with our experiment
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s summarize this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered the various components of MLflow and how they work
+    together to make the end-to-end ML project life cycle easy to manage. We learned
+    about MLflow Tracking, Projects, Models, and Model Registry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter covered some key components of MLFlow and their purpose. Understanding
+    these concepts is essential in effectively managing end-to-end ML projects in
+    the Databricks environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will look at the AutoML capabilities of Databricks in
+    detail and how we can utilize them to create our baseline models for ML projects.
+  prefs: []
+  type: TYPE_NORMAL

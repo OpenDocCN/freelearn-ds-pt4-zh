@@ -1,0 +1,842 @@
+- en: '4'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Scaling DLT Pipelines
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we’re going to look at several methods for scaling your **Delta
+    Live Tables** ( **DLT** ) pipelines to handle the processing demands of a typical
+    production environment. We’ll cover several aspects of tuning your DLT pipelines,
+    from optimizing the DLT cluster settings so that your pipelines can quickly scale
+    to handle the spikes of heavy processing demand to looking at ways we can optimize
+    the data layout of the underlying tables in cloud storage. By the end of this
+    chapter, you should have mastered how DLT clusters can automatically scale out
+    to handle demand. You should also have a good understanding of the impact that
+    table maintenance tasks, which are automatically run in the background by the
+    DLT system, have on the performance of your data pipelines. Lastly, you should
+    understand how to leverage Delta Lake optimization techniques to further improve
+    the execution performance of your DLT pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’re going to cover the following main topics in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling compute to handle demand
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hands-on example – setting autoscaling properties using the Databricks REST
+    API
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Automated table maintenance tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Optimizing table layouts for faster table updates
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Serverless DLT pipelines
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introducing Enzyme, a performance optimization layer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with this chapter, you will need Databricks workspace permissions
+    to create and start an all-purpose cluster, as well as access to create a new
+    DLT pipeline using at least a cluster policy. All code samples can be downloaded
+    from this chapter’s GitHub repository located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter04](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter04)
+    . This chapter will create and run several new notebooks, as well as a new DLT
+    pipeline using the **Core** product edition. As a result, the code samples in
+    this chapter are estimated to consume around 10-15 **Databricks** **Units** (
+    **DBUs** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling compute to handle demand
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Different portions of a data pipeline may involve heavy computation as calculations
+    are performed, while other sections of the pipeline don’t require as much processing
+    power. To yield the best performance while simultaneously optimizing costs, it’s
+    important for any data pipeline to be able to add additional processing power
+    when needed, as well as release computational resources when processing demands
+    shrink over time. Fortunately, Databricks features a built-in autoscaling feature
+    for DLT pipelines, so that **virtual machines** ( **VMs** ) can be added to and
+    removed from a pipeline cluster to match the processing demands of a data pipeline
+    during its execution period.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In fact, Databricks offers two types of cluster autoscaling modes for DLT pipelines:
+    legacy and enhanced. Both autoscaling modes will automatically add or remove VMs
+    as processing demands increase or decrease throughout a pipeline run. However,
+    *when* the VMs are added and removed differs between the two.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With legacy autoscaling mode, a pipeline cluster will add additional VMs when
+    there has been an increase in processing demand over a sustained period of time.
+    Furthermore, in legacy autoscaling mode, a pipeline cluster will scale down only
+    when VMs are left idle for a period of time and they have no currently executing
+    Spark tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, with enhanced autoscaling mode, the DLT system will only
+    add additional VMs if the system *predicts* that adding additional compute resources
+    would speed up the execution of the pipeline update – for example, if the Spark
+    jobs are limited by the number of available CPU cores and would benefit from having
+    additional CPUs to execute a large amount of Spark tasks in parallel. In addition,
+    the enhanced autoscaling feature will proactively look for opportunities for the
+    pipeline cluster to scale down, evicting running Spark tasks and reducing cloud
+    operational costs. During the eviction process, the enhanced autoscaling mode
+    will ensure that evicted Spark tasks are recovered successfully on the remaining,
+    running VMs before terminating the over-provisioned VMs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, enhanced autoscaling is only available for clusters used in pipeline
+    update tasks, while the legacy autoscaling mode is used by the DLT system to execute
+    maintenance tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following table outlines the differences between the two types of autoscaling
+    modes available for DLT pipeline clusters, as well as which DLT tasks are available
+    for each of the autoscaling modes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Autoscaling Mode** | **Predictive** **Autoscaling** | **Proactive** **Down
+    Scaling** | **Update Tasks** | **Maintenance Tasks** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Legacy | ✖️ | ✖️ | ✔️ | ✔️ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Enhanced | ✔️ | ✔️ | ✔️ | ✖️ |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 4.1 – The differences between autoscaling modes available on DLT pipeline
+    clusters
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can configure the cluster autoscaling mode from either the DLT UI or the
+    Databricks REST API. In the next section, let’s use the Databricks REST API to
+    update the autoscaling mode of an existing data pipeline cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hands-on example – setting autoscaling properties using the Databricks REST
+    API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, you’ll need to download the code samples from this chapter’s
+    GitHub repository located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter04](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter04)
+    . Within the chapter’s GitHub repository is a helper notebook titled **Random
+    Taxi Trip Data Generator.py** , which we’ll use to generate random bursts of data
+    to a cloud storage landing zone, simulating the unpredictable behavior you could
+    expect in a production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, let’s begin by importing this chapter’s pipeline definition notebook,
+    titled **Taxi Trip Data Pipeline.py** , into your Databricks workspace and opening
+    the notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will notice that we’ve defined two datasets within our data pipeline. The
+    first dataset uses the Databricks Auto Loader feature to ingest new JSON files
+    as they arrive in our raw landing zone. Once the data has been ingested, a second
+    dataset – our silver table – will contain the result of the transformed taxi trip
+    data with additional columns containing the financial analytics of the taxi trip
+    data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, attach the notebook to an all-purpose cluster and execute all the notebook
+    cells. Ensure that all the notebook cells are executed successfully. When prompted,
+    create a new DLT pipeline using the **Core** product edition. Select **Continuous**
+    processing mode as the pipeline execution mode. (If you need a refresher, please
+    consult the *Data pipeline settings* section of [*Chapter 2*](B22011_02.xhtml#_idTextAnchor052)
+    in this book.) Next, select a target Unity Catalog destination to store the output
+    of the data pipeline datasets and accept all the remaining default values. Finally,
+    note the pipeline ID of the newly created data DLT pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the next part of this exercise, we’ll use a popular Python library, **requests**
+    , to interact with the Databricks REST API. Create a new notebook within your
+    Databricks workspace and begin by importing the **requests** library in the first
+    cell of our notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let’s create a new request to the Databricks REST API for updating the
+    cluster settings of our data pipeline. Within the request payload, we’ll specify
+    the autoscaling mode, the minimum number of worker nodes for our pipeline cluster,
+    as well as the maximum number of worker nodes. As per the public Databricks documentation,
+    we’ll also need to use the **PUT** verb for updating the settings of our DLT pipeline.
+    Add the following code snippet to the newly created notebook, updating the variables
+    with your environment-specific values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Alternatively, you can update the autoscaling mode to **ENHANCED** for the pipeline
+    by navigating to the pipeline settings from the DLT UI. Now that we’ve updated
+    our DLT pipeline to use enhanced autoscaling, let’s execute a pipeline update.
+    Navigate to the data pipeline UI of the newly created data pipeline. At the top
+    right, select the **Start** button to trigger a pipeline update.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Meanwhile, let’s also simulate spikes in processing demand using a random data
+    generator. Import the data generator notebook, titled **Random Taxi Trip Data
+    Generator.py** , from the chapter’s GitHub repository. As the name suggests, **Random
+    Taxi Trip Data Generator.py** will randomly generate new taxi trip data with varying
+    degrees of volume and frequency, simulating a typical workload in a production
+    environment. Attach the notebook to an all-purpose cluster and click the **Run
+    all** button to execute all the cells. Ensure that the notebook cells have all
+    completed successfully.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, switch back to the DLT UI for the pipeline we created. We’ll monitor the
+    event log of our pipeline to ensure that our DLT cluster will automatically increase
+    the number of worker instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.1 – Autoscaling events will be recorded in the event log from the
+    DLT UI](img/B22011_04_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.1 – Autoscaling events will be recorded in the event log from the DLT
+    UI
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similarly, monitor the event log to ensure that the DLT update cluster scales
+    back down after the flow of additional data terminates and processing demand dwindles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, you should have a strong foundation in understanding how DLT clusters
+    scale up and down to accommodate the peaks and valleys in processing demands.
+    As you can see, our DLT pipeline will only provision the compute it needs to efficiently
+    keep our datasets up to date and then release additional compute instances to
+    minimize our operational costs. Let’s turn our attention to other efficiencies
+    that the DLT system does automatically for us, such as how the DLT system will
+    automatically maintain the optimal state of our underlying Delta tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automated table maintenance tasks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As mentioned in previous chapters, each DLT pipeline will be associated with
+    two clusters – one cluster for performing updates to each of the datasets in a
+    pipeline definition, as well as another cluster for performing maintenance activities
+    to each dataset. These maintenance tasks include executing the Delta **VACUUM**
+    and **OPTIMIZE** operations for each Delta table contained within a data pipeline
+    definition. Previously, data engineers would be responsible for creating and maintaining
+    a separate Databricks workflow that would execute the **VACUUM** and **OPTIMIZE**
+    commands for each Delta table, typically scheduled to run nightly. As you can
+    imagine, as you begin to add more and more tables to a pipeline, this can turn
+    out to be quite a cumbersome task. Fortunately, the DLT framework does this heavy
+    lifting for us right out of the box. Furthermore, each **VACUUM** and **OPTIMIZE**
+    maintenance activity is executed within 24 hours of the last pipeline execution
+    run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s look at each operation individually to understand what overall benefit
+    the maintenance tasks have on the underlying datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why auto compaction is important
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: During each new update run for a particular DLT pipeline, the DLT pipeline will
+    initialize a dataflow graph and perform the underlying calculations spelled out
+    in each dataset definition. As a result, new data is either appended or merged
+    into a particular Delta table. Each time the data is written, Apache Spark will
+    distribute the write operation out to the executors, potentially generating many
+    small files as a result. As more updates are executed, more of these small files
+    are created on cloud storage. As downstream processes read these Delta tables,
+    they will need to expend a single Spark task for each unique file that answers
+    a particular table query. More files will result in more Spark tasks – or better
+    put, more work that needs to be done by the Spark engine. This is commonly referred
+    to as the “small files problem,” as tables that experience heavy volumes of new
+    data result in many small files, slowing down overall query performance. As a
+    remediation, it would be better to consolidate these small files into larger ones,
+    a process referred to as file compaction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, as data engineers, we don’t need to write our own utility for combining
+    smaller files into larger ones. In fact, Delta Lake features a helpful command
+    called **OPTIMIZE** for doing such maintenance tasks. By default, the Delta Lake
+    **OPTIMIZE** command will attempt to coalesce smaller files into larger, 1 Gigabyte
+    files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.2 – DLT will automatically run the OPTIMIZE command on Delta tables,
+    coalescing smaller files into larger 1 GB files](img/B22011_04_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.2 – DLT will automatically run the OPTIMIZE command on Delta tables,
+    coalescing smaller files into larger 1 GB files
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, you could choose to disable the auto-optimize feature by disabling
+    the **autoOptimize** table property in the table definition of the DLT pipeline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: There might be certain scenarios when you would want to override the default
+    behavior, such as implementing your own table optimization workflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As each **OPTIMIZE** maintenance activity is performed, it too will generate
+    additional files for each Delta table. To prevent cloud storage costs from ballooning
+    out of control, we must also take care of removing obsolete table files so that
+    as an organization, we aren’t paying for unnecessary cloud storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Vacuuming obsolete table files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **VACUUM** operation is designed to remove table files from previous versions
+    of a Delta table that are no longer in the latest table snapshot and are older
+    than the retention threshold property. By default, the retention threshold for
+    all Delta tables is seven days, meaning that the **VACUUM** operation will remove
+    obsolete table files that are older than seven days from the current snapshot
+    date. At runtime, the **VACUUM** utility will search the Delta table’s root directory
+    as well as all of the subdirectories, removing table files older than the retention
+    threshold from cloud storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a great way to balance both cloud storage costs with the ability to
+    maintain and view older snapshots of a particular Delta table. As mentioned in
+    [*Chapter 1*](B22011_01.xhtml#_idTextAnchor014) , the time travel feature of Delta
+    Lake relies upon the table history to query previous versions of a Delta table.
+    However, this feature was not designed to support long-term archival use cases,
+    but rather shorter-term table history. So, it’s reasonable to expect that we don’t
+    need to store all the history of a Delta table and pay the associated storage
+    costs, which could become quite expensive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Like the auto-optimize feature, a Delta table’s history retention threshold
+    is determined by a table property and can be specified in the table definition
+    using the **deletedFileRetentionDuration** table property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Similarly, the Delta transaction logs – the metadata files that record details
+    about each committed table transaction (covered in [*Chapter 1*](B22011_01.xhtml#_idTextAnchor014)
+    ) – can also lead to unnecessary storage costs. However, these log files are automatically
+    removed during log checkpoint operations (every tenth transaction commit). By
+    default, Delta Lake will retain a maximum of 30 days’ worth of table history in
+    the transaction logs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.3 – DLT will automatically run a VACUUM operation on all Delta tables](img/B22011_04_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.3 – DLT will automatically run a VACUUM operation on all Delta tables
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since the transaction log files contain only metadata information, they are
+    small, containing only a few megabytes of information. However, this history retention
+    can also be configured by setting the **logRetentionDuration** table property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Removing obsolete cloud files is a great way to control cloud costs and prevent
+    your organization from paying for unnecessary cloud storage charges. Let’s look
+    at how we might be able to optimize other aspects of our DLT pipelines to improve
+    operating efficiency while continuing to drive down operating costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moving compute closer to the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One of the simplest methods for ensuring that your data pipelines will execute
+    efficiently is to ensure that the DLT pipeline clusters are launched within the
+    same global region as the data that is being processed. This is an age-old tuning
+    concept of moving the hardware closer to the data to minimize network latencies
+    during data processing. For example, you wouldn’t want your DLT pipeline cluster
+    to execute in, say, the US West Region of a cloud provider, yet the data is stored
+    in a completely different geographical location, such as the US East Region of
+    the same cloud provider. As a result, this will introduce a considerable amount
+    of network latency to transfer the data across geographical regions, process the
+    data transformations or other calculations, and then store the result back in
+    the original geographical region. Furthermore, most cloud providers will assess
+    data egress and ingress charges associated with the geographical data transfer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.4 – The geographical locations of your DLT cluster and storage container
+    can introduce significant network latencies](img/B22011_04_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.4 – The geographical locations of your DLT cluster and storage container
+    can introduce significant network latencies
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The geographical region of a DLT cluster can be set by defining the cloud zone
+    location in the pipeline cluster policy definition. For example, the following
+    code snippet defines a cluster policy that could be used to configure DLT pipeline
+    clusters to launch in the US East Region of the AWS cloud provider:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: By ensuring that your DLT clusters are provisioned in the same geographical
+    region as your organization data, you can make certain that you will be getting
+    the best operating performance out of your pipeline clusters. At the same time,
+    since your pipelines run faster and utilize cloud resources for less time, this
+    translates to dollars saved for your organization. Along with optimizing the computational
+    resources of our data pipelines, we can also organize our table data efficiently
+    to further improve the performance of our data pipeline updates. Let’s look at
+    a few other techniques for improving the processing efficiency of our DLT pipelines
+    by optimizing the data layouts of our tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing table layouts for faster table updates
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A typical DLT pipeline might include one or more datasets that append new data
+    and update existing data with either new values or even delete rows altogether.
+    Let’s take an in-depth look into this latter scenario and analyze what happens
+    “under the hood” so that we can optimize our DLT datasets for faster performance
+    as we add new data to our DLT tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rewriting table files during updates
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: During a table update, the DLT engine will perform two scans to identify all
+    the rows that match a particular update condition and rewrite the changed table
+    data accordingly. During the first table scan, the DLT engine will identify all
+    table files that contain rows that match a predicate clause in an **apply_changes()**
+    (or **APPLY CHANGES** if using SQL) expression, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.5 – DLT will apply changes to the target DLT table by identifying
+    matching rows using a matching operation](img/B22011_4_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.5 – DLT will apply changes to the target DLT table by identifying matching
+    rows using a matching operation
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, the DLT engine will compile a list of all table files that contain these
+    rows. Using this list of table files, the DLT engine will rewrite each of these
+    files containing the newly updated row(s) in a second table scanning operation.
+    As you can imagine, as you add more data to a DLT table, the process of locating
+    these matching rows and identifying the list of files to rewrite can get quite
+    expensive over time. Fortunately, Delta Lake has a few features up its sleeves
+    that we can use to optimize this search process and speed up the matching process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data skipping using table partitioning
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One way to speed up this search process is to limit the search space for the
+    DLT engine. One such technique is to use Hive-style table partitioning. Table
+    partitioning organizes related data into physically separate subdirectories within
+    a table’s root storage location. The subdirectories correspond to one or more
+    table columns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: During the matching process, the DLT engine can eliminate entire subdirectories
+    that don’t match the predicate condition, removing the need to scan unnecessary
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Partitioning a table with **MERGE** columns, the columns used to apply data
+    changes to the table, can dramatically boost the performance of the update process.
+    On the other hand, since table partitioning creates physically separate directories,
+    table partitioning can be difficult to get correct and expensive to change, requiring
+    the entire table to be rewritten to adjust the partitioning scheme.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another challenge is identifying a table partitioning scheme that will result
+    in partition directories that are evenly balanced with the same amount of data.
+    It’s quite easy to end up partitioning a table by **MERGE** columns, but then
+    end up in a scenario where some partition directories contain small amounts of
+    data, while other partition directories contain massive amounts of data. This
+    is commonly referred to as **data skew** . Still, table partitioning is a powerful
+    tool in your data pipeline tuning arsenal. Let’s look at how we might be able
+    to combine table partitioning with another table optimization technique to further
+    boost our pipeline performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Delta Lake Z-ordering on MERGE columns
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One way to optimize the table layout of a Delta table is to organize the data
+    within each of the table files so that it can be read efficiently during file-scanning
+    operations. This is commonly referred to as data clustering. Fortunately, Delta
+    Lake features a data clustering algorithm known as Z-order clustering. Z-order
+    clustering will write the table data by clustering relevant data together, forming
+    a “Z”-shaped pattern. Storing the table data according to this pattern will improve
+    the probability that the DLT engine will skip past irrelevant data within a table
+    file and only read data that matches merge conditions during the update matching
+    process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Traditionally, without Z-order clustering, Delta Lake will store the data in
+    a linear pattern. As a result, during the update matching process, Delta Lake
+    will need to open each file of the table and scan each of the rows in a linear
+    sorting order. Sometimes, only a single row might match the merge condition. In
+    turn, the DLT engine will read all the unnecessary rows that do not match, only
+    to find maybe 1 or 2 rows that do match the update condition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By clustering the data within a file using the Z-order clustering technique,
+    the DLT engine can pinpoint where in a particular file the relevant data exists,
+    limiting the amount of data that it must scan. For large tables that require a
+    lot of scanning, this can improve the update process of a DLT pipeline dramatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.6 – Z-order clustering data within table files can be visualized
+    as data clusters forming “Z” shapes](img/B22011_04_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.6 – Z-order clustering data within table files can be visualized as
+    data clusters forming “Z” shapes
+  prefs: []
+  type: TYPE_NORMAL
+- en: Z-order clustering can be enabled on DLT datasets by setting the appropriate
+    table property within the dataset definition. Let’s look at how we might configure
+    the Z -order clustering for our silver table, **yellow_taxi_transformed** , which
+    receives many updates throughout the day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first begin by defining the dataset like any dataset within our DLT pipelines.
+    You’ll notice that we’ve included a name for the dataset, **yellow_taxi_transormed**
+    , as well as a comment, which adds some descriptive text about the table. However,
+    within the DLT function annotation, we’ve added a couple more parameters where
+    we can set the table properties for this dataset. In the table properties parameter,
+    we’ve added a couple of attributes that will describe our dataset to the DLT engine.
+    First, we’ve added a table property describing the quality of this dataset, which
+    is a silver table in our medallion architecture. Next, we’ve also added another
+    table property that specifies which table columns we would like to apply a Z-ord
+    er clustering:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'During the execution of our daily maintenance tasks, the maintenance task will
+    dynamically parse these Z-order columns and will run the following Z-order command
+    on the underlying Delta table behind this DLT dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: So, which table columns should you Z-order your DLT tables by and how many columns
+    should you specify? A good range is anywhere from 1 to 3 columns, but no more
+    than 5 columns. As you add more columns, it will complicate the data clustering
+    within the table files, diminishing the returns on any possible data skipping
+    that could occur.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, you should strive to choose columns that are numerical in data
+    type. The reason for this is that whenever new data is written to a Delta table,
+    the Delta engine will capture statistical information about the first 32 columns
+    – column information such as the minimum value, maximum value, and number of nulls.
+    This statistical information will be used during the update searching process
+    to effectively locate which rows match the update predicate. For data types such
+    as strings, this statistical information does not provide very useful information,
+    since there cannot be an average string, for example. However, there can be an
+    average for a column with a float data type, for instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, columns that are used in **APPLY CHANGES** predicates, join columns,
+    and columns where aggregations are performed all serve as ideal Z-order candidates.
+    Lastly, these columns should have a higher cardinality than the columns used to
+    create a table partitioning scheme.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: There may be times when you may want to experiment with different columns or
+    a different set of columns to Z-order your table by. Changing this Z-order scheme
+    is trivial – it’s as simple as updating the **table_properties** parameter in
+    the DLT pipeline definition. However, it’s important to note that the new Z-order
+    clustering will take effect only on new data that is written to the table. To
+    apply the new Z-order clustering to existing data, the entire table would need
+    to be fully refreshed so that the table files can be reorganized according to
+    the clustering pattern. As a result, you may want to balance the time and cost
+    it will take to rewrite the table data with the performance benefits that you
+    may get from the table Z-order optimization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see by now, Z-order optimization is a great way to optimize the layout
+    of your DLT tables to boost the performance of your data pipelines. Having an
+    effective data layout can improve the data skipping of the DLT engine and limit
+    the amount of data that the DLT engine needs to scan to apply updates to target
+    tables within your pipelines. Combined with Hive-style table partitioning, this
+    is a great way to ensure you are squeezing the best performance out of your data
+    pipelines, leading to shorter execution times and less time and money spent keeping
+    update clusters up and running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, what if you are only updating a small amount of data within a particular
+    table file? That translates to rewriting an entire file for the sake of updating
+    maybe 1 or 2 rows, for example. Let’s look at how we might be able to optimize
+    the performance of our DLT pipelines further to avoid this costly operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving write performance using deletion vectors
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: During a table update, the DLT engine applies the update by rewriting the matched
+    file with the newly changed rows in the new, target file. In this type of table
+    update strategy, known as **Copy-on-Write** ( **COW** ), the rows not receiving
+    any updates need to be copied over to the new file, as the name suggests. For
+    table updates that require only a few rows to change across many files, this can
+    be largely inefficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A better optimization technique would be to keep track of all the rows that
+    have changed in a separate data structure and write the newly updated rows into
+    separate file(s). Then, during a table query, the table client can use this data
+    structure to filter out any of the updated rows. This technique is called **Merge-on-Read**
+    ( **MOR** ) and is implemented in Delta Lake using a feature called deletion vectors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Deletion vectors** are a special data structure that keeps track of all the
+    row IDs that are updated during an **UPDATE** or **MERGE** operation on a Delta
+    table. Deletion vectors can be enabled by setting a table property of the underlying
+    Delta table. Like the statistical information regarding the Delta table columns,
+    deletion vectors are stored alongside the table data on cloud storage.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.7 – Delta Lake tables will keep track of the row IDs of each row
+    in a separate data structure](img/B22011_04_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.7 – Delta Lake tables will keep track of the row IDs of each row in
+    a separate data structure
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, deletion vectors can be automatically enabled by default for all
+    new tables created within a Databricks workspace. A workspace administrator can
+    enable or disable this behavior from the **Advanced** tab of the workspace admin
+    settings UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 4.8 – Deletion vectors can be automatically enabled in the \uFEFF\
+    Databricks Data Intelligence Platform](img/B22011_04_008.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.8 – Deletion vectors can be automatically enabled in the Databricks
+    Data Intelligence Platform
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Deletion vectors can be explicitly set on a dataset by setting the **enableDeletionVectors**
+    table property in the DLT table definition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: In addition, deletion vectors unlock a new class of update performance features
+    on the Databricks Data Intelligence Platform, collectively referred to as **Predictive
+    I/O** . Predictive I/O uses deep learning and file statistics to accurately predict
+    the location of rows within files that match an update condition. As a result,
+    the time it takes to scan matching files and rewrite data during updates, merges,
+    and deletes is drastically reduced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hive-style table partitioning, Z-order data clustering, and deletion vectors
+    are all great optimization techniques for efficiently storing our table data and
+    improving the speed of our pipeline updates. Let’s turn our attention back to
+    the computational resources of our data pipelines and analyze yet another technique
+    for improving the performance of our DLT pipelines in production, particularly
+    in times when the processing demands may spike and become unpredictable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serverless DLT pipelines
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 2*](B22011_02.xhtml#_idTextAnchor052) , we briefly described what
+    serverless DLT clusters were and how they can quickly and efficiently scale computational
+    resources up to handle spikes in demand, as well as scale down to save cloud costs.
+    While we won’t cover the architecture of serverless clusters again, we will cover
+    how serverless DLT clusters can help organizations scale their data pipelines
+    as more and more data pipelines are added.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With serverless DLT clusters, the cluster infrastructure and settings are automatically
+    handled by the Databricks cloud provider account. This translates to removing
+    the burden of having to select VM instance types to balance performance with costs.
+    The costs for serverless compute are at a fixed, flat rate, making the costs predictable.
+    In addition, since the computational resources are managed by the Databricks cloud
+    provider account, Databricks can reserve a large amount of VM instances at a discounted
+    price by each cloud provider. These discounted rates can then be passed along
+    to the DLT serverless consumers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, serverless DLT clusters *simplify data pipeline maintenance* by
+    reducing the amount of configuration that’s needed per data pipeline. With less
+    configuration, data engineer teams can focus less on the maintenance of their
+    data pipelines and more on what matters to the business, such as changing business
+    logic, data validation, and adding more data pipelines to name a few. In addition,
+    as your data pipelines grow over time and dataset volumes increase over time,
+    you may need to provision more VM instances. Eventually, you may hit the cloud
+    provider limits for certain instance types, which requires an additional process
+    to have these limits increased by the cloud provider. With serverless DLT compute,
+    these limits have already been negotiated with the cloud provider, meaning that
+    the DLT serverless consumers need not be concerned with this burden.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serverless data pipelines can also help *reduce costs* for data pipelines. For
+    example, with traditional, customer-managed compute, a cluster can only add additional
+    VM instances as quickly as the cloud provider can provision additional instances
+    and routinely run the diagnostic checks. Plus, the Databricks runtime container
+    and user libraries need to be installed on the additional instances, which takes
+    even more time. This can translate to many minutes – sometimes 15 minutes or more
+    depending on the cloud provider – before a DLT cluster can scale out to handle
+    the unpredictable spikes in computational demand. As a result, DLT pipelines running
+    on traditional compute will take much longer to execute as compared to the serverless
+    DLT clusters. With serverless DLT clusters, the VM instances are pre-provisioned
+    with the latest Databricks runtime container already installed and started in
+    a pre-allocated instance pool. During spikes in processing demand, the DLT pipeline
+    can respond with additional resources to meet the demand on the order of seconds
+    rather than minutes. These minutes can add up over many data pipeline runs and
+    over the course of a cloud billing cycle. By driving down the time it takes to
+    scale out with additional resources and being able to aggressively scale down
+    with enhanced autoscaling, serverless DLT pipelines can drastically reduce operational
+    costs while simultaneously improving the efficiency of the ETL processing in your
+    lakehouse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Removing the infrastructure burden of managing compute settings for data pipelines
+    as well as controlling cloud costs are great motivating factors behind choosing
+    serverless DLT pipelines over traditional, customer-managed compute. However,
+    let’s look at another motivation for selecting serverless DLT clusters, such as
+    the performance features that come with this type of computational resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing Enzyme, a performance optimization layer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There may be certain scenarios where a data pipeline has been deployed into
+    a production environment. However, down the road, there may be significant changes
+    in the business requirements, requiring the datasets to be recomputed from scratch.
+    In these scenarios, recomputing the historical data of these datasets could be
+    cost prohibitive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enzyme, a brand-new optimization layer that is only available for serverless
+    DLT pipelines, aims to reduce ETL costs by dynamically calculating a cost model
+    for keeping the materialized results of a dataset up to date. Like the cost model
+    in Spark query planning, Enzyme calculates a cost model between several ETL techniques
+    from a traditional materialized view in DLT to a Delta streaming table to another
+    Delta streaming table, or a manual ETL technique. For example, the Enzyme engine
+    might model the cost to refresh a dataset using a materialization technique, translating
+    to 10 Spark jobs, each with 200 Spark tasks. This cost model might save two Spark
+    jobs and shave five minutes off the overall execution time as predicted by another
+    modeled ETL technique, so the Enzyme engine will choose the first technique instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.9 – The Enzyme optimization layer will automatically select the
+    most cost-efficient ETL refresh technique using a cost model](img/B22011_04_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.9 – The Enzyme optimization layer will automatically select the most
+    cost-efficient ETL refresh technique using a cost model
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Enzyme layer will dynamically choose the most efficient and cost-effective
+    method for recomputing the results for a given dataset at runtime. Since Enzyme
+    is a serverless DLT feature, it is already enabled by default, removing the need
+    for DLT admins to manage pipeline cluster settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, you should understand the powerful features that come with serverless
+    DLT pipelines, such as the Enzyme optimization layer, as well as the infrastructure
+    management and cost-saving benefits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at various methods for scaling our data pipelines
+    to handle large volumes of data and perform well under periods of high and unpredictable
+    processing demand. We looked at two attributes of scaling our DLT pipelines –
+    compute and data layout. We examined the enhanced autoscaling feature of the Databricks
+    Data Intelligence Platform to automatically scale the computational resources
+    that the data pipelines execute on. We also looked at optimizing how the underlying
+    table data was stored, clustering relevant data within table files and leading
+    to faster table queries and shorter pipeline processing times. Furthermore, we
+    also looked at regular maintenance activities to maintain high-performing table
+    queries, as well as prevent ballooning cloud storage costs from obsolete data
+    files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data security is of the utmost importance and is often overlooked until the
+    end of a lakehouse implementation. However, this could mean the difference between
+    a successful lakehouse and making the front page of a newspaper – and not for
+    a good reason. In the next chapter, we’ll be taking a look at how we can effectively
+    implement strong data governance across our lakehouse, whether it’s within a single
+    geographical region or across a fail-over region on a different part of the globe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Part 2:Securing the Lakehouse Using the Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this part, we’ll explore how to implement an effective data governance strategy
+    using the Unity Catalog in the Databricks Data Intelligence Platform. We’ll look
+    at how you can enforce fine-grained data access policies across various roles
+    and departments in your organization. Lastly, we’ll look at how you trace the
+    origins of data assets in Unity Catalog, ensuring that data is coming from trusted
+    sources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This part contains the following chapters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[*Chapter 5*](B22011_05.xhtml#_idTextAnchor126) , *Mastering Data Governance
+    in the Lakehouse* *with* *Unity Catalog*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[*Chapter 6*](B22011_06.xhtml#_idTextAnchor148) , *Managing Data Locations
+    in Unity Catalog*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[*Chapter 7*](B22011_07.xhtml#_idTextAnchor165) , *Viewing Data Lineage Using
+    Unity Catalog*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

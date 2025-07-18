@@ -1,0 +1,941 @@
+- en: '9'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Testing an API Asynchronously with pytest and HTTPX
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In software development, a significant part of the developer’s work should be
+    dedicated to writing tests. At first, you may be tempted to manually test your
+    application by running it, making a few requests, and arbitrarily deciding that
+    “everything works.” However, this approach is flawed and can’t guarantee that
+    your program works in every circumstance and that you didn’t break things along
+    the way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That’s why several disciplines have emerged regarding software testing: unit
+    tests, integration tests, end-to-end tests, acceptance tests, and others. These
+    techniques aim to validate the functionality of software from a micro level, where
+    we test single functions (unit tests), to a macro level, where we test a global
+    feature that delivers value to the user (acceptance tests). In this chapter, we’ll
+    focus on the first level: unit testing.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Unit tests are short programs designed to verify that our code behaves the
+    way it should in every circumstance. You may think that tests are time-consuming
+    to write and that they don’t add value to your software, but this will save you
+    time in the long run: first of all, tests can be run automatically in a few seconds,
+    ensuring that all your software works, without you needing to manually go over
+    every feature. Secondly, when you introduce new features or refactor the code,
+    you’re ensuring that you don’t introduce bugs to existing parts of the software.
+    In conclusion, tests are just as important as the program itself, and they help
+    you deliver reliable and high-quality software.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you’ll learn how to write tests for your FastAPI application,
+    both for HTTP endpoints and WebSockets. To help with this, you’ll learn how to
+    configure pytest, a well-known Python test framework, and HTTPX, an asynchronous
+    HTTP client for Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An introduction to unit testing with pytest
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up the testing tools for FastAPI with HTTPX
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing tests for REST API endpoints
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing tests for WebSocket endpoints
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this chapter, you’ll require a Python virtual environment, just as we set
+    up in [*Chapter 1*](B19528_01.xhtml#_idTextAnchor024), *Python Development* *Environment
+    Setup*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the *Communicating with a MongoDB database using Motor* section, you’ll
+    need a running MongoDB server on your local computer. The easiest way to do this
+    is to run it as a Docker container. If you’ve never used Docker before, we recommend
+    that you refer to the *Getting started* tutorial in the official documentation
+    at [https://docs.docker.com/get-started/](https://docs.docker.com/get-started/).
+    Once you have done this, you’ll be able to run a MongoDB server using this simple
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The MongoDB server instance will then be available on your local computer at
+    port `27017`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You’ll find all the code examples of this chapter in the dedicated GitHub repository
+    at [https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09).
+  prefs: []
+  type: TYPE_NORMAL
+- en: An introduction to unit testing with pytest
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we mentioned in the introduction, writing unit tests is an essential task
+    in software development to deliver high-quality software. To help us be productive
+    and efficient, a lot of libraries exist that provide tools and shortcuts dedicated
+    to testing. In the Python standard library, a module exists for unit testing called
+    `unittest`. Even though it’s quite common in Python code bases, many Python developers
+    tend to prefer pytest, which provides a more lightweight syntax and powerful tools
+    for advanced use cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following examples, we’ll write a unit test for a function called `add`,
+    both with `unittest` and pytest, so that you can see how they compare on a basic
+    use case. First, we’ll install pytest:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let’s see our simple `add` function, which simply performs an addition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_introduction.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s implement a test that checks that *2 + 3* is indeed equal to *5*
+    with `unittest`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_introduction_unittest.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_unittest.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_unittest.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, `unittest` expects us to define a class inheriting from `TestCase`.
+    Then, each test lives in its own method. To assert that two values are equal,
+    we must use the `assertEqual` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To run this test, we can call the `unittest` module from the command line and
+    pass it through the dotted path to our test module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the output, each successful test is represented by a dot. If one or several
+    tests are not successful, you will get a detailed error report for each, highlighting
+    the failing assertion. You can try it by changing the assertion in the test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s write the same test with pytest:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_introduction_pytest.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_pytest.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_pytest.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, it’s much shorter! Indeed, with pytest, you don’t necessarily
+    have to define a class: a simple function is enough. The only constraint to making
+    it work is that the function name has to start with `test_`. This way, pytest
+    can automatically discover the test functions. Secondly, it relies on the built-in
+    `assert` statement instead of specific methods, allowing you to write comparisons
+    more naturally.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To run this test, we must simply call the `pytest` executable with the path
+    to our test file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once again, the output represents each successful test with a dot. Of course,
+    if you change the test to make it fail, you’ll get a detailed error for the failing
+    assertion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s worth noting that if you run pytest without any arguments, it’ll automatically
+    discover all the tests living in your project, as long as their name starts with
+    `test_`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we made a small comparison between `unittest` and pytest. For the rest
+    of this chapter, we’ll stick with pytest, which should give you a more productive
+    experience while writing tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before focusing on FastAPI testing, let’s review two of the most powerful features
+    of pytest: `parametrize` and fixtures.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating tests with parametrize
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In our previous example, with the `add` function, we only tested one addition
+    test, *2 + 3*. Most of the time, we’ll want to check for more cases to ensure
+    our function works in every circumstance. Our first approach could be to add more
+    assertions to our test, like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'While working, this method has two drawbacks: first, it may be a bit cumbersome
+    to write the same assertion several times with only some parameters changing.
+    In this example, it’s not too bad, but tests can be way more complex, as we’ll
+    see with FastAPI. Second, we still only have one test: the first failing assertion
+    will stop the test and the following ones won’t be executed. Thus, we’ll only
+    know the result if we fix the failing assertion first and run the test again.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To help with this specific task, pytest provides the `parametrize` marker. In
+    pytest, a **marker** is a special decorator that’s used to easily pass metadata
+    to the test. Special behaviors can then be implemented, depending on the markers
+    used by the test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, `parametrize` allows us to define several sets of variables that will
+    be passed as arguments to the test function. At runtime, each set will generate
+    a new and independent test. To understand this better, let’s look at how to use
+    this marker to generate several tests for our `add` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_introduction_pytest_parametrize.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_pytest_parametrize.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_pytest_parametrize.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, you can see that we simply decorated our test function with the `parametrize`
+    marker. The basic usage is as follows: the first argument is a string with the
+    name of each parameter separated by a comma. Then, the second argument is a list
+    of tuples. Each tuple contains the values of the parameters in order.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our test function receives those parameters in arguments, each one named the
+    way you specified previously. Thus, you can use them at will in the test logic.
+    As you can see, the great benefit here is that we only have to write the `assert`
+    statement once. Besides, it’s very quick to add a new test case: we just have
+    to add another tuple to the `parametrize` marker.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s run this test to see what happens by using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, pytest executed *four tests instead of one*! This means that
+    it generated four independent tests, along with their own sets of parameters.
+    If several tests fail, we’ll be informed, and the output will tell us which set
+    of parameters caused the error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To conclude, `parametrize` is a very convenient way to test different outcomes
+    when it’s given a different set of parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While writing unit tests, you’ll often need variables and objects several times
+    across your tests, such as app instances, fake data, and so on. To avoid having
+    to repeat the same things over and over across your tests, pytest proposes an
+    interesting feature: fixtures.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reusing test logic by creating fixtures
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When testing a large application, tests tend to become quite repetitive: lots
+    of them will share the same boilerplate code before their actual assertion. Consider
+    the following Pydantic models representing a person and their postal address:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_introduction_fixtures.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_fixtures.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_fixtures.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This example may look familiar: it was taken from [*Chapter 4*](B19528_04.xhtml#_idTextAnchor176),
+    *Managing Pydantic Data Models in FastAPI*. Now, let’s say that we want to write
+    tests with some instances of those models. Obviously, it would be a bit annoying
+    to instantiate them in each test, filling them with fake data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, fixtures allow us to write them once and for all. The following
+    example shows how to use them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_introduction_fixtures_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_fixtures_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_introduction_fixtures_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once again, pytest makes it very straightforward: fixtures are *simple functions*
+    decorated *with the fixture decorator*. Inside, you can write any logic and return
+    the object you’ll need in your tests. Here, in `address`, we instantiate an `Address`
+    object with fake data and return it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, how can we use this fixture? If you look at the `test_address_country`
+    test, you’ll see some magic happening: by setting an `address` argument on the
+    test function, pytest automatically detects that it corresponds to the `address`
+    fixture, executes it, and passes its return value. Inside the test, we have our
+    `Address` object ready to use. pytest calls this *requesting* *a fixture*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may have noticed that we also defined another fixture, `person`. Once again,
+    we instantiate a `Person` model with dummy data. The interesting thing to note,
+    however, is that we actually requested the `address` fixture to use it inside!
+    That’s what makes this system so powerful: fixtures can depend on other fixtures,
+    which can also depend on others, and so on. In some way, it’s quite similar to
+    dependency injection, as we discussed in [*Chapter 5*](B19528_05.xhtml#_idTextAnchor285),
+    *Dependency Injection* *in FastAPI*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With that, our quick introduction to pytest has come to an end. Of course,
+    there are so many more things to say, but this will be enough for you to get started.
+    If you want to explore this topic further, you can read the official pytest documentation,
+    which includes tons of examples showing you how you can benefit from all its features:
+    [https://docs.pytest.org/en/latest/](https://docs.pytest.org/en/latest/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s focus on FastAPI. We’ll start by setting up the tools for testing
+    our applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up testing tools for FastAPI with HTTPX
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you look at the FastAPI documentation regarding testing, you’ll see that
+    it recommends that you use `TestClient` provided by Starlette. In this book, we’ll
+    show you a different approach involving an HTTP client called HTTPX.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Why? The default `TestClient` is implemented in a way that makes it completely
+    synchronous, meaning you can write tests without worrying about `async` and `await`.
+    This might sound nice, but we found that it causes some problems in practice:
+    since your FastAPI app is designed to work asynchronously, you’ll likely have
+    lots of services working asynchronously, such as the database drivers we saw in
+    [*Chapter 6*](B19528_06.xhtml#_idTextAnchor346), *Databases and Asynchronous ORMs*.
+    Thus, in your tests, you’ll probably need to perform some actions on those asynchronous
+    services, such as filling a database with dummy data, which will make your tests
+    asynchronous anyway. Melding the two approaches often leads to strange errors
+    that are hard to debug.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, HTTPX, an HTTP client created by the same team as Starlette, allows
+    us to have a pure asynchronous HTTP client able to make requests to our FastAPI
+    app. To make this approach work, we’ll need three libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`HTTPX`, the client that will perform HTTP requests'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`asgi-lifespan`, a library for managing the lifespan events of your FastAPI
+    app programmatically'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pytest-asyncio`, an extension for pytest that allows us to write asynchronous
+    tests'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s install those libraries using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Great! Now, let’s write some fixtures so that we can easily get an HTTP test
+    client for a FastAPI application. This way, when writing a test, we’ll only have
+    to request the fixture and we’ll be able to make a request right away.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we are considering a simple FastAPI application that
+    we want to test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a separate test file, we’ll implement two fixtures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first one, `event_loop`, will ensure that we always work with the same
+    event loop instance. It’s automatically requested by `pytest-asyncio` before executing
+    asynchronous tests. You can see its implementation in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_app_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, you can see that we simply create a new event loop before *yielding* it.
+    As we discussed in [*Chapter 2*](B19528_02.xhtml#_idTextAnchor032), *Python Programming
+    Specificities*, using a generator allows us to “pause” the function’s execution
+    and get back to the execution of its caller. This way, when the caller is done,
+    we can execute cleanup operations, such as closing the loop. pytest is smart enough
+    to handle this correctly in fixtures, so this is a very common pattern for setting
+    up test data, using it, and destroying it after. We also use the same approach
+    for lifespan functions in FastAPI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, this function is decorated with the `fixture` decorator to make
+    it a fixture for pytest. You may have noticed that we set an argument called `scope`
+    with the `session` value. This argument controls at which level the fixture should
+    be instantiated. By default, it’s recreated *at the beginning of each single test
+    function*. The `session` value is the highest level, meaning that the fixture
+    is only created once at the beginning of the whole test run, which is relevant
+    for our event loop. You can find out more about this more advanced feature in
+    the official documentation: [https://docs.pytest.org/en/latest/how-to/fixtures.html#scope-sharing-fixtures-across-classes-modules-packages-or-session](https://docs.pytest.org/en/latest/how-to/fixtures.html#scope-sharing-fixtures-across-classes-modules-packages-or-session).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we’ll implement our `test_client` fixture, which will create an instance
+    of HTTPX for our FastAPI application. We must also remember to trigger the app
+    events with `asgi-lifespan`. You can see what it looks like in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_app_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Only three lines are needed. The first difference with fixtures we’ve seen so
+    far is that this is an async function. In this case, notice that we used the `@pytest_asyncio.fixture`
+    decorator instead of `@pytest.fixture`. It’s the async counterpart of this decorator
+    provided by `pytest-asyncio` so async fixtures are correctly handled. In previous
+    versions, using the standard decorator used to work but it’s now discouraged.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we have two context managers: `LifespanManager` and `httpx.AsyncClient`.
+    The first one ensures startup and shutdown events are executed, while the second
+    one ensures that an HTTP session is ready. On both of them, we set the `app` variable:
+    this is our FastAPI application instance we imported from its module, `chapter09.chapter09_app`
+    `import app`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we once again used a generator here, with `yield`. This is important
+    because, even if we don’t have any more code after, *we need to close the context
+    managers after we use our client*. If we used `return`, Python would have immediately
+    closed them and we would end up with an unusable client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Organizing tests and global fixtures in projects
+  prefs: []
+  type: TYPE_NORMAL
+- en: In larger projects, you’ll likely have several test files to keep your tests
+    organized. Usually, those files are placed in a `tests` folder at the root of
+    your project. If your test files are prefixed with `test_`, they will be automatically
+    discovered by pytest. *Figure 9**.1* shows an example of this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides this, you’ll need the fixtures we defined in this section for all your
+    tests. Rather than repeating them again and again in all your test files, pytest
+    allows you to write global fixtures in a file named `conftest.py`. After putting
+    it in your `tests` folder, it will automatically be imported, allowing you to
+    request all the fixtures you define inside it. You can read more about this in
+    the official documentation at https://docs.pytest.org/en/latest/reference/fixtures.html#conftest-py-sharing-fixtures-across-multiple-files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As mentioned previously, *Figure 9**.1* shows the test files in the `tests`
+    folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.1 – Structure of a project with tests](img/Figure_9.1_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.1 – Structure of a project with tests
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s it! We now have all the fixtures ready to write tests for our REST API
+    endpoints. That’s what we’ll do in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing tests for REST API endpoints
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: All the tools we need to test our FastAPI application are now ready. All these
+    tests boil down to performing an HTTP request and checking the response to see
+    whether it corresponds to what we expect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s start simply with a test for our `hello_world` path operation function.
+    You can see it in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_app_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First of all, notice that the test function is defined as async. As we mentioned
+    previously, to make it work with pytest, we had to install `pytest-asyncio`. This
+    extension provides the `asyncio` marker: each asynchronous test should be decorated
+    with this marker to make it work properly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we request our `test_client` fixture, which we defined earlier. It gives
+    us an HTTPX client instance ready to make requests to our FastAPI app. Note that
+    we manually type hinted the fixture. While not strictly required, it’ll greatly
+    help you if you use an IDE such as Visual Studio Code, which uses type hints to
+    provide you with convenient auto-completion features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, in the body of our test, we perform the request. Here, it’s a simple
+    GET request to the `/` path. It returns an HTTPX `Response` object (which is *different*
+    from the `Response` class of FastAPI) containing all the data of the HTTP response:
+    the status code, the headers, and the body.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we make assertions based on this data. As you can see, we verify that
+    the status code is indeed `200`. We also check the content of the body, which
+    is a simple JSON object. Notice that the `Response` object has a convenient method
+    called `json` for automatically parsing JSON content.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great! We wrote our first FastAPI test! Of course, you’ll likely have more complex
+    tests, typically ones for POST endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing tests for POST endpoints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Testing a POST endpoint is not very different from what we’ve seen earlier.
+    The difference is that we’ll likely have more cases to check whether data validation
+    is working. In the following example, we are implementing a POST endpoint that
+    accepts a `Person` model in the body:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_app_post.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_post.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_post.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An interesting test could be to ensure that an error is raised if some fields
+    are missing in the request payload. In the following extract, we wrote two tests
+    – one with an invalid payload and another with a valid one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_app_post_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_post_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_post_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing you may have noticed is that we wrapped our two tests inside
+    a class. While not required in pytest, it could help you organize your tests –
+    for example, to regroup tests that concern a single endpoint. Notice that, in
+    this case, we only have to decorate the class with the `asyncio` marker; it will
+    be automatically applied on single tests. Also, ensure that you add the `self`
+    argument to each test: since we are now inside a class, they become methods.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These tests are not very different from our first example. As you can see,
+    the HTTPX client makes it very easy to perform POST requests with a JSON payload:
+    you just have to pass a dictionary to the `json` argument.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, HTTPX helps you build all kinds of HTTP requests with headers, query
+    parameters, and so on. Be sure to check its official documentation to learn more
+    about its usage: [https://www.python-httpx.org/quickstart/](https://www.python-httpx.org/quickstart/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing with a database
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Your application will likely have a database connection to read and store data.
+    In this context, you’ll need to work with a fresh test database in each run to
+    have a clean and predictable set of data to write your tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this, we’ll use two things. The first one, `dependency_overrides`, is a
+    FastAPI feature that allows us to replace some dependencies at runtime. For example,
+    we can replace the dependency that returns the database instance with another
+    one that returns a test database instance. The second one is, once again, fixtures,
+    which will help us create fake data in the test database before we run the tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To show you a working example, we’ll consider the same example we built in
+    the *Communicating with a MongoDB database with Motor* section of [*Chapter 6*](B19528_06.xhtml#_idTextAnchor346),
+    *Databases and Asynchronous ORMs*. In that example, we built REST endpoints to
+    manage blog posts. As you may recall, we had a `get_database` dependency that
+    returned the database instance. As a reminder, we show it again here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: database.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter6/mongodb/database.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter6/mongodb/database.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Path operation functions and other dependencies would then use this dependency
+    to retrieve the database instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For our tests, we’ll create a new instance of `AsyncIOMotorDatabase` that points
+    to another database. Then, we’ll create a new dependency, directly in our test
+    file, that returns this instance. You can see this in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_db_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, in our `test_client` fixture, we’ll override the default `get_database`
+    dependency by using our current `get_test_database` dependency. The following
+    example shows how this is done:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_db_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: FastAPI provides a property called `dependency_overrides`, which is a dictionary
+    that maps original dependency functions with substitutes. Here, we directly used
+    the `get_database` function as a key. The rest of the fixture doesn’t have to
+    change. Now, whenever the `get_database` dependency is injected into the application
+    code, FastAPI will automatically replace it with `get_test_database`. As a result,
+    our endpoints will now work with the test database instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: app and dependency_overrides are global
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we are directly importing `app` from its module, it’s instantiated only
+    once for the whole test run. It means that `dependency_overrides` is common for
+    every test. Keep this in mind if someday you want to override a dependency for
+    a single test: once you’ve set it, it’ll be set for the rest of the execution.
+    In this case, you can reset `dependency_overrides` by using `app.dependency_overrides
+    = {}`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To test some behaviors, such as retrieving a single post, it’s usually convenient
+    to have some base data in our test database. To allow this, we’ll create a new
+    fixture that will instantiate dummy `PostDB` objects and insert them into the
+    test database. You can see this in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_db_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, you can see that we just had to make an `insert_many` request to the MongoDB
+    database to create the posts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we used the `autouse` and `scope` arguments of the `fixture` decorator.
+    The first one tells pytest to automatically call this fixture *even if it’s not
+    requested in any test*. In this case, it’s convenient because we’ll always ensure
+    that the data has been created in the database, without the risk of forgetting
+    to request it in the tests. The other one, `scope`, allows us, as we mentioned
+    previously, to not run this fixture at the beginning of each test. With the `module`
+    value, the fixture will create the objects only once, at the beginning of this
+    particular test file. It helps make the test fast because, in this case, it doesn’t
+    make sense to recreate the posts before each test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once again, we *yield* the posts instead of returning them. This pattern allows
+    us to delete the test database after the tests run. By doing this, we’re making
+    sure that we always start with a fresh database when we’ve run the tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And we are done! We can now write tests while knowing exactly what we have
+    in the database. In the following example, you can see tests that are used to
+    verify the behavior of the endpoint retrieving a single post:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_db_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we requested the `initial_posts` fixture in the second test to retrieve
+    the identifier of the post that truly exists in our database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, we can also test our endpoints by creating data and checking whether
+    it was correctly inserted into the database. You can see this in the following
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_db_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_db_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the second test, we used the `database_test` instance to perform a request
+    and check that the object was inserted correctly. This shows the benefit of using
+    asynchronous tests: we can use the same libraries and tools inside our tests.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That’s all you need to know about `dependency_overrides`. This feature is also
+    very helpful when you need to write tests for logic involving external services,
+    such as external APIs. Instead of making real requests to those external services
+    during your tests, which could cause issues or incur costs, you’ll be able to
+    replace them with another dependency that fakes the requests. To understand this,
+    we’ve built another example application with an endpoint for retrieving data from
+    an external API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_app_external_api.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_external_api.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_external_api.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To call our external API, we’ve built a class dependency, as we saw in the
+    *Creating and using a parameterized dependency with a class* section of [*Chapter
+    5*](B19528_05.xhtml#_idTextAnchor285), *Dependency Injection in FastAPI*. We use
+    HTTPX as an HTTP client to make a request to the external API and retrieve the
+    data. This external API is a dummy API containing fake data – very useful for
+    experiments like this: [https://dummyjson.com](https://dummyjson.com).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `/products` endpoint is simply injected with this dependency and directly
+    returns the data provided by the external API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, to test this endpoint, we don’t want to make real requests to the
+    external API: it may take time and could be subject to rate limiting. Besides,
+    you may want to test behavior that is not easy to reproduce in the real API, such
+    as errors.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Thanks to `dependency_overrides`, it’s very easy to replace our `ExternalAPI`
+    dependency class with another one that returns static data. In the following example,
+    you can see how we implemented such a test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_app_external_api_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_external_api_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_app_external_api_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, you can see that we wrote a simple class called `MockExternalAPI` that
+    returns hardcoded data. All we have to do then is override the original dependency
+    with this one. During the tests, the external API won’t be called; we’ll only
+    work with the static data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the guidelines we’ve seen so far, you can now write tests for any HTTP
+    endpoints in your FastAPI app. However, there is another kind of endpoint that
+    behaves differently: WebSockets. As we’ll see in the next section, unit testing
+    WebSockets is also quite different from what we described for REST endpoints.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing tests for WebSocket endpoints
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 8*](B19528_08.xhtml#_idTextAnchor551), *Defining WebSockets for
+    Two-Way Interactive Communication in FastAPI*, we explained how WebSockets work
+    and how you can implement such endpoints in FastAPI. As you may have guessed,
+    writing unit tests for WebSockets endpoints is quite different from what we’ve
+    seen so far.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this task, we’ll need to tweak our `test_client` fixture a little bit.
+    Indeed, HTTPX doesn’t have built-in support to communicate with WebSockets. Hence,
+    we’ll need to use a plugin, HTTPX WS. Let’s install it with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To enable support for WebSockets on our test client, we’ll change it like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_websocket_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_websocket_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_websocket_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see that, instead of directly setting the `app` argument, we set `transport`
+    with a class provided by HTTPX WS. This class provides support to test apps with
+    WebSockets endpoints. Other than that, nothing changes. It’s worth noting that
+    testing standard HTTP endpoints will still work correctly, so you can use this
+    test client for all your tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s consider a simple WebSocket endpoint example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter09_websocket.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_websocket.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_websocket.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may have recognized the “echo” example from [*Chapter 8*](B19528_08.xhtml#_idTextAnchor551),
+    *Defining WebSockets for Two-Way Interactive Communication* *in FastAPI*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s write a test for our WebSocket using our test client:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Chapter09_websocket_test.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_websocket_test.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter09/chapter09_websocket_test.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, HTTPX WS provides the `aconnect_ws` function to open a connection
+    to a WebSocket endpoint. It expects the path of your WebSocket endpoint and a
+    valid HTTPX client in an argument. By using `test_client`, we’ll make requests
+    directly against our FastAPI application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It opens a context manager, giving you the `websocket` variable. It’s an object
+    that exposes several methods to either send or receive data. Each of those methods
+    will block until a message has been sent or received.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, to test our “echo” server, we send a message thanks to the `send_text`
+    method. Then, we retrieve a message with `receive_text` and assert that it corresponds
+    to what we expect. Equivalent methods also exist for sending and receiving JSON
+    data directly: `send_json` and `receive_json`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is what makes WebSocket testing a bit special: you have to think about
+    the sequence of sent and received messages and implement them programmatically
+    to test the behavior of your WebSocket.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other than that, all the things we’ve seen so far regarding testing are applicable,
+    especially `dependency_overrides`, when you need to use a test database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Congratulations! You are now ready to build high-quality FastAPI applications
+    that have been well tested. In this chapter, you learned how to use pytest, a
+    powerful and efficient testing framework for Python. Thanks to pytest fixtures,
+    you saw how to create a reusable test client for your FastAPI application that
+    can work asynchronously. Using this client, you learned how to make HTTP requests
+    to assert the behavior of your REST API. Finally, we reviewed how to test WebSocket
+    endpoints, which involves a fairly different way of thinking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you can build a reliable and efficient FastAPI application, it’s time
+    to bring it to the whole world! In the next chapter, we’ll review the best practices
+    and patterns for preparing a FastAPI application for the world before studying
+    several deployment methods.
+  prefs: []
+  type: TYPE_NORMAL

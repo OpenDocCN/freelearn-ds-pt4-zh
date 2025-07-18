@@ -1,0 +1,1210 @@
+- en: '12'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Explainable AI, Causality, and Counterfactuals with Genetic Algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter explores the application of genetic algorithms for generating “what-if”
+    scenarios, providing valuable insights into the analysis of datasets and associated
+    machine learning models, and enabling actionable insights, which help achieve
+    desired outcomes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter begins by introducing the fields of **Explainable AI** (**XAI**)
+    and **causality** before explaining the concept of **counterfactuals**. We’ll
+    use this technique to explore the ubiquitous *German Credit Risk* dataset and
+    use genetic algorithms to apply a counterfactual analysis to it and discover valuable
+    insights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of this chapter, you will be able to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Be familiar with the fields of XAI and causality, as well as their applications
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understand the concept of counterfactuals and their importance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Get acquainted with the German Credit Risk dataset, as well as its shortcomings
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement an application to create counterfactual “what-if” scenarios that provide
+    actionable insights for this dataset and shed light on the operation of its associated
+    machine learning model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will start this chapter with a quick overview of XAI and causality. If you
+    are a seasoned data scientist, feel free to skip this introductory section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be using Python 3 with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**deap**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**numpy**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**pandas**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**scikit-learn**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you’re using the **requirements.txt** file we’ve provided (see [*Chapter
+    3*](B20851_03.xhtml#_idTextAnchor091)), these libraries are already included in
+    your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The programs that will be used in this chapter can be found in this book’s GitHub
+    repository at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_12](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_12).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the Code in Action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/OEBOd](https://packt.link/OEBOd).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unlocking the black box – XAI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**XAI** is a crucial element in the realm of **artificial intelligence** (**AI**)
+    that aims to demystify the intricate workings of machine learning models. As AI
+    applications continue to grow, understanding the decision-making processes of
+    models becomes paramount for building trust and ensuring responsible deployment.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: XAI intends to address the inherent complexity and opacity of such models and
+    to provide clear and accessible explanations for predictions. This transparency
+    not only enhances the interpretability of AI models but also empowers users, stakeholders,
+    and regulatory bodies to scrutinize and comprehend these processes. In critical
+    domains such as healthcare and finance, where decisions have real-world consequences,
+    XAI is indispensable. For instance, in medical diagnoses, an explainable model
+    not only delivers accurate predictions but also sheds light on specific features
+    in medical images or patient records that influenced the diagnosis, building trust
+    and aligning with ethical standards.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One effective approach to achieving explainability is through *model-agnostic*
+    techniques. These methods offer **post-hoc** (“after the fact”) explanations for
+    any machine learning model, regardless of its architecture. Techniques such as
+    *SHAP values* and *LIME* generate explanations by making small, controlled changes
+    to input data or model parameters, revealing the features that contribute most
+    to a prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building on the foundation of XAI, **causality** adds a layer of depth by exploring
+    the “why” behind the “what,” as described in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unraveling cause and effect – causality in AI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Knowing not just what AI predicts but also understanding the causal links behind
+    those predictions can be vital, particularly in domains where decisions carry
+    significant consequences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In AI, causality explores whether changes in aspects of the data impact the
+    predictions or decisions of the model. For example, in healthcare, understanding
+    the causal links between patient parameters and predicted outcomes helps tailor
+    treatments more effectively. The aim is not just accurate predictions but also
+    understanding the mechanisms behind them for a nuanced and actionable insight
+    into the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What-if scenarios – counterfactuals
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Counterfactuals** further augment the interpretability of AI systems by exploring
+    “what-if” scenarios and considering alternative outcomes. Counterfactual explanations
+    help us understand how changes in input could affect model predictions by tweaking
+    these inputs and observing variations (or lack thereof) in the model’s decisions.
+    This process essentially poses the question, “*What if?*” and enables us to gain
+    valuable insights into the sensitivity and robustness of AI models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, let’s imagine a scenario where an AI-driven car decides to avoid
+    a pedestrian. Through counterfactual analysis, we can uncover how this decision
+    might change under different conditions, providing valuable insights into the
+    model’s behavior. As another example, consider a recommendation system. Counterfactuals
+    could help us understand how adjusting certain user preferences might change the
+    recommended items, offering users a clearer understanding of the system’s inner
+    workings and allowing developers to enhance user satisfaction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to providing a deeper understanding of model behavior, counterfactuals
+    can be utilized for model improvement and debugging. By exploring alternative
+    scenarios and observing how changes propagate through the model, developers can
+    identify potential weaknesses, biases, or areas for optimization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we will illustrate in the following sections, the exploration of “what-if”
+    scenarios can also empower users to anticipate and interpret the AI system’s responses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Genetic algorithms in counterfactual analysis – navigating alternative scenarios
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Genetic algorithms emerge as useful tools for performing counterfactual analysis,
+    offering a flexible approach to modify model inputs to attain a desired outcome.
+    Here, each solution in the genetic algorithm represents a unique input combination.
+    The optimization objective depends on the model’s output and can incorporate conditions
+    linked to input values, such as restricting changes or maximizing a particular
+    input value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following sections, we will leverage genetic algorithms to perform counterfactual
+    analysis on a machine learning model tasked with determining the credit risk of
+    a loan applicant. Through this exploration, we aim to answer various questions
+    concerning a particular applicant, gaining insights into the model’s inner workings.
+    Additionally, this analysis can provide actionable information to assist the applicants
+    in improving their chances of securing a loan.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s begin by familiarizing ourselves with the dataset that will be used to
+    train the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The German Credit Risk dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For our experiments in this chapter, we will utilize a modified version of the
+    well-known *German Credit Risk* dataset, which is widely used for research and
+    benchmarking in the fields of machine learning and statistics. The original dataset
+    can be accessed from the *UCI Machine Learning Repository* and comprises 1,000
+    instances, each with 20 attributes. This dataset is designed for a binary classification
+    task that aims to predict whether a loan applicant is creditworthy or poses a
+    credit risk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In contemporary standards, certain original attributes in this dataset are considered
+    *protected*, notably those representing the gender and age of the candidate. In
+    our adapted version of this dataset, these attributes have been excluded. Additionally,
+    several other features have either been removed or their values have been converted
+    into numerical formats for simplicity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The modified dataset can be found in the `chapter_12/data/credit_risk_data.csv`
+    file and consists of the following columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**checking**: The status of the applicant’s checking account:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**0**: No checking account'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**1**: Balance < 100 DM'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**2**: 100 <= balance < 200 DM'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**3**: Balance >= 200 DM'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**duration**: The duration of the requested loan in months'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**credit_history**: Information about the applicant’s credit history:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**0**: No loans taken/all loans paid back duly'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**1**: Existing loans paid back duly till now'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**2**: All loans at this bank are paid back duly'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**3**: There’s been a delay in paying off in the past'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**4**: Critical account/other loans existing'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**amount**: The amount of the requested loan'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**savings**: The status of the applicant’s savings account:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**0**: Unknown/no savings account'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**1**: Balance < 100 DM'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**2**: 100 <= balance < 500 DM'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**3**: 500 <= balance < 1000 DM'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**4**: Balance >= 1000 DM'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**employment_duration**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**0**: Unemployed'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**1**: Duration < 1 year'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**2**: 1 <= duration < 4 years'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**3**: 4 <= duration < 7 years'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**4**: Duration >= 7 years'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**other_debtors**: Any other individuals who might be co-debtors or share financial
+    responsibility for the loan, aside from the primary applicant:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**none**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**guarantor**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**co-applicant**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**present_residence**: The duration of the applicant’s current residence at
+    the present address, represented as an integer between 1 and 4'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**housing**: The housing situation of the applicant:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**for free**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**own**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**rent**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**number_credits**: The number of credit accounts held at the same bank'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**people_liable**: The number of people who are financially dependent on the
+    applicant'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**telephone**: Whether the applicant has a telephone (**1** = yes, **0** =
+    no)'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**credit_risk**: The value to be predicted:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**1**: High risk (indicating a higher likelihood of default or credit issues)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**0**: Low risk'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For illustration purposes, here are the first 10 lines of the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: While in previous cases of working with datasets, our main goal was to develop
+    a machine learning model for precise predictions on new data, we will now employ
+    counterfactuals to turn things around and identify data that matches a desired
+    prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring counterfactual scenarios for credit risk prediction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As evident from the data, many applicants are deemed a credit risk (indicated
+    by `1` as the last value), leading to loan disapproval. For such applicants, the
+    following question arises: Is there any action they can take to change this decision
+    and be considered creditworthy (indicated by `0` as the outcome)? By *action*,
+    we mean changing the status of one or more of their attributes, such as the amount
+    they are requesting to borrow.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Upon inspecting the dataset, some attributes are challenging or even impossible
+    for an applicant to change, such as employment duration, number of dependents,
+    or current housing. For our examples, we will focus on the following four attributes,
+    all of which offer some flexibility:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**amount**: The amount of the requested loan'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**duration**: The duration of the requested loan in months'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**checking**: The status of the applicant’s checking account'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**savings**: The status of the applicant’s savings account'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The question can now be phrased as follows: For a candidate currently labeled
+    as a credit risk, what is the minimal change (if any) we could make to these four
+    attributes, or some of them, such that the outcome changes to creditworthy?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To address this question, as well as other relevant questions, we will create
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A machine learning model that has been trained on our dataset. This model will
+    then be used to provide predictions that will enable us to test potential outcomes
+    when an applicant’s data is modified.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A genetic algorithm-based solution that searches for the new attribute values
+    to answer our question(s).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These components will be implemented using Python, as described in the following
+    sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Applicant class
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `Applicant` class represents an applicant from the dataset; in other words,
+    a row from the CSV file. The class also enables us to modify the values of the
+    `amount`, `duration`, `checking`, and `savings` fields, representing the corresponding
+    attributes of the applicant. This class can be found in the `applicant.py` file,
+    which is located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_12/applicant.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_12/applicant.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main functionality of this class is highlighted as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The class’s **__init__()** method uses the value of the **dataset_row** argument
+    to copy the values from the corresponding dataset row and create an instance representing
+    the applicant.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In addition to setters and getters for the four attributes mentioned previously,
+    the **get_values()** method returns the current values of the four attributes,
+    while the **with_values()** method creates a copy of the original applicant instance
+    and subsequently modifies the copied values of the same four attributes. Both
+    of these methods utilize a list of integers for the four attribute values as they
+    will be used directly by a genetic algorithm that represents potential applicants
+    as a list of four integers.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The CreditRiskData class
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `CreditRiskData` class encapsulates the credit risk dataset and the machine
+    learning model trained on this data. It can be found in the `credit_risk_data.py`
+    file, located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_12/credit_risk_data.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_12/credit_risk_data.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main functionality of this class is highlighted in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **__init__()** method of the class initializes the random seed; it then
+    calls the **read_dataset()** method, which reads the dataset from the CSV file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Next, it checks if a trained model has already been created and saved to a file.
+    If the model file exists, it is loaded. Otherwise, the **train_model()** method
+    is called.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The **train_model()** method created a *Random Forest classifier*, which is
+    first evaluated using a 5-fold cross-validation procedure, to validate its generalization
+    ability:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, the model is trained using the entire dataset and evaluated on it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once trained, the *Random Forest* model can assign *feature importance* values
+    to the various attributes of the dataset, indicating the contribution of each
+    attribute to the model’s predictions. While these values provide insights into
+    the factors influencing the model’s decisions, we will use them here to validate
+    our assumption that the four attributes we chose can make a difference:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The **is_credit_risk()** method utilizes the trained model to predict the outcome
+    for a given applicant’s data using *Scikit-learn*’s **predict()** method, returning
+    **True** when the candidate is considered a credit risk.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Additionally, the **risk_probability()** method provides a float between 0 and
+    1 indicating the degree to which the candidate is considered a credit risk. It
+    utilizes the model’s **predict_proba()** method, capturing the continuous output
+    value just before a threshold is applied to convert it into a discrete value of
+    0 or 1.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The convenience method, **get_applicant()**, allows us to select an applicant’s
+    row from the dataset and print its data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, the **main()** function starts by creating an instance of the **CreditRiskData**
+    class, which trains the model for the first time if needed. It then retrieves
+    information about the 25th applicant from the dataset and prints it. Afterward,
+    it modifies the values of the four mutable attributes and prints the information
+    of the modified applicant.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'When executing the **main()** function for the first time, the results of the
+    cross-validation test evaluation, as well as the training accuracy, are printed
+    out:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: These results indicate that, while the trained model can fully reproduce the
+    dataset’s results, its accuracy is approximately 76% when making predictions for
+    unseen samples – a reasonable outcome for this dataset.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Next, the feature importance values are printed in descending order. Notably,
+    among the top attributes in the list are the four we chose to modify:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The information about the attributes and the predicted outcome for the applicant
+    in row 25 of the dataset is now printed. It’s worth noting that in the file, this
+    corresponds to the 27th row, given that the first row contains headers, and the
+    data rows start counting from 0:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As the output shows, this applicant is considered a credit risk.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The program now modifies all four values using the **with_values()** method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, it repeats the printing, reflecting the changes:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As the preceding output illustrates, when using the new values, the applicant
+    is no longer considered a credit risk. While these modified values were manually
+    selected through trial and error, it’s now time to automate this process using
+    genetic algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Counterfactuals with genetic algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To demonstrate how genetic algorithms can work with counterfactuals, we will
+    start with the same applicant of row 25, who is originally considered a credit
+    risk, and search for the smallest set of changes that will make their prediction
+    creditworthy. As we mentioned previously, we will consider making changes to the
+    `amount`, `duration`, `checking`, and `savings` attributes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution representation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'When approaching this problem, a straightforward way to represent a candidate
+    solution is using a list of four integer values, each corresponding to one of
+    the four attributes we want to modify:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[amount, duration, checking, savings]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, the modified values we used in the main function of the `credit_risk_data.py`
+    program will be represented as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we did in previous chapters, we will utilize floating-point, real numbers
+    to represent the integers. This enables the genetic algorithm to use the tried-and-true
+    real number operators for crossover and mutation and use the same representation
+    for each item regardless of its range. Before evaluation, the real numbers will
+    be converted into integers using the `int()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ll evaluate each of these solutions in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Evaluating the solutions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Since our goal is to find the *smallest* degree of changes that will reverse
+    the prediction, a question arises: How do we measure the extent of the changes
+    made? One possible approach is to use the sum of the absolute differences between
+    the current solution’s values and the original values, each divided by the range
+    of that value, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ∑ i=1 4  |current valu e i − original valu e i|  _______________________  range
+    of valu e i
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have established the representation and evaluation of the candidate
+    solutions, we are ready to cover the Python implementation of the genetic algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The genetic algorithm solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The genetic algorithm-based counterfactual search is implemented in a Python
+    program called `01_counterfactual_search.py`, which is located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_12/01_counterfactual_search.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_12/01_counterfactual_search.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe the main parts of this program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We begin by defining several constants. Then, we create an instance of the
+    **CreditRiskData** class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The next several code segments are dedicated to setting the ranges of the four
+    attributes that will be used as the solution variables. We start by declaring
+    placeholders, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The first list holds the lower bounds of the four attributes, the second holds
+    the upper bounds, and the third holds the difference between them.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now comes the **set_ranges()** method, which accepts the lower and upper bound
+    for each of the four attributes and populates the placeholders accordingly. Since
+    we are using real numbers that will be converted into integers, we’ll increment
+    each range to ensure uniform distribution of the resulting integers:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we’ll use the **set_ranges()** method to set the ranges for the problem
+    at hand. We’ve picked the following values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**amount**: 100..5000'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**duration**: 2..72'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**checking**: 0..3'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**savings**: 0..4:'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we must select the applicant from row 25 of the dataset (the same one
+    we used earlier) and save its original four values in a separate variable, **applicant_values**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **get_score()** function is used to evaluate the fitness of each solution
+    by calculating the cost to be minimized. The cost consists of two parts: first,
+    as mentioned in the *Evaluating the solutions* section, we calculate the distance
+    between the values of the four attributes that the solution represents and the
+    matching original values of the candidate – the larger the distance, the larger
+    the cost:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since we would like the solution to represent a creditworthy candidate, the
+    second, optional, part of the cost is meant to penalize solutions that are considered
+    a credit risk. Here, we’ll utilize the **is_credit_risk()** and **risk_probability()**
+    methods so that when the former indicates that the solution is not creditworthy,
+    the latter is used to determine the extent of the added penalty:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The rest of the program is very similar to the ones we saw previously when
+    we used a list of real numbers to represent the individuals – for example, the
+    one in [*Chapter 9*](B20851_09.xhtml#_idTextAnchor257), *Architecture Optimization
+    of Deep Learning Networks*. We’ll get underway with the single-objective strategy
+    for minimizing fitness as our goal is to minimize the value calculated by the
+    cost function defined earlier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since the solution is represented by a list of four float values, one for each
+    of the attributes we can modify, each with its own range, we must define separate
+    toolbox *creator* operators for them using the corresponding **bounds_low** and
+    **bounds_high** values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'These four operators are then used in the definition of **individualCreator**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After assigning the *selection* operator to the usual *tournament selection*
+    with a tournament size of **2**, we assign the *crossover* and *mutation* operators,
+    which are specialized for bounded float-list chromosomes, and provide them with
+    the ranges we defined earlier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In addition, we’ll continue to use the *elitist* approach, where the **hall-of-fame**
+    (**HOF**) members – the current best individuals – are always passed untouched
+    to the next generation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We end by printing the best solution found, as well as the prediction for that
+    solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It’s time to try out the program and see the results! The output starts with
+    printing out the original attributes and status of the chosen applicant:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: gen     nevals  min             avg
+  prefs: []
+  type: TYPE_NORMAL
+- en: 0       50      0.450063        51.7213
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1       42      0.450063        30.2695
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2       44      0.393725        14.2223
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3       37      0.38311         7.62647
+  prefs: []
+  type: TYPE_NORMAL
+- en: '...'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 28      40      0.141661        0.169646
+  prefs: []
+  type: TYPE_NORMAL
+- en: 29      40      0.141661        0.175401
+  prefs: []
+  type: TYPE_NORMAL
+- en: 30      44      0.141661        0.172197
+  prefs: []
+  type: TYPE_NORMAL
+- en: '-- Best solution: Amount = 1370, Duration = 16, checking = 1, savings = 1'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '-- Prediction: is_risk = checking and savings accounts does not need to be
+    changed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although the amount was altered to `1,374`, it could have remained unchanged
+    at 1,374\. This can be verified by directly calling the `is_credit_risk()` function
+    with the values [1374, 16, 1, 1]. The way our cost function is defined, the difference
+    between 1,370 and 1,374 divided by the range of 4,900 is minute, potentially causing
+    the algorithm to take many more generations to recognize that the value of 1,374
+    is better than 1,370\. By narrowing the range for the amount to 1,000..2,000,
+    the same program identifies the value of 1,374 well within the allotted 30 generations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More “what-if” scenarios
+  prefs: []
+  type: TYPE_NORMAL
+- en: We found that altering the loan duration from 6 to 16 months for applicant 25
+    could render the application creditworthy. However, what if the applicant prefers
+    a shorter duration, or wants to maximize the loan’s amount? These are precisely
+    the kind of “what-if” scenarios that counterfactuals explore, and the code we
+    have written enables us to simulate various scenarios and address such questions,
+    as will be demonstrated in the following subsections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reducing the duration
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s start with the case where the same applicant prefers to keep the duration
+    shorter than the value of 16 months found earlier – can other changes compensate
+    for that?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Based on the experience of the previous run, it may prove beneficial to narrow
+    the allowed ranges of the four attributes. Let’s try to be more conservative and
+    use the following ranges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**amount**: 1000..2000'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**duration**: 2..12'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**checking**: 0..1'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**savings**: 0..1'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here, we’ll limit the duration to 12 months and aim to avoid increasing the
+    current balance in either the `checking` or `savings` account. This can be achieved
+    by modifying the call to `set_ranges()`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we run the modified program, the outcome is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: This indicates that if the applicant is willing to somewhat lower the requested
+    loan amount, a reduced duration value of 12 months can be achieved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What if we want to reduce the duration even further? Let’s change the duration
+    range to 1..10, for example. This yields the following outcome:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: This indicates that the algorithm has failed to find a solution where the applicant
+    is creditworthy using these ranges. Note that it does not necessarily mean that
+    such a solution does not exist, but it seems unlikely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even if we go back and allow the ranges for the `checking` and `savings` accounts
+    to have their original ranges of 0..3 and 0..4, a solution is not found so long
+    as the duration is limited to 10 months or less. However, allowing the amount
+    to go under 1,000 seems to do the trick. Let’s use the following ranges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**amount**: 100..2000'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**duration**: 2..10'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**checking**: 0..1'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**savings**: 0..1'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here, we get the following solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: This implies that if the applicant reduces the loan amount to 971, the application
+    will be approved for the desired duration of 10.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'More surprisingly, however, is the value of 0 that was found for the `savings`
+    attribute, which is lower than the original 1\. As you may recall, the values
+    of this attribute are interpreted as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**0**: Unknown/no savings account'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**1**: Balance < 100 DM'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**2**: 100 <= balance < 500 DM'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**3**: 500 <= balance < 1000 DM'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**4**: Balance >= 1000 DM'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It seems unlikely that having no savings would be advantageous when applying
+    for a loan. Furthermore, if we try all possible values other than 0, by setting
+    the range to 1..3, no solution is found. This indicates that, according to the
+    model used, having no savings account is considered preferable to having one,
+    even with a high balance. This is likely an indication of a flaw in the model,
+    or an issue in the dataset itself, such as biased or incomplete data. Such findings
+    are one of the use cases for counterfactuals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Maximizing the loan’s amount
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So far, we have manipulated the outcome for an applicant who was initially
+    considered a credit risk. However, we can play this “what-if” game with *any*
+    applicant, including those who were already approved. Let’s consider an applicant
+    from row 68 (the 70th line in the file). When printing out the applicant’s information,
+    we see the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: applicant = credit_data.get_applicant(68)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: bounds_low, bounds_high, ranges = set_ranges(2000, 50000, 36, 36, 0,
+  prefs: []
+  type: TYPE_NORMAL
+- en: 0, 1, 1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: applicant_values = applicant.get_values()
+  prefs: []
+  type: TYPE_NORMAL
+- en: applicant_values[0 is used since the amount attribute is the first of the four
+    values utilized by the program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Running this program yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding output demonstrates that this applicant can maintain the original
+    creditworthy status while increasing the loan amount, without making any changes
+    to the other attributes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next question we’ll address is whether we can *further* increase the loan
+    amount by allowing changes to the `checking` and/or `savings` attributes. To this
+    effect, we will modify the boundaries so that these two attributes can be adjusted
+    to any valid value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The outcome of the modified program is somewhat surprising:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: This result suggests that changing the status of the checking account from 0
+    (no checking account) to 1 (balance < 100 DM) is sufficient to secure a significantly
+    higher loan amount. If we repeat the experiment with much higher amounts (for
+    example, 500,000, replacing the previous value in two different spots in the program),
+    the result will be similar – the candidate is creditworthy for that high amount,
+    so long as the checking status is changed from 0 to 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This observation is true when experimenting with other applicants as well, indicating
+    a potential vulnerability in the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You are encouraged to make additional modifications to the program and explore
+    your own what-if scenarios. In addition to providing valuable insights and a deeper
+    understanding of the model’s behavior, experimenting with “what-if” scenarios
+    can be a lot of fun!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extending to other datasets
+  prefs: []
+  type: TYPE_NORMAL
+- en: The same process demonstrated in this chapter can be applied to other datasets.
+    For instance, consider a dataset that’s used for predicting the expected price
+    of a rental apartment. In this scenario, you can use similar counterfactual analysis
+    to determine what modifications the landlord can introduce to the apartment to
+    achieve a certain rent. Using programs similar to the ones introduced here, you
+    could apply genetic algorithms to explore the sensitivity of the model’s predictions
+    to changes in input features and identify actionable insights for achieving desired
+    outcomes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you were introduced to the concepts of **XAI**, **causality**,
+    and **counterfactuals**. After getting acquainted with the *German Credis Risk*
+    dataset, we created a machine learning model that predicts whether an applicant
+    is creditworthy.  Next, we applied genetic algorithm-based counterfactual analysis
+    of the dataset to the trained model, explored several “what-if” scenarios, and
+    gained valuable insights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next two chapters, we will shift our focus to accelerating the execution
+    of genetic algorithm-based programs, such as the ones we’ve developed throughout
+    this book, by exploring different strategies for applying concurrency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For more information on the topics that were covered in this chapter, please
+    refer to the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Hands-On Explainable AI (XAI) with Python*, by Denis Rothman, July 2020'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Causal Inference and Discovery in Python*, by Aleksander Molak, May 2023'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Responsible AI in the Enterprise*, by Adnan Masood, July 2023'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Scikit-learn* *RandomForestClassifier*: [https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE

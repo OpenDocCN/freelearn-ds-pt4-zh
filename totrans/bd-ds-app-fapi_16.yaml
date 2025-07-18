@@ -1,0 +1,656 @@
+- en: '13'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Implementing a Real-Time Object Detection System Using WebSockets with FastAPI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, you learned how to create efficient REST API endpoints
+    to make predictions with trained machine learning models. This approach covers
+    a lot of use cases, given that we have a single observation we want to work on.
+    In some cases, however, we may need to continuously perform predictions on a stream
+    of input – for instance, an object detection system that works in real time with
+    video input. This is exactly what we’ll build in this chapter. How? If you remember,
+    besides HTTP endpoints, FastAPI also has the ability to handle WebSockets endpoints,
+    which allow us to send and receive streams of data. In this case, the browser
+    will send into the WebSocket a stream of images from the webcam, and our application
+    will run an object detection algorithm and send back the coordinates and label
+    of each detected object in the image. For this task, we’ll rely on **Hugging Face**,
+    which is both a set of tools and a library of pretrained AI models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a computer vision model with Hugging Face libraries
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing an HTTP endpoint to perform object detection on a single image
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sending a stream of images from the browser in a WebSocket
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Showing the object detection results in a browser
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this chapter, you’ll require a Python virtual environment, just as we set
+    up in [*Chapter 1*](B19528_01.xhtml#_idTextAnchor024), *Python Development* *Environment
+    Setup*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You’ll find all the code examples for this chapter in the dedicated GitHub repository
+    at [https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a computer vision model with Hugging Face
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Computer vision is a field of study and technology that focuses on enabling
+    computers to extract meaningful information from digital images or videos, simulating
+    human vision capabilities. It involves developing algorithms based on statistical
+    methods or machine learning that allow machines to understand, analyze, and interpret
+    visual data. A typical example of computer vision’s application is object detection:
+    a system able to detect and recognize objects in an image. This is the kind of
+    system we’ll build in this chapter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To help us in this task, we’ll use a set of tools provided by Hugging Face.
+    Hugging Face is a company whose goal is to allow developers to use the most recent
+    and powerful AI models quickly and easily. For this, it has built two things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A set of open source Python tools built on top of machine learning libraries
+    such as PyTorch and TensorFlow. We’ll use some of them in this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An online library to share and download pretrained models for various machine
+    learning tasks, such as computer vision or image generation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can read more about what it''s doing on its official website: [https://huggingface.co/](https://huggingface.co/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You’ll see that it’ll greatly help us build a powerful and accurate object
+    detection system in no time! To begin with, we’ll install all the libraries we
+    need for this project:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `transformers` library from Hugging Face will allow us to download and run
+    pretrained machine learning models. Notice that we install it with the optional
+    `torch` dependency. Hugging Face tools can be used either with PyTorch or TensorFlow,
+    which are both very powerful ML frameworks. Here, we chose to use PyTorch. Pillow
+    is a widely used Python library for working with images. We’ll see why we need
+    it soon.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before starting to work with FastAPI, let’s implement a simple script to run
+    an object detection algorithm. It consists of four main steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Load an image from the disk using Pillow.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Load a pretrained object detection model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Run the model on our image.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Display the results by drawing rectangles around the detected objects.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We’ll go step by step through the implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter13_object_detection.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, the first step is to load our image from the disk. For this
+    example, we use the image named `coffee-shop.jpg`, which is available in our examples
+    repository at [https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/assets/coffee-shop.jpg](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/blob/main/assets/coffee-shop.jpg):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter13_object_detection.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we load a model from Hugging Face. For this example, we chose the YOLOS
+    model. It’s a cutting-edge approach to object detection that has been trained
+    on 118K annotated images. You can read more about the technical approach in the
+    following Hugging Face article: [https://huggingface.co/docs/transformers/model_doc/yolos](https://huggingface.co/docs/transformers/model_doc/yolos).
+    To limit the download size and preserve your computer disk space, we chose here
+    to use the tiny version, which is a lighter version of the original model that
+    can be run on an average machine while maintaining good accuracy. This particular
+    version is described here on Hugging Face: [https://huggingface.co/hustvl/yolos-tiny](https://huggingface.co/hustvl/yolos-tiny).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that we instantiate two things: an **image processor** and a **model**.
+    If you remember what we said in [*Chapter 11*](B19528_11.xhtml#_idTextAnchor797),
+    *Introduction to Data Science in Python*, you know that we need to have a set
+    of features that will feed our ML algorithm. Hence, the role of the image processor
+    is to transform a raw image into a set of characteristics that are meaningful
+    to the model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And that’s exactly what we’re doing in the following lines: we create an `inputs`
+    variable by calling `image_processor` on our image. Notice that the `return_tensors`
+    argument is set to `pt` for PyTorch since we chose to go with PyTorch as our underlying
+    ML framework. Then, we can feed this `inputs` variable to our model to get `outputs`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter13_object_detection.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You might think that this is it for the prediction phase and that we could
+    now display the results. However, that’s not the case. The result of such algorithms
+    is a set of multi-dimensional matrices, the famous `post_process_object_detection`
+    operation provided by `image_processor`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter13_object_detection.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The result of this operation is a dictionary with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`labels`: The list of labels of each detected object'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`boxes`: The coordinates of the bounding box of each detected object'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`scores`: The confidence score of the algorithm for each detected object'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'All we need to do then is to iterate over them so we can draw the rectangle
+    and the corresponding label thanks to Pillow. We just show the resulting image
+    at the end. Notice that we only consider objects with a score greater than `0.7`
+    to limit the number of false positives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter13_object_detection.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_object_detection.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Thanks to Pillow, we’re able to draw rectangles and add a label above the detected
+    objects. Notice that we loaded a custom font, Open Sans, which is an open font
+    available on the web: [https://fonts.google.com/specimen/Open+Sans](https://fonts.google.com/specimen/Open+Sans).
+    Let’s try to run this script and see the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first time it’ll run, you’ll see the model being downloaded. The prediction
+    can then take a few seconds to run depending on your computer. When it’s done,
+    the resulting image should automatically open, as shown in *Figure 13**.1*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.1 – Object detection result on a sample image](img/Figure_13.1_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 13.1 – Object detection result on a sample image
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see that the model detected several persons in the image, along with
+    various objects such as the couch and a chair. And that’s it! Less than 30 lines
+    of code to have a working object detection script! Hugging Face lets us harness
+    all the power of the latest AI advances very efficiently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, our goal in this chapter is to put all this intelligence on a remote
+    server so that we can serve this experience to thousands of users. Once again,
+    FastAPI will be our ally here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a REST endpoint to perform object detection on a single image
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before working with WebSockets, we’ll start simple and implement, using FastAPI,
+    a classic HTTP endpoint to accept image uploads and perform object detection on
+    them. As you’ll see, the main difference from the previous example is in how we
+    acquire the image: instead of reading it from the disk, we get it from a file
+    upload that we have to convert into a Pillow image object.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides, we’ll also use the exact same pattern we saw in [*Chapter 12*](B19528_12.xhtml#_idTextAnchor960),
+    *Creating an Efficient Prediction API Endpoint with FastAPI* – that is, having
+    a dedicated class for our prediction model, which will be loaded during the lifespan
+    handler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing we do in this implementation is to define Pydantic models in
+    order to properly structure the output of our prediction model. You can see this
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter13_api.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_api.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_api.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have a model for a single detected object, which consists of `box`, a tuple
+    of four numbers describing the coordinates of the bounding box, and `label`, which
+    corresponds to the type of detected object. The `Objects` model is a simple structure
+    bearing a list of objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We won’t go through the model prediction class, as it’s very similar to what
+    we saw in the previous chapter and section. Instead, let’s directly focus on the
+    FastAPI endpoint implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter13_api.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_api.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/chapter13_api.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nothing very surprising here! The main point of attention is to correctly use
+    the `UploadFile` and `File` dependencies so we get the uploaded file. If you need
+    a refresher on this, you can check the *Form data and file uploads* section from
+    [*Chapter 3*](B19528_03.xhtml#_idTextAnchor058), *Developing a RESTful API with
+    FastAPI*. All we need to do then is to instantiate it as a proper Pillow image
+    object and call our prediction model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we said, we don’t forget to load the model inside the lifespan handler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can run this example using the usual Uvicorn command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We’ll use the same coffee shop picture we already saw in the previous section.
+    Let’s upload it on our endpoint with HTTPie:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We correctly get the list of detected objects, each one with its bounding box
+    and label. Great! Our object detection system is now available as a web server.
+    However, our goal is still to make a real-time system: thanks to WebSockets, we’ll
+    be able to handle a stream of images.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a WebSocket to perform object detection on a stream of images
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the main benefits of WebSockets, as we saw in [*Chapter 8*](B19528_08.xhtml#_idTextAnchor551),
+    *Defining WebSockets for Two-Way Interactive Communication in FastAPI*, is that
+    it opens a full-duplex communication channel between the client and the server.
+    Once the connection is established, messages can be passed quickly without having
+    to go through all the steps of the HTTP protocol. Therefore, it’s much more suited
+    to sending a lot of data in real time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The point here will be to implement a WebSocket endpoint that is able to both
+    accept image data and run object detection on it. The main challenge here will
+    be to handle a phenomenon known as **backpressure**. Put simply, we’ll receive
+    more images from the browser than the server is able to handle because of the
+    time needed to run the detection algorithm. Thus, we’ll have to work with a queue
+    (or buffer) of limited size and drop some images along the way to handle the stream
+    in near real time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’ll go step by step through the implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We defined two tasks: `receive` and `detect`. The first one is waiting for
+    raw bytes from the WebSocket, while the second one is performing the detection
+    and sending the result, exactly as we saw in the last section.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The key here is to use the `asyncio.Queue` object. This is a convenient structure
+    allowing us to queue some data in memory and retrieve it in a **first in, first
+    out** (**FIFO**) strategy. We are able to set a limit on the number of elements
+    we store in the queue: this is how we’ll be able to limit the number of images
+    we handle.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `receive` function receives data and puts it at the end of the queue. When
+    working with `asyncio.Queue`, we have two methods to put a new element in the
+    queue: `put` and `put_nowait`. If the queue is full, the first one will wait until
+    there is room in the queue. This is not what we want here: we want to drop images
+    that we won’t be able to handle in time. With `put_nowait`, the `QueueFull` exception
+    is raised if the queue is full. In this case, we just pass and drop the data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, the `detect` function pulls the first message from the queue
+    and runs its detection before sending the result. Notice that since we get raw
+    image bytes directly, we have to wrap them with `io.BytesIO` to make it acceptable
+    for Pillow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The WebSocket implementation in itself is similar to what we saw in [*Chapter
+    8*](B19528_08.xhtml#_idTextAnchor551), *Defining WebSockets for Two-Way Interactive
+    Communication in FastAPI*. We are scheduling both tasks and waiting until one
+    of them has stopped. Since they both run an infinite loop, this will happen when
+    the WebSocket is disconnected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serving static files
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you look at the full implementation of the preceding example, you’ll notice
+    that we defined two more things in our server: an `index` endpoint, which just
+    returns the `index.html` file, and a `StaticFiles` app, which is mounted under
+    the `/assets` path. Both of them are here to allow our FastAPI application to
+    directly serve our HTML and JavaScript code. This way, browsers will be able to
+    query those files on the same server.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The key takeaway of this is that even though FastAPI was designed to build REST
+    APIs, it’s also perfectly able to serve HTML and static files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our backend is now ready! Let’s now see how to use its power from a browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: "Sending a stream of images from the browser in \La WebSocket"
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll see how you can capture images from the webcam in the
+    browser and send them through a WebSocket. Since it mainly involves JavaScript
+    code, it’s admittedly a bit beyond the scope of this book, but it’s necessary
+    to make the application work fully.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step is to enable a camera input in the browser, open the WebSocket
+    connection, pick a camera image, and send it through the WebSocket. Basically,
+    it’ll work like this: thanks to the `MediaDevices` browser API, we’ll be able
+    to list all the camera inputs available on the device. With this, we’ll build
+    a selection form so the user can select the camera they want to use. You can see
+    the concrete JavaScript implementation in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: script.js
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the user submits the form, we call a `startObjectDetection` function with
+    the selected camera. Most of the actual detection logic is implemented in this
+    function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: script.js
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s have a look at the `startObjectDetection` function in the following code
+    block. First, we establish a connection with the WebSocket. Once it’s opened,
+    we can start to get an image stream from the selected camera. For this, we use
+    the `MediaDevices` API to start capturing video and display the output in an HTML
+    `<video>` element. You can read all the details about the `MediaDevices` API in
+    the MDN documentation: [https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: script.js
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, as shown in the next code block, we launch a repetitive task that captures
+    an image from the video input and sends it to the server. To do this, we have
+    to use a `<canvas>` element, an HTML tag dedicated to graphics drawing. It comes
+    with a complete JavaScript API so that we can programmatically draw images in
+    it. There, we’ll be able to draw the current video image and convert it into valid
+    JPEG bytes. If you want to know more about this, MDN gives a very detailed tutorial
+    on `<``canvas>`: [https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: script.js
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we limit the size of the video input to 640 by 480 pixels, so that
+    we don’t blow up the server with images that are too big. Besides, we set the
+    interval to run every 42 milliseconds (the value is set in the `IMAGE_INTERVAL_MS`
+    constant), which is roughly equivalent to 24 images per second.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we wire the event listener to handle the messages received from the
+    WebSocket. It calls the `drawObjects` function, which we’ll detail in the next
+    section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: script.js
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Showing the object detection results in the browser
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we are able to send input images to the server, we have to show the
+    result of the detection in the browser. In a similar way to what we showed in
+    the *Using a computer vision model with Hugging Face* section, we’ll draw a green
+    rectangle around the detected objects, along with their label. Thus, we have to
+    find a way to take the rectangle coordinates sent by the server and draw them
+    in the browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To do this, we’ll once again use a `<canvas>` element. This time, it’ll be
+    visible to the user and we’ll draw the rectangles using it. The trick here is
+    to use CSS so that this element overlays the video: this way, the rectangles will
+    be shown right on top of the video and the corresponding objects. You can see
+    the HTML code here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: index.html
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/index.html](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/index.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are using CSS classes from Bootstrap, a very common CSS library with a lot
+    of helpers like this. Basically, we set the canvas with absolute positioning and
+    put it at the top left so that it covers the video element.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The key now is to use the Canvas API to draw the rectangles according to the
+    received coordinates. This is the purpose of the `drawObjects` function, which
+    is shown in the next sample code block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: script.js
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter13/websocket_object_detection/assets/script.js)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the `<canvas>` element, we can use a 2D context to draw things in the
+    object. Notice that we first clean everything to remove the rectangles from the
+    previous detection. Then, we loop through all the detected objects and draw a
+    rectangle with the given coordinates: `x1`, `y1`, `x2`, and `y2`. Finally, we
+    take care of drawing the label slightly above the rectangle.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our system is now complete! *Figure 13**.2* gives you an overview of the file
+    structure we’ve implemented.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.2 – Object detection application structure](img/Figure_13.2_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 13.2 – Object detection application structure
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It’s time to give it a try! We can start it using the usual Uvicorn command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can access the application in your browser with the address `http://localhost:8000`.
+    As we said in the previous section, the `index` endpoint will be called and will
+    return our `index.html` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You’ll see an interface inviting you to choose the camera you want to use,
+    as shown in *Figure 13**.3*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.3 – Webcam selection for the object detection web application](img/Figure_13.3_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 13.3 – Webcam selection for the object detection web application
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Select the webcam you wish to use and click on **Start**. The video output
+    will show up, object detection will start via the WebSocket, and green rectangles
+    will be drawn around the detected objects. We show this in *Figure 13**.4*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.4 – Running the object detection web application](img/Figure_13.4_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 13.4 – Running the object detection web application
+  prefs: []
+  type: TYPE_NORMAL
+- en: It works! We brought the intelligence of our Python system right to the user’s
+    web browser. This is just an example of what you could achieve using WebSockets
+    and ML algorithms, but this definitely enables you to create near real-time experiences
+    for your users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we showed how WebSockets can help us bring a more interactive
+    experience to users. Thanks to the pretrained models provided by the Hugging Face
+    community, we were able to quickly implement an object detection system. Then,
+    we integrated it into a WebSocket endpoint with the help of FastAPI. Finally,
+    by using a modern JavaScript API, we sent video input and displayed algorithm
+    results directly in the browser. All in all, a project like this might sound complex
+    to make at first, but we saw that powerful tools such as FastAPI enable us to
+    get results in a very short time and with very comprehensible source code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Until now, in our different examples and projects, we assumed the ML model
+    we used was fast enough to be run directly in an API endpoint or a WebSocket task.
+    However, that’s not always the case. In some cases, the algorithm is so complex
+    it takes a couple of minutes to run. If we run this kind of algorithm directly
+    inside an API endpoint, the user would have to wait a long time before getting
+    a response. Not only would this be strange for them but this would also quickly
+    block the whole server, preventing other users from using the API. To solve this,
+    we’ll need a companion for our API server: a worker.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next chapter, we’ll study a concrete example of this challenge: we’ll
+    build our very own AI system to generate images from a text prompt!'
+  prefs: []
+  type: TYPE_NORMAL

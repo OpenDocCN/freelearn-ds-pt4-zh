@@ -1,0 +1,1014 @@
+- en: '2'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Applying Data Transformations Using Delta Live Tables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we’ll dive straight into how **Delta Live Tables** ( **DLT**
+    ) makes ingesting data from a variety of input sources simple and straightforward,
+    whether it’s files landing in cloud storage or connecting to an external storage
+    system, such as a **relational database management system** ( **RDBMS** ). Then,
+    we’ll take a look at how we can efficiently and accurately apply changes from
+    our input data sources to downstream datasets, using the **APPLY CHANGES** command.
+    Lastly, we’ll conclude the chapter with a deep dive into the advanced data pipeline
+    settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To summarize, in this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ingesting data from input sources
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Applying changes to downstream tables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Publishing datasets to Unity Catalog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Data pipeline settings
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hands-on exercise – applying SCD Type 2 changes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along in this chapter, it’s recommended to have Databricks workspace
+    permissions to create an all-purpose cluster and a DLT pipeline, using a cluster
+    policy. It’s also recommended to have Unity Catalog permissions to create and
+    use catalogs, schemas, and tables. All code samples can be downloaded from the
+    chapter’s GitHub repository, located at https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter02.
+    This chapter will create and run several new notebooks and a DLT pipeline using
+    the **Core** product edition. As a result, the pipelines are estimated to consume
+    around 10–15 **Databricks** **Units** ( **DBUs** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ingesting data from input sources
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: DLT makes ingesting data from a variety of input sources simple. For example,
+    DLT can efficiently process new files landing in a cloud storage location throughout
+    the day, ingest structured data by connecting to an external storage system, such
+    as a relational database, or read static reference tables that can be cached into
+    memory. Let’s look at how we can use DLT to incrementally ingest new data that
+    arrives in a cloud storage location.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ingesting data using Databricks Auto Loader
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One of the key features of the Databricks Data Intelligence Platform is a feature
+    called **Auto Loader** , which is a simple yet powerful ingestion mechanism for
+    efficiently reading input files from cloud storage. Auto Loader can be referenced
+    in a DataFrame definition by using the **cloudFiles** data source. For example,
+    the following code snippet will use the Databricks Auto Loader feature to ingest
+    newly arriving JSON files from a storage container:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Auto Loader can scale to process billions of files in cloud storage efficiently.
+    Databricks Auto Loader supports ingesting files stored in the CSV, JSON, XML,
+    Apache Parquet, Apache Avro, and Apache Orc file formats, as well as text and
+    binary files. Furthermore, one thing that you may have noticed in the preceding
+    code snippet is that a schema definition was not specified for the input stream
+    but, rather, a target schema location. That is because Auto Loader will automatically
+    infer the data source schema and keep track of the changes to the schema definition
+    in a separate storage location. Behind the scenes, Auto Loader will sample up
+    to the first 1,000 cloud file objects to infer the schema structure for a cloud
+    file source. For semi-structured formats such as JSON, where the schema can change
+    over time, this can alleviate a huge burden on data engineering teams by them
+    not having to maintain an up-to-date definition of the latest schema definition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scalability challenge in structured streaming
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Traditionally, data pipelines that used Spark Structured Streaming to ingest
+    new files, where files were appended to a cloud storage location, struggled to
+    scale as data volumes grew into GB or even TB. As new files were written to the
+    cloud storage container, Structured Streaming would perform a directory listing.
+    For large datasets, (i.e., datasets comprised of millions of files or more), the
+    directory listing process alone would take a lengthy amount of time. In addition,
+    the cloud provider would assess API fees for these directory listing calls, adding
+    to the overall cloud provider fees. For files that have already been processed,
+    this directory listing was both expensive and inefficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Databricks Auto Loader supports two types of cloud file detection modes – notification
+    mode and legacy directory listing mode. In notification mode, Auto Loader bypasses
+    this expensive directory listing process entirely by automatically deploying a
+    more scalable architecture under the hood. With just a few lines of Python code,
+    Databricks pre-provisions backend cloud services that will automatically keep
+    track of new files that have landed in cloud storage, as well as files that have
+    already been processed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.1 – In notification mode, Databricks Auto Loader uses an event stream
+    to keep track of new, unprocessed files in cloud storage](img/B22011_02_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.1 – In notification mode, Databricks Auto Loader uses an event stream
+    to keep track of new, unprocessed files in cloud storage
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s walk through an example of how the Auto Loader feature, configured in
+    notification mode, will efficiently process newly arriving cloud file objects
+    together:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The process begins with the Databricks Auto Loader listening to a particular
+    cloud storage path for new file object creation events, also referred to as **PUT**
+    events, named after the HTTP verb used to create the object.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When a new file object has been created, the metadata about this new file is
+    persisted to a key-value store, which serves as a checkpoint location if there
+    are system failures.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, the information pertaining to the file object, or file objects, will then
+    be published to an event stream that the **cloudFiles** data source reads from.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Upon reading from the event stream, the Auto Loader process in Databricks will
+    fetch the data pertaining only to those new, unprocessed file objects in cloud
+    storage.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Lastly, the Auto Loader process will update the key-value store, marking the
+    new files as processed in the system.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This implementation of notification-based file processing avoids the expensive
+    and inefficient directory listing process, ensuring that the process can recover
+    from failures and that files are processed exactly once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Auto Loader with DLT
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Databricks Auto Loader can be used to create a streaming table in a DLT pipeline.
+    Now that we know what’s going on behind the scenes, building a robust, scalable
+    streaming table that can scale to billions of files can be done with just a few
+    lines of Python code. In fact, for data sources that append new files to cloud
+    storage, it’s recommended to always use Auto Loader to ingest data. Let’s take
+    a streaming DataFrame definition from the preceding section and combine it with
+    the DLT dataset annotation to define a new data stream in our pipeline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: One thing to note is that in the preceding code snippet, we’ve provided two
+    cloud storage paths. The first storage path, **schema_path** , refers to the cloud
+    storage path where schema information and the key-value store will be written.
+    The second storage location, **raw_landing_zone_path** , points to the location
+    where new, unprocessed files will be written by the external data source.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s recommended to use an external location governed by Unity Catalog so that
+    you can enforce fine-grained data access across different users and groups within
+    your Databricks workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a reliable and efficient way of ingesting raw data from cloud
+    storage input sources, we’ll want to transform the data and apply the output to
+    downstream datasets in our data pipeline. Let’s look at how the DLT framework
+    makes applying downstream changes simple and straightforward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying changes to downstream tables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Traditionally, Delta Lake offered a **MERGE INTO** command, allowing change
+    data capture to be merged into target tables by matching on a particular condition.
+    However, if the new data happened to be out of order, the merged changes would
+    result in incorrect results, leading to an inaccurate and misleading output. To
+    remediate this problem, data engineering teams would need to build complex reconciliation
+    processes to handle out-of-order data, adding yet another layer to a data pipeline
+    to manage and maintain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: APPLY CHANGES command
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: DLT offers a new API to automatically apply changes to downstream tables, even
+    handling out-of-order data based on a set of one or more sequence columns. **Slowly**
+    **c** **hanging** **d** **imensions** ( **SCDs** ) are dimensions in traditional
+    data warehousing that allow the current and historical snapshot of data to be
+    tracked over time. DLT allows data engineering teams to update downstream datasets
+    in a data pipeline with changes in the upstream data source. For example, DLT
+    allows users to capture SCD Type 1 (which does not preserve previous row history)
+    and SCD Type 2 (which preserves historical versions of rows).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'DLT offers a Python API as well as SQL syntax to apply change data captures:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**APPLY CHANGES** – for pipelines written using SQL syntax'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**apply_changes()** – for pipelines written using Python'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s imagine that we have a table that will record room temperatures published
+    from smart thermostats throughout the day, and it’s important to preserve a history
+    of temperature updates. The following code snippet will apply SCD Type 2 changes
+    to an output table in our data pipeline, using the **apply_changes()** API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Furthermore, DLT will capture high-level operational metrics about the data
+    changes that are applied during the completion of an **apply_changes()** command.
+    For instance, the DLT system will track the number of rows that were updated,
+    inserted, or deleted for each execution of the **apply_changes()** command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The DLT reconciliation process
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Behind the scenes, DLT will create two dataset objects to accurately apply table
+    changes to pipeline datasets. The first data object is a hidden, backend Delta
+    table that contains the full history of changes. This dataset is used to perform
+    a reconciliation process that is capable of handling out-of-order row updates
+    that are processed. Furthermore, this backend table will be named using the provided
+    name parameter in the **APPLY CHANGES** or **apply_changes()** function call,
+    concatenated with the **__apply_changes_storage_** string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, if the name of the table was **iot_readings** , it would result
+    in a backend table being created with the name **__apply_changes_storage_iot_readings**
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: This particular table will only be visible if the DLT pipeline publishes the
+    dataset to the legacy Hive Metastore. However, Unity Catalog will abstract these
+    low-level details away from end users, and the dataset will not be visible from
+    the Catalog Explorer UI. However, the table can *still* be queried using a notebook
+    or from a query executed on a SQL warehouse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Secondly, the DLT system will create another dataset – a view using the name
+    provided for the **apply_changes()** function. This view will contain the latest
+    snapshot of a table with all the changes applied. The view will use a column,
+    or combination of columns, specified as table keys to uniquely identify each row
+    within the backend table. Then, DLT uses the column or sequence of columns specified
+    in the **sequence_by** parameter of the **apply_changes()** function to order
+    the table changes for each unique row, picking out the latest row change to calculate
+    the result set for the view.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.2 – DLT creates a backend table to apply table changes, as well
+    as a view to query the latest data](img/B22011_02_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.2 – DLT creates a backend table to apply table changes, as well as
+    a view to query the latest data
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, DLT makes it extremely simple to keep downstream data sources
+    in line with the data changes occurring in the source. With just a few parameter
+    changes, you can use the powerful **apply_changes()** API to apply SCD data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we understand how we can leverage the DLT framework to define data
+    transformations and apply changes to downstream tables, let’s turn our attention
+    to how we can add strong data governance on top of our pipeline datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Publishing datasets to Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: DLT offers two methods for storing datasets in the Databricks Data Intelligence
+    Platform – the legacy Hive Metastore and Unity Catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As described in [*Chapter 1*](B22011_01.xhtml#_idTextAnchor014) , Unity Catalog
+    is a centralized governance store that spans all of your Databricks workspaces
+    within a particular global region. As a result, data access policies can be defined
+    once in a centralized location and will be consistently applied across your organization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, within the context of a DLT pipeline, these two methods of storing
+    the output datasets are mutually exclusive to one another – that is, a particular
+    DLT pipeline cannot store some datasets in the Unity Catalog and others in the
+    Hive Metastore. You must choose a single metastore location for the entire data
+    pipeline output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why store datasets in Unity Catalog?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Unity Catalog is the new best-of-breed method for storing data and querying
+    datasets in the lakehouse. You might choose landing data in a data pipeline into
+    Unity Catalog over the Hive Metastore for several reasons, including the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data is secured by default .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There is a consistent definition of access policies across groups and users
+    versus defining data access policies for every individual workspace .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Open source technology with no risk of vendor lock-in .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Furthermore, Unity Catalog offers a Hive-compatible API, allowing third-party
+    tools to integrate with a Unity Catalog metastore as if it were the Hive Metastore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a new catalog
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One major difference between Unity Catalog and the Hive Metastore is that the
+    former introduces a three-level namespace when defining tables. The parent namespace
+    will refer to the catalog object. A catalog is a logical container that will hold
+    one to many schemas, or databases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the first steps in building a new DLT pipeline is to define a centralized
+    location to store the output datasets. Creating a new catalog in Unity Catalog
+    is simple. It can be done using a variety of methods, such as through the Catalog
+    Explorer UI, using SQL statements executed from within a notebook, or using the
+    Databricks REST API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’ll use the Databricks Catalog Explorer UI to create a new Catalog:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, navigate to the Catalog Explorer by clicking on the **Catalog Explorer**
+    tab in the navigation sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, click the **Create** **Catalog** button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Give the catalog a meaningful name.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **Standard** as the catalog type.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, click on the **Create** button to create the new catalog.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Assigning catalog permissions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As previously mentioned, one of the benefits of using Unity Catalog is that
+    your data is secured by default. In other words, access to data stored in the
+    Unity Catalog is denied by default unless explicitly permitted. To create new
+    tables in the newly created catalog, we’ll need to grant permission to create
+    and manipulate new tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are the creator and owner of a target catalog and schema objects, as
+    well as the creator and owner of a DLT pipeline, then you do not need to execute
+    the following **GRANT** statements. The **GRANT** statements are meant to demonstrate
+    the types of permissions needed to share data assets across multiple groups and
+    users in a typical Unity Catalog metastore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s grant access to use the catalog. From a new notebook, execute
+    the following SQL syntax to grant access to use the newly created catalog, where
+    **my_user** is the name of a Databricks user and **chp2_transforming_data** is
+    the name of the catalog created in the previous example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we’ll need to create a schema that will hold the output datasets from
+    our DLT pipeline. From the same notebook, execute the following SQL statement
+    to create a new schema:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Execute the following statement to grant permission to create materialized
+    views within the newly created schema:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: By now, you should see how simple yet powerful Unity Catalog makes applying
+    consistent data security to your data pipeline datasets, providing data stewards
+    with a variety of options to enforce dataset permissions across their organization.
+    Let’s turn our attention to how we can configure some of the advanced features
+    and settings of a DLT pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data pipeline settings
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Up until now, we’ve only discussed how to use the DLT framework to declare tables,
+    views, and transformations on the arriving data. However, the computational resources
+    that execute a particular data pipeline also play a major role in landing the
+    latest data in a l akehouse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we’re going to discuss the different data pipeline settings
+    and how you can control computational resources, such as the cluster, at runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following pipeline settings can be configured directly from the DLT UI or
+    using the Databricks REST API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The DLT product edition
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The data pipeline product edition tells the DLT framework what set of features
+    your data pipeline will utilize. Higher product editions will contain more features,
+    and as a result, Databricks will assess a higher price ( a DBU).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Databricks offers three types of product editions for DLT pipelines, ranked
+    in order of feature set, from the least features to the most:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Core** : **Core** is the base product edition. This product edition is meant
+    for streaming workloads that only append new data to streaming tables. Data expectations
+    (data quality enforcement is discussed in the next chapter) and utilities to apply
+    change data capture are not available in this product edition.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Pro** : The **Pro** product edition is the next edition above Core. This
+    production edition is designed for streaming workloads that append new data to
+    streaming tables and apply updates and deletes using **APPLY** **CHANGES** command.
+    However, data quality expectations are not available in this product edition.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Advanced** : The **Advanced** product edition is the most feature-rich product
+    edition. Data quality expectations are available in this production edition, as
+    well as support for appending new data to streaming tables and applying inserts,
+    updates, and deletes that have occurred in the upstream data sources.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: There may be times when your requirements change over time. For example, you
+    might require strict data quality enforcement to prevent downstream failures in
+    third-party **business intelligence** ( **BI** ) reporting tools. In scenarios
+    like these, you can update the product edition of an existing DLT pipeline at
+    any time, allowing your data pipeline to adapt to changes in your feature requirements
+    and budget.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipeline execution mode
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: DLT offers a way to inform a system that the changes to a data pipeline are
+    experimental. This feature is called data pipeline environment mode. There are
+    two available environment modes – **development** and **production** . The main
+    difference is the behavior of the computational resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In development environment mode, a data flow task will not be automatically
+    retried if a failure is encountered. This allows a data engineer to intervene
+    and correct any programmatic errors during ad hoc development cycles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, during a failure in development mode, the cluster executing the
+    data pipeline updates will remain up. This allows a data engineer to view the
+    driver logs and cluster metrics of the cluster, and it also prevents a lengthy
+    cluster re-provisioning and re-initialization of the cluster runtime for each
+    pipeline execution, which, depending upon the cloud provider, could take 10 to
+    15 minutes to complete. It’s expected to have short and iterative development
+    and testing cycles, which assist data engineers in their development life cycle
+    by keeping the cluster up and running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data pipeline environment mode can be set from the DLT UI by clicking the
+    environment mode toggle switch at the very top navigation bar of a data pipeline
+    in the DLT UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.3 – DLT pipeline execution mode can be set using the toggle switch
+    from the UI](img/B22011_02_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.3 – DLT pipeline execution mode can be set using the toggle switch
+    from the UI
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alternatively, the environment mode can also be set using the Databricks REST
+    API. In the following code snippet, we’ll use the Python **requests** library
+    to send a **PUT** request to the Databricks DLT pipelines REST API that will set
+    the development mode of a DLT pipeline. Note that the endpoint URL will change,
+    depending on your Databricks workspace deployment, and the code snippet is just
+    an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Databricks runtime
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: DLT is a version-less product feature on the Databricks Data Intelligence Platform.
+    In other words, Databricks manages the underlying **Databricks Runtime** ( **DBR**
+    ) that a data pipeline uses for its cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, Databricks will automatically upgrade a data pipeline cluster to
+    use the latest stable runtime release. Runtime upgrades are important because
+    they introduce bug fixes, new performance features, and other enhancements. This
+    can mean that your data pipelines will execute faster, translating to less time
+    and money spent to transform the latest data in your l akehouse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might even be eager to test out the latest performance features. Each DLT
+    pipeline has a **Channel** setting that allows data engineers to select one of
+    two channel options – **Current** and **Preview** . The Preview channel allows
+    data engineers to configure a data pipeline to execute using the latest, experimental
+    runtime that contains the new performance features and other enhancements. However,
+    since this is an experimental runtime, it’s not recommended that data pipelines
+    running in production should use a Preview channel of the Databricks runtime.
+    Instead, it’s recommended to use the former option, Current, which selects the
+    latest stable release of the Databricks runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, the DLT system will proactively catch runtime exceptions for data
+    pipelines deployed in production mode. For example, if a new runtime release introduces
+    a runtime bug, also referred to as a runtime regression, or a library version
+    conflict, DLT will attempt to downgrade the cluster to a lower runtime that was
+    known to execute data pipelines successfully, and it will retry executing the
+    pipeline update.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following diagram illustrates the automatic runtime upgrade exception handling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.4 – In production mode, DLT will attempt to rerun a failed data
+    pipeline execution using a lower Databricks runtime release](img/B22011_02_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.4 – In production mode, DLT will attempt to rerun a failed data pipeline
+    execution using a lower Databricks runtime release
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipeline cluster types
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Each data pipeline will have two associated clusters – one to perform the dataset
+    updates and one to perform the table maintenance tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The settings for these two types of clusters are expressed in the pipeline settings
+    of a pipeline, using a JSON cluster configuration definition. There are three
+    types of cluster configurations that can be expressed in the pipeline settings
+    – the update cluster configuration, the maintenance cluster configuration, and
+    a third option that acts as a default cluster configuration, applying generalized
+    settings to both update and maintenance clusters. The schema for this JSON configuration
+    closely follows that of the Databricks Clusters REST API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to configuring the physical attributes of a cluster, such as the
+    number of worker nodes and virtual machine instance types, the cluster configuration
+    can also contain advanced Spark configurations. Let’s walk through a sample cluster
+    configuration together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following example contains two separate cluster configurations – a default
+    cluster configuration that will be applied to both update and maintenance DLT
+    clusters, as well as another cluster configuration that will be applied only to
+    the update DLT cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first cluster configuration, we’ll specify that the cluster configuration
+    will be the default cluster configuration using the **label** attribute. This
+    means that the cluster configuration will be applied to DLT clusters used to update
+    the datasets and for clusters created to run table maintenance tasks. Then, we’ll
+    enable autoscaling for our DLT clusters, specifying that all clusters will begin
+    provisioning a cluster with a single virtual machine but can grow up to five virtual
+    machines in total as processing demands increase. We’ll also specify that an enhanced
+    version of the cluster autoscaling algorithm should be used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the second set of cluster configurations, we’ll specify that the cluster
+    configuration should be applied only to DLT update clusters using the **label**
+    attribute again. Then, we’ll specify which instance types to provision for the
+    update cluster driver and worker nodes. For the driver node, which orchestrates
+    tasks, we’ll specify that the **i4i.2xlarge** EC2 instance type should be used,
+    while all worker nodes should use the **i4i.xlarge** EC2 instances. Lastly, we’ll
+    also enable a Databricks Runtime performance feature, called **Auto-Optimized
+    Shuffle** ( **AOS** ). AOS will automatically size the number of Spark shuffle
+    partitions at runtime, which can improve performance during wide Spark transformations
+    such as joins, aggregations, and merge operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we’ve chosen to illustrate the cluster configuration
+    settings using virtual machine instances for the AWS cloud. However, if your workspace
+    is in a different cloud provider, we’d suggest using Delta cache accelerated VM
+    instances of similar sizes – eight cores for the driver node and four cores for
+    the worker nodes ( [https://docs.databricks.com/en/optimizations/disk-cache.html](https://docs.databricks.com/en/optimizations/disk-cache.html)
+    ):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, cluster configurations are a powerful tool that provides data
+    engineers with the ability to apply either generalized cluster settings, target
+    specific cluster settings, or do a combination of both. This is a great way to
+    tune clusters for specific workloads and yield additional performance for your
+    DLT pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A serverless compute versus a traditional compute
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Data pipelines can be executed using clusters configured with a traditional
+    compute or a serverless compute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A traditional compute gives a user the most control over computational resources.
+    However, with a traditional compute, the user will need to manage several aspects
+    of the underlying cluster. For example, data engineering teams will need to configure
+    cluster attributes such as the auto-scaling behavior, whether the pipeline should
+    be executed using the Photon engine or the legacy Catalyst engine in Spark, as
+    well as optional c luster tagging. Furthermore, traditional compute allows the
+    user to have full control over the VM instance types that are selected for the
+    driver and worker nodes of the cluster. As we saw in the previous section, the
+    VM instance types can be specified under the pipeline settings by listing specific
+    instance types within the JSON configuration. For example, the following cluster
+    configuration specifies the i4i.xlarge and i4i.2xlarge EC2 instance types for
+    all update clusters within a DLT pipeline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, DLT pipelines configured to use a serverless compute will abstract
+    away all the underlying cluster settings, such as the cluster VM instance types,
+    the number of worker nodes, and the autoscaling settings. As the name *serverless
+    compute* suggests, the computational resources will be provisioned and managed
+    by Databricks in the Databricks cloud provider account. Behind the scenes, Databricks
+    will maintain a pool of pre-provisioned computational resources so that cluster
+    provisioning is fast. As soon as an update for a data pipeline is triggered, the
+    DLT system will create a logical network inside of the Databricks cloud provider
+    account and initialize a cluster to execute the pipeline’s data flow graph. Databricks
+    will automatically select the VM instance type, the Photon execution engine, and
+    the autoscaling behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As an added layer of security, there is no communication permitted between logical
+    networks or from the external internet, and the computational resources are never
+    reused across serverless workloads. When the data pipeline processing has been
+    completed and the cluster has been terminated, the computational resources are
+    released back to the cloud provider and destroyed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might choose a serverless compute to remove the infrastructure overhead
+    of maintaining and updating multiple cluster policies, as well as to also take
+    advantage of fast cluster provisioning when reacting to spikes in processing demands
+    is critical. Plus, serverless execution enables other platform features, such
+    as updating materialized views in continuous processing mode (processing modes
+    are covered in the next section).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading external dependencies
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Data pipelines may need to load external dependencies, such as helper utilities
+    or third-party libraries. As such, DLT offers three ways to install runtime dependencies
+    for a data pipeline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From a notebook cell, using the **%pip** magic command ( [https://docs.databricks.com/en/notebooks/notebooks-code.html#mix-languages](https://docs.databricks.com/en/notebooks/notebooks-code.html#mix-languages)
+    )
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Loading a module from a workspace file or Databricks repo
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using a cluster initialization script
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The popular Python package manager **pip** can be used to install Python modules
+    from any notebook in a data pipeline’s source code, via the **%pip** Databricks
+    magic command. **%pip** is the simplest method for installing library dependencies
+    in a data pipeline. At runtime, the DLT system will detect all notebook cells
+    containing **%pip** magic commands and execute these cells first, before performing
+    any pipeline updates. Furthermore, all notebooks for a declared data pipeline’s
+    source code will share a single virtual environment, so the library dependencies
+    will be installed together in an isolated environment and be globally available
+    to all notebooks in a data pipeline’s source code. Conversely, the notebooks for
+    a data pipeline cannot install different versions of the same Python library.
+    For example, the following code sample will use the **pip** package manager to
+    install the popular libraries **numpy** , **pandas** , and **scikit-learn** ,
+    as well as a custom Python library from a Databricks **Volumes** location:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: As a best practice, these dependency installation statements should be placed
+    at the very top of a notebook, so that it's easier to reference pipeline dependencies
+    quickly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alternatively, library dependencies can also be installed as a Python module.
+    In this scenario, the library can be installed and loaded in a DLT pipeline as
+    either a workspace file or from a Databricks Repo, if the module is version-controlled
+    using a Git provider, such as GitHub or Bitbucket.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, cluster initialization scripts can also be used to install external
+    dependencies. These scripts are run after a cluster has provisioned the VMs and
+    installed the Databricks runtime, but before the data pipeline begins execution.
+    For example, this type of dependency installation might be applicable in a scenario
+    where firmwide libraries need to be consistently installed across all data engineering
+    platforms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may have noticed that the preceding options only covered installing Python
+    dependencies. DLT does not support installing JVM libraries, since it only offers
+    the Python and SQL programming interfaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data pipeline processing modes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The data pipeline processing mode determines how frequently the tables and materialized
+    views within a pipeline are updated. DLT offers two types of pipeline processing
+    modes – **triggered** processing mode and **continuous** processing mode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Triggered processing mode will update the datasets contained within a pipeline
+    once and then immediately terminate the cluster that was provisioned to run the
+    pipeline, releasing the computational resources back to the cloud provider and
+    thereby terminating additional cloud costs from being assessed. As the name suggests,
+    triggered processing mode can be run in an ad hoc manner and will execute immediately
+    from a triggering event, such as the event of a button clicked on the DLT UI by
+    a user or an invocation to the Databricks REST API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.5 – A triggered data pipeline will refresh each dataset and then
+    immediately terminate the cluster](img/B22011_02_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.5 – A triggered data pipeline will refresh each dataset and then immediately
+    terminate the cluster
+  prefs: []
+  type: TYPE_NORMAL
+- en: Triggered processing mode can also be triggered to run using a **cron** schedule,
+    which can be configured from the UI or via the REST API. As shown in *Figure 2*
+    *.6* , a recurring schedule can be created by clicking on the **Schedule** drop-down
+    button in the DLT UI, clicking the **Add schedule** button, and finally, selecting
+    the desired time to trigger a pipeline update. Each day, the datasets within the
+    pipeline will be refreshed at the scheduled time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.6 – DLT pipelines can be scheduled to refresh datasets based on
+    a repeating schedule](img/B22011_02_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.6 – DLT pipelines can be scheduled to refresh datasets based on a repeating
+    schedule
+  prefs: []
+  type: TYPE_NORMAL
+- en: Conversely, continuous processing mode will provision computational resources
+    to refresh datasets within a pipeline but will continue to execute indefinitely,
+    processing data and refreshing the tables and materialized views as data arrives
+    from the source. A continuous processing pipeline will keep the computational
+    resources running and will continue to incur cloud costs, with the trade-off of
+    minimal data staleness. This type of pipeline mode should be selected when data
+    latency is prioritized over cloud compute costs for a particular data pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, the pipeline processing mode and other pipeline settings can be
+    updated throughout the lifecycle of a data pipeline, allowing the pipeline to
+    be flexible around processing latency and compute costs. For example, an economic
+    downturn may force an organization to prioritize cost savings over latency but
+    may again emphasize latency later down the road.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s use everything that we’ve learned together in this chapter and build a
+    DLT pipeline that will apply SCD Type 2 changes to downstream datasets in our
+    data pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hands-on exercise – applying SCD Type 2 changes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this hands-on exercise, we’ll use Databricks Auto Loader to incrementally
+    load JSON files that are written to a raw landing zone in a cloud storage account.
+    Next, we’ll transform downstream columns and join data ingested from an external
+    Postgres database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading data from a remote Postgres database is optional. This step is intended
+    to demonstrate the flexibility of the Databricks Data Intelligence Platform, showing
+    you how easy it is to read structured data from a remote RDBMS and combine it
+    with semi-structured data. If you do not have a Postgres database, a static DataFrame
+    containing the taxi driver information is provided for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you haven’t done so, you will need to clone the accompanying notebooks from
+    this chapter’s GitHub repo, located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter02](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter02)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s start by importing the data generator notebook, titled **Generate Mock
+    Taxi Trip Data** . This notebook will create a mock dataset containing fictitious
+    information about taxi trips. Once the mock dataset has been generated, this notebook
+    will store the taxi trip dataset as multiple JSON files in our cloud storage account,
+    which will be later ingested by our DLT pipeline. Attach the taxi trip data generator
+    notebook to an all-purpose cluster and execute all the cells to generate mock
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let’s create our DLT pipeline definition. Create a new notebook by clicking
+    the workspace table on the left sidebar, clicking on the **Add** dropdown, and
+    selecting **Notebook** . Rename the notebook with a meaningful name, such as **Taxi
+    Trips DLT Pipeline** . We’ll declare the datasets and transformations for our
+    DLT pipeline in this notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, import the DLT Python module to access the DLT function decorators to
+    define datasets and dependencies, as well as the PySpark functions module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We’ll need to create a streaming table that will ingest taxi trip JSON data
+    that has been written to a landing zone on cloud storage. Let’s start by defining
+    a new streaming table that uses the **cloudFiles** data source to listen for new
+    file events in the raw landing zone:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: As new taxi trip data arrives, our DLT pipeline will efficiently load the data
+    using Auto Loader, fetching only the information pertaining to the unprocessed
+    files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we’ve ingested the raw taxi trip data, we can begin applying the recorded
+    changes to downstream tables. Let’s first define a target streaming table to apply
+    SCD Type 2 changes that have been reported by the mock taxi trip data source:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we’ll leverage the **apply_changes()** function covered earlier to instruct
+    the DLT system on how changes should be applied, which columns to omit in the
+    downstream table, and which SCD type to use. Add the following function call to
+    the notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For our last step, we’ll transform a few of the columns in our upstream tables,
+    such as rounding columns with a **float** data type to two decimal places, as
+    well as splitting the **trip_distance** column into a column with miles as the
+    unit of measurement and another column with kilometers as the unit of measurement.
+    Next, we’ll connect to a remote Postgres database and read the latest taxi driver
+    information. If you have access to a Postgres database, you can import the notebook,
+    titled **Generate Postgres Table** , and execute the cells to generate a table
+    to test with. Our final streaming table, which enriches our data and joins the
+    latest taxi driver reference data, will look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this last function definition, we make use of the **dlt.read()** function
+    to retrieve earlier dataset declarations. Behind the scenes, the DLT framework
+    will add the datasets to the dataflow graph, creating the dependencies between
+    the **taxi_trip_data_merged** and **taxi_trip_silver** datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, it’s time to create our DLT pipeline. Attach the notebook in the previous
+    step to an all-purpose cluster and execute the notebook cells. When prompted,
+    click on the blue **Create Pipeline** button to open the **Pipeline** UI page.
+    Give the pipeline a meaningful name, such as **Taxi Trip Data Pipeline** . Since
+    we are leveraging the **apply_changes()** function, we will need to select the
+    **Advanced** product edition. Ensure that the **Triggered** processing mode radio
+    button is selected. To view the backend table that is created by the **apply_changes()**
+    function, select the Hive Metastore for the storage location, and provide a target
+    schema to store the pipeline datasets. Accept the remainder default values, and
+    then click the **Create** button to create the pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, run the newly created pipeline by clicking the **Start** button in
+    the DLT UI. Soon, you will see a data flow graph that ingests changes from the
+    raw JSON data, enriches downstream columns, and joins the remote structured data
+    from the Postgres database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.7 – A data flow graph generated by the DLT system](img/B22011_02_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.7 – A data flow graph generated by the DLT system
+  prefs: []
+  type: TYPE_NORMAL
+- en: As data is changed in the mock taxi trip data source, the full history of DML
+    changes is picked and applied to a target **taxi_trip_data_merged** table. The
+    output of our data pipeline will be a curated streaming table that contains information
+    about the taxi cab ride, as well as information about the taxi driver and taxi
+    vehicle. Best of all, with just a few lines of code, we deployed a fully scalable,
+    cost-efficient data pipeline that can easily process billions of files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at how DLT can simplify our data pipelines by abstracting
+    away many of the low-level details of processing data in Spark. We saw how Databricks
+    Auto Loader solves the scalability problem of stream processing files from cloud
+    storage. With just a few lines of code, we deployed a scalable backend system
+    to efficiently read new files as soon as they appear in a cloud storage location.
+    When it came to applying data changes to downstream datasets within our pipeline,
+    the DLT framework once again simplified data reconciliation when data events were
+    published late or out of order. We also saw how we could apply slowly changing
+    dimensions with just a few parameter changes in the **apply_changes()** API. Finally,
+    we uncovered the details of data pipeline settings, optimizing the pipeline compute
+    based on the computational requirements and DLT feature set that we needed in
+    the data pipeline. We also saw how DLT can automatically handle pipeline failures
+    for us and proactively take action and attempt to fix certain runtime exceptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll look at how we can use *expectations* in DLT to enforce
+    data quality rul es on data throughout each hop in our data pipeline, taking action
+    whenever the data quality rules have been violated.
+  prefs: []
+  type: TYPE_NORMAL

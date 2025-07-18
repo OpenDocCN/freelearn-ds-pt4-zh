@@ -1,0 +1,2116 @@
+- en: 9\. Interpreting a Machine Learning Model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Overview
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter will show you how to interpret a machine learning model's results
+    and get deeper insights into the patterns it found. By the end of the chapter,
+    you will be able to analyze weights from linear models and variable importance
+    for `RandomForest`. You will be able to implement variable importance via permutation
+    to analyze feature importance. You will use a partial dependence plot to analyze
+    single variables and make use of the lime package for local interpretation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, you saw how to find the optimal hyperparameters of
+    some of the most popular machine learning algorithms in order to get better predictive
+    performance (that is, more accurate predictions).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Machine learning algorithms are always referred to as black box where we can
+    only see the inputs and outputs and the implementation inside the algorithm is
+    quite opaque, so people don't know what is happening inside.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With each day that passes, we can sense the elevated need for more transparency
+    in machine learning models. In the last few years, we have seen some cases where
+    algorithms have been accused of discriminating against groups of people. For instance,
+    a few years ago, a not-for-profit news organization called ProPublica highlighted
+    bias in the COMPAS algorithm, built by the Northpointe company. The objective
+    of the algorithm is to assess the likelihood of re-offending for a criminal. It
+    was shown that the algorithm was predicting a higher level of risk for specific
+    groups of people based on their demographics rather than other features. This
+    example highlighted the importance of interpreting the results of your model and
+    its logic properly and clearly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Luckily, some machine learning algorithms provide methods to understand the
+    parameters they learned for a given task and dataset. There are also some functions
+    that are model-agnostic and can help us to better understand the predictions made.
+    So, there are different techniques that are either model-specific or model-agnostic
+    for interpreting a model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These techniques can also differ in their scope. In the literature, we either
+    have a global or local interpretation. A global interpretation means we are looking
+    at the variables for all observations from a dataset and we want to understand
+    which features have the biggest overall influence on the target variable. For
+    instance, if you are predicting customer churn for a telco company, you may find
+    the most important features for your model are customer usage and the average
+    monthly amount paid. Local interpretation, on the other hand, focuses only on
+    a single observation and analyzes the impact of the different variables. We will
+    look at a single specific case and see what led the model to make its final prediction.
+    For example, you will look at a specific customer who is predicted to churn and
+    will discover that they usually buy the new iPhone model every year, in September.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will go through some techniques on how to interpret your
+    models or their results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Linear Model Coefficients
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In *Chapter 2, Regression*, and *Chapter 3, Binary Classification*, you saw
+    that linear regression models learn function parameters in the form of the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.1: Function parameters for linear regression models'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_01.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.1: Function parameters for linear regression models'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The objective is to find the best parameters (w1, w2 …, wn) that will get the
+    predictions, ŷ̂, very close to the actual target values, `y`. So, once you have
+    trained your model and are getting good predictive performance without much overfitting,
+    you can use these parameters (or coefficients) to understand which variables largely
+    impacted the predictions. If a coefficient is close to 0, this means the related
+    feature didn't impact much the outcome. On the other hand, if it is quite high
+    (positively or negatively), it means its feature is influencing the prediction
+    outcome vastly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take the example of the following function: `100 + 0.2 * x`1 `+ 200
+    * x`2 `- 180 * x`3\. The coefficient of x1 is only **0.2**. It is quite low compared
+    to the other ones. It doesn''t have much impact on the final outcome. The coefficient
+    of x2 is positive, so it will positively impact the prediction. It is the opposite
+    of the x3 coefficient because the x3 coefficient is negative.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: But to be able to compare apples versus apples, you need to rescale the features
+    so that they have the same scale so you can compare their coefficients. If not,
+    then maybe x1 ranges from 1 million to 5 million, while x2 and x3 are between
+    **1** and **88**. In this case, even though the x1 coefficient is small, a small
+    change in the x1 value has a drastic impact on the prediction. On the other hand,
+    if all 3 coefficients are between -1 and 1, then we can say the key drivers in
+    predicting the target variable are the features x2 and x3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In `sklearn`, it is extremely easy to get the coefficient of a linear model;
+    you just need to call the `coef_` attribute. Let''s implement this on a real example
+    with the Diabetes dataset from `sklearn`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.2: Coefficients of the linear regression parameters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_02.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.2: Coefficients of the linear regression parameters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create a DataFrame with these values and column names:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.3: Coefficients of the linear regression model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_03.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.3: Coefficients of the linear regression model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A large positive or a large negative number for a feature coefficient means
+    it has a strong influence on the outcome. On the other hand, if the coefficient
+    is close to 0, this means the variable does not have much impact on the prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From this table, we can see that column `s1` has a very low coefficient (a
+    large negative number) so it negatively influences the final prediction. If `s1`
+    increases by a unit of 1, the prediction value will decrease by `-792.184162`.
+    On the other hand, `bmi` has a large positive number (`519.839787`) on the prediction,
+    so the risk of diabetes is highly linked to this feature: an increase in body
+    mass index (BMI) means a significant increase in the risk of diabetes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 9.01: Extracting the Linear Regression Coefficient'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this exercise, we will train a linear regression model to predict the customer
+    drop-out ratio and extract its coefficients.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The dataset we will be using is shared by Carl Rasmussen from the University
+    of Toronto: [https://packt.live/37hInDr](https://packt.live/37hInDr).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This dataset was synthetically generated from a simulation for predicting the
+    fraction of bank customers who leave a bank because of long queues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The CSV version of this dataset can be found here: [https://packt.live/3kZrggU](https://packt.live/3kZrggU).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A data dictionary presenting the variables in this dataset can be found here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.live/3aBGhQD](https://packt.live/3aBGhQD).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps will help you complete the exercise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open a new Colab notebook.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Import the following packages: `pandas`, `train_test_split` from `sklearn.model_selection`,
+    `StandardScaler` from `sklearn.preprocessing`, `LinearRegression` from `sklearn.linear_model`,
+    `mean_squared_error` from `sklearn.metrics`, and `altair`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a variable called `file_url` that contains the URL to the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the dataset into a DataFrame called `df` using `.read_csv()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Print the first five rows of the DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.4: First five rows of the loaded DataFrame'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_04.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.4: First five rows of the loaded DataFrame'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The output has been truncated for presentation purposes. Please refer [https://packt.live/3kZrggU](https://packt.live/3kZrggU)
+    for complete output.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Extract the `rej` column using `.pop()` and save it into a variable called
+    `y`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Print the summary of the DataFrame using `.describe()`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.5: Statistical measures of the DataFrame'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_05.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.5: Statistical measures of the DataFrame'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The preceding figure is a truncated version of the output.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: From this output, we can see the data is not standardized. The variables have
+    different scales.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Split the DataFrame into training and testing sets using `train_test_split()`
+    with `test_size=0.3` and `random_state = 1`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Instantiate `StandardScaler`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train `StandardScaler` on the training set and standardize it using `.fit_transform()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Standardize the testing set using `.transform()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Instantiate `LinearRegression` and save it to a variable called `lr_model`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train the model on the training set using `.fit()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.6: Logs of LinearRegression'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_06.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.6: Logs of LinearRegression'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Predict the outcomes of the training and testing sets using `.predict()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Calculate the mean squared error on the training set and print its value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.7: MSE score of the training set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_07.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.7: MSE score of the training set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We achieved quite a low MSE score on the training set.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Calculate the mean squared error on the testing set and print its value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.8: MSE score of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_08.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.8: MSE score of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We also have a low MSE score on the testing set that is very similar to the
+    training one. So, our model is not overfitting.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You may get slightly different outputs than those present here. However, the
+    values you would obtain should largely agree with those obtained in this exercise.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Print the coefficients of the linear regression model using `.coef_`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.9: Coefficients of the linear regression model'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_09.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.9: Coefficients of the linear regression model'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Create an empty DataFrame called `coef_df`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a new column called `feature` for this DataFrame with the name of the
+    columns of `df` using `.columns`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a new column called `coefficient` for this DataFrame with the coefficients
+    of the linear regression model using `.coef_`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Print the first five rows of `coef_df`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.10: The first five rows of coef_df'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_10.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.10: The first five rows of coef_df'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: From this output, we can see the variables `a1sx` and `a1sy` have the lowest
+    value (the biggest negative value) so they are contributing more to the prediction
+    than the three other variables shown here.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Plot a bar chart with Altair using `coef_df` and `coefficient` as the `x` axis
+    and `feature` as the `y` axis:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.11: Graph showing the coefficients of the linear regression model'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_11.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.11: Graph showing the coefficients of the linear regression model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From this output, we can see the variables that impacted the prediction the
+    most were:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`a2pop`, which corresponds to the population of area 2'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`a1pop`, which corresponds to the population of area 1'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`a3pop`, which corresponds to the population of area 3'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`mxql`, which is the maximum length of the queues'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`b1eff`, which is the level of efficiency of bank 1'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`temp`, which is the temperature'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The first three variables impacted the outcome positively (increasing the target
+    variable value). This means as the population grows in any of the three areas,
+    the chance of customer churn increases. On the other hand, the last three features
+    negatively impacted the target variable (decreasing the target variable value):
+    if the maximum length, bank-1 efficiency level, or temperature increases, the
+    risk of customers leaving decreases.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to [https://packt.live/3kZrggU](https://packt.live/3kZrggU).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section does not currently have an online interactive example, but can
+    be run as usual on Google Colab.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this exercise, you learned how to extract the coefficients learned by a linear
+    regression model and identified which variables make the biggest contribution
+    to the prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RandomForest Variable Importance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Chapter 4*, *Multiclass Classification with RandomForest*, introduced you
+    to a very powerful tree-based algorithm: `RandomForest`. It is one of the most
+    popular algorithms in the industry, not only because it achieves very good results
+    in terms of prediction but also for the fact that it provides several tools for
+    interpreting it, such as variable importance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember from *Chapter 4*, *Multiclass Classification with RandomForest*, that
+    `RandomForest` builds multiple independent trees and then averages their results
+    to make a final prediction. We also learned that it creates nodes in each tree
+    to find the best split that will clearly separate the observations into two groups.
+    `RandomForest` uses different measures to find the best split. In `sklearn`, you
+    can either use the Gini or Entropy measure for the classification task and MSE
+    or MAE for regression. Without going into the details of each of them, these measures
+    calculate the level of impurity of a given split. This level of impurity looks
+    at how different the observations are from each other within a node. For instance,
+    if a group has all the same values within a feature, it will have a high level
+    of purity. On the other hand, if the group has a lot of different values, it will
+    have a high level of impurity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each sub-tree built will decrease this impurity score. So, we can use this impurity
+    score to assess the importance of each variable for the final prediction. This
+    technique is not specific to `RandomForest` only; it can be applied to any tree-based
+    algorithm, such as decision tree or gradient-boosted tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After training `RandomForest`, you can assess its variable importance (or feature
+    importance) with the `feature_importances_` attribute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how to extract this information from the Breast Cancer dataset from `sklearn`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output will be as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.12: Feature importance of a Random Forest model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_12.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.12: Feature importance of a Random Forest model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Due to randomization, you may get a slightly different result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It might be a little difficult to evaluate which importance value corresponds
+    to which variable from this output. Let''s create a DataFrame that will contain
+    these values with the name of the columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.13: RandomForest variable importance for the first five features'
+  prefs: []
+  type: TYPE_NORMAL
+- en: of the Breast Cancer dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_13.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.13: RandomForest variable importance for the first five features of
+    the Breast Cancer dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this output, we can see that `mean radius` and `mean perimeter` have the
+    highest scores, which means they are the most important in predicting the target
+    variable. The `mean smoothness` column has a very low value, so it seems it doesn't
+    influence the model much to predict the output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The range of values of variable importance is different for datasets; it is
+    not a standardized measure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s plot these variable importance values onto a graph using `altair`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.14: Graph showing RandomForest variable importance'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_14.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.14: Graph showing RandomForest variable importance'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this graph, we can see the most important features for this Random Forest
+    model are `worst perimeter`, `worst area`, and `worst concave points`. So now
+    we know these features are the most important ones in predicting whether a tumor
+    is benign or malignant for this Random Forest model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 9.02: Extracting RandomForest Feature Importance'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this exercise, we will extract the feature importance of a Random Forest
+    classifier model trained to predict the customer drop-out ratio.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will be using the same dataset as in the previous exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps will help you complete the exercise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open a new Colab notebook.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Import the following packages: `pandas`, `train_test_split` from `sklearn.model_selection`,
+    and `RandomForestRegressor` from `sklearn.ensemble`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a variable called `file_url` that contains the URL to the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the dataset into a DataFrame called `df` using `.read_csv()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Extract the `rej` column using `.pop()` and save it into a variable called
+    `y`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Split the DataFrame into training and testing sets using `train_test_split()`
+    with `test_size=0.3` and `random_state = 1`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Instantiate `RandomForestRegressor` with `random_state=1`, `n_estimators=50`,
+    `max_depth=6`, and `min_samples_leaf=60`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train the model on the training set using `.fit()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.15: Logs of the Random Forest model'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_15.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.15: Logs of the Random Forest model'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Predict the outcomes of the training and testing sets using `.predict()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Calculate the mean squared error on the training set and print its value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.16: MSE score of the training set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_16.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.16: MSE score of the training set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We achieved quite a low MSE score on the training set.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Calculate the MSE on the testing set and print its value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.17: MSE score of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_17.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.17: MSE score of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We also have a low MSE score on the testing set that is very similar to the
+    training one. So, our model is not overfitting.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Print the variable importance using `.feature_importances_`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.18: MSE score of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_18.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.18: MSE score of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Create an empty DataFrame called `varimp_df`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a new column called `feature` for this DataFrame with the name of the
+    columns of `df`, using `.columns`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Print the first five rows of `varimp_df`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.19: Variable importance of the first five variables'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_19.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.19: Variable importance of the first five variables'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: From this output, we can see the variables `a1cy` and `a1sy` have the highest
+    value, so they are more important for predicting the target variable than the
+    three other variables shown here.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Plot a bar chart with Altair using `coef_df` and `importance` as the `x` axis
+    and `feature` as the `y` axis:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.20: Graph showing the variable importance of the first five variables'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_20.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.20: Graph showing the variable importance of the first five variables'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this output, we can see the variables that impact the prediction the most
+    for this Random Forest model are `a2pop`, `a1pop`, `a3pop`, `b1eff`, and `temp`,
+    by decreasing order of importance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to [https://packt.live/327Pi0i](https://packt.live/327Pi0i).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section does not currently have an online interactive example, but can
+    be run as usual on Google Colab.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this exercise, you learned how to extract the feature importance learned
+    by a Random Forest model and identified which variables are the most important
+    for its predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Variable Importance via Permutation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we saw how to extract feature importance for RandomForest.
+    There is actually another technique that shares the same name, but its underlying
+    logic is different and can be applied to any algorithm, not only tree-based ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This technique can be referred to as variable importance via permutation. Let's
+    say we trained a model to predict a target variable with five classes and achieved
+    an accuracy of 0.95\. One way to assess the importance of one of the features
+    is to remove and train a model and see the new accuracy score. If the accuracy
+    score dropped significantly, then we could infer that this variable has a significant
+    impact on the prediction. On the other hand, if the score slightly decreased or
+    stayed the same, we could say this variable is not very important and doesn't
+    influence the final prediction much. So, we can use this difference between the
+    model's performance to assess the importance of a variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The drawback of this method is that you need to retrain a new model for each
+    variable. If it took you a few hours to train the original model and you have
+    100 different features, it would take quite a while to compute the importance
+    of each variable. It would be great if we didn't have to retrain different models.
+    So, another solution would be to generate noise or new values for a given column
+    and predict the final outcomes from this modified data and compare the accuracy
+    score. For example, if you have a column with values between 0 and 100, you can
+    take the original data and randomly generate new values for this column (keeping
+    all other variables the same) and predict the class for them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This option also has a catch. The randomly generated values can be very different
+    from the original data. Going back to the same example we saw before, if the original
+    range of values for a column is between 0 and 100 and we generate values that
+    can be negative or take a very high value, it is not very representative of the
+    real distribution of the original data. So, we will need to understand the distribution
+    of each variable before generating new values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Rather than generating random values, we can simply swap (or permute) values
+    of a column between different rows and use these modified cases for predictions.
+    Then, we can calculate the related accuracy score and compare it with the original
+    one to assess the importance of this variable. For example, we have the following
+    rows in the original dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.21: Example of the dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_21.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.21: Example of the dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can swap the values for the X1 column and get a new dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.22: Example of a swapped column from the dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_22.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.22: Example of a swapped column from the dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `mlxtend` package provides a function to perform variable permutation and
+    calculate variable importance values: `feature_importance_permutation`. Let''s
+    see how to use it with the Breast Cancer dataset from `sklearn`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let''s load the data and train a Random Forest model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we will call the `feature_importance_permutation` function from `mlxtend.evaluate`.
+    This function takes the following parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`predict_method`: A function that will be called for model prediction. Here,
+    we will provide the `predict` method from our trained `rf_model` model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`X`: The features from the dataset. It needs to be in NumPy array form.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`y`: The target variable from the dataset. It needs to be in `Numpy` array
+    form.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`metric`: The metric used for comparing the performance of the model. For the
+    classification task, we will use accuracy.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`num_round`: The number of rounds `mlxtend` will perform permutation on the
+    data and assess the performance change.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`seed`: The seed set for getting reproducible results.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Consider the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output should be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.23: Variable importance by permutation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_23.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.23: Variable importance by permutation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create a DataFrame containing these values and the names of the features
+    and plot them on a graph with `altair`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output should be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.24: Graph showing variable importance by permutation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_24.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.24: Graph showing variable importance by permutation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: These results are different from the ones we got from `RandomForest` in the
+    previous section. Here, worst concave points is the most important, followed by
+    worst area, and worst perimeter has a higher value than mean radius. So, we got
+    the same list of the most important variables but in a different order. This confirms
+    these three features are indeed the most important in predicting whether a tumor
+    is malignant or not. The variable importance from `RandomForest` and the permutation
+    have different logic, therefore, you might get different outputs when you run
+    the code given in the preceding section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 9.03: Extracting Feature Importance via Permutation'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this exercise, we will compute and extract feature importance by permutating
+    a Random Forest classifier model trained to predict the customer drop-out ratio.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will using the same dataset as in the previous exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps will help you complete the exercise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open a new Colab notebook.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Import the following packages: `pandas`, `train_test_split` from `sklearn.model_selection`,
+    `RandomForestRegressor` from `sklearn.ensemble`, `feature_importance_permutation`
+    from `mlxtend.evaluate`, and `altair`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a variable called `file_url` that contains the URL of the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the dataset into a DataFrame called `df` using `.read_csv()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Extract the `rej` column using `.pop()` and save it into a variable called
+    `y`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Split the DataFrame into training and testing sets using `train_test_split()`
+    with `test_size=0.3` and `random_state = 1`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Instantiate `RandomForestRegressor` with `random_state=1`, `n_estimators=50`,
+    `max_depth=6`, and `min_samples_leaf=60`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train the model on the training set using `.fit()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.25: Logs of RandomForest'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_25.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.25: Logs of RandomForest'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Extract the feature importance via permutation using `feature_importance_permutation`
+    from `mlxtend` with the Random Forest model, the testing set, `r2` as the metric
+    used, `num_rounds=1`, and `seed=2`. Save the results into a variable called `imp_vals`
+    and print its values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.26: Variable importance by permutation'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_26.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.26: Variable importance by permutation'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: It is quite hard to interpret the raw results. Let's plot the variable importance
+    by permutating the model on a graph.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Create a DataFrame called `varimp_df` with two columns: `feature` containing
+    the name of the columns of `df`, using `.columns` and `''importance''` containing
+    the values of `imp_vals`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Plot a bar chart with Altair using `coef_df` and `importance` as the `x` axis
+    and `feature` as the `y` axis:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.27: Graph showing the variable importance by permutation'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_27.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.27: Graph showing the variable importance by permutation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From this output, we can see the variables that impact the prediction the most
+    for this Random Forest model are: `a2pop`, `a1pop`, `a3pop`, `b1eff`, and `temp`,
+    in decreasing order of importance. This is very similar to the results of *Exercise
+    9.02*, *Extracting RandomForest Feature Importance*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to [https://packt.live/2YdstY9](https://packt.live/2YdstY9).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section does not currently have an online interactive example, but can
+    be run as usual on Google Colab.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You successfully extracted the feature importance by permutating this model
+    and identified which variables are the most important for its predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Partial Dependence Plots
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another tool that is model-agnostic is a partial dependence plot. It is a visual
+    tool for analyzing the effect of a feature on the target variable. To achieve
+    this, we can plot the values of the feature we are interested in analyzing on
+    the `x`-axis and the target variable on the `y`-axis and then show all the observations
+    from the dataset on this graph. Let''s try it on the Breast Cancer dataset from
+    `sklearn`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have loaded the data and converted it to a DataFrame, let''s have
+    a look at the worst concave points column:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting plot is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.28: Scatter plot of the worst concave points and target variables'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_28.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.28: Scatter plot of the worst concave points and target variables'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding code and figure are just examples. We encourage you to analyze
+    different features by changing the values assigned to `x` and `y` in the preceding
+    code. For example, you can possibly analyze worst concavity versus worst perimeter
+    by setting `x='worst concavity'` and `y='worst perimeter'` in the preceding code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From this plot, we can see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most cases with 1 for the target variable have values under 0.16 for the worst
+    concave points column.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cases with a 0 value for the target have values of over 0.08 for worst concave points.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With this plot, we are not too sure about which outcome (0 or 1) we will get
+    for the values between 0.08 and 0.16 for worst concave points. There are multiple
+    possible reasons why the outcome of the observations within this range of values
+    is uncertain, such as the fact that there are not many records that fall into
+    this case, or other variables might influence the outcome for these cases. This
+    is where a partial dependence plot can help.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The logic is very similar to variable importance via permutation but rather
+    than randomly replacing the values in a column, we will test every possible value
+    within that column for all observations and see what predictions it leads to.
+    If we take the example from figure 9.21, from the three observations we had originally,
+    this method will create six new observations by keeping columns `X2` and `X3`
+    as they were and replacing the values of `X1`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.29: Example of records generated from a partial dependence plot'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_29.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.29: Example of records generated from a partial dependence plot'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this new data, we can see, for instance, whether the value 12 really has
+    a strong influence on predicting 1 for the target variable. The original records,
+    with the values 42 and 1 for the `X1` column, lead to outcome 0 and only value
+    12 generated a prediction of 1\. But if we take the same observations for `X1`,
+    equal to 42 and 1, and replace that value with 12, we can see whether the new
+    predictions will lead to 1 for the target variable. This is exactly the logic
+    behind a partial dependence plot, and it will assess all the permutations possible
+    for a column and plot the average of the predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`sklearn` provides a function called `plot_partial_dependence()` to display
+    the partial dependence plot for a given feature. Let''s see how to use it on the
+    Breast Cancer dataset. First, we need to get the index of the column we are interested
+    in. We will use the `.get_loc()` method from `pandas` to get the index for the
+    `worst concave points` column:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can call the `plot_partial_dependence()` function. We need to provide
+    the following parameters: the trained model, the training set, and the indices
+    of the features to be analyzed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 9.30: Partial dependence plot for the worst concave points column'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_30.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.30: Partial dependence plot for the worst concave points column'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This partial dependence plot shows us that, on average, all the observations
+    with a value under 0.17 for the worst concave points column will most likely lead
+    to a prediction of 1 for the target (probability over 0.5) and all the records
+    over 0.17 will have a prediction of 0 (probability under 0.5).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 9.04: Plotting Partial Dependence'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this exercise, we will plot partial dependence plots for two variables, `a1pop`
+    and `temp`, from a Random Forest classifier model trained to predict the customer
+    drop-out ratio.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will using the same dataset as in the previous exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open a new Colab notebook.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Import the following packages: `pandas`, `train_test_split` from `sklearn.model_selection`,
+    `RandomForestRegressor` from `sklearn.ensemble`, `plot_partial_dependence` from
+    `sklearn.inspection`, and `altair`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a variable called `file_url` that contains the URL for the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the dataset into a DataFrame called `df` using `.read_csv()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Extract the `rej` column using `.pop()` and save it into a variable called
+    `y`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Split the DataFrame into training and testing sets using `train_test_split()`
+    with `test_size=0.3` and `random_state = 1`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Instantiate `RandomForestRegressor` with `random_state=1`, `n_estimators=50`,
+    `max_depth=6`, and `min_samples_leaf=60`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train the model on the training set using `.fit()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.31: Logs of RandomForest'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_31.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.31: Logs of RandomForest'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Plot the partial dependence plot using `plot_partial_dependence()` from `sklearn`
+    with the Random Forest model, the testing set, and the index of the `a1pop` column:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.32: Partial dependence plot for a1pop'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_32.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.32: Partial dependence plot for a1pop'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This partial dependence plot shows that, on average, the `a1pop` variable doesn't
+    affect the target variable much when its value is below 2, but from there the
+    target increases linearly by 0.04 for each unit increase of `a1pop`. This means
+    if the population size of area 1 is below the value of 2, the risk of churn is
+    almost null. But over this limit, every increment of population size for area
+    1 increases the chance of churn by `4%`.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Plot the partial dependence plot using `plot_partial_dependence()` from `sklearn`
+    with the Random Forest model, the testing set, and the index of the `temp` column:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.33: Partial dependence plot for temp'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_33.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.33: Partial dependence plot for temp'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This partial dependence plot shows that, on average, the `temp` variable has
+    a negative linear impact on the target variable: when `temp` increases by 1, the
+    target variable will decrease by 0.12\. This means if the temperature increases
+    by a degree, the chance of leaving the queue decreases by 12%.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to [https://packt.live/2DWnSmn](https://packt.live/2DWnSmn).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at [https://packt.live/2DWnUL1](https://packt.live/2DWnUL1).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You learned how to plot and analyze a partial dependence plot for the `a1pop`
+    and `temp` features. In this exercise, we saw that `a1pop` has a positive linear
+    impact on the target, while `temp` has a negative linear influence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Local Interpretation with LIME
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'After training our model, we usually use it for predicting outcomes on unseen
+    data. The global interpretations we saw earlier, such as model coefficient, variable
+    importance, and the partial dependence plot, gave us a lot of information on the
+    features at an overall level. Sometimes we want to understand what has influenced
+    the model for a specific case to predict a specific outcome. For instance, if
+    your model is to assess the risk of offering credit to a new client, you may want
+    to understand why it rejected the case for a specific lead. This is what local
+    interpretation is for: analyzing a single observation and understanding the rationale
+    behind the model''s decision. In this section, we will introduce you to a technique
+    called **Locally Interpretable Model-Agnostic Explanations** (**LIME**).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we are using a linear model, it is extremely easy to understand the contribution
+    of each variable to the predicted outcome. We just need to look at the coefficients
+    of the model. For instance, the model will learn the following function: `y =
+    100 + 0.2 * x`1 `+ 200 * x`2 `- 180 * x`3\. So, if we received an observation
+    of x1=0, x2=2 and x3=1, we would know the contribution of:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: x1 was 0.2 * 0 = 0
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: x2 was 200 * 2 = +400
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: x3 was -180 * 1 = -180
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So, the final prediction (100 +0 + 400 -180 = 320) was mainly driven by x2\.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But for a nonlinear model, it is quite hard to get such a clear view. LIME is
+    one way to get more visibility in such cases. The underlying logic of LIME is
+    to approximate the original nonlinear model with a linear one. Then, it uses the
+    coefficients of that linear model in order to explain the contribution of each
+    variable, as we just saw in the preceding example. But rather than trying to approximate
+    the entire model for the whole dataset, LIME tries to approximate it locally around
+    the observation you are interested in. LIME uses the trained model to predict
+    new data points near your observation and then fit a linear regression on that
+    predicted data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how we can use it on the Breast Cancer dataset. First, we will load
+    the data and train a Random Forest model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `lime` package is not directly accessible on Google Colab, so we need to
+    manually install it with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.34: Installation logs for the lime package'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_34.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.34: Installation logs for the lime package'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once installed, we will instantiate the `LimeTabularExplainer` class by providing
+    the training data, the names of the features, the names of the classes to be predicted,
+    and the task type (in this example, it is `classification`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we will call the `.explain_instance()` method with the observations we
+    are interested in (here, it will be the second observation from the testing set)
+    and the function that will predict the outcome probabilities (here, it is `.predict_proba()`).
+    Finally, we will call the `.show_in_notebook()` method to display the results
+    from `lime`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.35: Output of LIME'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_35.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.35: Output of LIME'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Your output may differ slightly. This is due to the random sampling process
+    of LIME.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is a lot of information in the preceding output. Let''s go through it
+    a bit at a time. The left-hand side shows the prediction probabilities for the
+    two classes of the target variable. For this observation, the model thinks there
+    is a 0.85 probability that the predicted value will be malignant:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.36: Prediction probabilities from LIME'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_36.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.36: Prediction probabilities from LIME'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The right-hand side shows the value of each feature for this observation. Each
+    feature is color-coded to highlight its contribution toward the possible classes
+    of the target variable. The list sorts the features by decreasing importance.
+    In this example, the mean perimeter, mean area, and area error contributed to
+    the model to increase the probability toward class 1\. All the other features
+    influenced the model to predict outcome 0:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.37: Value of the feature for the observation of interest'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_37.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.37: Value of the feature for the observation of interest'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, the central part shows how each variable contributed to the final
+    prediction. In this example, the `worst concave points` and `worst compactness`
+    variables led to an increase of, respectively, 0.10 and 0.05 probability in predicting
+    outcome 0\. On the other hand, `mean perimeter` and `mean area` both contributed
+    to an increase of 0.03 probability of predicting class 1:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.38: Contribution of each feature to the final prediction'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_38.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 9.38: Contribution of each feature to the final prediction'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's as simple as that. With LIME, we can easily see how each variable impacted
+    the probabilities of predicting the different outcomes of the model. As you saw,
+    the LIME package not only computes the local approximation but also provides a
+    visual representation of its results. It is much easier to interpret than looking
+    at raw outputs. It is also very useful for presenting your findings and illustrating
+    how different features influenced the prediction of a single observation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 9.05: Local Interpretation with LIME'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this exercise, we will analyze some predictions from a Random Forest classifier
+    model trained to predict the customer drop-out ratio using LIME.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will be using the same dataset as in the previous exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open a new Colab notebook.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Import the following packages: `pandas`, `train_test_split` from `sklearn.model_selection`,
+    and `RandomForestRegressor` from `sklearn.ensemble`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a variable called `file_url` that contains the URL of the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the dataset into a DataFrame called `df` using `.read_csv()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Extract the `rej` column using `.pop()` and save it into a variable called
+    `y`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Split the DataFrame into training and testing sets using `train_test_split()`
+    with `test_size=0.3` and `random_state = 1`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Instantiate `RandomForestRegressor` with `random_state=1`, `n_estimators=50`,
+    `max_depth=6`, and `min_samples_leaf=60`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train the model on the training set using `.fit()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.39: Logs of RandomForest'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_39.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.39: Logs of RandomForest'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Install the lime package using the `!pip` install command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Import `LimeTabularExplainer` from `lime.lime_tabular`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Instantiate `LimeTabularExplainer` with the training set and `mode=''regression''`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Display the LIME analysis on the first row of the testing set using `.explain_instance()`
+    and `.show_in_notebook()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.40: LIME output for the first observation of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_40.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.40: LIME output for the first observation of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This output shows that the predicted value for this observation is a 0.02 chance
+    of customer drop-out and it has been mainly influenced by the `a1pop`, `a3pop`,
+    `a2pop`, and `b2eff` features. For instance, the fact that `a1pop` was under 0.87
+    has decreased the value of the target variable by 0.01.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Display the LIME analysis on the third row of the testing set using `.explain_instance()`
+    and `.show_in_notebook()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.41: LIME output for the third observation of the testing set'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_41.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.41: LIME output for the third observation of the testing set'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This output shows that the predicted value for this observation is a 0.09 chance
+    of customer drop-out and it has been mainly influenced by the `a2pop`, `a3pop`,
+    `a1pop`, and `b1eff` features. For instance, the fact that `b1eff` was under 0.87
+    has increased the value of the target variable by 0.01\. The `b1eff` feature represents
+    the level of efficiency of bank 1, so the results from LIME are telling us that
+    the chance of customers leaving increases if this level of efficiency goes lower
+    than 0.87.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to [https://packt.live/2Q5i3Fp](https://packt.live/2Q5i3Fp).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at [https://packt.live/327Nl3Z](https://packt.live/327Nl3Z).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You have completed the last exercise of this chapter. You saw how to use LIME
+    to interpret the prediction of single observations. We learned that the `a1pop`,
+    `a2pop`, and `a3pop` features have a strong negative impact on the first and third
+    observations of the training set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 9.01: Train and Analyze a Network Intrusion Detection Model'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You are working for a cybersecurity company and you have been tasked with building
+    a model that can recognize network intrusion then analyze its feature importance,
+    plot partial dependence, and perform local interpretation on a single observation
+    using LIME.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dataset provided contains data from 7 weeks of network traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The dataset used in this activity is from KDD Cup 1999:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.live/2tFKUIV](https://packt.live/2tFKUIV).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The CSV version of this dataset can be found here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.live/2RyVsBm](https://packt.live/2RyVsBm).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps will help you to complete this activity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Download and load the dataset using `.read_csv()` from `pandas`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Extract the response variable using `.pop()` from `pandas`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Split the dataset into training and test sets using `train_test_split()` from
+    `sklearn.model_selection`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a function that will instantiate and fit `RandomForestClassifier` using
+    `.fit()` from `sklearn.ensemble`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a function that will predict the outcome for the training and testing
+    sets using `.predict()`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a function that will print the accuracy score for the training and testing
+    sets using `accuracy_score()` from `sklearn.metrics`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compute the feature importance via permutation with `feature_importance_permutation()`
+    and display it on a bar chart using `altair`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Plot the partial dependence plot using `plot_partial_dependence` on the `src_bytes`
+    variable.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Install `lime` using `!pip install`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Perform a LIME analysis on row `99893` with `explain_instance()`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The output should be as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.42: Output for LIME analysis'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B15019_09_42.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 9.42: Output for LIME analysis'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You have successfully trained a Random Forest model to predict the type of network
+    connection. You have also analyzed which features are the most important for this
+    Random Forest model and learned that it mainly relies on the `src_bytes` feature.
+    We also analyzed the partial dependence plot for this feature in order to understand
+    its impact on the `normal` class. Finally, we used LIME to analyze a single observation
+    and found out which variables led to the predicted outcome.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we learned a few techniques for interpreting machine learning
+    models. We saw that there are techniques that are specific to the model used:
+    coefficients for linear models and variable importance for tree-based models.
+    There are also some methods that are model-agnostic, such as variable importance
+    via permutation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All these techniques are global interpreters, which look at the entire dataset
+    and analyze the overall contribution of each variable to predictions. We can use
+    this information not only to identify which variables have the most impact on
+    predictions but also to shortlist them. Rather than keeping all features available
+    from a dataset, we can just keep the ones that have a stronger influence. This
+    can significantly reduce the computation time for training a model or calculating
+    predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also went through a local interpreter scenario with LIME, which analyzes
+    a single observation. It helped us to better understand the decisions made by
+    the model in predicting the final outcome for a given case. This is a very powerful
+    tool to assess whether a model is biased toward a specific variable that could
+    contain sensitive information such as personal details or demographic data. We
+    can also use it to compare two different observations and understand the rationale
+    for getting different outcomes from the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will be focusing on analyzing a dataset and will learn
+    exploratory data analysis and data visualization techniques to get a good understanding
+    of the information it contains.
+  prefs: []
+  type: TYPE_NORMAL

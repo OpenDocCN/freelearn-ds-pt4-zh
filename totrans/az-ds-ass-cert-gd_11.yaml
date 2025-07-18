@@ -1,0 +1,1821 @@
+- en: '*Chapter 8*: Experimenting with Python Code'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will understand how to train `scikit-learn` library, which
+    is commonly referred to as `sklearn`. You will understand how you can keep track
+    of the training metrics using the **Azure** **Machine Learning** (**AzureML**)
+    **SDK** and **MLflow**. Then, you will see how you can scale out the training
+    process in compute clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training a simple `sklearn` model within notebooks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tracking metrics in Experiments
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scaling the training process with compute clusters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need to have access to an Azure subscription. Within that subscription,
+    you will need a `packt-azureml-rg`. You will need to have either a `Contributor`
+    or `Owner` `packt-learning-mlw`. These resources should be already available to
+    you if you followed the instructions in [*Chapter 2*](B16777_02_Final_VK_ePub.xhtml#_idTextAnchor026),
+    *Deploying Azure Machine Learning Workspace Resources*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will also need to have a basic understanding of the Python language. The
+    code snippets target Python 3.6 or newer versions. You should also be familiar
+    with working in the notebook experience within AzureML Studio, which was covered
+    in the previous chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter assumes you have registered the `scikit-learn` `diabetes` dataset
+    in your AzureML workspace and you have created a compute cluster named `cpu-sm-cluster`,
+    as described in the *Defining datastores*, *Working with datasets*, and *Working
+    with compute targets* sections in [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The AzureML Python SDK*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find all notebooks and code snippets for this chapter in GitHub at [http://bit.ly/dp100-ch08](http://bit.ly/dp100-ch08).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training a simple sklearn model within notebooks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The goal of this section is to create a Python script that will produce a simple
+    model on top of the `diabetes` dataset that you registered in *Working with datasets*
+    in [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102), *The AzureML
+    Python SDK*. The model will be getting numeric inputs and will be predicting a
+    numeric output. To create this model, you will need to prepare the data, train
+    the model, evaluate how the trained model performs, and then store it so that
+    you will be able to reuse it in the future, as seen in *Figure 8.1*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.1 – Process to produce the diabetes-predicting model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.1 – Process to produce the diabetes-predicting model
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's start by understanding the dataset you will be working with. The `diabetes`
+    dataset consists of data from 442 `diabetes` patients. Each row represents one
+    patient. Each row consists of 10 features (`target`, is the quantitative measure
+    of the `diabetes` disease progression 1 year after the features were recorded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can explore the dataset further within the AzureML Studio interface as
+    seen in *Figure 8.2*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.2 – The registered diabetes dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_002.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.2 – The registered diabetes dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Normally in the preparation phase, you load the raw data, curate rows that
+    have missing values, normalize feature values, and then split the dataset into
+    train and validation data. Since the data is already preprocessed, you will just
+    need to load the data and split it into two:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to the `chapter08` and then create a notebook named `chapter08.ipynb`:![Figure
+    8.3 – Creating the chapter08 notebook you will be working on
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_003.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.3 – Creating the chapter08 notebook you will be working on
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In the first cell of the notebook, add the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In this code snippet, you get a reference to your workspace and retrieve the
+    dataset named `diabetes`. Then you split it into two `TabularDataset` using the
+    `random_split()` method. The first dataset is `training_data`, which contains
+    80% of the data, while the `validation_data` dataset references the other 20%
+    of the data. These datasets contain both the features and the label you want to
+    predict. Using the `drop_columns()` and `keep_columns()` methods of `TabularDataset`,
+    you can separate the features from the `label` columns. You then load the data
+    in memory in a `to_pandas_dataframe()` method of `TabularDataset`. You end up
+    with four pandas DataFrames:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`X_train`: Contains 80% of the rows. Each row has 10 columns (`0` to `9`).'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`y_train`: Contains 80% of the rows. Each row has 1 column (`target`).'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`X_validate`: Contains 20% of the rows. Each row has 10 columns (`0` to `9`).'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`y_validate`: Contains 20% of the rows. Each row has 1 column (`target`).'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `diabetes` dataset is very popular in scientific literature. It is used
+    as an example to train *regression* models. The `scikit-learn` library offers
+    a dedicated module named `sklearn.linear_model` containing a lot of linear regression
+    models we can use. Now that you have prepared the data, your next task is to train
+    the model.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In this step, you are going to train a `LassoLars` model, which is an abbreviation
+    for `LassoLars` class accepts a float parameter named `alpha`, which is known
+    as a *regularization parameter* or *penalty term*. Its primary purpose is to protect
+    the model from overfitting to the training dataset. Since this parameter controls
+    the training process, it is referred to as being a *hyperparameter*. This parameter
+    cannot be changed once the model has been trained. In this code block, you are
+    instantiating an untrained model, setting `0.1` for the `alpha` parameter. In
+    the next chapter, [*Chapter 9*](B16777_09_Final_VK_ePub.xhtml#_idTextAnchor136),
+    *Optimizing the ML Model*, you will tune this parameter and try to locate the
+    best value for your dataset.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, you are using the `X_train` and `y_train` DataFrames to fit() the model,
+    which means you are training the model against the training dataset. After this
+    process, the `model` variable references a trained model that you can use to make
+    predictions.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The next task is to evaluate the model you produced based on a metric. The
+    most common metrics to evaluate a regression model are as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Mean or median absolute error.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Mean squared error or log error. Another common variation of this metric is
+    the `mean_squared_error` method of the `sklearn.metrics` package. A common issue
+    with this metric is that a model trained on data with a larger range of values
+    has a higher rate of error than the same model trained on data with a smaller
+    range. You are going to use a technique called *metric normalization* that basically
+    divides the metric by the range of the data. The resulting metric is known as
+    the `X_validate` DataFrame. You calculate the RMSE, comparing the predictions
+    with the ground truth stored in the `y_validate` DataFrame. Then, you calculate
+    the range of values (maximum minus minimum) using the `ptp()` method of `0.2`.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The last step is to store the trained model to be able to reuse it in the future.
+    You are going to create a folder named `outputs`, and you are going to persist
+    the model to a file. The persistence of a Python object to a file is done using
+    the `dump()` method of the `joblib` library.
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In a new notebook cell, input the following source code:'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You create the `outputs` folder if it does not exist. Then, you store the model
+    in a filename containing the `model_` prefix, followed by the NRMSE metric calculated
+    in *Step 4*, followed by an `_`, and then the `alpha` parameter used to instantiate
+    the model. You should be able to see the serialized model in the file explorer,
+    as seen in *Figure 8.4*:'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.4 – Serialized model stored in the outputs folder'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_004.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.4 – Serialized model stored in the outputs folder
+  prefs: []
+  type: TYPE_NORMAL
+- en: The naming convention you used in *Step 5* helps you keep track of how well
+    the model performs and tracks the parameter you used in this run. The AzureML
+    SDK offers various methods to monitor, organize, and manage your training runs,
+    something you will explore in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tracking metrics in Experiments
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When you are training a model, you are performing a trial and you are logging
+    various aspects of that process, including metrics such as the NRMSE that you
+    need to compare model performance. The AzureML workspace offers the concept of
+    **Experiments** – that is, a container to group such trials/runs together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create a new Experiment, you just need to specify the workspace you will
+    use and provide a name that contains up to 36 letters, numbers, underscores, and
+    dashes. If the Experiment already exists, you will get a reference to it. Add
+    a cell in your `chapter08.ipynb` notebook and add the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You start by getting a reference to the existing AzureML workspace and then
+    create the `chapter08` Experiment if it doesn''t already exist. If you navigate
+    to the **Assets** | **Experiments** section of the Studio interface you will notice
+    an empty Experiment appears in the list, as seen in *Figure 8.5*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.5 – Empty Experiment created with the SDK'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_005.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.5 – Empty Experiment created with the SDK
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create a run under the `chapter08` Experiment, you can add the following
+    code in a new cell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `run` variable gives you access to an instance of the `Run` class of the
+    AzureML SDK, which represents a single trial of an Experiment. Each `run` instance
+    has a unique ID that identifies the specific run in the workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the *Scaling the training process with compute clusters* section, you will
+    use the `get_context` method of the `Run` class to get a reference to the `run`
+    instance where the Python script is being executed. The `run` is normally automatically
+    created when you submit a script to execute under an Experiment. The `start_logging`
+    method is used rarely and only when you want to manually create a `run` and log
+    metrics. The most common cases are when you are using notebook cells to train
+    a model or when you are training a model on a remote compute such as your local
+    computer or a **Databricks** workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `run` class offers a rich logging API. The most frequent method used is
+    the generic `log()` one, which allows you to log metrics with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this code, you log the value `0.01` for the `nrmse` metric, and then you
+    log the value `0.015` for the same metric, passing the optional `description`
+    parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you navigate to the `chapter08` Experiment, you will notice there is a single
+    `run` that is currently `run` and navigate to the **Metrics** tab, you will be
+    able to notice the two measurements of the **nrmse** metric, depicted either as
+    a chart or a table, as seen in *Figure 8.6*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.6 – The two measurements of nrmse as seen in the Studio experience'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_006.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.6 – The two measurements of nrmse as seen in the Studio experience
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `Run` class offers a rich list of logging methods, including the following
+    ones:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `log_list` method allows you to log a list of values for the specific metric.
+    An example of this method is the following code:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This code will produce *Figure 8.7* in the *Metrics* section of the run:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.7 – Graph representing three values logged with the log_list method'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_007.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.7 – Graph representing three values logged with the log_list method
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `log_table` and `log_row` methods allow you to log tabular data. Note that,
+    with this method, you can specify the labels in the *x* axis in contrast to the
+    `log_list` method:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This code snippet will produce *Figure 8.8* in the *Metrics* section of the
+    run:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.8 – Tabular metric logged using the log_table and log_row methods'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_008.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.8 – Tabular metric logged using the log_table and log_row methods
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specialized methods such as `log_accuracy_table`, `log_confusion_matrix`, `log_predictions`,
+    and `log_residuals` provide a custom rendering of the logged data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `log_image` method allows you to log graphs or images from the well-known
+    `matplotlib` Python library or other plotting libraries.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `upload_file`, `upload_files`, and `upload_folder` methods allow you to
+    upload Experiment residuals and associate them with the current run. These methods
+    are commonly used to upload various binary artifacts that can be produced during
+    the `run` execution, such as interactive HTML graphs created by open source libraries
+    such as `plotly`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can optionally create child runs to isolate a subsection of the trial.
+    Child runs log their own metrics, and you can optionally log in to the parent
+    run as well. For example, the following code snippet creates a child run, logs
+    a metric named `child_metric` (which is only visible within that run), and then
+    logs in the parent''s metrics `metric_from_child`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once you have completed the run, you need to change its **Running** status.
+    You can use one of the following methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `complete` method indicates that the run was completed successfully. This
+    method also uploads the `outputs` folder (if it exists) to the `runs` artifacts
+    without needing to explicitly call the `upload_folder` method of the `Run` class.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `cancel` method indicates that the job was canceled. You will notice runs
+    being canceled in AutoML Experiments because the timeout period was reached.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The deprecated `fail` method indicates an error occurred.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following code snippet cancels the child run and completes the root run,
+    printing the status, which should read **Completed**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this section, you got an overview of the logging capabilities of AzureML.
+    In the next section, you will refactor the code you created in the *Training a
+    simple sklearn model within notebooks* section and add logging capabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tracking model evolution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the previous section, you may have noticed that the `outputs` folder that
+    you created in the *Training a simple sklearn model within notebooks* section
+    of this chapter was automatically uploaded to the run when you executed the `complete`
+    method. To avoid uploading those stale artifacts, you will need to delete the
+    `outputs` folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Add a cell in your `chapter08.ipynb` notebook and delete the `outputs` folder
+    using the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As a next step, you will refactor the training and evaluation code to a single
+    method, passing in the `alpha` parameter and the `training` and `validation` datasets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This code is the exact equivalent of the code you wrote in the *Training a simple
+    sklearn model within notebooks* section. You can now train multiple models using
+    `train_and_evaluate` and passing different values for the `alpha` parameter, a
+    process referred to as *hyperparameter tuning*. In the last line of this code
+    snippet, you get a reference to the resulting trained model and its NRMSE metric.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If you get an error as follows: `NameError: name ''X_train'' is not defined`,
+    you will need to rerun the cell of your notebook where you defined the `X_train`,
+    `y_train`, `X_validate`, and `y_validate` variables. This is an indication that
+    the Python kernel has restarted, and all the variables have been lost from memory.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: So far, you have refactored the existing code and kept the same functionality.
+    To enable logging through the `Run` class you explored in the previous section,
+    you will need to pass the reference to the current run instance to the `train_and_evaluate`
+    method.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In a new cell, add the following snippet, which will override the existing
+    declaration of the `train_and_evaluate` method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Having this `train_and_evaluate` method, you can do a hyperparameter tuning
+    and train multiple models for multiple values of the `α` (`alpha`) parameter,
+    using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note that instead of calling the `complete` method, we use the `with .. as`
+    Python design pattern. As the `run` variables move out of scope, it is automatically
+    marked as completed.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Using the `get_portal_url` in *Step 4*, you printed the link to the studio''s
+    `log` method calls, while the `α` (`alpha`) parameter, something you logged using
+    the `log_row` method. You should see graphs similar to the ones shown in *Figure
+    8.9*:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.9 – Evolution of the nrmse metric for the diabetes model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_009.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.9 – Evolution of the nrmse metric for the diabetes model
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you are just storing the metrics on the `Run` instance and
+    not the actual trained models. You could have stored the generated models by generating
+    the `.pkl` file and then using the `upload_file` method to upload it in the run's
+    artifacts. In [*Chapter 12*](B16777_12_Final_VK_ePub.xhtml#_idTextAnchor171),
+    *Operationalizing Models with Code*, you are going to learn about the model registry
+    capabilities of the AzureML SDK, which provides a superior experience to keep
+    track of the actual models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you saw how you can enable metric logging using the AzureML
+    SDK. When it comes to tracking Experiment metrics, the data science community
+    is using a popular open source framework called MLflow. In the next section, you
+    will learn how to use that library to track metrics in the AzureML workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using MLflow to track Experiments
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The MLflow library is a popular open source library for managing the life cycle
+    of your data science Experiments. This library allows you to store artifacts and
+    metrics locally or on a server. The AzureML workspace provides an MLflow server
+    that you can use to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Track and log Experiment metrics through the **MLflow** **Tracking** component.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Orchestrate code execution on AzureML compute clusters through the **MLflow**
+    **Projects** component (similar to the pipelines you will see in [*Chapter 11*](B16777_11_Final_VK_ePub.xhtml#_idTextAnchor160),
+    *Working with Pipelines*).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Manage models in the AzureML model registry, which you will see in [*Chapter
+    12*](B16777_12_Final_VK_ePub.xhtml#_idTextAnchor171), *Operationalizing Models
+    with Code*.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this section, you will focus on the MLflow Tracking component to track metrics.
+    The following snippet uses the `MLflow` library to track the parameters and the
+    metrics of the `diabetes` model you have created in the previous section under
+    an Experiment named `chapter08-mlflow`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: One of the most well-known features of the MLflow Tracking component is the
+    automatic logging capabilities it provides. Calling the `mlflow.sklearn.autolog()`
+    method before your training code enables automatic logging of `sklearn` metrics,
+    params, and produced models. Similar to the `autolog` method specific to `sklearn`,
+    there are packages for most of the common training frameworks, such as PyTorch,
+    fast.ai, Spark, and others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the `log_metric` method, you explicitly ask the MLflow library to log
+    a metric. In this case, you log the NRMSE metric, which is not captured automatically
+    by the automatic logging capability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see in *Figure 8.10* the MLflow Tracking component logs all artifacts
+    and the trained model in a folder structure under the `mlruns` folder next to
+    the notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.10 – Tracking metrics using the local FileStore mode of the MLflow
+    Tracking component'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_010.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.10 – Tracking metrics using the local FileStore mode of the MLflow
+    Tracking component
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the default setting, referred to as `local FileStore`. You can use the
+    AzureML workspace as a *remote tracking server*. To do so, you need to use the
+    `mlflow.set_tracking_uri()` method to connect to a tracking URI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To enable the MLflow to AzureML integration, you need to ensure that your environment
+    has the `azureml-mlflow` Python library. This package is already present in the
+    AzureML compute instances. If you were working on a Databricks workspace, you
+    would need to install it manually using the `pip install azureml-mlflow` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get the tracking **URI** and run the same Experiment using AzureML as the
+    remote tracking server, use the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `get_mlflow_tracking_uri` method of the `Workspace` class returns a URL
+    that is valid for 1 hour. If your Experiment takes more than an hour to complete,
+    you will need to generate a new URI and assign it using the `set_tracking_uri`
+    method, as seen in the preceding snippet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should be able to see the run and the tracked metrics in the Studio experience,
+    as seen in *Figure 8.11*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.11 – Metrics logged using the MLflow library with AzureML as the
+    remote tracking server'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_011.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.11 – Metrics logged using the MLflow library with AzureML as the remote
+    tracking server
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have been using the compute instance in the AzureML workspace, and
+    you were training ML models in the **Notebook** kernel. This approach works well
+    for small models or rapid prototypes over sample data. At some point, you will
+    need to handle more demanding workloads, either with bigger memory requirements
+    or even distributed training capabilities in multiple computer nodes. This can
+    be achieved by delegating the training process to the compute clusters you created
+    in [*Chapter 4*](B16777_04_Final_VK_ePub.xhtml#_idTextAnchor053), *Configuring
+    the Workspace*. In the next section, you will learn how to execute Python scripts
+    in your AzureML compute clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling the training process with compute clusters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102), *The AzureML
+    Python SDK*, you created a compute cluster named `cpu-sm-cluster`. In this section,
+    you are going to submit a training job to be executed on that cluster. To do that,
+    you will need to create a Python script that will be executed on the remote compute
+    target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Navigate to the `greeter-job` under the `chapter08` folder you have been working
+    with so far. Add a Python file named `greeter.py`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.12 – Adding a simple Python script to execute on a remote compute
+    cluster'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_012.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.12 – Adding a simple Python script to execute on a remote compute cluster
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open that file and add the following code in it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This script uses the `ArgumentParser` class from the `argparse` module to parse
+    the parameters passed to the script. It is trying to locate a `--greet-name` parameter
+    and assign the discovered value to the `name` attribute of the object it returns
+    (`args.name`). Then, it prints a greeting message for the given name. To try the
+    script, open a terminal and type the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This command will produce the output seen in *Figure 8.13*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.13 – Testing the simple script you will execute on a remote compute'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_013.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.13 – Testing the simple script you will execute on a remote compute
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To execute this simple Python script on a remote compute cluster, go back to
+    the `chapter08.ipynb` notebook, add a new cell, and type the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this code, you are doing the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Get a reference to the workspace, and then you assign to the `target` variable
+    a reference to the `cpu-sm-cluster` cluster.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a `ScriptRunConfig` to execute the `greeter.py` script that is located
+    in the `greeter-job` folder. This script will execute in the `target` compute
+    passing the `--greet-name` and `packt` arguments, which are going to be concatenated
+    with a space between them.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create an Experiment called `greet-packt`, and you submit the script configuration
+    to execute under this Experiment. The `submit` method creates a new `Run` instance.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You use the `get_portal_url` method to get the portal URL for the specific `Run`
+    instance. You then call the `wait_for_completion` method, setting the `show_output`
+    parameter to `True`. To wait for the run to complete, turn on verbose logging
+    and print the logs in the output of the cell.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In the first version of the AzureML SDK, instead of `ScriptRunConfig`, you would
+    have used the `Estimator` class, which is deprecated. Moreover, there are deprecated
+    specialized `Estimator` classes for specific frameworks such as the `TensorFlow`
+    class that provided a way to run TensorFlow-specific code. This approach has been
+    deprecated in favor of the environments you will read about in the *Understanding
+    execution environments* section that follows. Nonetheless, the syntax and the
+    parameters of those deprecated classes are very similar to `ScriptRunConfig`.
+    You should be able to read deprecated code without any issue. Keep that in mind
+    if you see an old question in the certification exam referencing these deprecated
+    classes.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You have successfully completed a remote execution of a run. In the next section,
+    you will explore the logs of the run you just completed and understand better
+    the mechanics of AzureML.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring the outputs and logs of a run
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this section, you are going to explore the outputs of the remote execution
+    you performed in the *Scaling the training process with compute clusters* section.
+    This will give you insights into how the AzureML platform works and help you troubleshoot
+    potential errors you will be facing while developing your training scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open the link you printed in the previous section using the `get_portal_url`
+    method or navigate to the `greet-packt` Experiment, and open **Run 1**. Navigate
+    to the **Outputs + logs** tab of the run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.14 – Outputs + logs tab of an Experiment''s run'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_014.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.14 – Outputs + logs tab of an Experiment's run
+  prefs: []
+  type: TYPE_NORMAL
+- en: These outputs are very helpful in troubleshooting potential script errors. The
+    `azureml-logs` folder contains the platform logs. Most of those files are logs
+    from the underlying engine. The log that contains the standard output from your
+    script is `70_driver_log.txt`. This is the log file you will need to look at first
+    to troubleshoot a potential script execution failure. If you have multiple processes,
+    you will see multiple files with a numeric suffix such as `70_driver_log_x.txt`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `logs` folder is a special folder you can use in your scripts to output
+    logs. Everything that the script writes in that folder will automatically be uploaded
+    to the run's `outputs` folder you saw in the *Tracking metrics in Experiments*
+    section. AzureML also outputs system logs in that folder under the `azureml` folder
+    you see in *Figure 8.14*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Navigate to the `ScriptRunConfig`. This directory can contain up to 300 MB
+    and up to 2,000 files. If you need more script files, you can use a datastore.
+    If you edited the script file in the `.py` script and a `.amltmp` file, which
+    is a temporary file used by the notebook editor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.15 – Temporary file uploaded in the snapshot'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_015.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.15 – Temporary file uploaded in the snapshot
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To avoid creating snapshots of unwanted files, you can add a `.gitignore` or
+    `.amlignore` file in the folder next to the script and exclude files that follow
+    a specific pattern. Navigate to the `.amlignore` file in the `greeter-job` folder,
+    if the file is not already added when you created the folder, as seen in *Figure
+    8.16*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.16 – Adding the .amlignore file to exclude temp files from being
+    added to the snapshot'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_016.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.16 – Adding the .amlignore file to exclude temp files from being added
+    to the snapshot
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open the `.amlignore` file and add the following lines in it to exclude all
+    files with a .a `mltmp` file extension and the `.amlignore` file that you are
+    editing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Open the `chapter08.ipynb` notebook, add a cell, and add the following code
+    to resubmit the script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: You are resubmitting the existing instance of the `ScriptRunConfig` you created
+    in the previous step. If you restarted the `exp` and `script` variables once more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This time, you are using the `RunDetails` widget provided by the AzureML SDK.
+    This is a **Jupyter** **Notebook** widget used to view the progress of a script
+    execution. This widget is asynchronous and provides updates until the run finishes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to print the run status, including the contents of the log files,
+    you can use the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once the run completes, navigate to the **Snapshot** tab of that run. You will
+    notice that the temp files are gone.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that the execution of this run took significantly less time to complete.
+    Navigate to the run''s log. Notice that the `20_image_build_log.txt` file did
+    not appear in the logs this time, as seen in *Figure 8.17*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.17 – Faster run execution and missing the 20_image_build_log.txt
+    file'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_017.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.17 – Faster run execution and missing the 20_image_build_log.txt file
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the **Docker** image-building log for the environment used to execute
+    the scripts. This is a very time-consuming process. These images are built and
+    stored in the container registry that got deployed with your AzureML workspace.
+    Since you didn't modify the execution environment, AzureML reused the previously
+    created image in the follow-up run. In the next section, you will understand better
+    what an environment is and how you can modify it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding execution environments
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the AzureML workspace terminology, an **Environment** means a list of software
+    requirements needed for your scripts to execute. These software requirements include
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Python packages that your code requires to be installed
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The environment variables that may be needed from your code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Various pieces of auxiliary software, such as GPU drivers or the **Spark** engine,
+    that may be required for your code to operate properly
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Environments are *managed* and *versioned* entities that enable reproducible,
+    auditable, and portable ML workflows across different compute targets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AzureML provides a list of `AzureML-Minimal` curated environment contains just
+    the minimal Python package requirements to enable run tracking you saw in the
+    *Tracking model evolution* section. The `AzureML-AutoML` environment, on the other
+    hand, is a much bigger curated environment and provides the required Python packages
+    for your scripts to be able to run an AutoML Experiment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: AzureML services are constantly being updated, and old environments are deprecated
+    in favor of newer ones. Even if the `AzureML-Minimal` and `AzureML-AutoML` environments
+    are not visible in the web interface of AzureML Studio, they should be available
+    for you to use. If you encounter any errors, please download the latest code from
+    the GitHub repository of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Figure 8.18*, you can see how many additional packages are available with
+    the `AzureML-AutoML` environment compared to the minimalistic `AzureML-Minimal`
+    one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.18 – Python package difference between the AzureML-Minimal and'
+  prefs: []
+  type: TYPE_NORMAL
+- en: AzureML-AutoML environments
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_018.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.18 – Python package difference between the AzureML-Minimal and AzureML-AutoML
+    environments
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure 8.18* shows the `Conda` environment definition for the `AzureML-Minimal`
+    environment *version 46* versus the `AzureML-AutoML` environment *version 61*.
+    `Conda` takes this YAML file and installs Python *version 3.6.2* and the `pip`
+    requirements listed beneath the `- pip:` notation. As you can notice, all `pip`
+    packages have specific versions defined using the `==x.x.x` notation. This means
+    that the same Python packages will be installed every time you use this YAML file,
+    something that helps maintain a stable environment for the repeatability of your
+    Experiments.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing the packages when you create an environment is a time-consuming process.
+    This is where the Docker technology you saw in the previous section comes in handy.
+    Docker is an open source project for automating the deployment of applications
+    as portable, self-sufficient containers. This means that instead of creating a
+    new environment every time you want to run a script, you can create a Docker container
+    image, also referred to as a Docker image, where all Python dependencies are *baked
+    in* the image once. You can reuse the image from that point on to start a container
+    and execute your scripts. In fact, all the AzureML-curated environments are available
+    as Docker images in the `viennaglobal.azurecr.io` container registry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although it is common to create Docker images for your environments, it is not
+    always required. If you are running the Experiments on your local computer or
+    locally on the AzureML compute instance, you can use an existing `Conda` environment
+    and avoid using a Docker image. If you are planning to use a remote compute, for
+    example, an AzureML compute cluster, a Docker image is required because otherwise,
+    you cannot ensure that the provisioned machine will have all the software components
+    needed by your code to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To better understand what you have read so far, you will rerun the previous
+    `greeter.py` script using the `AzureML-Minimal` environmen:.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In your notebook, add a new cell and add the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This code retrieves the `AzureML-Minimal` environment, defined in the AzureML
+    workspace referenced by the `ws` variable, which was initialized earlier in the
+    notebook. Then, it prints the name and the version of the environment and the
+    `Conda` environment YAML definition you saw in *Figure 8.18*.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Add a new cell and type the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Observe the output of the run''s execution. If you look closer, you will see
+    the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This line is part of the `55_azureml-execution-something.txt` file in `azureml-logs`.
+    The line informs you that it is pulling a Docker image from the `viennaglobal`
+    container registry, which **Microsoft** owns. In contrast to that, in the previous
+    section, in the run where you didn''t specify a curated environment, the image
+    was pulled from your own container registry – the one provisioned with your AzureML
+    workspace, as seen in *Figure 8.19*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.19 – Image pulled from your own container registry'
+  prefs: []
+  type: TYPE_NORMAL
+- en: in the execution without using a curated environment
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_019.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.19 – Image pulled from your own container registry in the execution
+    without using a curated environment
+  prefs: []
+  type: TYPE_NORMAL
+- en: This observation brings us to the next type of AzureML-supported environment,
+    the system-managed one – something you will explore in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining a system-managed environment
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'S`Conda` environment definition or a simple `pip` `requirements.txt` file.
+    In the previous section, where you didn''t define the `environment` argument in
+    the `ScriptRunConfig` constructor, a default `Conda` environment definition file
+    was used to create the system-managed environment that was stored in your **Azure**
+    **Container Registry** associated with your AzureML workspace. Let''s explicitly
+    create a system-managed environment to use with your code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to the **Notebooks** section of your AzureML workspace and the **Files**
+    tree view.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the three dots of the `greeter-job` folder to open the context menu
+    (or just right-click on the name) and select the `greeter-banner-job`, as seen
+    in the following screenshot:![](img/B16777_08_020.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Figure 8.20 – Duplicating the greeter-job folder as a new one named greeter-banner-job
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Open the `greeter.py` file in the new folder and change the code to the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The `asciistuff` package is a pip package that you will need to install in
+    your executing environment for your code to work. To define that code dependency,
+    you are going to create a `Conda` environment definition file. In the `chapter08`
+    folder, add a new file named `greeter-banner-job.yml`. Add the following content
+    to it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This YAML file defines a new `Conda` environment named `banner-env`, which is
+    based on Python *version 3.6.2* and installs the *1.2.1* version of the `pip`
+    package, `asciistuff`.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'To create an AzureML environment based on the `Conda` environment you just
+    defined, you need to go to the `chapter08.ipynb` notebook, add a cell, and type
+    the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This code snippet creates an AzureML environment named `banner-env` using the
+    `from_conda_specification()` method of the `Environment` class. The `banner_env`
+    variable contains the newly defined environment. In the follow-up line, you define
+    the `GREET_HEADER` environment variable, and you assign the `Env. var. header:`
+    value. This environment is not registered in the workspace, and it doesn't need
+    to be registered in order to use it. If you do want to save it in the workspace
+    to be able to reference it in the same way you reference the curated environments
+    and you want to keep versions of it, you can use the `register()` method, using
+    the `banner_env.register(ws)` code where you pass as an argument a variable that
+    points to the workspace where the Environment will be registered.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: If you plan to start working on your local computer and then scale out on more
+    powerful compute clusters, you should consider creating and registering a system-managed
+    environment that includes all your required Python packages. This will allow you
+    to reuse it in both local and remote executions.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'To use this newly defined environment, add a new cell in the notebook and type
+    the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output of this Experiment should look like the one depicted in *Figure
+    8.21*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.21 – Header text read from an environment variable and banner-based
+    hello greeting'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_021.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.21 – Header text read from an environment variable and banner-based
+    hello greeting
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you noticed, in the system-managed environment you just created, you didn't
+    specify anything about the base operating system (for example, whetherit's `Conda`
+    is already installed in the base system. You just specified the `Conda` dependencies
+    that got installed. If you want even bigger flexibility, you can explicitly configure
+    the environment and install all your software requirements manually. These environments
+    are referred to as **user-managed** environments. Most often, these user-managed
+    environments are custom-made Docker images that encapsulate all the required dependencies.
+    For example, you may need a custom build of the PyTorch framework or even a custom
+    build version of Python. In these cases, you are responsible for installing the
+    Python packages and configuring the entire environment. For the purposes of this
+    book, you will be working with either curated or system-managed environments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have explored how to execute a simple greeter Python application
+    on a remote compute. In the next section, you will resume your `diabetes` model
+    training and see how you can train that model on a remote compute cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training the diabetes model on a compute cluster
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the previous section, you learned how you can run a script on a remote compute
+    cluster by calling the `exp.submit(script)` method from within a notebook, as
+    seen in *Figure 8.22*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.22 – Executing a script on a compute cluster'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_022.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.22 – Executing a script on a compute cluster
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you called the `submit` method, the following actions happened behind
+    the scenes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The AzureML SDK made a `ScriptRunConfig` execution.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The AzureML workspace checked whether a Docker image of the `Environment` already
+    exists. If it didn't exist, it was created within Azure Container Registry.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The job is submitted to the compute cluster, which scales up to allocate a
+    compute node. The following operations are performed within the newly allocated
+    compute node:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The Docker image with the Environment is pulled to the compute node.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The script referenced by `ScriptRunConfig` is loaded in the running Docker instance.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Metrics and metadata are stored in the AzureML workspace.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Outputs are stored back in the storage account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the *Training a simple sklearn model with notebooks* section, you created
+    a training script within the `chapter08.ipynb` notebook. The training was happening
+    within the Jupyter server''s process, inside your compute instance. To run the
+    same training in a compute cluster, you will need to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Move the code to a Python script file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create an AzureML environment to run the training.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Submit `ScriptRunConfig` in an Experiment.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the next sections, you will see how to transform the script you used in the
+    *Tracking model evolution* section to be able to execute it on a remote compute
+    cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moving the code to a Python script file
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you look at the script you created in the *Tracking model evolution* section,
+    in the code that was doing the training, you used the `run` variable to log metrics.
+    This variable was referencing the `Run` object you got when you called `exp.start_logging()`.
+    In the previous section, you learned about `ScriptRunConfig`, which you submitted
+    in an Experiment and returned an instance of the `Run` class. This instance is
+    created within the notebook of the compute instance. How will the script file
+    that is executing on a remote cluster get access to the same `Run` object?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'AzureML''s `Run` class provides a method called `get_context()`, which returns
+    the current service execution context. In the case of `ScriptRunConfig`, this
+    execution context is the same `Run` that was created when you called `exp.submit(script)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further to the `run` variable, in the training script, you had the `ws` variable,
+    which was a reference to the AzureML workspace. You used that variable to get
+    access to the `diabetes` dataset. You got a reference to the workspace by calling
+    the `from_config` method. The issue with this approach is that the first time
+    you called that method, you needed to manually authenticate and authorize the
+    compute to access the workspace on your behalf. This will not be feasible to do
+    on the remote compute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `run` variable gives you access to the corresponding workspace by navigating
+    in the Experiment attribute and then to the workspace attribute of that Experiment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There is one caveat for these lines of code, though. Your code assumes that
+    the Python script was submitted through `ScriptRunConfig`. If you run the Python
+    script locally in a terminal, using the following command line, you will get an
+    error:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `get_context()` method will return an object of the `_OfflineRun` class,
+    which inherits from the `Run` class. This class provides all logging capabilities
+    you saw in the *Tracking metrics in Experiments* section, but instead of uploading
+    the metrics or the artifacts to the workspace, it just prints out the attempt
+    in the terminal. Obviously, there is no Experiment associated with that run and
+    this is going to cause the script to throw an error. Thus, you need to retrieve
+    the workspace reference using the `from_config()` method you have been using so
+    far. Since the terminal is part of the compute instance, the script will execute
+    passing your credentials and will not prompt you to authenticate, as you will
+    see later in this section. If you run this code on your local computer, you will
+    need to authenticate your device, as you saw in the *Authenticating from your
+    device* section of [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The AzureML Python SDK*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The complete code that allows you to run both offline in a terminal and submitted
+    in a compute cluster is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: These are the only changes you will need to make to your script to submit it
+    for remote execution and take advantage of the AzureML SDK capabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python developers commonly use an `_` as a prefix for classes, attributes, or
+    methods that they want to mark as internal. This means that the marked code is
+    for consumption by classes within the `SDK` library and shouldn't be used by external
+    developers. The marked code may change in the future without any warning. It is
+    considered a bad practice to use classes that start with the `_` prefix. Nonetheless,
+    the `_OfflineRun` class is extensively used in the public samples of the AzureML
+    SDK and is safe to use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s make those changes in your workspace. In the file tree, create a folder
+    under `chapter08` named `diabetes-training` and add a `training.py` file in there,
+    as seen in *Figure 8.23*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.23 – Creating the training script for the remote diabetes model
+    training'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_023.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.23 – Creating the training script for the remote diabetes model training
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Add the following code blocks in the `training.py` script. Instead of typing
+    all this code, you can download it directly from the GitHub repository mentioned
+    in the *Technical requirements* section of this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'These are all the imports you will need within the script file. It is a good
+    practice to have all your `import` statements on the top of your script files
+    to easily discover the required modules needed for your code to execute properly.
+    If you use `flake8` to lint your code base, it will complain if you don''t follow
+    this best practice:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This script file expects an `--alpha` parameter to be passed to it. In this
+    code block, this parameter is parsed using the `argparse` module you saw in the
+    *Scaling the training process with compute clusters* section, and the `float`
+    value is assigned to the `args.alpha` variable, as it is specified in the `dest`
+    argument. The `parse_args` method will throw an error if you pass non-defined
+    arguments to the script. Some people prefer using `args, unknown_args = parser.parse_known_args()`
+    instead of the fourth line of this code block, which allows the script to execute
+    even if it receives more than the expected arguments, assigning the unknown ones
+    in the `unknown_args` variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this code block, you get a reference to the `Run` object and the `Workspace`
+    using the snippet you saw at the beginning of this section. Once you get the reference
+    to the `Workspace`, you can load the `diabetes` dataset, as seen in the next script
+    block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this block, you get a reference to the `diabetes` dataset and split it to
+    the required `X_train`, `y_train`, `X_validate`, and `y_validate` pandas DataFrames
+    you saw in the *Training a simple sklearn model within notebooks* section of this
+    chapter. Note that you specify the `seed` parameter in the `random_split` method.
+    This `seed` parameter is used to initialize the state of the underlying random
+    function used by the `split` method to randomly select the rows from the dataset.
+    By doing that, the random function will generate the same random numbers every
+    time it is invoked. This means that `training_data` and `validation_data` will
+    be the same every time you run the script. Having the same training and validation
+    dataset will assist in properly comparing multiple executions of the same script
+    with different `alpha` parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this code block, you define the `train_and_evaluate` method, which is the
+    same one used in the *Tracking model evolution* section of this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After the method definition, you invoke the training process passing all the
+    required arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: The last code block stores the model in the `outputs` folder next to the script's
+    location.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can run the script on your local compute instance, and you will notice
+    that the model trains as expected and the metrics are logged in the terminal,
+    as seen in *Figure 8.24*. This is the expected behavior of the `_OfflineRun` class
+    you read about before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.24 – Running the training script locally'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_024.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.24 – Running the training script locally
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have created the training script. In the next section, you will
+    create the AzureML environment that will contain all the required dependencies
+    to execute that script on a remote compute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the AzureML environment to run the training script
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The training script you created in the *Tracking model evolution* section uses
+    the `scikit-learn` library, also known as `sklearn`. The Jupyter kernel that you
+    are using in the notebook experience already has the `sklearn` library installed.
+    To see the version that is currently installed in your kernel, go to the `chapter08.ipynb`
+    notebook and add the following code snippet in a new cell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This command will use Python''s `pip` package manager to show the details of
+    the currently installed `scikit-learn` package, as seen in *Figure 8.25*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.25 – Package information for the installed scikit-learn library'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_025.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.25 – Package information for the installed scikit-learn library
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are unsure of the library name, you can use the `pip freeze` command
+    to get a full list of installed packages in the current Python environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also find the version of the installed library within a Python script
+    using the `sklearn.__version__` attribute (note the two underscores). In a new
+    notebook cell, add the following lines of Python code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: You should be able to see exactly the same version printed in the output. Most
+    of the Python SDKs and libraries have this `__version__` attribute, such as the
+    PyTorch and the TensorFlow frameworks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are two ways to install the `scikit-learn` package; as a `Conda` package
+    or as a `pip` package. `Conda` offers a curated list of Python packages, and it
+    is the recommended approach. In the *Understanding execution environments* section,
+    you saw how to create an environment using a `Conda` specification file. In this
+    section, you will learn a different approach where you create the environment
+    within the Python code. Add a new cell in the `chapter08.ipynb` notebook and type
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the preceding code snippet, you create a new system-managed environment
+    and then use `add_conda_package` to add the specific version of `scikit-learn`.
+    You also use `add_pip_package` to add the `azureml-dataprep[pandas]` package,
+    which is required in order to use the `to_pandas_dataframe` method within the
+    `training.py` script. You could have added additional pip packages such as the
+    `asciistuff` package you installed before. Instead of adding one package at a
+    time using the `add_pip_package` method, you can use the `create` method of the
+    `CondaDependencies` class, as seen in the following snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can request for multiple packages to be present in the environment by adding
+    them in the `conda_packages` and `pip_packages` arrays. Note that since you do
+    not append packages to the default `CondaDependencies`, you need to manually include
+    the `azureml-defaults` package needed for the `training.py` script to access the
+    `azureml.core` module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may be wondering why we haven''t defined `joblib` in the Python dependencies.
+    The `scikit-learn` package depends on the `joblib` package, and it will automatically
+    be installed in the environment. If you want, you can explicitly specify it in
+    the list of dependencies with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although it is not mandatory to specify the version of the packages you want
+    to add to the environment, it is a good practice. If you wrote `add_conda_package("scikit-learn")`,
+    skipping to specify the version of the package, AzureML would assume you are referring
+    to the latest version. The first time you would have used the environment in AzureML,
+    the Docker image would have been created, installing whatever was the newest version
+    of the `scikit-learn` package at the time of the Docker image creation. That version
+    may have been more recent than the one you used to create your script, and it
+    may be incompatible with the code you wrote. Although minor version differences
+    may not affect your code, major versions may introduce breaking changes, as was
+    done when TensorFlow moved from *version 1* to *2*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you don't want to create a new environment with your code dependencies, you
+    can use one of the AzureML-curated environments. You can select either the highly
+    specialized GPU-based `AzureML-Scikit-learn0.24-Cuda11-OpenMpi4.1.0-py36` environment
+    or you can use the more generic `AzureML-Tutorial` curated environment, which
+    contains the most used data science libraries such as `scikit-learn`, `MLflow`,
+    and `matplotlib`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have written the training script and you defined the AzureML environment
+    with the required `sklearn` library. In the next section, you are going to kick
+    off the training on a compute cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Submitting ScriptRunConfig in an Experiment
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Once you have the script and the AzureML environment definition, you can submit
+    `ScriptRunConfig` to execute on the remote compute cluster. In a new cell in the
+    `chapter08.ipynb` notebook, add the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: This code is the same one used to submit the `greeter.py` scripts in the previous
+    sections. You get a reference to the AzureML workspace and the compute cluster
+    where you will execute the job. You define a `ScriptRunConfig` object where you
+    define the location of the script to execute, the environment you defined in the
+    previous section, and the target compute. You also pass the `alpha` argument to
+    the script. In the last bit of code, you create an Experiment and submit `ScriptRunConfig`
+    to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this piece of code, you triggered the flow you saw in *Figure 8.22* in
+    the *Training the diabetes model on a compute cluster* section earlier in the
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the training is complete, you will be able to navigate to the Experiment,
+    select the run`,` and observe the collected metrics from the training process,
+    as seen in *Figure 8.26*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.26 – Logged metrics from a script running on a remote compute cluster'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_08_026.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.26 – Logged metrics from a script running on a remote compute cluster
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have managed to execute the `diabetes` model training script in
+    a single node on a remote compute cluster, and you have logged the metrics and
+    the trained model in the AzureML Experiment's run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, you will discover different ways to scale out your computational
+    efforts and take advantage of more than a single node on the compute cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utilizing more than a single compute node during model training
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As you saw in the *Compute clusters* section of [*Chapter 4*](B16777_04_Final_VK_ePub.xhtml#_idTextAnchor053),
+    *Configuring the Workspace*, a cluster can scale from 0 compute nodes to as many
+    as you like. There are a couple of reasons why you would need more than a single
+    node in a cluster during the model training phase. They are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Parallel execution of unrelated model training instances**: When you are
+    working in a team, it is common to have multiple Experiments running in parallel.
+    Each job can run on a single node, as you did in the previous section.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Parallel training of a single model, also known as distributed training**:
+    This is an advanced scenario where you are using frameworks such as the **Apache**
+    **Horovod** distributed deep learning training framework that PyTorch and TensorFlow
+    use. There are two types of distributed training options:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Data parallelism**: Where the training data is split into partitions equal
+    to the amount of compute nodes you have. Each node performs a training batch of
+    the model against the assigned data, and then all nodes synchronize the updated
+    model parameters before moving to the next batch.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Model parallelism**: Where you are training bits of the model on different
+    compute nodes. Each node is responsible for training only a small segment of the
+    entire model, and the synchronization between nodes occurs every time a propagation
+    step is needed.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`alpha` parameter of the `LassoLars` model you trained in the previous section.
+    You may want to explore multiple values for those parameters to select the model
+    that performs best on the training dataset. This is a process called hyperparameter
+    tuning, and you will learn more about it in [*Chapter 9*](B16777_09_Final_VK_ePub.xhtml#_idTextAnchor136),
+    *Optimizing the ML Model*.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Parallel training of multiple models to select the best alternative**: This
+    is the AutoML process you already discovered in [*Chapter 5*](B16777_05_Final_VK_ePub.xhtml#_idTextAnchor072),
+    *Letting the Machines Do the Model Training*. You will also see this method again
+    in [*Chapter 9*](B16777_09_Final_VK_ePub.xhtml#_idTextAnchor136), *Optimizing
+    the ML Model,* in the *Running AutoML Experiments with code* section.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this section, you learned about different approaches to utilize multiple
+    nodes in a compute cluster. You will deep dive into the last two methods in [*Chapter
+    9*](B16777_09_Final_VK_ePub.xhtml#_idTextAnchor136), *Optimizing the ML Model*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you got an overview of the various ways you can create an ML
+    model in the AzureML workspace. You started with a simple regression model that
+    was trained within the Jupyter notebook's kernel process. You learned how you
+    can keep track of the metrics from the models you train. Then, you scaled the
+    training process into the `cpu-sm-cluster` compute cluster you created in [*Chapter
+    7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102), *The AzureML Python SDK*.
+    While scaling out to a remote compute cluster, you learned what the AzureML environments
+    are and how you can troubleshoot remote executions by looking at the logs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will build on this knowledge and use multiple computer
+    nodes to perform a parallelized *hyperparameter tuning* process, which will locate
+    the best parameters for your model. You will also learn how you can completely
+    automate the model selection, training, and tuning using the AutoML capabilities
+    of the AzureML SDK.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Questions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In each chapter, you will find a couple of questions to check your understanding
+    of the topics discussed:.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You want to log the number of validation rows you will use within a script.
+    Which method of the `Run` class will you use?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. `log_table`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. `log_row`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. `log`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You want to run a Python script that utilizes `scikit-learn`. How would you
+    configure the AzureML environment?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. Add the `scikit-learn Conda dependency.`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. Add the `sklearn Conda dependency.`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. Use the AzureML `Azure-Minimal` environment, which already contains the needed
+    dependencies.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You need to use `MLflow` to track the metrics generated in an Experiment and
+    store them in your AzureML workspace. Which two pip packages do you need to have
+    in your Conda environment?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. `mlflow`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. `azureml-mlflow`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. `sklearn`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: d. `logger`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'You need to use `MLflow` to track the value `0.1` for the `training_rate` metric.
+    Which of the following code achieves this requirement? Assume all classes are
+    correctly imported at the top of the script:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. `mlflow.log_metric('training_rate', 0.1)`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. `run.log('training_rate', 0.1)`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. `logger.log('training_rate', 0.1)`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This section offers a list of web resources to help you augment your knowledge
+    of the AzureML SDK and the various code snippets used in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source of the diabetes dataset: [https://www4.stat.ncsu.edu/~boos/var.select/diabetes.html](https://www4.stat.ncsu.edu/~boos/var.select/diabetes.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*LassoLars* model documentation on *scikit-learn* website: [https://scikit-learn.org/stable/modules/linear_model.html#lars-lasso](https://scikit-learn.org/stable/modules/linear_model.html#lars-lasso)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The *plotly* open source graphing library: [https://github.com/plotly/plotly.py](https://github.com/plotly/plotly.py)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'MLflow Tracking API reference: [https://mlflow.org/docs/latest/quickstart.html#using-the-tracking-api](https://mlflow.org/docs/latest/quickstart.html#using-the-tracking-api)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Syntax for the `.amlignore` and .`gitignore` files: [https://git-scm.com/docs/gitignore](https://git-scm.com/docs/gitignore)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Flake8** for code linting: [https://flake8.pycqa.org](https://flake8.pycqa.org)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

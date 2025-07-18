@@ -1,0 +1,933 @@
+- en: '*Chapter 9*: Optimizing the ML Model'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn about two techniques you can use to discover
+    the optimal model for your dataset. You will start by exploring the **HyperDrive**
+    package of the AzureML SDK. This package allows you to fine-tune the model's performance
+    by tweaking the parameters it exposes, a process also known as **hyperparameter
+    tuning**. You will then explore the **Automated ML** (**AutoML**) package of the
+    AzureML SDK, which allows you to automate the model selection, training, and optimization
+    process through code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameter tuning using HyperDrive
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Running AutoML experiments with code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need to have access to an Azure subscription. Within that subscription,
+    you will need a `packt-azureml-rg`. You will need to have either a `Contributor`
+    or `Owner` `packt-learning-mlw`, as described in [*Chapter 2*](B16777_02_Final_VK_ePub.xhtml#_idTextAnchor026),
+    *Deploying Azure Machine Learning Workspace Resources*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will also need to have a basic understanding of the **Python** language.
+    The code snippets target Python version 3.6 or newer. You should also be familiar
+    with working in the notebook experience within AzureML Studio, something that
+    was covered in [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117),
+    *Experimenting with Python Code*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter assumes you have registered the **scikit-learn** diabetes dataset
+    in your AzureML workspace and that you have created a compute cluster named **cpu-sm-cluster**,
+    as described in the sections *Defining datastores*, *Working with datasets*, and
+    *Working with compute targets* in [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The AzureML Python SDK*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find all notebooks and code snippets of this chapter in GitHub at the
+    URL [http://bit.ly/dp100-ch09](http://bit.ly/dp100-ch09).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameter tuning using HyperDrive
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117), *Experimenting
+    with Python Code*, you trained a `LassoLars` model that was accepting the `alpha`
+    parameter. In order to avoid overfitting to the training dataset, the `LassoLars`
+    model uses a technique called `alpha` parameter specifies how important this penalty
+    term is, something that directly impacts the training outcome. Parameters that
+    affect the training process are referred to as being `DecisionTreeClassifier`
+    class located in the `scikit-learn` library, you can define the maximum depth
+    of the tree through the `max_depth`, which is an integer. In the same model, you
+    can control the maximum amount of leaf nodes by specifying a numeric value to
+    the `max_leaf_nodes` **hyperparameter**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These hyperparameters control the size of the decision tree, as depicted in
+    *Figure 9.1*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.1 – Decision tree hyperparameters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.1 – Decision tree hyperparameters
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Hyperparameter tuning** is the process of finding the optimal values for
+    the **hyperparameters** that produce the best-performing model against the data
+    you are using for training. To be able to evaluate the performance of each **hyperparameter**
+    combination, the model must be trained, and the performance metric must be evaluated.
+    In the case of the diabetes model in [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117),
+    *Experimenting with Python Code*, you were evaluating the models using the **Normalized
+    Root Mean Squared Error** (**NRMSE**) metric.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The AzureML SDK offers the `HyperDriveConfig` class , which allows you to perform
+    `HyperDriveConfig` is a wrapper to the `ScriptRunConfig` class you used in [*Chapter
+    8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117), *Experimenting with Python
+    Code*. This means that you need to pass in the `run_config` parameter the `ScriptRunConfig`
+    that you want to use to train your model. You also need to specify the metric
+    that your code is logging and what your goal is for that metric. In the diabetes
+    case, you are trying to minimize the `submit` method you saw in [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117),
+    *Experimenting with Python Code*. The pseudo-code that shows the end-to-end process,
+    where the `script` variable refers to the `ScriptRunConfig` object that defines
+    which training script you are going to use, is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Besides `ScriptRunConfig`, you will need to pass the `HyperDriveConfig` will
+    use. **Hyperparameters** can accept either discrete or continuous values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A typical example of discrete values is integers or string values. For example,
+    in the `activation` `selu` for the `relu` for the **Rectified Linear Unit** (**ReLU**).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A typical example of continuous values is float values. The `alpha` parameter
+    in the `LassoLars` model you have been training is a **hyperparameter** that accepts
+    float values.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When you are exploring the possible `azureml.train.hyperdrive.parameter_expressions`
+    module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the case of discrete `choice` function, which allows you to specify the
+    list of options the `activation` **hyperparameter** you saw previously with the
+    following script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This script will try both the `selu` and `relu` activation functions while looking
+    for the optimal model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are interested in working with neural networks, you will probably need
+    to understand these activation functions better. There are great books that can
+    help you get started in neural network design. For the DP-100 exam, you will not
+    need this knowledge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that even in the case of the continuous `alpha` `LassoLars` model, you
+    can still use the `choice` method to define discrete values to explore. For example,
+    the following use of `choice` is the equivalent of what you did back in the *Tracking
+    model evolution* section of [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117),
+    *Experimenting with Python Code*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can also define the probability distribution for the samples that you will
+    be getting while you are exploring the search space. For example, if you want
+    to provide an equal chance to all values, you will use a uniform distribution.
+    On the other hand, you can use a normal distribution to focus the search area
+    on the center of the search space. The AzureML SDK offers a couple of methods
+    you can use, such as `uniform(low, high)`, `loguniform(low, high)`, `normal(μ,σ)`,
+    and `lognormal(μ, σ)`. You can use the `q` prefixed equivalents for discrete values,
+    such as `quniform(low, high, q)`, `qloguniform(low, high, q)`, `qnormal(μ, σ,
+    q)`, and `qlognormal(μ, σ``, q)`, where the `q` parameter is the quantization
+    factor that converts continuous values into discrete ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On the GitHub page of this book, you can find the code that plots 1,000 samples
+    being generated with the distributions of these functions. The results can be
+    seen in *Figure 9.2*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.2 – Advanced discrete and continuous hyperparameter value distributions.
+    Sample values are ordered. The x axis shows the ordered value''s index number'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_002.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.2 – Advanced discrete and continuous hyperparameter value distributions.
+    Sample values are ordered. The x axis shows the ordered value's index number
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Figure 9.2*, in the `loguniform` and `lognormal` plots, the line of the
+    discrete function with quantization factor 1 overlaps with the one from the continuous
+    function. Therefore, you can only see two lines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you have defined the search space, you need to specify the sampling strategy
+    that you will use to select each `azureml.train.hyperdrive` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`choice` method you saw above. The Azure ML SDK will search all possible **hyperparameter**
+    combinations of those discrete values. Imagine that you wanted to explore the
+    following four parameter combinations:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: a=0.01 and b=10
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: a=0.01 and b=100
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: a=0.5 and b=10
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: a=0.5 and b=100
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following code snippet defines the search space for these four combinations:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '`RandomParameterSampling` class. It allows you to randomly select **hyperparameter**
+    values from the available options. It supports both discrete and continuous **hyperparameters**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`max_total_runs` you will read about next. It supports both discrete and continuous
+    **hyperparameters**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let''s put everything you have learned so far into action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to the **Author** | **Notebooks** section of your AzureML Studio web
+    interface.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a folder named `chapter09`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You will need to create a `diabetes-training` folder in the `training.py` script.
+    The script is the same as the one used in [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117),
+    *Experimenting with Python Code*, in the section *Moving the code to a Python
+    script file*. You can copy the contents from there. The final **Files** tree is
+    depicted in *Figure 9.3*.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a notebook named **chapter09.ipynb** within the **chapter09** folder.
+    *Figure 9.3* shows what the final **Files** tree will look like:![Figure 9.3 –
+    The Files tree structure that contains the code and the chapter09 notebook
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_003.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 9.3 – The Files tree structure that contains the code and the chapter09
+    notebook
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Add the following initialization code in the first cell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is a code similar to the one you used in [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117),
+    *Experimenting with Python Code*. The only difference is that you are using the
+    `create` method instead of adding the packages one by one.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In a new cell, define the `ScriptRunConfig` object that will execute the `training.py`
+    script:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This `ScriptRunConfig` object is almost identical to the one you created in
+    the *Training the diabetes model on a compute cluster* section of [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117),
+    *Experimenting with Python Code*. The only difference is that you do not pass
+    the `arguments` parameter. In particular, you don't specify the `--alpha` argument.
+    This argument will automatically be appended by the `HyperDriveConfig` object
+    you will configure in the next step.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Add and execute the following code in a new cell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: In this code, you define a `RandomParameterSampling` approach to explore uniformly
+    distributed values, ranging from 0.00001 to 0.1, for the `alpha` argument that
+    will be passed to the training script you created in *step 3*. This training script
+    accepts the `--alpha` argument, which is then passed to the `alpha` `LassoLars`
+    model.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You assign this `RandomParameterSampling` configuration to the `hyperparameter_sampling`
+    argument of `HyperDriveConfig`.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You have also configured the `run_config` property of `HyperDriveConfig` to
+    use the `ScriptRunConfig` object you defined in *step 6*. Note that the `RandomParameterSampling`
+    class will be passing the `alpha` parameter needed by the script.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You then define that the produced models will be evaluated using the `primary_metric_name`
+    parameter). You also specify that you are trying to minimize that value (the `primary_metric_goal`
+    parameter), since it's the error you want to minimize.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The last two parameters, `max_total_runs` and `max_concurrent_runs`, control
+    the resources you are willing to invest in finding the best model. The `max_total_runs`
+    parameter controls the maximum number of experiments to run. This can be between
+    1 and 1,000 runs. This is a required parameter. `max_concurrent_runs` is an optional
+    parameter and controls the maximum concurrency of the conducted runs. In this
+    case, you defined *4*, which means that only four nodes will be provisioned in
+    the `ScriptRunConfig`. This means that the cluster will still have one unprovisioned
+    node, since the maximum number of nodes it can scale up to is five, as you defined
+    in the section *Working with compute targets* of [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The AzureML Python SDK*. There is one more optional parameter you can use to
+    limit the amount of time you are searching for the optimal `max_duration_minutes`
+    parameter, which you did not specify in the sample above, defines the maximum
+    duration in minutes to run the **hyperparameter tuning** process. After that timeout,
+    all subsequent scheduled runs are automatically canceled.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In a new cell, add the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: In this code, you submit `HyperDriveConfig` to execute under the `hyperdrive_run`
+    variable is an instance of `HyperDriveRun`, which inherits from the normal `Run`
+    class.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You can review the results of the process in the Studio web UI. Navigate to
+    the `alpha` hyperparameter. You can visually explore the effect the various values
+    of the `alpha` parameter have regarding the `alpha` value of `HyperDriveRun` (**Run
+    1**).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Run numbers may be different in your executions. Every time you execute the
+    cells, a new run number is created, continuing from the previous number. So, if
+    you execute code that performs one hyperdrive run with 20 child runs, the last
+    child run will be run 21\. The next time you execute the same code, the hyperdrive
+    run will start from run 22, and the last child will be run 42\. The run numbers
+    referred to in this section are the ones shown in the various figures, and it
+    is normal to observe differences, especially if you had to rerun a couple of cells.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Navigate to the **Outputs + logs** tab of the completed **Run 1** run. You will
+    notice that there is a single file under the **azureml-logs** folder named **hyperdrive.txt**,
+    as shown in *Figure 9.5*:![Figure 9.5 – Log file in HyperDriveRun, picking up
+    the first four jobs from
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: the hyperparameter space that will be executed in parallel
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_005.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 9.5 – Log file in HyperDriveRun, picking up the first four jobs from
+    the hyperparameter space that will be executed in parallel
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This file contains all the jobs that were scheduled to complete the hyperparameter
+    tuning process. The actual run logs and the stored model are stored within the
+    child runs. If you need to debug a code issue, you will have to open one of them
+    to see the script errors.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'You can also get the best model''s run and the corresponding `get_best_run_by_primary_metric`
+    method retrieves the best run of `HyperDriveRun` that the `hyperdrive_run` variable
+    references. From there, you can read the `get_metrics` method of the `Run` object,
+    and you can get the details of the execution using the `get_details` method. In
+    those details, there is a `runDefinition` object that contains an `arguments`
+    list, as shown in *Figure 9.6*:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.6 – Demystifying the best_run.get_details()[''runDefinition''][''arguments'']
+    code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_006.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.6 – Demystifying the best_run.get_details()['runDefinition']['arguments']
+    code
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you saw how to run a **hyperparameter tuning** process to find
+    the optimal value for your model's **hyperparameters**. In the next section, you
+    will see how you can optimize the time you search for the best values by using
+    an early termination policy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the early termination policy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One of the parameters of the `HyperDriveConfig` constructor is the `policy`
+    one. This argument accepts an `EarlyTerminationPolicy` object, which defines the
+    policy with which runs can be terminated early. By default, this parameter has
+    a `None` value, which means that the `NoTerminationPolicy` class will be used,
+    allowing each run to execute until completion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To be able to use an early termination policy, your script must be performing
+    multiple iterations during each run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Files** view, add a folder named **termination-policy-training** and
+    add a **training.py** file to it, as shown in *Figure 9.7*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.7 – Adding a training script that performs multiple epochs'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_007.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.7 – Adding a training script that performs multiple epochs
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Add the following code in the training script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The script gets two parameters, `a` and `b`, and then calls the `fake_train`
+    method 20 times. In data science literature, people refer to those 20 times as
+    20 **epochs**, which are the training cycles over the entire training dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In every epoch, the `a` parameter is multiplied by the iteration number, which
+    is an integer value from *0* all the way to *19*, and the `fake_train` method
+    is invoked. The `fake_train` method sleeps for 5 seconds to simulate a training
+    process and then adds the modified `a` value to the `b` parameter. The result
+    is logged in the `fake_metric` metric.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moreover, in *line 8*, the code checks the `a` parameter passed to the script.
+    If it is greater than *2*, it changes to value *0*. This means that the fake model
+    you are training will be performing better as the `a` value increases to value
+    *2*, and then its performance will drop, as shown in *Figure 9.8*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that you don't need to read any dataset and, thus, you do not need the
+    reference to `Workspace`. This is why *line 10* in the code above doesn't need
+    to check if this is an `_OfflineRun` object or not, as you did in the section
+    *Moving the code to a Python script file* in [*Chapter 8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117),
+    *Experimenting with Python Code*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you were to run `HyperDriveConfig` with grid search on all values between
+    *1* and *4* for the `fake_metric` evolution over the epochs. On the right side
+    of the figure, you can see how the `fake_metric` is affected by the various values
+    of the `a` and `b` `a` perform better than the models trained with `a` parameter
+    *3* and *4*, regarding the `fake_metric`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.8 – Hyperparameter tuning without early termination policy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_008.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.8 – Hyperparameter tuning without early termination policy
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Ideally, you would like to reduce the amount of time waiting for all the runs
+    to complete. `EarlyTerminationPolicy` allows you to monitor the jobs that are
+    running, and if they are performing poorly compared to the rest of the jobs, cancel
+    them early. The resulting output would be like the one in *Figure 9.9*, where
+    you can see that some of the jobs were terminated before reaching the twentieth
+    reported interval (the graph starts counting from 0), saving time and compute
+    resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.9 – Hyperparameter tuning with aggressive early termination policy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_009.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.9 – Hyperparameter tuning with aggressive early termination policy
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The AzureML SDK offers a few built-in `EarlyTerminationPolicy` implementations,
+    located in the `azureml.train.hyperdrive` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`NoTerminationPolicy`: This is the default stopping policy that allows all
+    runs to complete.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`MedianStoppingPolicy`: The median stopping policy computes the running averages
+    across all runs. It then cancels runs whose best performance is worse than the
+    median of the running averages. You can think of this policy as comparing the
+    performance of each run against the average performance of the previous runs.
+    The nice thing about this policy is that it considers all runs that have happened
+    so far and does not just compare the current run with the best runs so far. This
+    feature allows the median stopping policy to avoid being trapped in local optimum
+    values.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`BanditPolicy`: The bandit policy computes the distance between the current
+    run and the best-performing one and then terminates it based on some slack criteria.
+    You can define either the absolute distance (the `slack_amount` parameter) or
+    the maximum allowed ratio (the `slack_factor` parameter) allowed from the best
+    performing run.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`TruncationSelectionPolicy`: The truncation selection policy is the most aggressive
+    policy, which cancels a certain percentage (the `truncation_percentage` parameter)
+    of runs that rank the lowest for their performance on the primary metric. When
+    ranking a relatively young run, at an early iteration, the policy compares them
+    with the equivalent iteration performance of the older runs. Thus, this policy
+    strives for fairness in ranking the runs by accounting for improving model performance
+    with training time.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'All policies take two optional parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`evaluation_interva`l: The frequency for applying the policy.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`delay_evaluation`: This delays the first policy evaluation for a specified
+    number of intervals, giving time for young runs to reach a mature state.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let''s do hyperparameter tuning on the script you created above using the most
+    recommended policy, `MedianStoppingPolicy`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the `ScriptRunConfig` object that will be used in the hyperparameter tuning
+    process.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In a new cell, add the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This `HyperDriveConfig` object is using `MedianStoppingPolicy` as its policy
+    parameter to evaluate all runs after their first *5* iterations and compares their
+    results on every iteration with the median of the running averages.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In a new cell, add the following code to start the execution of the `HyperDriveConfig`
+    object you defined in *step 2*:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '*Figure 9.10* shows the results of this `HyperDriveRun` run, where only 8 out
+    of 16 jobs were terminated early:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.10 – Hyperparameter tuning with median stopping early termination
+    policy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_010.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.10 – Hyperparameter tuning with median stopping early termination policy
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the code above, the `max_total_runs` argument has a value of 50\. This is
+    the top limit of how many child runs can potentially occur. In this example, you
+    only have 16 combinations. This means that the experiment will run only 16 times
+    and then it will stop, since the whole search area has been searched. If you wanted
+    the `max_total_runs` parameter to have an effect, you should specify a value less
+    than 16.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have seen how you can optimize a specific model against the data
+    you have. In the next section, you will see how you can search for the best model
+    to run an AutoML experiment through the SDK, similar to what you did in [*Chapter
+    5*](B16777_05_Final_VK_ePub.xhtml#_idTextAnchor072), *Letting the Machines Do
+    the Model Training*, through the studio user interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running AutoML experiments with code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, in this chapter, you were fine-tuning a `LassoLars` model, performing
+    a hyperparameter tuning process to identify the best value for the `alpha` parameter
+    based on the training data. In this section, you will use **AutoML** in the AzureML
+    SDK to automatically select the best combination of data preprocessing, model,
+    and hyperparameter settings for your training dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To configure an `AutoMLConfig` object. You will need to define the **Task type**,
+    the **Metric**, the **Training data**, and the **Compute budget** you want to
+    invest. The output of this process is a list of models from which you can select
+    the best run and the best model associated with that run, as shown in *Figure
+    9.11*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.11 – AutoML process'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_011.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.11 – AutoML process
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Depending on the type of problem you are trying to model, you must select the
+    `task` parameter, selecting either `classification`, `regression`, or `forecasting`,
+    as shown in *Figure 9.12*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.12 – AutoML task types, algorithms, and supported metrics'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_09_012.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.12 – AutoML task types, algorithms, and supported metrics
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure 9.12* shows only a subset of the supported algorithms that the AzureML
+    SDK supports. The `azureml.train.automl.constants.SupportedModels` package contains
+    the `classification`, `regression`, and `forecasting` classes that list all supported
+    algorithms as attributes. Since forecasting is just a more specialized version
+    of regression, all algorithms from regression can be used. AutoML supports some
+    additional, more specialized, forecasting algorithms, such as the very popular
+    **ARIMA** technique or Facebook''s **Prophet** algorithm.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `primary_metric` parameter determines the metric to be used during model
+    training for optimization. The metrics are the same for both regression and forecasting.
+    Classification algorithms use different metrics, as shown in *Figure 9.12*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training data can be provided in the `training_data` parameter, either in the
+    format of a pandas `Dataset` objects. The training data is in tabular format and
+    includes the `target` column. You define the name of the column you want to predict,
+    passing the `label_column_name` parameter. By default, AutoML will use that dataset
+    for both the training and validation of produced models. If the dataset is more
+    than 20,000 rows, the dataset is split, keeping 10% for validation. If the dataset
+    is smaller than 20,000 rows, cross-validation is used. If you want to specify
+    how many folds to create out of `training_data`, you can use the `n_cross_validations`
+    parameter. Another approach is to provide the `validation_size` parameter, which
+    is the percentage (values *0.0* to *1.0*) to hold out of the training data and
+    use as validation. If you want to manually split the data into training and validation
+    data, then you can assign your validation data to the `validation_data` parameter,
+    as you will do later in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Compute budget** is the amount of money you are willing to spend to find
+    the best machine learning model out of your training data. It consists of three
+    parts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**The compute cluster''s node type**: The more capabilities your compute cluster''s
+    type has, the bigger the cost per second is when you run the AutoML job. This
+    is a setting you configured when you created the compute cluster, and this cannot
+    change at this point in time unless you create a new cluster.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`max_concurrent_iterations` parameter to use up to the maximum number of nodes
+    your compute cluster has. This will allow you to run parallel iterations but increases
+    the cost. By default, this parameter is *1* and allows only a single iteration
+    at a time.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`experiment_timeout_hours` parameter or you can define the `experiment_exit_score`
+    parameter, which defines the score to achieve and then stop further exploration.
+    Another way to limit your compute spending is to limit the number of different
+    algorithms and parameter combinations to explore. By default, AutoML will explore
+    1,000 combinations, and you can restrict that by specifying the `iterations` parameter.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Now that you have explored all the options that you need to configure in the
+    `AutoMLConfig` object, navigate to your `chapter09.ipynb` notebook, add a new
+    cell, and type the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this code, you get the reference to the workspace, your compute cluster,
+    and the `diabetes` dataset, which you are splitting into a training one and a
+    validation one. You then create an `AutoMLConfig` object that will do `target`
+    column. You also specify the `validation_data` parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of splitting the dataset, you could have passed the entire dataset in
+    the `training_data` parameter and skipped the `validation_data` parameter. Since
+    the dataset consists of only 442 rows, AutoML would have split the training dataset
+    into 10 folds, which would have been used to perform the cross-validation technique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You then define the `compute_target` experiment to use for this training and
+    determine your computation budget by allowing the experiment to run for a quarter
+    of an hour (the `experiment_timeout_hours` parameter), which is 15 minutes, and
+    exploring only 4 model and parameter combinations (the `iterations` parameter).
+    In your case, the `iterations` parameter will probably be the reason that will
+    terminate the **AutoML** experiment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For forecasting, you would need to specify `forecasting_parameters` in addition
+    to the regression parameters you defined previously. The `ForecastingParameters`
+    class has the following parameters that are commonly used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '1) `time_column_name`: The column that represents the time dimension of the
+    time series.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '2) `max_horizon`: The desired forecast horizon in units of the time-series
+    frequency. This is by default *1*, meaning that your model will be able to forecast
+    a single slot in the future. The slot is the frequency your dataset uses. If your
+    dataset has 1 row for every hour and you want to forecast for 7 days, `max_horizon`
+    needs to be 7 days x 24 slots per day = 168\.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So far, you have created `experiment_config`, which contains the configuration
+    of the **AutoML** experiment you are about to perform. Add a new cell and add
+    the following code to kick off the AutoML training process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `run` variable contains a reference to the `AutoMLRun` object that was
+    created using the `submit` method. After a couple of minutes, the process will
+    be complete. To get the current best run and best model, you can use the `get_output()`
+    method, as shown in the following snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Alternatively, you can directly access the best run and the best model using
+    the corresponding `Tuple` index, as shown in the following snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In every automated machine learning experiment, your data is automatically
+    scaled or normalized to help algorithms perform well. This data transformation
+    is becoming part of the trained model. This means that your data is passing through
+    a data transformer first, and then the model is being trained with new feature
+    names that are not directly visible to you. You will see an example of `sklearn.composeColumnTransformer`
+    in [*Chapter 10*](B16777_10_Final_VK_ePub.xhtml#_idTextAnchor147), *Understanding
+    Model Results*. To review the actual steps that are embedded within the AutoML
+    model, you can use the `steps` attribute of the produced model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first step is named `datatransformer` and contains the imputers used for
+    our `diabetes` dataset. This step is named `datatransformer` for both regression
+    and classification tasks. For forecasting tasks, this step is named `timeseriestransformer`,
+    and it contains additional date-based transformations. To get a list of transformations
+    and the names of engineered features, you can use the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this section, you searched for the best model against the diabetes regression
+    problem using **AutoML**. This concludes the most frequently used ways you can
+    optimize a machine learning model given a specific dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you explored the most-used approaches in optimizing a specific
+    model to perform well against a dataset and how you can even automate the process
+    of model selection. You started by performing parallelized `HyperDriveConfig`
+    class to optimize the `alpha` parameter of the `LassoLars` model you have been
+    training against the `diabetes` dataset. Then, you automated the model selection,
+    using AutoML to detect the best combination of algorithms and parameters that
+    predicts the `target` column of the `diabetes` dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will build on top of this knowledge, learning how to
+    use the AzureML SDK to interpret the model results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Questions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You want to get the best model trained by an `model = run.get_output()[0]`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: b. `model = run.get_output()[1]`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. `model = run.get_outputs()[0]`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: d. `model = run.get_outputs()[1]`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You want to run a forecasting `ForecastingParameters` class?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. *forecast_horizon = 5 * 1*
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. *forecast_horizon = 5 * 24*
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. *forecast_horizon = 5 * 12*
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This section offers a list of helpful web resources that will help you augment
+    your knowledge of the AzureML SDK and the various code snippets used in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `HyperDriveConfig` class: [https://docs.microsoft.com/en-us/python/api/azureml-train-core/azureml.train.hyperdrive.hyperdriveconfig?view=azure-ml-py](https://docs.microsoft.com/en-us/python/api/azureml-train-core/azureml.train.hyperdrive.hyperdriveconfig?view=azure-ml-py)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The `AutoMLConfig` class: [https://docs.microsoft.com/en-us/Python/api/azureml-train-automl-client/azureml.train.automl.automlconfig.automlconfig](https://docs.microsoft.com/en-us/Python/api/azureml-train-automl-client/azureml.train.automl.automlconfig.automlconfig)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Data featurization in automated machine learning: [https://docs.microsoft.com/en-us/azure/machine-learning/how-to-configure-auto-features](https://docs.microsoft.com/en-us/azure/machine-learning/how-to-configure-auto-features)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Auto-train a forecast model: [https://docs.microsoft.com/en-us/azure/machine-learning/how-to-auto-train-forecast](https://docs.microsoft.com/en-us/azure/machine-learning/how-to-auto-train-forecast)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Reference to the diabetes dataset that was loaded from the scikit-learn library:
+    [https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_diabetes.html](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_diabetes.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

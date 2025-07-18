@@ -1,0 +1,1435 @@
+- en: 14 Outlier Detection Using Unsupervised Machine Learning
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Join our book community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '![](img/file0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[https://packt.link/zmkOY](https://packt.link/zmkOY)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Chapter 8*, *Outlier Detection Using Statistical Methods*, you explored
+    parametric and non-parametric statistical techniques to spot potential outliers.
+    The methods were simple, interpretable, and yet quite effective.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Outlier detection is not straightforward, mainly due to the ambiguity surrounding
+    the definition of what an outlier is, specific to your data or the problem that
+    you are trying to solve. For example, though common, some of the thresholds used
+    in *Chapter 8*, *Outlier Detection Using Statistical Methods*, are still arbitrary
+    and not a rule that you must follow. Therefore, having domain knowledge or access
+    to **Subject Matter Experts** (**SMEs**) is vital to making the proper judgment
+    when spotting outliers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will be introduced to a handful of machine learning-based
+    methods for outlier detection. Most of the machine learning techniques for outlier
+    detection are considered *unsupervised* outlier detection methods, such as **Isolation
+    Forests** (**iForest**), unsupervised **K-Nearest Neighbors** (**KNN**), **Local
+    Outlier Factor** (**LOF**), and **Copula-Based Outlier Detection** (**COPOD**),
+    to name a few.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, outliers (or anomalies) are considered a rare occurrence (later in
+    the chapter, you will see this referenced as the contamination percentage). In
+    other words, you would assume a small fraction of your data are outliers in a
+    large data set. For example, 1% of the data may be potential outliers. However,
+    this complexity requires methods designed to find patterns in the data. Unsupervised
+    outlier detection techniques are great at finding patterns in rare occurrences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After investigating outliers, you will have a historical set of labeled data,
+    allowing you to leverage semi-supervised outlier detection techniques. This chapter
+    focuses on unsupervised outlier detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, you will be introduced to the **PyOD** library, described
+    as *"a comprehensive and scalable Python toolkit for detecting outlying objects
+    in multivariate data."* The library offers an extensive collection of implementations
+    for popular and emerging algorithms in the field of outlier detection, which you
+    can read about here: [https://github.com/yzhao062/pyod](https://github.com/yzhao062/pyod).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will be using the same New York taxi dataset to make it easier to compare
+    the results between the different machine learning methods in this chapter and
+    the statistical methods from *Chapter 8*, *Outlier Detection Using Statistical
+    Methods*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The recipes that you will encounter in this chapter are as follow*s*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting outliers using **KNN**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using **LOF**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using **iForest**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using **One-Class Support Vector Machine** (**OCSVM**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using **COPOD**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers with **PyCaret**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can download the Jupyter notebooks and datasets required from the GitHub
+    repository:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Jupyter notebooks: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch14/Chapter%2014.ipynb](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch14/Chapter%2014.ipynb)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Datasets: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch14](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch14)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can install PyOD with either `pip` or Conda. For a `pip` install, run the
+    following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For a `Conda` install, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To prepare for the outlier detection recipes, start by loading the libraries
+    that you will be using throughout the chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load the `nyc_taxi.csv` data into a pandas DataFrame as it will be used throughout
+    the chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can store the known dates containing outliers, also known as ground truth
+    labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create the `plot_outliers` function that you will use throughout the recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you proceed with the outlier detection recipes, the goal is to see how the
+    different techniques capture outliers and compare them to the ground truth labels,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a time series plot with `X` markers for the
+    known outliers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.1: Plotting the NYC taxi data after downsampling with ground truth
+    labels (outliers)](img/file278.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.1: Plotting the NYC taxi data after downsampling with ground truth
+    labels (outliers)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PYOD'S METHODS FOR TRAINING AND MAKING PREDICTIONS
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'Like scikit-learn, PyOD offers familiar methods for training your model and
+    making predictions by providing three methods: `model.fit()`, `model.predict()`,
+    and `model.fit_predict()`.'
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: In the recipes, we will break down the process into two steps by first fitting
+    the model (training) using `.fit()` and then making a prediction using `.predict()`.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'In addition to the `predict` method, PyOD provides two additional methods:
+    `predict_proba` and `predict_confidence`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first recipe, you will explore how PyOD works behind the scenes and introduce
+    fundamental concepts, for example, the concept of `contamination` and how `threshold_`
+    and `decision_scores_` are used to generate the binary labels (*abnormal* or *normal*).
+    These concepts will be covered in more depth in the following recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting outliers using KNN
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The KNN algorithm is typically used in a supervised learning setting where prior
+    results or outcomes (labels) are known.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It can be used to solve classification or regression problems. The idea is simple;
+    for example, you can classify a new data point, Y, based on its nearest neighbors.
+    For instance, if k=5, the algorithm will find the five nearest data points (neighbors)
+    by distance to the point Y and determine its class based on the majority. If there
+    are three blue and two red nearest neighbors, Y is classified as blue. The K in
+    KNN is a parameter you can modify to find the optimal value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of outlier detection, the algorithm is used differently. Since we
+    do not know the outliers (labels) in advance, KNN is used in an *unsupervised*
+    learning manner. In this scenario, the algorithm finds the closest *K* nearest
+    neighbors for every data point and measures the average distance. The points with
+    the most significant distance from the population will be considered outliers,
+    and more specifically, they are considered *global* outliers. In this case, the
+    distance becomes the score to determine which points are outliers among the population,
+    and hence KNN is a **proximity-based algorithm**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, proximity-based algorithms rely on the distance or proximity between
+    an outlier point and its nearest neighbors. In KNN, the number of nearest neighbors,
+    *k*, is a parameter you need to determine. There are other variants of the KNN
+    algorithm supported by PyOD, for example, **Average KNN** (**AvgKNN**), which
+    uses the average distance to the KNN for scoring, and **Median KNN** (**MedKNN**),
+    which uses the median distance for scoring.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will continue to work with the `tx` DataFrame, created
+    in the *Technical requirements* section, to detect outliers using the `KNN` class
+    from PyOD:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading the `KNN` class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: You should be familiar with a few parameters to control the algorithm's behavior.
+    The first parameter is `contamination`, a numeric (float) value representing the
+    dataset's fraction of outliers. This is a common parameter across all the different
+    classes (algorithms) in PyOD. For example, a `contamination` value of `0.1` indicates
+    that you expect 10% of the data to be outliers. The default value is `contamination=0.1`.
+    The contamination value can range from `0` to `0.5` (or 50%). You will need to
+    experiment with the contamination value, since the value influences the scoring
+    threshold used to determine potential outliers, and how many of these potential
+    outliers are to be returned. You will learn more about this in the *How it works...*
+    section of this chapter.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For example, if you suspect the proportion of outliers in your data at 3%, then
+    you can use that as the contamination value. You could experiment with different
+    contamination values, inspect the results, and determine how to adjust the contamination
+    level. We already know that there are 5 known outliers out of the 215 observations
+    (around 2.3%), and in this recipe, you will use 0.03 (or 3%).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second parameter, specific to KNN, is `method`, which defaults to `method='largest'`.
+    In this recipe, you will change it to the `mean` (the average of all *k* neighbor
+    distances). The third parameter, also specific to KNN, is `metric`, which tells
+    the algorithm how to compute the distances. The default is the `minkowski` distance
+    but it can take any distance metrics from scikit-learn or the SciPy library. Finally,
+    you need to provide the number of neighbors, which defaults to `n_neighbors=5`.
+    Ideally, you will want to run for different KNN models with varying values of
+    *k* and compare the results to determine the optimal number of neighbors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instantiate KNN with the updated parameters and then train (fit) the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `predict` method will generate binary labels, either `1` or `0`, for each
+    data point. A value of `1` indicates an outlier. Store the results in a pandas
+    Series:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Filter the `predicted` Series to only show the outlier values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Overall, the results look promising; four out of the five known dates have been
+    identified. Additionally, the algorithm identified the day after Christmas as
+    well as January 26, 2015, which was when all vehicles were ordered off the street
+    due to the North American blizzard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `plot_outliers` function created in the *Technical requirements* section
+    to visualize the output to gain better insight:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a plot similar to that in *Figure 14.1*,
+    except the `x` markers are based on the outliers identified using the KNN algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.2: Markers showing the identified potential outliers using the
+    KNN algorithm](img/file279.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.2: Markers showing the identified potential outliers using the KNN
+    algorithm'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To print the labels (dates) along with the markers, just call the `plot_outliers`
+    function again, but this time with `labels=True`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce a similar plot to the one in *Figure 14.2*
+    with the addition of text labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The unsupervised approach to the KNN algorithm calculates the distance of an
+    observation to other neighboring observations. The default distance used in PyOD
+    for KNN is the Minkowski distance (the p-norm distance). You can change to different
+    distance measures, such as the Euclidean distance with `euclidean` or `l2` or
+    the Manhattan distance with `manhattan` or `l1`. This can be accomplished using
+    the `metric` parameter, which can take a string value, for example, `metric='l2'`
+    or `metric='euclidean'`, or a callable function from scikit-learn or SciPy. This
+    is a parameter that you experiment with as it influences how the distance is calculated,
+    which is what the outlier scores are based on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Traditionally, when people hear KNN, they immediately assume it is only a supervised
+    learning algorithm. For unsupervised KNN, there are three popular algorithms:
+    ball tree, KD tree, and brute-force search. The PyOD library supports all three
+    as `ball_tree`, `kd_tree`, and `brute`, respectively. The default value is set
+    to `algorithm="auto"`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PyOD uses an internal score specific to each algorithm, scoring each observation
+    in the training set. The `decision_scores_` attribute will show these scores for
+    each observation. Higher scores indicate a higher potential of being an abnormal
+    observation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can convert this into a DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since all the data points are scored, PyOD will determine a threshold to limit
+    the number of outliers returned. The threshold value depends on the *contamination*
+    value you provided earlier (the proportion of outliers you suspect). The higher
+    the contamination value, the lower the threshold, and hence more outliers are
+    returned. A lower contamination value will increase the threshold.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can get the threshold value using the `threshold_` attribute from the model
+    after fitting it to the training data. Here is the threshold for KNN based on
+    a 3% contamination rate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the value used to filter out the significant outliers. Here is an example
+    of how you reproduce that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.3: Showing the decision scores from PyOD](img/file280.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.3: Showing the decision scores from PyOD'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice the last observation on `2014-09-27` is slightly above the threshold,
+    but it was not returned when you used the `predict` method. If you use the contamination
+    threshold, you can get a better cutoff:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Another helpful method is `predict_proba`, which returns the probability of
+    being normal and the probability of being abnormal for each observation. PyOD
+    provides two methods for determining these percentages: `linear` or `unify`. The
+    two methods scale the outlier scores before calculating the probabilities. For
+    example, in the case of `linear`, the implementation uses `MinMaxScaler` from
+    scikit-learn to scale the scores before calculating the probabilities. The `unify`
+    method uses the z-score (standardization) and the Gaussian error function (`erf`)
+    from the SciPy library (`scipy.special.erf`).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can compare the two approaches. First, start using the `linear` method
+    to calculate the prediction probability, you can use the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: For the `unify` method, you can just update `method='unify'`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To save any PyOD model, you can use the `joblib` Python library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Earlier in the recipe, when instantiating the `KNN` class, you changed the
+    value of `method` for calculating the outlier *score* to be `mean`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s create a function for the KNN algorithm to train the model on different
+    scoring methods by updating the `method` parameter to either `mean`, `median`,
+    or `largest` to examine the impact on the decision scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`largest` uses the largest distance to the *k*th neighbor as the outlier score.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`mean` uses the average of the distances to the *k* neighbors as the outlier
+    score.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`median` uses the median of the distances to the *k* neighbors as the outlier
+    score.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Create the `knn_anomaly` function with the following parameters: `data`, `method`,
+    `contamination`, and `k`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can run the function using different methods, contamination, and *k* values
+    to experiment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Explore how the different methods produce a different threshold, which impacts
+    the outliers being detected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should print out the top 10 outliers for each method (with
+    contamination at 5%):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.4: Comparing decision scores using different KNN distance metrics](img/file281.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.4: Comparing decision scores using different KNN distance metrics'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice the top six (representing the 3% contamination) are identical for all
+    three methods. The order may vary and the decision scores are different between
+    the methods. Do notice the difference between the methods is more apparent beyond
+    the top six, as shown in *Figure 14.4*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Check out the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To learn more about unsupervised KNN, the scikit-learn library has a great
+    explanation about its implementation: [https://scikit-learn.org/stable/modules/neighbors.html#unsupervised-nearest-neighbors](https://scikit-learn.org/stable/modules/neighbors.html#unsupervised-nearest-neighbors).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To learn more about PyOD KNN and the different parameters, visit the official
+    documentation here: [https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=knn#module-pyod.models.knn](https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=knn#module-pyod.models.knn).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using LOF
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the previous recipe, *Detecting outliers using KNN*, in the KNN algorithm,
+    the decision scoring for detecting outliers was based on the distance between
+    observations. A data point far from its KNN can be considered an outlier. Overall,
+    the algorithm does a good job of capturing global outliers, but those far from
+    the surrounding points may not do well with identifying local outliers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is where the LOF (Local Outlier Factor) comes in to solve this limitation.
+    Instead of using the distance between neighboring points, it uses density as a
+    basis for scoring data points and detecting outliers. The LOF is considered a
+    **density-based algorithm**. The idea behind the LOF is that outliers will be
+    further from other data points and more isolated, and thus will be in low-density
+    regions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is easier to illustrate this with an example: imagine a person standing
+    in line in a small but busy Starbucks, and everyone is pretty much close to each
+    other; then, we can say the person is in a high-density area and, more specifically,
+    **high local density**. If the person decides to wait in their car in the parking
+    lot until the line eases up, they are isolated and in a **low-density** area,
+    thus being considered an outlier. From the perspective of the people standing
+    in line, who are probably not aware of the person in the car, that person is considered
+    not reachable even though that person in the vehicle can see all of the individuals
+    standing in line. So, we say that the person in the car is not reachable from
+    their perspective. Hence, we sometimes refer to this as **inverse reachability**
+    (how far you are from the neighbors'' perspective, not just yours).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like KNN, you still need to define the *k* parameter for the number of nearest
+    neighbors. The nearest neighbors are identified based on the distance measured
+    between the observations (think KNN), then the **Local Reachability Density**
+    (**LRD** or **local density** for short) is measured for each neighboring point.
+    This local density is the score used to compare the *k*th neighboring observations
+    and those with lower local densities than their *k*th neighbors are considered
+    outliers (they are further from the reach of their neighbors).
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will continue to work with the `tx` DataFrame, created
+    in the *Technical requirements* section, to detect outliers using the **LOF**
+    class from PyOD:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading the `LOF` class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: You should be familiar with a few parameters to control the algorithm's behavior.
+    The first parameter is `contamination`, a numeric (float) value representing the
+    dataset's fraction of outliers. For example, a value of `0.1` indicates that you
+    expect 10% of the data to be outliers. The default value is *contamination=0.1*.
+    In this recipe, you will use `0.03` (3%).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The second parameter is the number of neighbors, which defaults to `n_neighbors=5`,
+    similar to the KNN algorithm. Ideally, you will want to run different models with
+    varying values of *k* (`n_neighbors`) and compare the results to determine the
+    optimal number of neighbors. Lastly, the `metric` parameter specifies which metric
+    to use to calculate the distance. This can be any distance metrics from the scikit-learn
+    or SciPy libraries (for example, **Euclidean** or **Manhattan** distance). The
+    default value is the **Minkowski** distance with `metric='minkowski'`. Since the
+    Minkowski distance is a generalization for both the Euclidean (![](img/file282.png))
+    and Manhattan distances (![](img/file283.png)), you will notice a `p` parameter.
+    By default, `p=2` indicates Euclidean distance, while a value of `p=1` indicates
+    Manhattan distance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instantiate LOF by updating `n_neighbors=5` and `contamination=0.03` while
+    keeping the rest of the parameters with the default values. Then, train (fit)
+    the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `predict` method will output either `1` or `0` for each data point. A value
+    of `1` indicates an outlier. Store the results in a pandas Series:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Filter the predicted Series to only show the outlier values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Interestingly, it captured three out of the five known dates but managed to
+    identify the day after Thanksgiving and the day after Christmas as outliers. Additionally,
+    October 31 was on a Friday, and it was Halloween night.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `plot_outliers` function created in the *Technical requirements* section
+    to visualize the output to gain better insight:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a plot similar to that in *Figure 14.1*,
+    except the `x` markers are based on the outliers identified using the LOF algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.5: Markers showing the identified potential outliers using the
+    LOF algorithm](img/file284.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.5: Markers showing the identified potential outliers using the LOF
+    algorithm'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To print the labels (dates) with the markers, just call the `plot_outliers`
+    function again but this time with `labels=True`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce a similar plot to the one in *Figure 14.5*
+    with the addition of text labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The **LOF** is a **density-based algorithm** that assumes that outlier points
+    are more isolated and have lower local density scores compared to their neighbors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'LOF is like KNN in that we measure the distances between the neighbors before
+    calculating the local density. The local density is the basis of the decision
+    scores, which you can view using the `decision_scores_` attribute:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The scores are very different from those in *Figure 14.3* for KNN.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For more insight into `decision_`scores_, threshold_, or predict_proba, please
+    review the first recipe of this chapter, Detecting outliers using KNN.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Like the LOF, another extension of the algorithm is the **Cluster-Based Local
+    Outlier Factor (CBLOF).** The CBLOF is similar to LOF in concept as it relies
+    on cluster size and distance when calculating the scores to determine outliers.
+    So, instead of the number of neighbors (`n_neighbors` like in LOF), we now have
+    a new parameter, which is the number of clusters (`n_clusters`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The default clustering estimator, `clustering_estimator`, in PyOD is the k-means
+    clustering algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will use the CBLOF class from PyOD and keep most parameters at the default
+    values. Change the `n_clusters=8` and `contamination=0.03` parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a plot similar to that in *Figure 14.1* except
+    the `x` markers are based on the outliers identified using the CBLOF algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.6: Markers showing the identified potential outliers using the
+    CBLOF algorithm](img/file285.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.6: Markers showing the identified potential outliers using the CBLOF
+    algorithm'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare *Figure 14.6* with *Figure 14.5* (LOF) and notice the similarity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about the LOF and CBLOF algorithms, you can visit the PyOD documentation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'LOF: [https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.lof](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.lof)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'CBLOF: [https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.cblof](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.cblof)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using iForest
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**iForest** has similarities with another popular algorithm known as **Random
+    Forests**. Random Forests is a **tree-based supervised learning** algorithm. In
+    supervised learning, you have existing labels (classification) or values (regression)
+    representing the target variable. This is how the algorithm learns (it is supervised).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The name *forest* stems from the underlying mechanism of how the algorithm works.
+    For example, in classification, the algorithm randomly samples the data to build
+    multiple weak classifiers (smaller decision trees) that collectively make a prediction.
+    In the end, you get a forest of smaller trees (models). This technique outperforms
+    a single complex classifier that may overfit the data. Ensemble learning is the
+    concept of multiple weak learners collaborating to produce an optimal solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: iForest, also an **ensemble learning** method, is the unsupervised learning
+    approach to Random Forests. The iForest algorithm isolates anomalies by randomly
+    partitioning (splitting) a dataset into multiple partitions. This is performed
+    recursively until all data points belong to a partition. The number of partitions
+    required to isolate an anomaly is typically smaller than the number of partitions
+    needed to isolate a regular point. The idea is that an anomaly data point is further
+    from other points and thus easier to separate (isolate).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In contrast, a normal data point is probably clustered closer to the larger
+    set and, therefore, will require more partitions (splits) to isolate that point.
+    Hence the name, isolation forest, since it identifies outliers through isolation.
+    Once all the points are isolated, the algorithm will create an outlier score.
+    You can think of these splits as creating a decision tree path. The shorter the
+    path length to a point, the higher the chances of an anomaly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will continue to work with the `nyc_taxi` DataFrame to
+    detect outliers using the `IForest` class from the PyOD library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading the `IForest` class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: There are a few parameters that you should be familiar with to control the algorithm's
+    behavior. The first parameter is `contamination`. The default value is `contamination=0.1`
+    but in this recipe, you will use `0.03` (3%).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The second parameter is `n_estimators`, which defaults to `n_estimators=100`.
+    This is the number of random trees generated. Depending on the complexity of your
+    data, you may want to increase this value to a higher range, such as `500` or
+    more. Start with the default smaller value to understand how the baseline model
+    works—finally, `random_state` defaults to `None`. Since the iForest algorithm
+    randomly generates partitions for the data, it is good to set a value to ensure
+    that your work is reproducible. This way, you can get consistent results back
+    when you rerun the code. Of course, this could be any integer value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instantiate `IForest` and update the `contamination` and `random_state` parameters.
+    Then, fit the new instance of the class (`iforest`) on the resampled data to train
+    the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Use the `predict` method to identify outliers. The method will output either
+    `1` or `0` for each data point. For example, a value of `1` indicates an outlier.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s store the results in a pandas Series:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: Interestingly, unlike the previous recipe, *Detecting outliers using KNN*, iForest
+    detected `7` outliers while the KNN algorithm detected `6`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Overall, iForest captured four out of the five known outliers. There are additional
+    but interesting dates identified that should trigger an investigation to determine
+    whether these data points are outliers. For example, November 8, 2014, was detected
+    as a potential outlier by the algorithm, which was not considered in the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `plot_outliers` function created in the *Technical requirements* section
+    to visualize the output to gain better insight:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a plot similar to that in *Figure 14.1* except
+    the `x` markers are based on the outliers identified using the iForest algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.7: Markers showing the identified potential outliers using the
+    iForest algorithm](img/file286.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.7: Markers showing the identified potential outliers using the iForest
+    algorithm'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To print the labels (dates) with the markers, just call the `plot_outliers`
+    function again but this time with `labels=True`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce a similar plot as the one in *Figure 14.7*
+    with the addition of text labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Since iForest is an ensemble method, you will be creating multiple models (tree
+    learners). The default value of `n_estimators` is `100`. Increasing the number
+    of base estimators may improve model performance up to a certain level before
+    the computational performance takes a hit. So, for example, think of the number
+    of estimators as trained models. For instance, for 100 estimators, you are essentially
+    creating 100 decision tree models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is one more parameter worth mentioning, which is the `bootstrap` parameter.
+    It is a Boolean set to `False` by default. Since iForest randomly samples the
+    data, you have two options: random sampling with replacement (known as *bootstrapping*)
+    or random sampling without replacement. The default behavior is sampling without
+    replacement.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The iForest algorithm from PyOD (the `IForest` class) is a wrapper to scikit-learn's
+    `IsolationForest` class. This is also true for the KNN used in the previous recipe,
+    *Detecting outliers using KNN*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s explore this further and use scikit-learn to implement the iForest algorithm.
+    You will use the `fit_predict()` method as a single step to train and predict,
+    which is also available in PyOD''s implementations across the various algorithms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: The results are the same. But do notice that, unlike PyOD, the identified outliers
+    were labeled as `-1`, while in PyOD, outliers were labeled with `1`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The PyOD iForest implementation is actually a wrapper to the `IsolationForest`
+    class from scikit-learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To learn more about PyOD iForest and the different parameters, visit their
+    official documentation here: [https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=knn#module-pyod.models.iforest](https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=knn#module-pyod.models.iforest).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To learn more about the `IsolationForest` class from scikit-learn, you can
+    visit their official documentation page here: [https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html#sklearn-ensemble-isolationforest](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html#sklearn-ensemble-isolationforest).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using One-Class Support Vector Machine (OCSVM)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Support Vector Machine (SVM)** is a popular supervised machine learning algorithm
+    that is mainly known for classification but can also be used for regression. The
+    popularity of SVM comes from the use of kernel functions (sometimes referred to
+    as the **kernel trick**), such as linear, polynomial, **Radius-Based Function**
+    (**RBF**), and the sigmoid function.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to classification and regression, SVM can also be used for outlier
+    detection in an unsupervised manner, similar to KNN, which is mostly known as
+    a supervised machine learning technique but was used in an unsupervised manner
+    for outlier detection, as seen in the *Outlier detection using KNN* recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will continue to work with the `tx` DataFrame, created
+    in the *Technical requirements* section, to detect outliers using the `ocsvm`
+    class from PyOD:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading the `OCSVM` class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: There are a few parameters that you should be familiar with to control the algorithm's
+    behavior. The first parameter is `contamination`. The default value is `contamination=0.1`
+    and in this recipe, you will use `0.03` (3%).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The second parameter is `kernel`, which is set to `rbf`, which you will keep
+    as is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instantiate OCSVM by updating `contamination=0.03` while keeping the rest of
+    the parameters with the default values. Then, train (fit) the model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `predict` method will output either `1` or `0` for each data point. A value
+    of `1` indicates an outlier. Store the results in a pandas Series:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Filter the predicted Series to only show the outlier values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: Interestingly, it captured one out of the five known dates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `plot_outliers` function created in the *Technical requirements* section
+    to visualize the output to gain better insight:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a plot similar to that in *Figure 14.1* except
+    the `x` markers are based on the outliers identified using the OCSVM algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.8: Line plot with markers for each outlying point using OCSVM](img/file287.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.8: Line plot with markers for each outlying point using OCSVM'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When examining the plot in *Figure 14.8*, it is not clear why OCSVM picked up
+    on those dates as being outliers. The RBF kernel can capture non-linear relationships,
+    so you would expect it to be a robust kernel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The reason for this inaccuracy is that SVM is sensitive to data scaling. To
+    get better results, you will need to standardize (scale) your data first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s fix this issue and standardize the data and then rerun the algorithm
+    again:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Interestingly, now the model identified four out of the five known outlier dates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `plot_outliers` function on the new result set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a more reasonable plot, as shown in the following
+    figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.9: OCSVM after scaling the data using the standardizer function](img/file288.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.9: OCSVM after scaling the data using the standardizer function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the results from *Figure 14.9* and *Figure 14.8* to see how scaling
+    made a big difference in how the OCSVM algorithm identified outliers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The PyOD implementation for OCSVM is a wrapper to scikit-learn's **OneClassSVM**
+    implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similar to SVM, OneClassSVM is sensitive to outliers and also the scaling of
+    the data. In order to get reasonable results, it is important to standardize (scale)
+    your data before training your model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s explore how the different kernels perform on the same dataset. In the
+    following code, you test four kernels: `''linear''`, `''poly''`, `''rbf''`, and
+    `''sigmoid''`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Recall that when working with SVM, you will need to scale your data. You will
+    use the scaled dataset created earlier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a plot for each kernel so you can visually
+    inspect and compare the difference between them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.10: Comparing the different kernels with OCSVM](img/file289.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.10: Comparing the different kernels with OCSVM'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interestingly, each kernel method captured slightly different outliers. You
+    can rerun the previous code to print out the labels (dates) for each marker by
+    passing the `labels=True` parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about the OCSVM implementation, visit the official documentation
+    here: [https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.ocsvm](https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.ocsvm).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting outliers using COPOD
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'COPOD is an exciting algorithm based on a paper published in September 2020,
+    which you can read here: [https://arxiv.org/abs/2009.09463](https://arxiv.org/abs/2009.09463).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The PyOD library offers many algorithms based on the latest research papers,
+    which can be broken down into linear models, proximity-based models, probabilistic
+    models, ensembles, and neural networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: COPOD falls under probabilistic models and is labeled as a *parameter-free*
+    algorithm. The only parameter it takes is the *contamination* factor, which defaults
+    to `0.1`. The COPOD algorithm is inspired by statistical methods, making it a
+    fast and highly interpretable model. The algorithm is based on copula, a function
+    generally used to model dependence between independent random variables that are
+    not necessarily normally distributed. In time series forecasting, copulas have
+    been used in univariate and multivariate forecasting, which is popular in financial
+    risk modeling. The term copula stems from the copula function joining (coupling)
+    univariate marginal distributions to form a uniform multivariate distribution
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will continue to work with the `tx` DataFrame to detect
+    outliers using the `COPOD` class from the PyOD library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading the `COPOD` class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: The only parameter you need to consider is `contamination`. Generally, think
+    of this parameter (used in all the outlier detection implementations) as a threshold
+    to control the model's sensitivity and minimize the false positives. Since it
+    is a parameter you control, ideally, you want to run several models to experiment
+    with the ideal threshold rate that works for your use cases.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For more insight into `decision_scores_`, `threshold_`, or `predict_proba`,
+    please review the first recipe, *Detecting outliers using KNN*, of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instantiate `COPOD` and update `contamination` to `0.03`. Then, fit on the
+    resampled data to train the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: Use the `predict` method to identify outliers. The method will output either
+    `1` or `0` for each data point. For example, a value of `1` indicates an outlier.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Store the results in a pandas Series:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: The number of outliers matches the number you got using iForest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Filter the predicted Series only to show the outlier values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Compared with other algorithms you have explored so far, you will notice some
+    interesting outliers captured with COPOD that were not identified before. For
+    example, COPOD identified July 4, a national holiday in the US (Independence Day).
+    It happens to fall on a weekend (Friday being off). The COPOD model captured anomalies
+    throughout the weekend for July 4 and July 6\. It happens that July 6 was an interesting
+    day due to a baseball game in New York.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `plot_outliers` function created in the *Technical requirements* section
+    to visualize the output to gain better insights:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce a plot similar to that in *Figure 14.1*,
+    except the `x` markers are based on the outliers identified using the COPOD algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.11: Markers showing the identified potential outliers using the
+    COPOD algorithm](img/file290.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.11: Markers showing the identified potential outliers using the COPOD
+    algorithm'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To print the labels (dates) with the markers, just call the `plot_outliers`
+    function again, but this time with `labels=True`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce a similar plot to the one in *Figure 14.11*
+    with the addition of text labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: COPOD is an advanced algorithm, but it is still based on probabilistic modeling
+    and finding statistically significant extremes within the data. Several tests
+    using COPOD have demonstrated its superb performance against benchmark datasets.
+    The appeal of using COPOD is that it is parameter-free (aside from the contamination
+    factor). So, as a user, you do not have to worry about hyperparameter tuning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Another simple and popular probabilistic algorithm is the **Median Absolute
+    Deviation** (**MAD**). We explored MAD in *Chapter 8*, *Outlier Detection Using
+    Statistical Methods*, in the *Outlier detection using modified z-score* recipe,
+    in which you built the algorithm from scratch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a similar implementation provided by PyOD and takes one parameter, the
+    threshold. If you recall from *Chapter 8*, *Outlier Detection Using Statistical
+    Methods*, the threshold is based on the standard deviation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code shows how we can implement MAD with PyOD. You will use `threshold=3`
+    to replicate what you did in *Chapter 8*, *Outlier Detection Using Statistical
+    Methods*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should match the results you obtained in *Chapter 8*, *Outlier Detection
+    Using Statistical Methods*, with the modified z-score implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about COPOD and its implementation in PyOD, visit the official
+    documentation here: [https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=copod#pyod.models.copod.COPOD](https://pyod.readthedocs.io/en/latest/pyod.models.html?highlight=copod#pyod.models.copod.COPOD).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you are interested in reading the research paper for *COPOD: Copula-Based
+    Outlier Detection* (published in September 2020), visit the arXiv.org page here:
+    [https://arxiv.org/abs/2009.09463](https://arxiv.org/abs/2009.09463).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting outliers with PyCaret
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, you will explore **PyCaret** for outlier detection. PyCaret
+    ([https://pycaret.org](https://pycaret.org)) is positioned as "an open-source,
+    low-code machine learning library in Python that automates machine learning workflows".
+    PyCaret acts as a wrapper for PyOD, which you used earlier in the previous recipes
+    for outlier detection. What PyCaret does is simplify the entire process for rapid
+    prototyping and testing with a minimal amount of code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will use PyCaret to examine multiple outlier detection algorithms, similar
+    to the ones you used in earlier recipes, and see how PyCaret simplifies the process
+    for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The recommended way to explore PyCaret is to create a new virtual Python environment
+    just for PyCaret so it can install all the required dependencies without any conflicts
+    or issues with your current environment. If you need a quick refresher on how
+    to create a virtual Python environment, check out the *Development environment
+    setup* recipe, from *Chapter 1*, *Getting Started with Time Series Analysis*.
+    The chapter covers two methods: using `conda` and `venv`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following instructions will show the process using `conda`. You can call
+    the environment any name you like; for the following example, we will name our
+    environment `pycaret`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to make the new `pycaret` environment visible within Jupyter, you
+    can run the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There is a separate Jupyter notebook for this recipe, which you can download
+    from the GitHub repository:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch14/Chapter%2014-pycaret.ipynb](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch14/Chapter%2014-pycaret.ipynb)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will not be introduced to any new concepts. The focus is
+    to demonstrate how PyCaret can be a great starting point when you are experimenting
+    and want to quickly evaluate different models. You will load PyCaret and run it
+    for different outlier detection algorithms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading all the available functions from the `pycaret.anomaly` module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce a table summary as show in Figure 14.12
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.12 – PyCaret summary output](img/file291.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.12 – PyCaret summary output
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To print a list of available outlier detection algorithms, you can run `models()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should display a pandas DataFrame, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.14: Available outlier detection algorithms from PyCaret](img/file292.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.14: Available outlier detection algorithms from PyCaret'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice these are all sourced from the PyOD library. As stated earlier, PyCaret
+    is a wrapper on top of PyOD and other libraries, such as scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s store the names of the first eight algorithms in a list to use later:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Loop through the list of algorithms and store the output in a dictionary so
+    you can reference it later for your analysis. To create a model in PyCaret, you
+    simply use the `create_model()` function. This is similar to the `fit()` function
+    in scikit-learn and PyOD for training the model. Once the model is created, you
+    can use the model to predict (identify) the outliers using the `predict_model()`
+    function. PyCaret will produce a DataFrame with three columns: the original `value`
+    column, a new column, `Anomaly`, which stores the outcome as either `0` or `1`,
+    where `1` indicates an outlier, and another new column, `Anomaly_Score`, which
+    stores the score used (the higher the score, the higher the chance it is an anomaly).'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'You will only change the contamination parameter to match earlier recipes using
+    PyOD. In PyCaret, the contamination parameter is called `fraction` and to be consistent,
+    you will set that to `0.03` or 3% with `fraction=0.03`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `results` dictionary contains the output (a DataFrame) from each model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To print out the outliers from each model, you can simply loop through the
+    dictionary:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should print the results for each of the eight models. The following are
+    the first two models from the list as an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'PyCaret is a great library for automated machine learning, and recently they
+    have been expanding their capabilities around time series analysis and forecasting
+    and anomaly (outlier) detection. PyCaret is a wrapper over PyOD, the same library
+    you used in earlier recipes of this chapter. *Figure 14.14* shows the number of
+    PyOD algorithms supported by PyCaret, which is a subset of the more extensive
+    list from PyOD: [https://pyod.readthedocs.io/en/latest/index.html#implemented-algorithms](https://pyod.readthedocs.io/en/latest/index.html#implemented-algorithms).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about PyCaret''s outlier detection, please visit the official
+    documentation here: [https://pycaret.gitbook.io/docs/get-started/quickstart#anomaly-detection](https://pycaret.gitbook.io/docs/get-started/quickstart#anomaly-detection).'
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,866 @@
+- en: Programming with Tidyverse and Bioconductor
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: R is a great language to use interactively; however, that does mean many users
+    don't get experience of using it as a language in which to do programming—that
+    is, for automating analyses and saving the user's time and efforts when it comes
+    to repeating stuff. In this chapter, we'll take a look at some techniques for
+    doing just that—in particular, we'll look at how to integrate base R objects into
+    `tidyverse` workflows, extend `Bioconductor` classes to suit our own needs, and
+    use literate programming and notebook-style coding to keep expressive and readable
+    records of our work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following recipes will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making base R objects tidy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using nested dataframes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing functions for use in `mutate`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working programmatically with Bioconductor classes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Developing reusable workflows and reports
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Making use of the apply family of functions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sample data you'll need is available from this book's GitHub repository
+    at [https://github.com/PacktPublishing/R-Bioinformatics-Cookbook](https://github.com/PacktPublishing/R-Bioinformatics-Cookbook)[.](https://github.com/danmaclean/R_Bioinformatics_Cookbook) If
+    you want to use the code examples as they are written, then you will need to make
+    sure that this data is in a sub-directory of whatever your working directory is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the R packages that you''ll need. In general, you can install these
+    packages with `install.packages("package_name")`. The packages listed under `Bioconductor`
+    need to be installed with the dedicated installer. If you need to do anything
+    further, installation will be described in the recipes in which the packages are
+    used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Bioconductor`:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Biobase`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`biobroom`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`SummarizedExperiment`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`broom`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dplyr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ggplot2`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`knitr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`magrittr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`purrr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`rmarkdown`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`tidyr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Bioconductor` is huge and has its own installation manager. You can install
+    the manager with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you can install the packages with this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further information is available at [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, in R, a user will load a library and use functions directly by name.
+    This is great in interactive sessions but it can cause confusion when many packages
+    are loaded. To clarify which package and function I'm using at a given moment,
+    I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, in the middle of a recipe, I''ll interrupt the code so you can see
+    some intermediate output or the structure of an object that''s important to understand.
+    Whenever that happens, you''ll see a code block where each line begins with `##` (double
+    hash) symbols. Consider the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`letters[1:5]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will give us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`## a b c d e`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the output lines are prefixed with `##`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making base R objects tidy
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `tidyverse` set of packages (including `dplyr`, `tidyr`, and `magrittr`)
+    have had a huge influence on data processing and analysis in R through their application
+    of the tidy way of working. In essence, this means that data is kept in a particular
+    tidy format, in which each row holds a single observation and each column keeps
+    all observations of a single variable. Such a structure means that analytical
+    steps have predictable inputs and outputs and can be built into fluid and expressive
+    pipelines. However, most base R objects are not tidy and can often need significant
+    programming work to extract the bits that are needed to assemble objects for use
+    downstream. In this recipe, we'll look at some functions for automatically converting
+    some common base R objects into a tidy dataframe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll need the `tidyr`, `broom`, and `biobroom` packages. We'll use the built-in
+    `mtcars` data and `modencodefly_eset.RData` from the `datasets/ch1` folder of
+    this book's repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Making base R objects tidy can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Tidy an `lm` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Tidy a `t_test` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Tidy an ANOVA object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Tidy a `Bioconductor` `ExpressionSet` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Step 1* shows some functions for tidying an `lm` object with the `lm()` function.
+    The first step is to create the object. Here, we perform a multiple regression
+    model using the `mtcars` data. We then use the `tidy()` function on the model
+    to return the object summary of components of the model, for example, the coefficient,
+    as a tidy dataframe. The `augment()` function returns extra per-observation data
+    for an `lm` object should we want that—again, it''s in tidy format. The `glance()` function
+    inspects the model itself and returns summaries about it—naturally, in tidy format.
+    `glance()` is useful for comparing models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 2* shows the same process for the `t.test` object. First, we run a t-test
+    on two vectors of random numbers. The `tidy()` function gives us all of the details
+    in a tidy dataframe.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we run an ANOVA on the `iris` data. We use the `aov()` function
+    to look at the effect of `Species` on `Petal.Length`. We can use `tidy()` again
+    on the result but it gives a summary of the components of the model. In fact,
+    we're probably more interested in the comparisons from a post-hoc test, which
+    is performed using the `TukeyHSD()` function on the next line; it too can be used
+    in `tidy()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 4*, we use the `biobroom` version of `tidy()` on the `ExpressionSet`
+    object. This turns the square matrix of expression values into a tidy dataframe
+    along with columns for sample and other types of data. The extra argument, `addPheno`, is
+    specific to this type of object and inserts the phenotype metadata from the `ExpressionSet`
+    metadata container. Note that the resulting dataframe is over 2 million lines
+    long—biological datasets can be large and can generate very large dataframes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using nested dataframes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The dataframe is at the core of the tidy way of working and we tend to think
+    of it as a spreadsheet-like rectangular data container with only a single value
+    in each cell. In fact, dataframes can be nested—that is, they can hold other dataframes
+    in specific, single cells. This is achieved internally by replacing a dataframe's
+    vector column with a list column. Each cell is instead a member of a list, so
+    any sort of object can be held within the conceptual single cell of the outer
+    dataframe. In this recipe, we'll look at ways of making a nested dataframe and
+    different ways of working with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll need the `tidyr`, `dplyr`, `purrr`, and `magrittr` libraries. We'll also
+    use the `diamonds` data from the `ggplot2` package, though we won't use any functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Using nested dataframes can be done with the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a nested dataframe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add a new list column holding the results of `lm()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add a new list column holding the results of `tidy()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Unnest the whole dataframe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run the pipeline in a single step:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In *Step 1*, we use the `nest()` function to nest the `mtcars` dataframe. The
+    `-` option tells the function which columns to exclude from nesting effectively;
+    making the `cyl` column a factor using which the different subsets are created.
+    Conceptually, this is similar to the `dplyr::group_by()` function. Inspecting
+    the object gives us this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The nested dataframe contains a new column of dataframes called `data`, alongside
+    the reduced `cyl` column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we create a new column on our dataframe by using `mutate()`. Within
+    this, we use the `map()` function from `purrr`, which iterates over items in a
+    list provided as its first argument (so our data column of dataframes) and uses
+    them in the code provided as its second argument. Here, we use the `lm()` function
+    on the nested data, one element at a time—note that the `.x` variable just means
+    *the thing we''re currently working on—*so, the current item in the list. When
+    run, the list now looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The new `model` list column holds our `lm` objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Having established that the pattern to add new list columns is to use `mutate()`
+    with `map()` inside, we can then tidy up the `lm` objects in the same way. This
+    is what happens in *Step 3*. The result gives us the following nested dataframe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Step 4* uses the `unnest()` function to return everything to a single dataframe;
+    the second argument, `tidy_model`, is the column to unpack.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 5* repeats the whole of *Steps 1* to *4* in a single pipeline, highlighting
+    that these are just regular `tidyverse` functions and can be chained together
+    without having to save intermediate steps.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `unnest()` function will only work when the nested list column members are
+    compatible and can be sensibly aligned and recycled according to the normal rules.
+    In many cases, this won't be true so you will need to manually manipulate the
+    output. The following example shows how we can do that. The workflow is essentially
+    the same as the preceding example, though one change early on is that we use `dplyr::group_by()`
+    to create the groups for `nest()`.In `mutate()`, we pass a custom function to
+    analyze the data, but, otherwise, this step is the same. The last step is the
+    biggest change and takes advantage of `transmute()` to drop the unneeded columns
+    and create a new column that is the result of `map_dbl()` and a custom summary
+    function. `map_dbl()` is like `map()` but returns only double numeric vectors.
+    Other `map_**` functions also exist.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing functions for use in dplyr::mutate()
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `mutate()` function from `dplyr` is extremely useful one for adding new
+    columns to a dataframe based on computations from existing columns. It is a vectorized
+    function, though, and is often misunderstood as working row-wise when it actually
+    works column-wise, that is, on whole vectors with R's built-in recycling. This
+    behavior can often be confusing for those looking to use `mutate()` on non-trivial
+    examples or with custom functions, so, in this recipe, we're going to examine
+    how `mutate()` actually behaves in certain situations, with the hope that this
+    will be enlightening.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this, we'll need the `dplyr` package and the built-in `iris` data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Writing functions for use in `dplyr::mutate()` can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use a function that returns a single value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use a function that returns the same number of values as given:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use a function that returns neither a single value nor the same number of values
+    as given:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Force repetition of the function to fit the length of the vector:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In *Step 1*, we create a function that, given a vector, returns only a single
+    value (a vector of length one). We then use it in `mutate()` to add a column called
+    `result` and get the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note how the single value the function returns in the `result` column is repeated
+    over and over. With `length == 1` vectors, R will recycle the result and place
+    it in every position.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we go to the opposite end and create a function that, given a
+    vector, returns a vector of identical length (specifically, it returns a vector
+    of the word `result_` pasted onto a number representing the position in the vector).
+    When we run it, we get this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Because it is exactly the same length as the rest of the columns of the dataframe,
+    R will accept it and apply it as a new column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we create a function that returns a vector of three elements. As
+    the length is neither one nor the length of the other columns of the dataframe,
+    the code fails.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 4*, we look at how we can repeat an incompatible length vector to
+    make it fit should we need to. The `rep_until()` function with the `length.out`
+    argument repeats its input until the vector is `length.out` long. In this way,
+    we get the following column, which is what we were hoping to see with the function
+    in *Step 3*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Working programmatically with Bioconductor classes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The wide scope of `Bioconductor` means that there are a great number of classes
+    and methods for accomplishing pretty much any bioinformatics workflow that you'd
+    want to. Sometimes, though, it would be helpful to have an extra data slot or
+    some other tweak to the tools that would help to simplify our lives. In this recipe,
+    we're going to look at how to extend an existing class to include some extra information
+    that is specific to our particular data. We'll look at extending the `SummarizedExperiment` class
+    to add hypothetical barcode information—a type of metadata indicating some nucleotide
+    tags that identify the sample that is included in the sequence read.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll just need the Bioconductor `SummarizedExperiment` packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Working programmatically with the `Bioconductor` classes can be done using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a new class inheriting from `SummarizedExperiment`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a constructor function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add the required methods to the class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build an instance of the new class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Call the new method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we create a new S4 class using the `setClass()` function. This
+    takes the name of the new class as the first argument. The `contains` argument
+    specifies which existing class we wish to inherit from (so that our new class
+    will contain all of the functionality of this class plus any new stuff we create).
+    The `slots` argument specifies the new data slots we want to add and requires
+    that we give a type for them. Here, we're adding text data slots for the new `barcode_id`
+    and `barcode_sequence` slots, so use `character` for both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we create a constructor function. The name of this function must
+    be the same as the class, and we specify the arguments we need to create a new
+    object in the call to `function()`. Within the body, we use the `new()` function,
+    whose first argument is the name of the class to instantiate from. The rest of
+    the body is taken up with the mechanics of populating the instance with data;
+    we call the inherited `SummarizedExperiment` constructor to populate that part
+    of the new object, and then manually populate the new barcode slots. Every time
+    we run `BarcodedSummarizedExperiment`, we will get a new object of that class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we add a new function (strictly speaking, in R, it's called a method).
+    If we choose a function name that doesn't already exist as a `Generic` function
+    in R, we must register the name of the function with `setGeneric()`, which takes
+    the name of the function as its first argument and a boilerplate function as its
+    second. Once the `Generic` function is set, we can add actual functions with the
+    `setMethod()` function. The name of the new function is the first argument, the
+    class it will attach to is the second, and the code itself is the third. Note
+    that we are just creating an accessor (`getter`) function that returns the data
+    in the `barcode_id` slot of the current object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 4*, our preparatory work is done so we can build an instance of the
+    class. In the first six lines of this step, we simply create the data we need
+    to build the object. This is the part that goes into a normal `SummarizedExperiment`
+    object; you can see more details on what exactly is going on here in the documentation.
+    We can then actually create `my_new_barcoded_experiment` by calling the `BarcodedSummarizedExperiment`
+    function with the data we created and some new specific data for the new `barcode_id`
+    and `barcode_sequence` slots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, with the object created, in *Step 5*, we can use our method, calling it
+    like any other function with our new object as the argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Developing reusable workflows and reports
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A very common task in bioinformatics is writing up our results in order to communicate
+    them to a colleague or just to have a good record in our laboratory books (electronic
+    or otherwise). A key skill is to make the work as reproducible as possible so
+    that we can rerun it ourselves when we need to revisit it or someone else interested
+    in what we did can replicate the process. One increasingly popular solution to
+    this problem is to use literate programming techniques and executable notebooks
+    that are a mixture of human-readable text, analytical code, and computational
+    output rolled into a single document. In R, the `rmarkdown` package allows us
+    to combine code and text in this way and create output documents in a variety
+    of formats.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we'll look at the large-scale structure of one such document
+    that can be compiled with `rmarkdown`. The RStudio application makes this process
+    very straightforward so we'll look at compilation from within that tool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll need the RStudio application available at [https://www.rstudio.com/](https://www.rstudio.com/) and
+    the `rmarkdown` package. The sample code for this recipe is available in the `example_rmarkdown.rmd`
+    file in this book's `datasets/ch10/` folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Developing reusable workflows and reports can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In an external file, add a `YAML` header:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, add some text and code to be interpreted:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]{r}'
+  prefs: []
+  type: TYPE_NORMAL
+- en: x <- iris$Sepal.Width
+  prefs: []
+  type: TYPE_NORMAL
+- en: y <- iris$Sepal.Length
+  prefs: []
+  type: TYPE_NORMAL
+- en: lm(y ~ x, data = iris)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Text can be formatted using minimal markup tags:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Apply further options and carry over variables within a block:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]{r, fig.width=12 }'
+  prefs: []
+  type: TYPE_NORMAL
+- en: plot(x, y)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code here is unique in that it must be run from inside an external document;
+    it won't run in the R console. The compilation step to run the document can be
+    done in a couple of ways. Within RStudio, once `rmarkdown` is installed and you
+    are editing a document with a `.Rmd` extension, you get a `knit` button. Alternatively,
+    you can compile a document from the console with the `rmarkdown::render()` function,
+    though I recommend the RStudio IDE for this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 1* of the actual document, we create a `YAML` header that describes
+    how the document should be rendered including output formats, dynamic date insertion,
+    and author and titles. These will be added to your document automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we actually create some content—the first line is just plaintext
+    and will pass through into the eventual document unmodified as paragraph text.
+    The section within the block delineated by [PRE32] [PRE33]
+  prefs: []
+  type: TYPE_NORMAL
+- en: m <- matrix(rep(1:10, 10, replace = TRUE), nrow = 10)
+  prefs: []
+  type: TYPE_NORMAL
+- en: apply(m, 1, sum)
+  prefs: []
+  type: TYPE_NORMAL
+- en: apply(m, 2, sum)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: numbers <- 1:3
+  prefs: []
+  type: TYPE_NORMAL
+- en: number_of_numbers <- function(x){
+  prefs: []
+  type: TYPE_NORMAL
+- en: rnorm(x)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '}'
+  prefs: []
+  type: TYPE_NORMAL
+- en: my_list <- lapply(numbers, number_of_numbers)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: summary_function <- function(x){
+  prefs: []
+  type: TYPE_NORMAL
+- en: mean(x)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '}'
+  prefs: []
+  type: TYPE_NORMAL
+- en: lapply(my_list, summary_function)
+  prefs: []
+  type: TYPE_NORMAL
+- en: sapply(my_list, summary_function)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: list_from_data_frame <- lapply(iris, mean, trim = 0.1, na.rm = TRUE )
+  prefs: []
+  type: TYPE_NORMAL
+- en: unlist(list_from_data_frame)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: m
+  prefs:
+  - PREF_H2
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: '[,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[1,] 1 1 1 1 1 1 1 1 1 1'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[2,] 2 2 2 2 2 2 2 2 2 2'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[3,] 3 3 3 3 3 3 3 3 3 3'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: apply(m, 1, sum)
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: '[1] 10 20 30 40 50 60 70 80 90 100'
+  prefs: []
+  type: TYPE_NORMAL
+- en: apply(m, 2, sum)
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: '[1] 55 55 55 55 55 55 55 55 55 55'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: '>my_list'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[[1]] [1] -0.3069078'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[[2]] [1] 0.9207697 1.8198781'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[[3]] [1] 0.3801964 -1.3022340 -0.8660626'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: '>lapply(my_list, summary_function)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[[1]] [1] -0.3069078'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[[2]] [1] 1.370324'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[[3]] [1] -0.5960334'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '>sapply(my_list, summary_function)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[1] -0.3069078 1.3703239 -0.5960334'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: lapply(iris, mean, trim = 0.1, na.rm = TRUE )
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: $Sepal.Length [1] 5.808333
+  prefs: []
+  type: TYPE_NORMAL
+- en: $Sepal.Width [1] 3.043333
+  prefs: []
+  type: TYPE_NORMAL
+- en: $Petal.Length [1] 3.76
+  prefs: []
+  type: TYPE_NORMAL
+- en: $Petal.Width [1] 1.184167
+  prefs: []
+  type: TYPE_NORMAL
+- en: $Species [1] NA
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: unlist(list_from_data_frame)
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.808333 3.043333 3.760000 1.184167 NA
+  prefs: []
+  type: TYPE_NORMAL
+- en: '```'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If names are present, the vector is named.
+  prefs: []
+  type: TYPE_NORMAL

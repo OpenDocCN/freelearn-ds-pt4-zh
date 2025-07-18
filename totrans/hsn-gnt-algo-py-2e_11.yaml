@@ -1,0 +1,751 @@
+- en: '8'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Hyperparameter Tuning of Machine Learning Models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter describes how genetic algorithms can be used to improve the performance
+    of **supervised machine learning** models by tuning the hyperparameters of the
+    models. The chapter will start with a brief introduction to **hyperparameter tuning**
+    in machine learning before describing the concept of a **grid search**. After
+    introducing the Wine dataset and the adaptive boosting classifier, both of which
+    will be used throughout this chapter, we will demonstrate hyperparameter tuning
+    using both a conventional grid search and a genetic-algorithm-driven grid search.
+    Finally, we will attempt to enhance the results we get by using a direct genetic
+    algorithm approach for hyperparameter tuning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of this chapter, you will be able to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Demonstrate familiarity with the concept of hyperparameter tuning in machine
+    learning
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Demonstrate familiarity with the Wine dataset and the adaptive boosting classifier
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enhance the performance of a classifier using a hyperparameter grid search
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enhance the performance of a classifier using a genetic-algorithm-driven hyperparameter
+    grid search
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enhance the performance of a classifier using a direct genetic algorithm approach
+    for hyperparameter tuning
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will start this chapter with a quick overview of hyperparameters in machine
+    learning. If you are a seasoned data scientist, feel free to skip the introductory
+    section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be using Python 3 with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**deap**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**numpy**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**pandas**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**matplotlib**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**seaborn**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**scikit-learn**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you use the **requirements.txt** file we provide (see [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091)),
+    these libraries are already included in your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition, we will be using the UCI Wine dataset: [https://archive.ics.uci.edu/ml/datasets/Wine](https://archive.ics.uci.edu/ml/datasets/Wine)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The programs that will be used in this chapter can be found in this book’s
+    GitHub repository:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_08](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_08)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the code in action: [https://packt.link/OEBOd](https://packt.link/OEBOd)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameters in machine learning
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 7*](B20851_07.xhtml#_idTextAnchor221), *Enhancing Machine Learning
+    Models Using Feature Selection*, we described *supervised learning* as the programmatic
+    process of adjusting (or tuning) the internal parameters of a model to produce
+    the desired outputs in response to given inputs. To make this happen, each type
+    of supervised learning model is accompanied by a learning algorithm that iteratively
+    adjusts its internal parameters during the *learning* (or training) phase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, most models have another set of parameters that are set *before* the
+    learning takes place. These are called **hyperparameters** and affect the way
+    the learning is done. The following figure illustrates the two types of parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.1: Hyperparameter tuning of a machine learning model](img/B20851_08_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.1: Hyperparameter tuning of a machine learning model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Usually, the hyperparameters have default values that will take effect if we
+    don’t specifically set them. For example, if we look at the `scikit-learn` library
+    implementation of the **decision tree classifier** ([https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html](https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html)),
+    we will see several hyperparameters and their default values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A few of these hyperparameters are described in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Name** | **Type** | **Description** | **Default value** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `max_depth` | int | The maximum depth of the tree | None |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `splitter` | enumerated | The strategy that’s used to choose the split at
+    each best node:`{''``best'', ''random''}` | `''``best''` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `min_samples_split` | int or float | The minimum number of samples required
+    to split an internal node | `2` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 8.1: Hyperparameters and their details'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each of these parameters affects the way the decision tree is constructed during
+    the learning process, and their combined effect on the results of the learning
+    process—and, consequently, on the performance of the model—can be significant.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the choice of hyperparameters has a considerable impact on the performance
+    of machine learning models, data scientists often spend significant amounts of
+    time looking for the best hyperparameter combinations, a process called **hyperparameter
+    tuning**. Some of the methods that are used for hyperparameter tuning will be
+    described in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameter tuning
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A common way of searching for good combinations of hyperparameters is using
+    a `{2, 5, 10}`, for the `max_depth` parameter, while, for the `splitter` parameter,
+    we choose both possible values—`{"best", "random"}`. Then, we try out all six
+    possible combinations of these values. For each combination, the classifier is
+    trained and evaluated for a certain performance criterion; for example, accuracy.
+    At the end of the process, we pick the combination of hyperparameter values that
+    yielded the best performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main drawback of the grid search is the exhaustive search it conducts over
+    all the possible combinations, which can prove very lengthy. One common way to
+    produce good combinations in a shorter amount of time is **random search**, where
+    random combinations of hyperparameters are chosen and tested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A better option—of particular interest to us—when it comes to performing the
+    grid search is harnessing a genetic algorithm to look for the best combination(s)
+    of hyperparameters within the predefined grid. This method offers the potential
+    for finding the best grid combinations in a shorter amount of time than the original,
+    exhaustive grid search.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While grid search and random search are supported by the `scikit-learn` library,
+    a genetic algorithm-driven grid search option is offered by `sklearn-deap`. This
+    small library builds upon the DEAP-based genetic algorithm’s capabilities, as
+    well as the existing features of `scikit-learn`. At the time of writing this book,
+    this library is not in sync with the latest version of `scikit-learn`; therefore,
+    we included a slightly modified version of it under the `sklearn_deap` folder
+    as part of the files of [*Chapter 8*](B20851_08.xhtml#_idTextAnchor238); we will
+    make use of that version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following sections, we will compare both approaches to the grid search—exhaustive
+    and genetic-algorithm-driven. But first, we’ll take a quick look at the dataset
+    we are going to use for our experiment—the **UCI** **Wine dataset**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Wine dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A commonly used dataset from the *UCI Machine Learning Repository* ([https://archive.ics.uci.edu/](https://archive.ics.uci.edu/)),
+    the Wine dataset ([https://archive.ics.uci.edu/ml/datasets/Wine](https://archive.ics.uci.edu/ml/datasets/Wine))
+    contains the results of a chemical analysis that was conducted for 178 different
+    wines that were grown in the same region in Italy. These wines are categorized
+    into one of three types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The chemical analysis consists of 13 different measurements, representing the
+    quantities of the following constituents that are found in each wine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alcohol
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Malic acid
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Ash
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Alkalinity of ash
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Magnesium
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Total phenols
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Flavanoids
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Non-flavanoid phenols
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Proanthocyanins
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Color intensity
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hue
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: OD280/OD315 of diluted wines
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Proline
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Columns `2`–`14` of the dataset contain the values for the preceding measurements,
+    while the classification outcome—the wine type itself (`1`, `2`, or `3`)—is found
+    in the first column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let’s look at the classifier we chose to classify this dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The adaptive boosting classifier
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **adaptive boosting algorithm**, or **AdaBoost**, for short, is a powerful
+    machine learning model that combines the outputs of multiple instances of a simple
+    learning algorithm (**weak learner**) using a weighted sum. AdaBoost adds instances
+    of the weak learner during the learning process, each of which is adjusted to
+    improve previously misclassified inputs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `scikit-learn` library’s implementation of this model, the Adaboost classifier
+    ([https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html)),
+    uses several hyperparameters, some of which are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Name** | **Type** | **Description** | **Default value** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `n_estimators` | int | The maximum number of estimators | `50` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `learning_rate` | float | Weight applied to each classifier at each boosting
+    iteration; a higher learning rate increases the contribution of each classifier
+    | `1.0` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `algorithm` | enumerated | The boosting algorithm to be used:`{''SAMME''
+    , ''SAMME.R''}` | `''SAMME.R''` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 8.1: Hyperparameters and their details'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interestingly, each of these three hyperparameters is of a different type—an
+    int, a float, and an enumerated (or categorical) type. Later, we will find out
+    how each tuning method handles these different types. We will start with two forms
+    of the grid search, both of which will be described in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning the hyperparameters using conventional versus genetic grid search
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To encapsulate the hyperparameter tuning of the AdaBoost classifier for the
+    Wine dataset using a grid search—both the conventional version and the genetic-algorithm-driven
+    version—we created a Python class called `HyperparameterTuningGrid`. This class
+    can be found in the `01_hyperparameter_tuning_grid.py` file, which is located
+    at
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_08/01_hyperparameter_tuning_grid.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_08/01_hyperparameter_tuning_grid.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main parts of this class are highlighted as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **__init__()** method of the class initializes the wine dataset, the AdaBoost
+    classifier, the k-fold cross-validation metric, and the grid parameters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **initGridParams()** method initializes the grid search by setting the
+    tested values of the three hyperparameters mentioned in the previous section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The **n_estimators** parameter is tested across 10 values, linearly spaced between
+    10 and 100.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **learning_rate** parameter is tested across 100 values, logarithmically
+    spaced between 0.1 (10 −2) and 1 (10 0).
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Both possible values of the **algorithm** parameter, **'SAMME'** and **'SAMME.R'**,
+    are tested.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This setup covers a total of 200 (10×10×2) different combinations of the grid
+    parameters:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **getDefaultAccuracy()** method evaluates the accuracy of the classifier
+    with its default hyperparameter values using the mean value of the **''****accuracy''**
+    metric:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **gridTest()** method performs a conventional grid search over the set
+    of tested hyperparameter values we defined earlier. The best combination of parameters
+    is determined based on the k-fold cross-validation mean **''****accuracy''** metric:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **geneticGridTest()** method performs a genetic-algorithm-driven grid search.
+    It utilizes the **sklearn-deap** library’s **EvolutionaryAlgorithmSearchCV()**
+    method, which was designed to be called in a very similar manner to that of the
+    conventional grid search. All we need to do is add a few genetic algorithm parameters—population
+    size, mutation probability, tournament size, and the number of generations:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Finally, the **main()** method of the class starts by evaluating the performance
+    of the classifier with its default hyperparameter values. Then, it runs the conventional,
+    exhaustive grid search, followed by the genetic-algorithm-driven grid search,
+    while timing each search.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The results of running the main method of this class are described in the next
+    subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing the classifier’s default performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The results of the run indicate that, with the default parameter values of
+    `n_estimators = 50`, `learning_rate = 1.0`, and `algorithm = ''SAMME.R''`, the
+    classification accuracy of the classifier is about 66.4%:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is not a particularly good accuracy. Hopefully, grid search can improve
+    this by finding a better combination of hyperparameter values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the conventional grid search
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The conventional, exhaustive grid search, covering all 200 possible combinations,
+    is performed next. The search results indicated that the best combination within
+    this grid was `n_estimators = 50`, `learning_rate ≈ 0.5995`, and `algorithm =
+    '``SAMME.R'`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The classification accuracy that we achieved with these values is about 92.7%,
+    which is a vast improvement over the original 66.4%. The search runtime was about
+    131 seconds using a relatively old computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next comes the genetic-powered grid search. Will it match these results? Let’s
+    find out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the genetic-algorithm-driven grid search
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The last portion of the run describes the genetic-algorithm-driven grid search,
+    which is carried out with the same grid parameters. The verbose output of the
+    search starts with a somewhat cryptic printout:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This printout describes the grid we are searching on—a list of 10 integers
+    (`n_estimators` values), an ndarray of 10 elements (`learning_rate` values), and
+    a list of two strings (`algorithm` values)—as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Types [1, 2, 1]** refers to the grid types of **[list,** **ndarray, list]**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**maxint [9, 9, 1]** corresponds to the list/array sizes of **[10,** **10,
+    2]**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The next printed line refers to the total amount of possible grid combinations
+    (10×10×2):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The rest of the printout looks very familiar since it utilizes the same DEAP-based
+    genetic algorithm tools that we have been using all along, detailing the process
+    of evolving the generations and printing a statistics line for each generation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At the end of the process, the best combination is printed, along with the
+    score value and the time that elapsed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: These results indicate that the genetic-algorithm-driven grid search was able
+    to find the same best result that was found using the exhaustive search but in
+    a shorter amount of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please note that this is a simple example that runs very quickly. In real-life
+    situations, we often encounter large datasets, as well as complex models and extensive
+    hyperparameter grids. In these circumstances, running an exhaustive grid search
+    can be prohibitively lengthy, while the genetic-algorithm-driven grid search has
+    the potential to yield good results within a reasonable amount of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But still, all grid searches, genetic-driven or not, are limited to the subset
+    of hyperparameter values that are defined by the grid. What if we would like to
+    search outside the grid without being limited to a subset of predefined values?
+    A possible solution is described in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning the hyperparameters using a direct genetic approach
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Besides offering an efficient grid search option, genetic algorithms can be
+    utilized to directly search the entire parameter space, just as we used them to
+    search the input space for many types of problems throughout this book. Each hyperparameter
+    can be represented as a variable participating in the search, and the chromosome
+    can be a combination of all these variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the hyperparameters can be of varying types—for example, the types float,
+    int, and enumerated, which we have in our AdaBoost classifier—we may want to code
+    each of them differently and then define the genetic operations as a combination
+    of separate operators that are adapted to each of the types. However, we can also
+    use a lazy approach and code all of them as float parameters to simplify the implementation
+    of the algorithm, as we will see next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameter representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In [*Chapter 6*](B20851_06.xhtml#_idTextAnchor197), *Optimizing Continuous
+    Functions*, we used genetic algorithms to optimize the functions of real-valued
+    parameters. These parameters were represented as a list of float numbers: *[1.23,*
+    *7.2134, -25.309]*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consequently, the genetic operators we used were specialized for handling lists
+    of floating-point numbers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To adapt this approach so that it can tune the hyperparameters, we are going
+    to represent each hyperparameter as a floating-point number, regardless of its
+    actual type. To make this work, we need to find a way to transform each parameter
+    into a floating-point number and back from a floating-point number to its original
+    representation. We will implement the following transformations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**n_estimators**, originally an integer, will be represented by a float value
+    in a certain range; for example, **[1, 100]**. To transform the float value back
+    into an integer, we will use the Python **round()** function, which will round
+    it to the nearest integer.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**learning_rate** is already a float, so no conversion is needed. It will be
+    bound to the range of **[****0.01, 1.0]**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**algorithm** can have one of two values, **''SAMME''** or **''SAMME.R''**,
+    and will be represented by a float number in the range of **[0, 1]**. To transform
+    the float value, we will round it to the nearest integer—**0** or **1**. Then,
+    we will replace a value of **0** with **''SAMME''** and a value of **1** with
+    **''SAMME.R''**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These conversions will be carried out by two Python files, both of which will
+    be described in the following subsections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Evaluating the classifier accuracy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We start with a Python class encapsulating the classifier’s *accuracy* evaluation,
+    called `HyperparameterTuningGenetic`. This class can be found in the `hyperparameter_tuning_genetic_test.py`
+    file, which is located at
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_08/hyperparameter_tuning_genetic_test.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_08/hyperparameter_tuning_genetic_test.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main functionality of this class is highlighted as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **convertParam()** method of the class takes a list called **params**,
+    containing the float values representing the hyperparameters, and transforms them
+    into their actual values (as discussed in the previous subsection):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **getAccuracy()** method takes a list of float numbers representing the
+    hyperparameter values, uses the **convertParam()** method to transform them into
+    actual values, and initializes the AdaBoost classifier with these values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, it finds the accuracy of the classifier using the k-fold cross-validation
+    code that we created for the wine dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This class is utilized by the program that implements the hyperparameter-tuning
+    genetic algorithm, as will be described in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning the hyperparameters using genetic algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The genetic-algorithm-based search for the best hyperparameter values is implemented
+    by the Python program, `02_hyperparameter_tuning_genetic.py`, which is located
+    at
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_08/02_hyperparameter_tuning_genetic.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_08/02_hyperparameter_tuning_genetic.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe the main parts of this program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by setting the lower and upper boundary for each of the float values
+    representing a hyperparameter, as described in the previous subsection**—[1, 100]**
+    for **n_estimators**, **[0.01, 1]** for **learning_rate**, and **[0, 1]** for
+    **algorithm**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we create an instance of the **HyperparameterTuningGenetic** class that
+    will allow us to test the various combinations of the hyperparameters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since our goal is to maximize the accuracy of the classifier, we define a single
+    objective, maximizing fitness strategy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now comes a particularly interesting part—since the solution is represented
+    by a list of float values, each of a different range, we use the following loop
+    to iterate over all pairs of lower-bound and upper-bound values. For each hyperparameter,
+    we create a separate toolbox operator, which will be used to generate random float
+    values in the appropriate range:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we create the hyperparameter tuple, which contains the specific float
+    number generators we just created for each hyperparameter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we can use this hyperparameter tuple, in conjunction with DEAP’s built-in
+    **initCycle()** operator, to create a new **individualCreator** operator that
+    fills up an individual instance with a combination of randomly generated hyperparameter
+    values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we instruct the genetic algorithm to use the **getAccuracy()** method
+    of the **HyperparameterTuningGenetic** instance for fitness evaluation. As a reminder,
+    the **getAccuracy()** method, which we described in the previous subsection, converts
+    the given individual—a list of three floats—back into the classifier hyperparameter
+    values they represent, trains the classifier with these values, and evaluates
+    its accuracy using k-fold cross-validation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we need to define the genetic operators. While for the **selection** operator,
+    we use the usual tournament selection with a tournament size of **2**, we choose
+    **crossover** and **mutation** operators that are specialized for bounded float-list
+    chromosomes and provide them with the boundaries we defined for each hyperparameter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In addition, we continue to use the elitist approach, where the HOF members—the
+    current best individuals—are always passed untouched to the next generation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'By running the algorithm for five generations with a population size of 30,
+    we get the following outcome:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE

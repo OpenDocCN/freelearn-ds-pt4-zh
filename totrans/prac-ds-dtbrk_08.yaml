@@ -1,0 +1,716 @@
+- en: '8'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Automating ML Workflows Using Databricks Jobs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the last chapter, we covered the ML deployment life cycle and the various
+    model deployment paradigms. We also understood how the response latency, the scalability
+    of the solution, and the way we are going to access the predictions play an important
+    role in deciding the deployment method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we are going to take a look at **Databricks Workflows** with
+    **Jobs** (previously called **Databricks Jobs**). This functionality can be leveraged
+    not only to schedule the retraining of our models at regular intervals but also
+    to trigger tests to check our models when transitioning from one **Model Registry**
+    stage to another using the webhook integrations we discussed in [*Chapter 6*](B17875_06.xhtml#_idTextAnchor100).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will be covering the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding Databricks Workflows
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Utilizing Databricks Workflows with Jobs to automate model training and testing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The following are the technical requirements for this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Access to the Databricks workspace with **Unrestricted cluster creation** permission
+    at a minimum
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All the previous notebooks, executed as described
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now, let’s take a look at Databricks Workflows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding Databricks Workflows
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Workflows in the simplest sense are frameworks for developing and running your
+    data processing pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Databricks Workflows provides a reliable, fully managed orchestration service
+    for all your data, analytics, and AI workloads on the **Databricks Lakehouse**
+    platform on any cloud. Workflows are designed to ground up with the Databricks
+    Lakehouse platform, providing deep monitoring capabilities along with centralized
+    observability across all your other workflows. There is no additional cost to
+    customers for using Databricks Workflows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The key benefit of using workflows is that users don’t need to worry about managing
+    orchestration software and infrastructure. Users can simply focus on specifying
+    the business logic that needs to be executed as part of the workflows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Within Databricks Workflows, there are two ways you can make use of the managed
+    workflows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Delta Live Tables** (**DLT**): DLT is a declarative ETL framework to develop
+    reliable pipelines on the Databricks Lakehouse platform. DLT allows easy monitoring
+    of the ETL pipelines while managing the infrastructure needed to run these pipelines.
+    It also has built-in expectations to allow validation of incoming data for each
+    Delta table and keeps track of data lineage while providing data quality checks.
+    DLT provides granular lineage at the table level and provides unified monitoring
+    and alerting for all the parts of an ETL pipeline.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: DLT is an advanced topic in itself. Going into a lot of detail about DLT is
+    outside the scope of this book. We will provide a link to get started with DLT
+    in the *Further* *reading* section.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The following figure illustrates what capabilities are wrapped inside DLT:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.1 – All the capabilities that DLT provides](img/B17875_08_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.1 – All the capabilities that DLT provides
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Delta Pipelines are for pure declarative ETL. You cannot make API calls or send
+    an email with them. You should use Delta pipelines for ETL. For everything else,
+    use Workflows with Jobs. We will cover Workflows with Jobs in the next section
+    from the perspective of triggering automated model retraining at regular intervals
+    and performing automated validations on updated models in the Model Registry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Workflows with Jobs**: A Job is a way we can use to trigger the execution
+    of Databricks notebooks, libraries, and more, either immediately or at a fixed
+    schedule. We will be covering this in more detail in this chapter from the perspective
+    of automating your ML workflow.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'As with almost all Databricks features, you can create Jobs either through
+    the UI, **command-line interface** (**CLI**), or API. You can define one or more
+    tasks as part of a Workflow with Jobs. A task can entail executing one of the
+    following options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A **Databricks notebook** that is either in a Git repository that’s accessible
+    in your Databricks workspace or in a location in your workspace
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A **Python script** loaded in cloud storage and available through the **Databricks
+    file** **system** (**DBFS**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Java code compiled as a JAR file**, which should be installed on the cluster
+    for this option to work'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A **DLT** pipeline
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A **spark-submit** command, which is a utility that allows the submission of
+    Spark or PySpark application programs to the underlying cluster
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A **Python wheel**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can chain multiple tasks together as part of a Job and repair and re-run
+    a failed or canceled job. Databricks also provides support for monitoring the
+    status of Jobs through the UI, CLI, API, and email notifications. Links will be
+    provided in the *Further reading* section if you want to learn more about how
+    to create and manage Workflows with Jobs using API or CLI. Jobs is a very versatile
+    workflow management tool that can be used to develop and chain together tasks
+    related to your ETL data pipeline or various steps in your ML workflows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s delve into how you can automate the retraining of your machine learning
+    models at regular intervals using the *Workflows with Jobs* feature in Databricks.
+    Workflows offer fine-grained access control, allowing owners and administrators
+    to grant permissions to other users or groups for viewing workflow run results
+    and managing the workflow runs themselves. Next, we’ll dive deeper into how to
+    utilize Databricks Workflows with Jobs for automating both model training and
+    testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utilizing Databricks Workflows with Jobs to automate model training and testing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll delve into the powerful synergy between Databricks Workflows
+    and Jobs to automate the training and testing of machine learning models. Before
+    we jump into hands-on examples, it’s essential to understand the significance
+    of automation in the ML life cycle and how Databricks uniquely addresses this
+    challenge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automating the training and testing phases in machine learning is not just a
+    convenience but a necessity for scalable and efficient ML operations. Manual processes
+    are not only time-consuming but also prone to errors, making automation a critical
+    aspect of modern MLOps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is where Databricks Workflows comes in and allows for the orchestration
+    of complex ML pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a look into an example workflow that we will automate using Workflows
+    with Jobs. We will be going through the following logical steps shown in *Figure
+    8**.2*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.2 – A sample workflow of automated testing and alerting on new model
+    promotions](img/B17875_08_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.2 – A sample workflow of automated testing and alerting on new model
+    promotions
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All the relevant code for this part is in the `Chaper-08` folder. Let’s take
+    a look at how we can schedule a Databricks notebook as a Workflow with Jobs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first navigate to the ![](img/Icon_1.png) tab in the left navigation bar.
+    Here, we can click **Create Job**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.3 – The contents of the Databricks Workflows tab](img/B17875_08_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.3 – The contents of the Databricks Workflows tab
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we can provide a name to the task, and then select **Notebook** under
+    **Type**. In **Source**, we have two options – **Workspace** and **Git provider**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Workspace**: Using the file browser, you can navigate to the notebook in
+    the workspace you want to schedule as a task:'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 8.4 – How to browse a notebook for scheduling as a Job through exploring
+    the Workspace option](img/B17875_08_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.4 – How to browse a notebook for scheduling as a Job through exploring
+    the Workspace option
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can simply navigate to the notebook in the `Repos` folder, as shown in
+    the following screenshot, and hit **Confirm**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.5 – How to browse a notebook for scheduling as a Job through the
+    Repos functionality](img/B17875_08_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.5 – How to browse a notebook for scheduling as a Job through the Repos
+    functionality
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: One important thing to keep in mind here is that when you use the Repos feature
+    of Databricks, it creates a local copy for your repository or a clone. If you
+    change code in the repository without performing a Git-pull of the latest version
+    in your local repository, your updates will not make their way to the Job that
+    you are scheduling with the current version of the repository code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For production deployments, it’s important to make use of the Git provider as
+    the source rather than the workspace as the source.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Git provider**: This method simplifies the creation and management of Jobs
+    during productionizing and automated deployments. The main benefit here is that
+    you can version control your data pipelines without managing permissions across
+    multiple code repositories. You will also have a single source of truth for your
+    model pipelines. Every time the Job executes, it will pull the latest version
+    of the notebook/code from the remote repository with the specified branch or tag.
+    Databricks supports the following Git providers: GitHub, Bitbucket Cloud, GitLab,
+    Azure DevOps (excluding Azure China regions), AWS CodeCommit, and GitHub AE.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: An important thing to keep in mind is that if you use the Git provider option
+    as the source of one of your notebooks that will be scheduled as a task, you cannot
+    mix and match it with tasks that have notebooks using a workspace as their Source
+    as part of the same Job workflow. This limitation is only for using the Databricks
+    notebooks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To add the notebook from a Git provider, enter the details of the repository
+    you want to access the notebook from. In our case, I will use my own Git repository
+    for this book as an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For **Path**, a couple of things need to be kept in mind:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You need to enter a path relative to the notebook location
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Don’t add a `/` or `./` character at the beginning of the notebook path
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Don’t include the file extension, such as `.py`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For adding information about your Git repository, click on **Add a git reference**,
+    which will open the following window pictured in *Figure 8.6* where you can select
+    your Git provider.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can select to execute notebooks from a particular Git branch/tag or commit.
+    In my case, I will be using the master branch:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 8.6 – How to set up a Databricks notebook to execute as a Job from
+    the repository](img/B17875_08_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.6 – How to set up a Databricks notebook to execute as a Job from the
+    repository
+  prefs: []
+  type: TYPE_NORMAL
+- en: When choosing the cluster, you can either utilize the cluster that is already
+    up and running in your workspace or define a new Jobs cluster for all the tasks
+    of the workflow. We have covered the difference between the cluster types in [*Chapter
+    2*](B17875_02.xhtml#_idTextAnchor036).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, you can also pass the parameters to your tasks. In notebooks, parameters
+    are passed as notebook widgets.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If you have a use case where you need to set up a JAR, `spark-submit` command,
+    Python file, or Python wheel as a task, you can define the input parameters as
+    a JSON-formatted array of strings. For Python tasks, the passed parameters can
+    be accessed using the `argparse` ([https://docs.python.org/3/library/argparse.html](https://docs.python.org/3/library/argparse.html))
+    Python module. For Python wheel tasks, you also have the option to pass in keyword
+    arguments as key/value pairs that you can then access using the `argparse` package.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In the `1`. This setting is important in cases where you may require to have
+    overlapping execution of a particular Workflow with Jobs. A request to execute
+    a Workflow with Jobs is skipped if the concurrent running instances of the workflow
+    that is being requested to be executed have hit the maximum number of concurrent
+    runs.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In our case, we don’t have any dependent task on our notebook task, so we will
+    simply hit **Create**. You can also add multiple interdependent tasks as part
+    of a workflow by clicking the ![](img/icon_2.png)icon.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Once we have successfully created a task to execute as part of our workflow,
+    we can see information about our workflow in the **Jobs** tab of the *Workflows*
+    section. Now, we have the option to schedule the running of our workflow at regular
+    intervals automatically or interactively using the **Run** **now** button.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can see a graph showing the success and failure of the past executions of
+    the workflows along with the runtime and the details of our Workflow with Jobs
+    on the right-hand side. Take note of **Job ID**, as this will be used to automatically
+    trigger our model testing notebook using the webhooks integration with the Model
+    Registry:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.7 – The summary page to monitor the Job run history as well as the
+    unique Job ID, Git, Schedule, Compute, and Notifications settings](img/B17875_08_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.7 – The summary page to monitor the Job run history as well as the
+    unique Job ID, Git, Schedule, Compute, and Notifications settings
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a look at the contents of the automated testing notebook in the
+    `Chapter-08` folder that we just scheduled:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Cmd 2` is simply capturing the value of the `event_message` parameter that
+    is sent by the Model Registry webhook. It contains information about the event
+    that triggered the execution of this notebook workflow, such as the following:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`event_timestamp`: Time when the event occurred'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`event`: Name of the event, as described in the chapter on webhooks'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`text`: Description of the purpose of the webhook that initiated the automated
+    test execution'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`to_stage`: Target stage for the model to be transitioned to'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`version`: Model version whose transition triggered this webhook'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`from_stage`: Initial stage of the model version in the Model Registry'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Depending on what type of task we are scheduling, the payload of the webhooks
+    changes. There will be a link in the *Further reading* section if you want to
+    learn more. The following code snippet demonstrates the process of retrieving
+    and parsing the payload from webhooks:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '`Cmd 4` is simply running some utility code to interact with the MLflow REST
+    API. It is a good practice to write modularized code for writing unit tests for
+    your code:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In `Cmd 7`, we are downloading a specific model version from the MLflow Model
+    Registry for running our tests:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The rest of the code displays how you can write arbitrary tests to test your
+    model before promoting it to the target stage in the Model Registry. In the sample
+    code, we are testing whether the model being tested has the required schema for
+    the inputs or not. We are also testing the output data type for the response.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At the end of successfully running the test, we send a message back to the
+    Model Registry reporting whether all the tests passed or failed for the ML engineer
+    to review:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: With this, we are now ready to register the `automated-test` workflow with our
+    model training notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s take a look at the model training code. Open the `scheduling-workflow-for-model-retraining`
+    notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This notebook has code to first register a Jobs webhook with the `TRANSITION_REQUEST_TO_STAGING_CREATED`
+    event trigger for our `Churn Prediction Bank` model in the Model Registry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at the important cells in the notebook one by one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In `Cmd 2`, we are simply installing a notebook-scoped `databricks-registry-webhooks`
+    library from **Python Package Index** (**PyPI**). This is an alternate way to
+    interact with the Databricks Model Registry webhooks other than using the Databricks
+    REST API we covered in [*Chapter 6*](B17875_06.xhtml#_idTextAnchor100).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In `Cmd 3`, we are simply reading our original `raw_data` table from the `bank_churn_analysis`
+    table while excluding the features that we will not use to train our model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`Cmd 5` is some utility code that is dynamically extracting the token and our
+    current workspace URL. This code can be put into its own segregated function to
+    make it easy for testing.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In `Cmd 7`, we are registering the Job workflow we created in *step 1* to be
+    triggered by a webhook on the `TRANSITION_REQUEST_TO_STAGING_CREATED` event. In
+    the code, replace `<jobid>` with the `Job Id` you noted down in *step 2*:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we use the `AutoML` Python API to trigger a model retraining job, with
+    our primary metric being the `F1` score:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we simply use the `MLflowClient` class object to register the best-performing
+    model into our Model Registry:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We now import some utility code that is just a wrapper on top of the `MLflow
+    REST API` using the `%run` magic command. This is how you can modularize your
+    code for easy testing and maintainability:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: In `Cmd 17`, we request transitioning the new model version to Staging. Since
+    the new model needs to be tested first before we retire our old model, we are
+    not going to archive the existing model version in Staging just yet. The following
+    code block demonstrates the same.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Lastly, we are also going to add a comment for the ML engineer to say that
+    the model is ready for testing:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: With this, we can see that in the `Churn Prediction Bank` model, there is a
+    new version of a registered model with a pending request.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can get even more detail about this model by clicking the **Model** version.
+    This will show us the request to transition the model and also the comment left
+    after the model training:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.8 – The message that we created using API to request model transition
+    to Staging](img/B17875_08_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.8 – The message that we created using API to request model transition
+    to Staging
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On requesting the transition, we can see that the automated test is now executing
+    on our new model version. We can see more details by clicking `automated_test`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.9 – The automated testing Job for any new model that gets a request
+    to be transitioned to Staging](img/B17875_08_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.9 – The automated testing Job for any new model that gets a request
+    to be transitioned to Staging
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The matrix view shows the current status of our test. We can see the actual
+    output of our test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.10 – The matrix view for our automated testing Job run](img/B17875_08_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.10 – The matrix view for our automated testing Job run
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On successful completion of the model testing, we can check the status on the
+    *model* *version* page:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.11 – The successful posting of the message into the Model Registry
+    after successful testing of the new model](img/B17875_08_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.11 – The successful posting of the message into the Model Registry
+    after successful testing of the new model
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, the ML engineer or the admin can archive the old model and approve the
+    request to transition this model to the Staging environment.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In my case, that means transitioning the model version 2 to **Archived**:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.12 – How to transition the existing model in Staging to Archived](img/B17875_08_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.12 – How to transition the existing model in Staging to Archived
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can add a comment that can keep track of why this model is being archived,
+    which will also be logged in this model version’s activity:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.13 – How to add a message to the model being Archived action](img/B17875_08_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.13 – How to add a message to the model being Archived action
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now I can approve the model version 3 transition to Staging and add a comment.
+    We can approve the transition of the model to Staging and the retiring of the
+    old model in Staging when we click on the **Approve** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.14 – How to approve transitioning of the new model to Staging](img/B17875_08_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.14 – How to approve transitioning of the new model to Staging
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is useful in cases where you have only one version of a model in Staging
+    at a given time. The explicit retiring can be useful if you want to have simultaneous
+    candidate models in a stage for A/B testing before selecting the best model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, now we have executed the end-to-end workflow where we trained a new model
+    and also triggered automated testing before promoting the model to Staging.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last thing to do here is to schedule the monthly retraining of our model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go back to the `scheduling-workflow-for-model-retraining` notebook and open
+    it. On the top right of every Databricks notebook, you have a button called **Schedule**.
+    On clicking that, you can specify how often you want to execute this notebook
+    and what type of cluster to execute it on. You can also add parameters for the
+    notebook and set alerts:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.15 – How to set up our model for automated retraining](img/B17875_08_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.15 – How to set up our model for automated retraining
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we’ve explored the intricacies of automating machine learning workflows using
+    Databricks Jobs, you should now have a solid understanding of how to set up and
+    manage your automated ML retraining workflows. Next, we’ll summarize the key takeaways
+    in the *Summary* section to help you consolidate your knowledge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we discussed the workflow management options available in the
+    Databricks environment. We also looked at Workflows with Jobs functionality in
+    more detail in relation to its utility in automating your ML workflows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We went through a sample workflow of creating a notebook with tests to perform
+    on any new model we want to transition to the Staging stage of the Model Registry.
+    We then configured the Model Registry Jobs webhooks feature to be triggered by
+    another automated model retraining notebook. Similar workflows can make your model
+    tests arbitrarily complex to fit your needs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the last chapter, we will cover the concept of model drift and how to trigger
+    a model’s retraining automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Here are some links to further your understanding:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Databricks, *What Is Delta Live* *Tables?*: [https://docs.databricks.com/en/delta-live-tables/index.html](https://docs.databricks.com/en/delta-live-tables/index.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Databricks, *Introduction to Databricks* *Workflows*: [https://docs.databricks.com/en/workflows/index.html](https://docs.databricks.com/en/workflows/index.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

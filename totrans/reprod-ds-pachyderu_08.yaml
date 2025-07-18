@@ -1,0 +1,1194 @@
+- en: '*Chapter 6*: Creating Your First Pipeline'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 3*](B17085_03_Final_SB_Epub.xhtml#_idTextAnchor055), *Pachyderm
+    Pipeline Specification*, we learned about the Pachyderm pipeline specification
+    and what parameters you can configure in it. The pipeline specification is the
+    most critical configuration piece of your pipeline, along with your code. In this
+    chapter, we will learn how to create a Pachyderm pipeline that performs image
+    processing. We will walk through all the steps that are involved in this process,
+    including creating the Pachyderm repository, creating a pipeline, viewing the
+    results of our computations, and adding an extra step to our original pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipeline overview
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a repository
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a pipeline specification
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Viewing the pipeline result
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adding another pipeline step
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter requires that you have access to the following components and that
+    they are installed and configured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For a local macOS installation, you will need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: macOS Mojave, Catalina, Big Sur, or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Docker Desktop for Mac 10.14
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`minikube` v1.19.0 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pachctl` 2.0.x or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pachyderm 2.0.x or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For a local Windows installation, you will need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Windows Pro 64-bit v10 or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Windows Subsystem for Linux** (**WSL**) 2 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Microsoft Powershell v6.2.1 or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hyper-V
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`minikube` v1.19.0 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`kubectl` v1.18 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pachctl` 2.0.x or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pachyderm 2.0.x or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For an **Amazon Elastic Kubernetes Service** (**Amazon EKS**) installation,
+    you will need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`kubectl` v.18 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`eksctl`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`aws-iam-authenticator`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pachctl` 2.0.x or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pachyderm 2.0.x or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For a Microsoft Azure cloud installation, you will need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`kubectl` v.18 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The Azure CLI
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pachctl` 2.0.x or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pachyderm 2.0.x or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`jq` 1.5 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For a **Google Kubernetes Engine** (**GKE**) cloud installation, you will need
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Google Cloud SDK v124.0.0\. or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`kubectl` v.18 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pachctl` 2.0.x or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pachyderm 2.0.x or later
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You do not need any special hardware to be able to run the pipelines in this
+    chapter. If you are running your Pachyderm cluster locally, any modern laptop
+    should support all the operations in this chapter. If you are running Pachyderm
+    in a cloud platform, you will need to have a **Persistent Volume** (**PV**). See
+    [*Chapter 5*](B17085_05_Final_SB_Epub.xhtml#_idTextAnchor123), *Installing Pachyderm
+    on a Cloud Platform*, for more details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All the scripts and data described in this chapter are available at [https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/tree/main/Chapter06-Creating-Your-First-Pipeline](https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/tree/main/Chapter06-Creating-Your-First-Pipeline).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have reviewed the technical requirements for this chapter, let's
+    take a closer look at our pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipeline overview
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 4*](B17085_04_Final_SB_Epub.xhtml#_idTextAnchor096), *Installing
+    Pachyderm Locally*, and [*Chapter 5*](B17085_05_Final_SB_Epub.xhtml#_idTextAnchor123),
+    *Installing Pachyderm on a Cloud Platform*, we learned how to deploy Pachyderm
+    locally or on a cloud platform. By now, you should have some version of Pachyderm
+    up and running, either on your computer or a cloud platform. Now, let's create
+    our first pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A Pachyderm pipeline is a technique that processes data from a Pachyderm input
+    repository or repositories and uploads it to a Pachyderm output repository. Every
+    time new data is uploaded to the input repository, the pipeline automatically
+    processes it. Every time new data lands in the repository, it is recorded as a
+    commit hash and can be accessed, rerun, or analyzed later. Therefore, a pipeline
+    is an essential component of the Pachyderm ecosystem that ensures the reproducibility
+    of your data science workloads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get you started quickly, we have prepared a simple example of image processing
+    that will draw a contour on an image. A contour is an outline that represents
+    the shape of an object. This is a useful technique that is often applied to image
+    processing pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image processing is a widely used technique that enables you to enhance the
+    quality of images, transform an image into another image, extract various information
+    about an image, and so on. With machine learning, you can set up pipelines that
+    can determine objects in an image, create a histogram of an image, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many open source libraries that you can use for advanced image processing,
+    with the most famous among them being **OpenCV** and **scikit-image**. Both of
+    these libraries are widely used by machine learning experts for various image
+    processing tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this example, we will use scikit-image. Scikit-image, or `skimage`, is an
+    open-source image processing library that enables you to run various image processing
+    algorithms to analyze and transform images. Scikit-image is built to work with
+    the Python programming language.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this example, we will use scikit-image with a couple of other open source
+    components, including the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**NumPy**: An open source Python library that enables you to work with arrays.
+    When you need to analyze or segment an image, it must be transformed into an array
+    for processing.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Matplotlib**: An extension to NumPy that enables you to plot images and create
+    data visualizations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will create a pipeline that will consume the data from the `photos` repository,
+    run a `contour.py` script against the images in the `photos` repository, and upload
+    the result to the `contour` output repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following diagram explains our pipeline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.1 – Contour pipeline
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code explains the `contour.py` script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding script contains a function called `create_contours`. This function
+    does the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, it reads the image file from the `pfs/photos` repository and converts
+    it into a grayscale image. This is needed to transform a color image (RGB) into
+    a two-dimensional NumPy array.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, it uses the `measure.find_contours` API method from the `skimage.measure.find_contours`
+    module to find the contour of the two-dimensional array that we converted our
+    image into at a value of 0.9\. This value represents the position between light
+    and dark tones. Typically, it's best to use a middle value, but in this case,
+    0.9 created the best results.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, it defined subplots to visualize our image and saved it in the `pfs/out`
+    directory, which, in reality, will be the `pfs/out/contour` output repository.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The last part of the script tells the program to apply the `create_contours`
+    function to all the files in the `pfs/photos` repository.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This script is built into a Docker image that we will use to run our pipeline.
+    This Docker image is hosted in Docker Hub.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will use the following images from freepik.com for processing. The first
+    image is an image of a brown vase:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.2 – Brown vase
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second image is an image of a hand:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.3 – Hand
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, the third image is an image of a landscape:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.4 – Landscape
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, these are some simple images where finding the contours should
+    be easy. You can try to run this pipeline against more complex images and see
+    the results you'll get. In general, the more contrast you have between the elements
+    in the image, the more precise contours the algorithm will be able to find.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we understand the example we are working on, let's go ahead and create
+    a repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a repository
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first step in creating your pipeline is to create a Pachyderm repository
+    and put some data in it. As you probably remember from [*Chapter 2*](B17085_02_Final_SB_Epub.xhtml#_idTextAnchor037),
+    *Pachyderm Basics*, a Pachyderm repository is a location inside of a Pachyderm
+    cluster where you store your data. We will be creating an input repository, and
+    the pipeline will automatically create an output repository on the first run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create an input repository, perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into your Terminal.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Verify that Pachyderm is up and running:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see an output similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `pachd` component must list a version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a Pachyderm input repository called `photos`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: No output will be returned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Verify that the `photos` repository was created:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, you can see that the `photos` repository was created and that it is empty.
+    Although the size is counted for the master branch, at this point, no branches
+    exist in this repository. Pachyderm will automatically create a specified branch
+    when you put files in it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Put some images in the `photos` repository. We need to put the files into the
+    root of our `photos` repository. To do this, you need to use the `-r` (recursive)
+    flag and specify the path to the directory that contains the files on your computer.
+    For example, if you have downloaded the files to a data folder on your computer,
+    you need to run the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is some sample output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Pachyderm automatically creates the specified branch. In this example, Pachyderm
+    creates the `master` branch. You could name the branch anything you want, but
+    for simplicity, let's call it `master`. All the commands in this section are written
+    with the `master` branch in mind.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Verify that the files were added to the repository:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is some sample output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Alternatively, you could place each file one by one by running the `pachctl
+    put file` command for each image. For example, to place the `landscape.jpg` file,
+    change the directory on your computer to `data` and use the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is some sample output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Repeat this command for all image files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Make sure that the `TYPE` parameter in the output says `file` and not `dir`.
+    Pachyderm does not distinguish between directories and files, and you use `-f`
+    to put files in a directory or the root of the repository. If any of your files
+    are listed as `dir`, you need to delete them by running `pachctl delete file photos@master:<path>`
+    and start over. The pipeline will not work as expected if you place the files
+    in the directories.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have created a repository, let's create our pipeline specification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a pipeline specification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the *Creating a repository* section, we created a repository called `photos`
+    and put some test files in it. The pipeline specification for this example must
+    reference the following elements:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An input repository with data to process
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A computer program or a script that needs to run against your data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A glob pattern that specifies the datum granularity
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A Docker image with built-in dependencies that contains your code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We have created a pipeline specification for you so that you can use it to
+    create the pipeline. Here is what is in the pipeline specification file in the
+    **YAML Ain''t Markup Language** (**YAML**) format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s look at the pipeline specification in more detail. Here are the parameters
+    in the pipeline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Table_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.5 – Contour pipeline parameters
+  prefs: []
+  type: TYPE_NORMAL
+- en: This pipeline specification does not include any optimization or other extra
+    parameters. It is a minimum pipeline that will do the required computation for
+    our example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create a pipeline, perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into your terminal.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create the `contour` pipeline by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: No output will be returned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Verify that the pipeline has been created:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is the system output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: As soon as you create the pipeline, it will set its status to `running` and
+    attempt to process the data in the input repository. You might also see that `LAST
+    JOB` is set to starting or running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another important thing in the preceding output is the pipeline version. The
+    version of our pipeline is `1`. If you change anything in your pipeline's YAML
+    file and update your pipeline after that, the version counter will be updated
+    to a subsequent number.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'View the job that has been started for your pipeline:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is the system output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output of the `pachctl list job` command gives us the following information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Table_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.6 – Pipeline output explained
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that our pipeline has run successfully, let's see the output in the output
+    repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Viewing the pipeline result
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Once your pipeline has finished running, you can view the result in the output
+    repository. We will look at the output result in both the command line and the
+    Pachyderm dashboard for visibility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are using a local Pachyderm deployment with minikube, you need to enable
+    port-forwarding before you can access the Pachyderm UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To view the pipeline result in the terminal, perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into your terminal.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Verify that the output repository called `contour` has been created:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is the system output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the `contour` repository has been created, and it contains 117.6
+    KiB of data. If you are running Pachyderm locally, you can also preview what those
+    files look like by running one of the following commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you are on macOS, run the following command to list the files in the output
+    repository:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is the system output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, pipe the `open` command to the `pachctl get file` command to open one
+    of the images in the default preview application on your Mac. For example, to
+    preview `hand.png`, run the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.7 – Hand processed
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's view the processed results in the UI. If you are running Pachyderm
+    on a cloud provider, just point your browser to the IP address where the Pachyderm
+    dashboard is running. If you are running Pachyderm in Pachyderm Hub, follow the
+    instructions in Pachyderm Hub to access the console. If you are running Pachyderm
+    locally in minikube, follow the remaining steps to enable port-forwarding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unless you are running your experiments in Pachyderm Hub, the Pachyderm console
+    is only available if you have deployed it. You need to have a trial or an enterprise
+    license to deploy the Pachyderm console locally or in the cloud.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open a separate terminal window.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Enable port forwarding for your local Pachyderm deployment by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you have used the default settings, the Pachyderm dashboard must load at
+    http://localhost:30080.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Paste the dashboard IP address into a web browser.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'If you are prompted to log in, follow the onscreen instructions to do so. When
+    you log in, you should see the following screen:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.8 – Pachyderm Direct Acyclic Graph (DAG)
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a **Direct Acyclic Graph** (**DAG**) that's been created for the input
+    and output repositories, as well as the pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click on the contour output repository (the last one on the screen) and then
+    click **View Files**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.9 – Output repository information
+  prefs: []
+  type: TYPE_NORMAL
+- en: A list of files will appear.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click `hand.png`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_010.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.10 – Output file
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can preview all the resulting files from the UI in the same way. From here,
+    the files can be either consumed by another pipeline or served outside of Pachyderm
+    through an S3 Gateway, or the output repository can be mounted and accessible
+    on a local disk. Let's look at what the other images should look like.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should see that the landscape image has changed, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_011.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.11 – Processed landscape image
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `brown_vase.png` image should look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_012.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.12 – Processed vase image
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we learned how to view the results of a pipeline. Now, let's
+    add another pipeline step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding another pipeline step
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Pachyderm pipelines can be chained into multi-step workflows. For each step,
+    you will need to have a separate pipeline specification and a Docker image if
+    you are using one. In this section, we will add another step to our image processing
+    workflow. We will use the `skimage.exposure.histogram` module to create histograms
+    of all the images we have in our `contour` output repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example overview
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A histogram is a visual representation of data that provides information about
+    the image, such as the number of pixels, their intensity, and other information.
+    Because we represent images as numerical data, we can create a histogram for each
+    of the images we processed in the first step of our workflow – the contour pipeline.
+    In this new step of the workflow, we will create histograms for each image that
+    has landed in the `contour` output repository and save them in the `histogram`
+    output repository in PNG format.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example of a histogram that has been generated for the `hand.png`
+    image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_013.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.13 – Grayscale image histogram
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **y-axis** represents the count of pixels, while the **x-axis** represents
+    the intensity of the pixels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a diagram of the new two-step workflow, which includes the contour
+    and histogram pipelines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_014.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.14 – Contour and histogram workflow
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `histogram` pipeline will consume the files from the `contour` repository,
+    create histograms for them, and output them to the `histogram` repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Histogram creation script overview
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this pipeline step, we will use `histogram.yaml`, which will create a pipeline
+    for us. The pipeline will run the `histogram.py` script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let'' review the `histogram.py` script, which creates histograms from the file
+    in the `contour` repository:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This script imports the following libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`skimage.io`: The `io` module from the scikit-image library enables read and
+    write operations within your Python file. We need this module to read files from
+    the contour repository.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`matploit.pyplot`: This Matplotlib interface enables us to plot our images.
+    We use it to create the histogram, add labels to the x- and y-axis of the plot,
+    and so on.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`numpy`: We need NumPy to represent the image as an array and keep the number
+    of bins in the required range.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`os`: The `os` module from the standard Python library enables read and write
+    operations with files. We need this module to read images from the Pachyderm contour
+    repository and save our images in the correct output repository.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let''s take a closer look at what the script does. The `create_histogram` function
+    reads image files from the contour repository. Then, using the `matploit.pyplot.hist`
+    (`plt.hist`) function, the script creates a histogram with the following parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `numpy.ravel` function converts our images from the 2D array into a 1D array,
+    which is needed to plot a histogram.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `bins` parameter defines the shape and distribution of vertical bars in
+    your histogram. To distribute them evenly on the plot, we have a defined range
+    by using the `np.arange` function.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `color='blue'` parameter defines the color of the histogram bins.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `alpha=0.5` parameter defines the level of transparency.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `rwidth=0.7` parameter defines the width of each bin.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `plt.yscale('log')` parameter defines the logarithmic y-axis scale. We need
+    this parameter to narrow the scale of the y-axis for better data visualization.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `plt.margins(x=0.03, y=-0.05)` parameter determines the amount of whitespace
+    between the histogram and the start of the plot.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `plt.xlabel('Intensity')` and `plt.ylabel('Count')` parameters define the
+    labels for the x- and y-axes.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `plt.savefig` function defines where to save the histogram. In our case,
+    we will save it in the `pfs/out` directory, in which Pachyderm will automatically
+    create a histogram repository under the `pfs/out/histogram` path.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In your scripts, you do not need to add the path to the repository, just to
+    the `pfs/out` directory.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Pipeline specification overview
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `histogram.yaml` pipeline specification creates the histogram pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is what our pipeline specification will look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This pipeline does the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Uploads the files stored in the `contour` repository as a single datum
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Pulls the Docker image stored in Docker Hub under `svekars/histogram:1.0`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Runs the `histogram.py` script against all the files that have been downloaded
+    from the `contour` repository
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Uploads the results of the transformation to the `histogram` output repository
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now that we have reviewed what goes into this pipeline, let's go ahead and create
+    it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the pipeline
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The next step is to create the histogram pipeline, which will create a histogram
+    for each image in the `photos` repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create the second step of our workflow by using the `histogram.yaml`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into your terminal.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Verify that Pachyderm is up and running:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is the system output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: If `pachd` is unresponsive, you might need to run `minikube stop` and `minikube
+    start` in a local installation to be able to resume working with it. If you are
+    in a cloud environment, you will need to check your connection. If you are running
+    Pachyderm in Pachyderm Hub, check that you are authenticated from the console
+    and follow the onscreen instructions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create the `histogram` pipeline:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: No system output will be returned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Verify that the pipeline was created:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is the system output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: According to the preceding output, the histogram pipeline was created and is
+    currently running the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Get the list of repositories:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is the system output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `histogram` output repository was created and contains 27.48 KiB of data.
+    These are our histogram files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'List the files in the `histogram` repository:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following is the system output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: With that, our histogram visualizations have been added to the repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'View the histogram files. For example, if you are on Mac, to view the `landscape.png`
+    histogram file, run the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the resulting histogram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_015.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.15 – Histogram of the landscape image
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can preview other files in a similar way or through the Pachyderm dashboard,
+    as described earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go to the console and view the DAG for this newly added pipeline:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B17085_06_016.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.16 – Updated DAG
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, you now have a new pipeline called `histogram` and a new eponymous
+    output repository added to your DAG.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have created our first pipeline, let's clean up our environment
+    so that we have a clean cluster to work on the tasks in the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cleaning up
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Once you are done experimenting, you might want to clean up your cluster so
+    that you start your next experiment with a fresh install. To clean up the environment,
+    perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Delete all the pipelines and repositories:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Verify that no repositories and pipelines exist in your cluster:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: With that, you have successfully cleaned up your cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you successfully created your first Pachyderm repository, pipeline,
+    and even extended it with another pipeline step. We used scikit-image, Matplotlib,
+    and NumPy to create contours on images stored in Pachyderm repositories and created
+    histograms for all of these images. This is the first step in understanding how
+    Pachyderm works. In Pachyderm, you'll work with pipelines quite a lot. As you
+    have already noticed, you can put any code in your pipeline. Although most of
+    the examples in this book will use Python, you can use any programming language
+    of your choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will learn more about Pachyderm functionality, how to
+    ingest data into Pachyderm and export it to outside systems, how to make changes
+    to a pipeline's code, how to tune various parameters, and other important Pachyderm
+    operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For more information about the topics that were covered in this chapter, take
+    a look at the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Docker Hub documentation: [https://docs.docker.com/docker-hub/](https://docs.docker.com/docker-hub/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Matplotlib documentation: [https://matplotlib.org/](https://matplotlib.org/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'NumPy documentation: [https://numpy.org/doc/stable/](https://numpy.org/doc/stable/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Scikit-image documentation: [https://scikit-image.org](https://scikit-image.org)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Landscape image: [https://www.freepik.com/free-vector/beautiful-gradient-spring-landscape_6969720.htm](https://www.freepik.com/free-vector/beautiful-gradient-spring-landscape_6969720.htm)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Brown vase image: [https://www.freepik.com/free-photo/narrow-neck-vase_921733.htm](https://www.freepik.com/free-photo/narrow-neck-vase_921733.htm)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Hand image: [https://www.freepik.com/free-photo/hand-holding-something-with-white-background_978615.htm](https://www.freepik.com/free-photo/hand-holding-something-with-white-background_978615.htm)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

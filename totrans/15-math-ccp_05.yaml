@@ -1,0 +1,2398 @@
+- en: <st c="0">4</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="2">Loss Functions and Optimization</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="33">In</st> [*<st c="37">Chapter 2</st>*](B19496_02.xhtml#_idTextAnchor061)
+    <st c="46">and</st> [*<st c="51">Chapter 3</st>*](B19496_03.xhtml#_idTextAnchor141)<st
+    c="60">, we focused on the two most important and core math concepts that are
+    at the heart of virtually all of data science.</st> <st c="178">In this chapter,
+    we are going to move on to math concepts behind specific, but still very important,
+    data science activities.</st> <st c="304">Specifically, we are going to lay some
+    of the groundwork for building</st> <st c="374">predictive models.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '<st c="392">At the end of the last chapter, we hinted that one of the key concepts
+    when building models is knowing or measuring how good a model is.</st> <st c="530">When
+    we train or fit a</st> **<st c="553">machine learning</st>** <st c="569">(</st>**<st
+    c="571">ML</st>**<st c="573">) model, we adjust the parameter values of the model
+    so that it gives a “better” fit or explanation of the data.</st> <st c="687">But
+    this raises the question: What do we mean by “better”?</st> <st c="746">Without
+    an exact quantitative definition of what we mean when we say that one set of parameter
+    values gives a better fit to the data than another, we cannot construct an objective
+    and quantitative training process.</st> <st c="961">This is where loss functions
+    come in.</st> <st c="999">They measure how well a model fits the training data.</st>
+    <st c="1053">This chapter goes into the details behind loss functions and their
+    use in the training of models.</st> <st c="1151">We do this by covering the</st>
+    <st c="1178">following topics:</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*<st c="1195">Loss functions – what are they?</st>*<st c="1227">: In this section,
+    we learn the basics of loss functions and</st> <st c="1289">risk functions</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*<st c="1303">Least squares</st>* <st c="1317">(</st>*<st c="1319">LS</st>*<st
+    c="1321">): In this section, we learn at a high level about least squares minimization
+    as a general technique for estimating</st> <st c="1438">model parameters</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*<st c="1454">Linear models</st>*<st c="1468">: In this section, we learn how
+    to use least squares minimization for fitting linear models via</st> **<st c="1565">ordinary
+    least squares</st>** <st c="1587">(</st>**<st c="1589">OLS</st>**<st c="1592">)
+    regression</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*<st c="1605">Gradient descent</st>*<st c="1622">: In this section, we learn
+    a powerful and general technique for minimizing risk functions and</st> <st c="1718">objective
+    functions</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="1737">Technical requirements</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="1760">All code examples given in this chapter (and additional examples)
+    can be found at the GitHub repository,</st> [<st c="1866">https://github.com/PacktPublishing/15-Math-Concepts-Every-Data-Scientist-Should-Know/tree/main/Chapter04</st>](https://github.com/PacktPublishing/15-Math-Concepts-Every-Data-Scientist-Should-Know/tree/main/Chapter04)<st
+    c="1970">. To run the Jupyter notebooks, you will need a full Python installation
+    including the</st> <st c="2057">following packages:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`<st c="2076">pandas</st>` <st c="2083">(>=2.0.3)</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<st c="2093">numpy</st>` <st c="2099">(>=1.24.3)</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<st c="2110">scipy</st>` <st c="2116">(>=1.11.1)</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<st c="2127">scikit-learn</st>` <st c="2140">(>=1.3.0)</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<st c="2150">matplotlib</st>` <st c="2161">(>=3.7.2)</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<st c="2171">statsmodels</st>` <st c="2183">(>=0.14.0)</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="2194">Loss functions – what are they?</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="2226">A</st> **<st c="2229">loss function</st>** <st c="2242">takes two
+    inputs; for example, a model prediction and the corresponding ground-truth value.</st>
+    <st c="2335">It then compares the two inputs and summarizes this comparison into
+    a</st> <st c="2405">single number.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="2419">Let’s take that example further.</st> <st c="2453">We’ll denote</st>
+    <st c="2465">the ground-truth value by</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)
+    <st c="2492"><st c="2515">and the model prediction by</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1302.png)<st
+    c="2543"><st c="2544">. A loss function in this example would then be a function
+    of both</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)
+    <st c="2611"><st c="2634">and</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1302.png)<st
+    c="2638"><st c="2639">, which returns a single real number.</st> <st c="2677">Let’s
+    call that loss function</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1305.png)<st
+    c="2707"><st c="2708">. We’ll meet a concrete example of a loss function in the
+    next section.</st> <st c="2780">But for now, it suffices to say that a loss function</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1306.png)
+    <st c="2833"><st c="2834">attempts to measure how similar</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1307.png)
+    <st c="2867"><st c="2868">is to</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)<st
+    c="2875"><st c="2898">, with a loss function value of zero indicating that</st>
+    <st c="2951">ˆ</st><st c="2952">y</st> <st c="2953">is identical</st> <st c="2967">to</st>
+    <st c="2970">y</st><st c="2971">.</st></st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="2972">In general, a lower value of the function</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1306.png)
+    <st c="3015"><st c="3016">means that</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1307.png)
+    <st c="3028"><st c="3029">is closer or more similar to</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/769.png)<st
+    c="3059"><st c="3069">, while a higher value of the loss function means that</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1307.png)
+    <st c="3124"><st c="3125">is further from or less similar</st> <st c="3158">to</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)<st
+    c="3161"><st c="3184">.</st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="3185">When training a model, our training data will consist of lots of
+    ground-truth values, so we will also have lots of predictions.</st> <st c="3314">If
+    our training set consists of</st> <st c="3346">N</st> <st c="3347">datapoints,
+    then we will have</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>N</mml:mi></mml:math>](img/443.png)
+    <st c="3378"><st c="3379">ground-truth values,</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mn>1</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mn>2</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:mo>…</mml:mo><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mi>N</mml:mi></mml:mrow></mml:msub></mml:math>](img/1315.png)<st
+    c="3401"><st c="3411">. We can represent these by the vector</st> <st c="3450">y</st><st
+    c="3451">_</st> <st c="3452">=</st> <st c="3453">(</st><st c="3454">y</st><st
+    c="3455">1</st><st c="3456">,</st> <st c="3457">y</st><st c="3458">2</st><st c="3459">,</st>
+    <st c="3460">…</st> <st c="3461">,</st> <st c="3462">y</st><st c="3463">N</st><st
+    c="3464">)</st><st c="3465">. Similarly, we can represent the corresponding set
+    of predictions by the vector</st> <st c="3546">ˆ</st><st c="3547">y</st><st c="3548">_</st>
+    <st c="3549">=</st> <st c="3550">(</st><st c="3551">ˆ</st><st c="3552">y</st><st
+    c="3553">1</st><st c="3554">,</st> <st c="3555">ˆ</st><st c="3556">y</st><st c="3557">2</st><st
+    c="3558">,</st> <st c="3559">…</st> <st c="3560">,</st> <st c="3561">ˆ</st><st
+    c="3562">y</st><st c="3563">N</st><st c="3564">)</st><st c="3565">. Once we have
+    chosen a particular form for the loss function</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1305.png)
+    <st c="3627"><st c="3628">we can use it to measure</st> <st c="3653">how close
+    the whole set of predictions</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1317.png)
+    <st c="3693"><st c="3694">are to their corresponding ground-truth values</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1318.png)
+    <st c="3742"><st c="3743">by simply calculating the average loss over the entire
+    set.</st> <st c="3804">In other words, we calculate the</st> <st c="3837">following
+    quantity:</st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mfrac><mn>1</mn><mi>N</mi></mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><mrow><mtext>L</mtext><mfenced
+    open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>,</mo><msub><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mi>i</mi></msub></mrow></mfenced></mrow></mrow></mrow></mrow></math>](img/1319.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="3858">Eq.</st> <st c="3862">1</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="3863">The value of the quantity in</st> *<st c="3892">Eq.</st> <st c="3896">1</st>*
+    <st c="3897">tells us how close our fitted model values are to the</st> <st c="3952">ground-truth
+    values.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="3972">When training our model, we adjust the model parameters so that
+    the quantity in</st> *<st c="4053">Eq.</st> <st c="4057">1</st>* <st c="4058">is
+    minimized.</st> <st c="4073">However, no model is perfect.</st> <st c="4103">Even
+    a suitably trained model that has not been overfitted to the training data will
+    not have</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1320.png)
+    <st c="4197"><st c="4198">identical to</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1321.png)<st
+    c="4212"><st c="4213">. Using</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1320.png)
+    <st c="4221"><st c="4222">to represent</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1321.png)
+    <st c="4236"><st c="4237">is an approximation.</st> <st c="4259">It will be an
+    imperfect approximation in the sense that there will be some loss of the information
+    that was present in</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1324.png)<st
+    c="4378"><st c="4379">, hence the name “loss function.” A loss function enables
+    us to measure how much loss we suffer when representing</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1325.png)
+    <st c="4493"><st c="4494">by</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1326.png)<st
+    c="4498"><st c="4499">. Or rather, it attempts to quantify how much loss we suffer
+    when we represent the true process that generates the real data</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1327.png)
+    <st c="4624"><st c="4625">by our model, which produces the predictions</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1328.png)<st
+    c="4671"><st c="4672">. In this way, the loss function measures how well our model
+    represents the true data generation process – it is a measure of how good our</st>
+    <st c="4811">model is.</st></st></st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="4820">Risk functions</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="4835">The quantity in</st> *<st c="4852">Eq.</st> <st c="4856">1</st>*
+    <st c="4857">is an example of a</st> **<st c="4877">risk function</st>**<st c="4890">.
+    A risk function is the expectation value of a loss</st> <st c="4942">function;
+    that is, its</st> <st c="4966">average value.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="4980">Why would we want to calculate the expectation of a loss function?</st>
+    <st c="5048">Let’s take a closer look at what a loss function is.</st> <st c="5101">For
+    our example, our loss function</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1329.png)
+    <st c="5136"><st c="5137">is a function of data.</st> <st c="5161">The model prediction
+    value</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1307.png)
+    <st c="5188"><st c="5189">is a function of the feature vector</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1331.png)
+    <st c="5226"><st c="5227">that we input into the model, so</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1307.png)
+    <st c="5261"><st c="5262">is a function of data.</st> <st c="5286">Similarly,
+    the ground-truth value</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/209.png)
+    <st c="5320"><st c="5325">is also data.</st> <st c="5339">This makes the loss
+    function value</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:mrow></mml:mfenced></mml:math>](img/1334.png)
+    <st c="5374"><st c="5375">a random variable – recall from</st> [*<st c="5408">Chapter
+    2</st>*](B19496_02.xhtml#_idTextAnchor061) <st c="5417">that all data contains
+    a random component, and anything derived from data contains a</st> <st c="5503">random
+    component.</st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="5520">As we learned in</st> [*<st c="5538">Chapter 2</st>*](B19496_02.xhtml#_idTextAnchor061)<st
+    c="5547">, a random variable can take a range of values, and by taking the expectation
+    value, we get a single, deterministic, quantity.</st> <st c="5674">When constructing
+    a measure of how good a model is or constructing a measure to minimize as part
+    of a training process, a scalar deterministic quantity is always easier to work
+    with than a random quantity.</st> <st c="5880">The risk</st> <st c="5888">function
+    associated with</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:mrow></mml:mfenced></mml:math>](img/1335.png)
+    <st c="5914"><st c="5915">is defined as the expectation of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:mrow></mml:mfenced></mml:math>](img/1336.png)
+    <st c="5949"><st c="5950">over the values of the feature vector</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1331.png)
+    <st c="5989"><st c="5990">and the ground-truth value</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)<st
+    c="6018"><st c="6041">. So, the risk is calculated using the</st> <st c="6080">following
+    formula:</st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mtext>Risk</mtext><mspace
+    width="0.25em" /><mo>=</mo><mspace width="0.25em" /><msub><mi mathvariant="double-struck">E</mi><mrow><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder><mo>,</mo><mi>y</mi></mrow></msub><mfenced open="("
+    close=")"><mrow><mtext>L</mtext><mfenced open="(" close=")"><mrow><mi>y</mi><mo>,</mo><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mfenced open="(" close=")"><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder></mfenced></mrow></mfenced></mrow></mfenced><mo>=</mo><mspace
+    width="0.25em" /><mo>∫</mo><mtext>L</mtext><mfenced open="(" close=")"><mrow><mi>y</mi><mo>,</mo><mspace
+    width="0.25em" /><mover><mi>y</mi><mo stretchy="true">ˆ</mo></mover><mfenced open="("
+    close=")"><munder><mi>x</mi><mo stretchy="true">_</mo></munder></mfenced></mrow></mfenced><mspace
+    width="0.25em" /><mi>p</mi><mfenced open="(" close=")"><mrow><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder><mo>,</mo><mspace width="0.25em" /><mi>y</mi></mrow></mfenced><mi>d</mi><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder><mi>d</mi><mi>y</mi></mrow></mrow></math>](img/1339.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="6143">Eq.</st> <st c="6147">2</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="6148">Since we have integrated over all possible values of</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1331.png)
+    <st c="6201"><st c="6202">and</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)<st
+    c="6207"><st c="6230">, the risk function defined by</st> *<st c="6261">Eq.</st>
+    <st c="6265">2</st>* <st c="6266">is now a function of the model parameters only.</st>
+    <st c="6315">It is now a function we can use to work out optimal model parameter
+    values because it is deterministic – whenever we minimize the risk function in</st>
+    *<st c="6462">Eq.</st> <st c="6466">2</st>* <st c="6467">with respect to the model
+    parameters we will always get the</st> <st c="6528">same answer.</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="6540">In practice, calculating the risk function in</st> *<st c="6587">Eq.</st>
+    <st c="6591">2</st>* <st c="6592">can be tricky, so instead, if we have a training
+    dataset, we can approximate the expectation value in</st> *<st c="6695">Eq.</st>
+    <st c="6699">2</st>* <st c="6700">by the sample average of the loss function.</st>
+    <st c="6745">That is, we approximate</st> <st c="6769">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mtext>Risk</mtext><mspace
+    width="0.25em" /><mo>≃</mo><mspace width="0.25em" /><mfrac><mn>1</mn><mi>N</mi></mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><mtext>L</mtext></mrow><mfenced
+    open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>,</mo><msub><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mi>i</mi></msub></mrow></mfenced></mrow></mrow></math>](img/1342.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="6785">Eq.</st> <st c="6789">3</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="6790">You’ll recognize the quantity in</st> *<st c="6823">Eq.</st> <st
+    c="6827">3</st>* <st c="6828">as being the same as that in</st> *<st c="6858">Eq.</st>
+    <st c="6862">1</st>*<st c="6863">, which is why we said the quantity in</st> *<st
+    c="6902">Eq.</st> <st c="6906">1</st>* <st c="6907">was a risk function.</st>
+    <st c="6929">As we learned in</st> [*<st c="6946">Chapter 2</st>*](B19496_02.xhtml#_idTextAnchor061)<st
+    c="6955">, we can think of a sample average as an expectation value calculated
+    using the empirical density function.</st> <st c="7063">In this case, the empirical
+    density function is calculated as</st> <st c="7125">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+    display="block"><mml:mtext>Empirical density function</mml:mtext><mml:mi> </mml:mi><mml:mo>=</mml:mo><mml:mi> </mml:mi><mml:mi> </mml:mi><mml:mfrac><mml:mrow><mml:mn>1</mml:mn></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">N</mml:mi></mml:mrow></mml:mfrac><mml:mrow><mml:munderover><mml:mo
+    stretchy="false">∑</mml:mo><mml:mrow><mml:mi mathvariant="normal">i</mml:mi><mml:mi> </mml:mi><mml:mo>=</mml:mo><mml:mi> </mml:mi><mml:mn>1</mml:mn></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">N</mml:mi></mml:mrow></mml:munderover><mml:mrow><mml:mi mathvariant="normal">δ</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:mi> </mml:mi><mml:munder underaccent="false"><mml:mrow><mml:mi
+    mathvariant="normal">x</mml:mi></mml:mrow><mml:mo>_</mml:mo></mml:munder><mml:mi> </mml:mi><mml:mo>-</mml:mo><mml:mi> </mml:mi><mml:msub><mml:mrow><mml:munder
+    underaccent="false"><mml:mrow><mml:mi mathvariant="normal">x</mml:mi></mml:mrow><mml:mo>_</mml:mo></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">i</mml:mi></mml:mrow></mml:msub><mml:mi> </mml:mi></mml:mrow></mml:mfenced><mml:mi
+    mathvariant="normal">δ</mml:mi><mml:mfenced separators="|"><mml:mrow><mml:mi> </mml:mi><mml:mi
+    mathvariant="normal">y</mml:mi><mml:mi> </mml:mi><mml:mo>-</mml:mo><mml:mi> </mml:mi><mml:msub><mml:mrow><mml:mi
+    mathvariant="normal">y</mml:mi></mml:mrow><mml:mrow><mml:mi mathvariant="normal">i</mml:mi></mml:mrow></mml:msub><mml:mi> </mml:mi></mml:mrow></mml:mfenced></mml:mrow></mml:mrow></mml:math>](img/1343.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="7191">Eq.</st> <st c="7195">4</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="7196">We can use the empirical density function in</st> *<st c="7241">Eq.</st>
+    <st c="7245">4</st>* <st c="7246">to approximate the density function</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>p</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo>,</mml:mo><mml:mi>y</mml:mi></mml:mrow></mml:mfenced></mml:math>](img/1344.png)
+    <st c="7283"><st c="7292">in</st> *<st c="7295">Eq.</st> <st c="7299">2</st>*<st
+    c="7300">. Plugging it into</st> *<st c="7319">Eq.</st> <st c="7323">2</st>*<st
+    c="7324">, we then get</st> *<st c="7338">Eq.</st> <st c="7342">3</st>*<st c="7343">.
+    Because of this, we call the risk function defined by</st> *<st c="7399">Eq.</st>
+    <st c="7403">3</st>* <st c="7404">(and</st> *<st c="7410">Eq.</st> <st c="7414">1</st>*<st
+    c="7415">) the</st> **<st c="7421">empirical risk function</st>**<st c="7444">.
+    Training a model by minimizing</st> <st c="7477">the quantity in</st> *<st c="7493">Eq.</st>
+    <st c="7497">3</st>* <st c="7498">with</st> <st c="7504">respect to the model
+    parameters is called</st> **<st c="7546">empirical</st>** **<st c="7556">risk
+    minimization</st>**<st c="7573">.</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="7574">Note that the empirical risk function still has a dependence on
+    data, because we have approximated the population</st> <st c="7688">distribution</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>p</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo>,</mml:mo><mml:mi>y</mml:mi></mml:mrow></mml:mfenced></mml:math>](img/1344.png)
+    <st c="7702"><st c="7711">using a finite sample of data.</st> <st c="7742">The
+    empirical risk function is a function of the entire training dataset, and so its
+    value will be a random variable.</st> <st c="7860">If the dataset is large, then
+    the variance of the empirical risk function may be small enough that we can confidently
+    ignore this variation, but clearly, in general, the model parameter values that
+    result from minimizing the empirical risk function will be sensitive to (depend
+    on) the precise details of the training</st> <st c="8178">set used.</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="8187">Finally, we should point out that because an empirical risk function
+    is just a sum of loss function values, the terminology “risk function” and “loss
+    function” are often used interchangeably in a loose fashion.</st> <st c="8399">So,
+    sometimes, you may hear someone speak of a loss function when they are referring
+    to a risk function or vice versa.</st> <st c="8518">However, the intent is usually
+    clear – they are referring to a function that is to be minimized in order to find
+    good values for the</st> <st c="8651">model parameters.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="8668">There are many loss functions</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="8698">So far, we have been vague about the details of our loss function.</st>
+    <st c="8766">We have referred to it</st> <st c="8789">simply as</st> <st c="8798">L</st><st
+    c="8800">(</st><st c="8801">y</st><st c="8802">,</st> <st c="8803">ˆ</st><st c="8804">y</st><st
+    c="8805">)</st><st c="8806">, but we haven’t given an</st> <st c="8832">actual
+    formula for our loss function.</st> <st c="8870">This is deliberate because there
+    are many potential choices of loss function formula, and so we wanted to keep
+    the explanation of how loss functions are used very general to encompass all these
+    potentially different loss</st> <st c="9091">function formulas.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="9109">One of the simplest loss function formula for</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1346.png)
+    <st c="9156"><st c="9157">is to take the difference between</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/769.png)
+    <st c="9192"><st c="9202">and</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1348.png)
+    <st c="9206"><st c="9207">and square it, to ensure a positive quantity.</st> <st
+    c="9254">That is, we use the</st> <st c="9274">following formula:</st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mtext>L</mtext><mfenced
+    open="(" close=")"><mrow><mi>y</mi><mo>,</mo><mover><mi>y</mi><mo stretchy="true">ˆ</mo></mover></mrow></mfenced><mspace
+    width="0.25em" /><mo>=</mo><mspace width="0.25em" /><msup><mfenced open="(" close=")"><mrow><mi>y</mi><mo>−</mo><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover></mrow></mfenced><mn>2</mn></msup></mrow></mrow></math>](img/1349.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="9294">Eq.</st> <st c="9298">5</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="9299">The loss function</st> <st c="9316">formula in</st> *<st c="9328">Eq.</st>
+    <st c="9332">5</st>* <st c="9333">is called the</st> **<st c="9348">squared loss</st>**<st
+    c="9360">. It is a very simple formula.</st> <st c="9391">Because of that, it
+    is an extremely widely used loss function, with some convenient properties.</st>
+    <st c="9487">Consequently, in the next section, we go into more detail about this</st>
+    <st c="9556">loss function.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="9570">Different loss functions = different end results</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="9619">The squared loss is just one way of combining</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)
+    <st c="9666"><st c="9689">and</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1307.png)
+    <st c="9693"><st c="9694">into a positive number.</st> <st c="9719">We could just
+    as well have chosen to use the formula</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced><mml:mo>=</mml:mo><mml:mfenced
+    open="|" close="|" separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>-</mml:mo><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1352.png)<st
+    c="9772"><st c="9773">, which is called the</st> **<st c="9795">absolute loss</st>**<st
+    c="9808">. Different</st> <st c="9820">choices of loss function will lead to different
+    results.</st> <st c="9877">If we used an absolute-loss loss function in the empirical
+    risk function in</st> *<st c="9953">Eq.</st> <st c="9957">3</st>* <st c="9958">when
+    doing our model training, we would end up with different model parameter estimates
+    compared to if we had used a squared-loss function.</st> <st c="10099">How the
+    parameter estimates would differ depends on the different properties of the two
+    loss functions.</st> <st c="10203">This highlights</st> <st c="10219">the following:</st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="10233">The properties of the parameter estimates depend upon the properties
+    of the loss function.</st> <st c="10325">Some of these properties are advantageous,
+    and so often, we will choose a particular loss function precisely because we want
+    the parameter estimates to have</st> <st c="10482">certain properties.</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="10501">The end results of training a model depend not only on the choice
+    of model and choice of training data but also the whole training process, so also
+    on such things as the choice of loss function; that is, how we choose to measure
+    how good a model is.</st> <st c="10752">The end results can also depend on the
+    algorithm we choose to minimize the empirical risk once we make our choice of</st>
+    <st c="10869">loss function.</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="10883">Loss functions for anything</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="10911">Up till now, we have been talking about loss functions</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>y</mml:mi><mml:mo>,</mml:mo><mml:mover accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1353.png)
+    <st c="10967"><st c="10968">that measure the difference between a ground-truth
+    value</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)
+    <st c="11026"><st c="11049">and the</st> <st c="11057">corresponding model prediction</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1307.png)<st
+    c="11088"><st c="11089">. But at the very start of this section, we just said
+    that a loss function took in two inputs and compared them.</st> <st c="11202">From
+    this, you’re probably beginning to realize that we can use loss functions to compare
+    more than just predictions and ground-truth values.</st> <st c="11344">For example,
+    we might want to measure the difference between our estimates of some model parameters
+    and what should be the true model parameter values.</st> <st c="11496">If we denote
+    a true model parameter value by</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>β</mml:mi></mml:math>](img/1356.png)
+    <st c="11541"><st c="11542">and our estimate of it by</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1357.png)<st
+    c="11569"><st c="11572">, then we could measure how close</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1357.png)
+    <st c="11606"><st c="11609">is to</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>β</mml:mi></mml:math>](img/1356.png)
+    <st c="11615"><st c="11616">using the squared loss,</st> <st c="11641">as follows:</st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="11652">Similarity between</st> <st c="11672">β</st> <st c="11673">and</st>
+    <st c="11677">ˆ</st><st c="11678">β</st> <st c="11679">=</st> <st c="11680">(</st><st
+    c="11681">β</st><st c="11682">−</st> <st c="11683">ˆ</st><st c="11684">β</st><st
+    c="11685">)</st><st c="11686">2</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="11687">Eq.</st> <st c="11691">6</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="11692">In the preceding example, we have effectively defined a loss function</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mtext>L</mml:mtext><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>β</mml:mi><mml:mo>,</mml:mo><mml:mo> </mml:mo><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow></mml:mfenced></mml:math>](img/1360.png)
+    <st c="11762"><st c="11770">that takes model parameter values as input.</st> <st
+    c="11814">But it is still just comparing two real numbers.</st> <st c="11863">Again,
+    we highlight the fact that at the start of this section, we said that a loss function
+    just takes two inputs.</st> <st c="11979">There is no reason why those inputs
+    must always be two real numbers.</st> <st c="12048">There are, in fact, many situations
+    where we want to compare other mathematical objects.</st> <st c="12137">For</st>
+    <st c="12141">example, we may want to compare two continuous probability distributions,
+    particularly if the model we are building is not a model of the ground-truth values</st>
+    <st c="12299">y</st><st c="12300">, but is a model of a</st> <st c="12322">probability
+    distribution.</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="12347">One of the most common functions for comparing two probability
+    distributions is the</st> **<st c="12432">Kullback-Leibler</st>** <st c="12448">(</st>**<st
+    c="12450">KL</st>**<st c="12452">) divergence.</st> <st c="12467">If the two</st>
+    <st c="12477">continuous probability distributions we wish to compare have probability
+    density functions</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>p</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1361.png)
+    <st c="12569"><st c="12574">and</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>q</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1362.png)<st
+    c="12578"><st c="12583">, and they are distributions of a thing denoted by</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1331.png)<st
+    c="12634"><st c="12635">, then the KL divergence is defined</st> <st c="12671">as
+    follows:</st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mtext>KL</mtext><mfenced
+    open="(" close=")"><mrow><mi>p</mi><mo>∥</mo><mi>q</mi></mrow></mfenced><mo>=</mo><mspace
+    width="0.25em" /><mo>∫</mo><mi>p</mi><mfenced open="(" close=")"><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder></mfenced><mi mathvariant="normal">l</mi><mi mathvariant="normal">o</mi><mi
+    mathvariant="normal">g</mi><mfenced open="(" close=")"><mfrac><mrow><mi>p</mi><mfenced
+    open="(" close=")"><munder><mi>x</mi><mo stretchy="true">_</mo></munder></mfenced></mrow><mrow><mi>q</mi><mfenced
+    open="(" close=")"><munder><mi>x</mi><mo stretchy="true">_</mo></munder></mfenced></mrow></mfrac></mfenced><mi>d</mi><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder></mrow></mrow></math>](img/1364.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="12712">Eq.</st> <st c="12716">7</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="12717">As the KL divergence is the average of the logarithmic difference
+    between</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>p</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1365.png)
+    <st c="12791"><st c="12796">and</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>q</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1366.png)<st
+    c="12800"><st c="12805">, we can think of the KL divergence as a</st> <st c="12846">risk
+    function.</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="12860">We haven’t been specific about what the thing</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1331.png)
+    <st c="12907"><st c="12908">represents, so you’ll realize that the KL divergence
+    can be used for measuring the similarity of distributions of many exotic mathematical
+    objects – vectors, networks, matrices, and so on.</st> <st c="13098">We won’t
+    go into any more details.</st> <st c="13133">We’ll meet the KL divergence again
+    in</st> [*<st c="13171">Chapter 13</st>*](B19496_13.xhtml#_idTextAnchor646)<st
+    c="13181">, but for now, we’ll leave it by just saying that the KL divergence
+    can be used to measure the expected loss that occurs when we use</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>q</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1362.png)
+    <st c="13314"><st c="13319">to</st> <st c="13322">approximate</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>p</mml:mi><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1361.png)<st
+    c="13334"><st c="13339">.</st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="13340">Hopefully, by now, you’ll have realized that the concept of a
+    loss function is a very general one.</st> <st c="13440">A loss function measures
+    the similarity between two mathematical objects.</st> <st c="13514">We can do
+    this for many different types of mathematical objects.</st> <st c="13579">Even
+    for a given type of mathematical object, there are many different potential choices
+    of formula for the loss function we use, with each different formula leading to
+    subtle differences and nuances in the final results when we use the loss function
+    for, say,</st> <st c="13840">model training.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="13855">A loss function by any other name</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="13889">Since the concept of a loss function is a very general one and
+    they just compare two mathematical objects, it is not surprising that such functions
+    occur in many different branches of science and mathematics and consequently have
+    different names for the same or related concepts.</st> <st c="14170">Therefore,
+    you</st> <st c="14185">may also see the following concepts and</st> <st c="14225">terminology
+    used:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**<st c="14242">Cost function</st>**<st c="14256">: Since our model predictions</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1370.png)
+    <st c="14287"><st c="14288">are an imperfect representation of</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1371.png)<st
+    c="14324"><st c="14325">, there may be some consequences or</st> <st c="14360">costs
+    to that imprecision.</st> <st c="14388">For example, in a business setting, using</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1372.png)
+    <st c="14430"><st c="14431">as an imperfect prediction of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1327.png)
+    <st c="14462"><st c="14463">could result in lost revenue or overstocking of inventory,
+    and so has a real cost to the business.</st> <st c="14563">Consequently, a loss
+    function is also sometimes called a</st> *<st c="14620">cost function</st>*<st
+    c="14633">. Clearly, we would want to choose the model parameter values to minimize
+    this cost as much as possible, so we also talk of minimizing a</st> <st c="14770">cost
+    function.</st></st></st></st></st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**<st c="14784">Objective function</st>**<st c="14803">: When minimizing a</st>
+    <st c="14824">risk function with respect to our model’s parameters, minimizing
+    the risk function is the aim or</st> *<st c="14921">objective</st>* <st c="14930">of
+    the whole exercise.</st> <st c="14954">Consequently, the risk function is also
+    referred to as the</st> *<st c="15013">objective function</st>*<st c="15031">.
+    This terminology is particularly common in the field of mathematical optimization,
+    which studies methods and general algorithms for</st> <st c="15165">optimizing
+    functions.</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="15186">That note on the widespread use of loss functions across different
+    mathematical fields is a good place to stop for now and recap what we have learned
+    in</st> <st c="15340">this section.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="15353">What we learned</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="15369">In this section, we have learned</st> <st c="15403">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="15417">How a loss function measures the loss incurred when we approximate
+    one mathematical object</st> <st c="15509">by another</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="15519">How a risk function is constructed as the expectation value of
+    a</st> <st c="15585">loss function</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="15598">How to calculate the empirical risk function from a loss function
+    and</st> <st c="15669">a dataset</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="15678">How the optimal parameter values of a model can be estimated by
+    minimizing the empirical</st> <st c="15768">risk function</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="15781">How the choice of loss function changes the properties of the
+    model parameter estimates obtained through the empirical risk</st> <st c="15906">minimization
+    process</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="15926">Having learned about loss functions in general, in the next section,
+    we are going to focus on one loss function in particular – the squared-loss function.</st>
+    <st c="16082">This is because the squared-loss function is so ubiquitous.</st>
+    <st c="16142">As we will see in further sections, it is one of the common data
+    science methods for estimating</st> <st c="16238">model parameters.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="16255">Least Squares</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="16269">Least squares or least squares regression is probably a term you’ve
+    heard before.</st> <st c="16352">Why is that so?</st> <st c="16368">It is because
+    it is an extremely versatile but simple technique.</st> <st c="16433">These</st>
+    <st c="16438">characteristics of least squares stem from the properties of the
+    squared-loss function.</st> <st c="16527">So to start we’ll delve into the squared-loss
+    function in a bit</st> <st c="16591">more detail.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="16603">The squared-loss function</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="16629">The squared-loss function in</st> *<st c="16659">Eq.</st> <st
+    c="16663">5</st>* <st c="16664">is a function</st> <st c="16679">of the difference</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi><mml:mo>-</mml:mo><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1374.png)<st
+    c="16697"><st c="16698">, and so we</st> <st c="16710">can write the squared loss
+    in a slightly</st> <st c="16751">simpler fo</st><st c="16761">rm:</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><msub><mtext>L</mtext><mrow><mi>s</mi><mi>q</mi><mi>u</mi><mi>a</mi><mi>r</mi><mi>e</mi><mi>d</mi><mo>−</mo><mi>l</mi><mi>o</mi><mi>s</mi><mi>s</mi></mrow></msub><mfenced
+    open="(" close=")"><mrow><mi>y</mi><mo>,</mo><mover><mi>y</mi><mo stretchy="true">ˆ</mo></mover></mrow></mfenced><mspace
+    width="0.25em" /><mo>=</mo><mspace width="0.25em" /><msub><mi>f</mi><mrow><mi>s</mi><mi>q</mi></mrow></msub><mfenced
+    open="(" close=")"><mrow><mi>y</mi><mo>−</mo><mover><mi>y</mi><mo stretchy="true">ˆ</mo></mover></mrow></mfenced><mspace
+    width="0.25em" /><mspace width="0.25em" /><mspace width="0.25em" /><mspace width="0.25em"
+    /><mtext>with</mtext><mspace width="0.25em" /><mspace width="0.25em" /><mspace
+    width="0.25em" /><mspace width="0.25em" /><msub><mi>f</mi><mrow><mi>s</mi><mi>q</mi></mrow></msub><mfenced
+    open="(" close=")"><mi>x</mi></mfenced><mo>=</mo><msup><mi>x</mi><mn>2</mn></msup></mrow></mrow></math>](img/1375.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="16801">Eq.</st> <st c="16805">8</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="16806">The form of the function</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>f</mml:mi></mml:mrow><mml:mrow><mml:mi>s</mml:mi><mml:mi>q</mml:mi></mml:mrow></mml:msub><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>x</mml:mi></mml:mrow></mml:mfenced></mml:math>](img/1376.png)
+    <st c="16831"><st c="16832">is show</st><st c="16840">n in</st> *<st c="16846">Figure
+    4</st>**<st c="16854">.1</st>*<st c="16856">:</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.1: The shape of the squared-loss function](img/B19496_04_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="16880">Figure 4.1: The shape of the squared-loss function</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="16930">For the squared loss, the empirical risk function can be written</st>
+    <st c="16996">as follows:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mfrac><mn>1</mn><mi>N</mi></mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><mrow><msub><mi>f</mi><mrow><mi>s</mi><mi>q</mi></mrow></msub><mfenced
+    open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mi>i</mi></msub></mrow></mfenced></mrow></mrow><mspace
+    width="0.25em" /><mo>=</mo><mspace width="0.25em" /><mfrac><mn>1</mn><mi>N</mi></mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><msup><mfenced
+    open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mi>i</mi></msub></mrow></mfenced><mn>2</mn></msup></mrow></mrow></mrow></math>](img/1377.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="17009">Eq.</st> <st c="17013">9</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="17014">The model prediction,</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1378.png)<st
+    c="17036"><st c="17037">, obviously depends upon the model parameters, which we’ll
+    denote by the vector</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1379.png)<st
+    c="17117"><st c="17118">, and the</st> <st c="17128">vector of feature values,</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1380.png)<st
+    c="17154"><st c="17158">, for which we are making the prediction.</st> <st c="17200">So,
+    we denote our model as</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo> </mml:mo><mml:mo>|</mml:mo><mml:mo> </mml:mo><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1381.png)<st
+    c="17227"><st c="17233">. The vertical bar in that mathematical expression means
+    “given,” so we can read this mathematical</st> <st c="17331">expression as the
+    value of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1307.png)
+    <st c="17359"><st c="17360">evaluated at</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1331.png)
+    <st c="17374"><st c="17375">and given the model parameter values</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1379.png)<st
+    c="17413"><st c="17414">. The specific model prediction</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1378.png)
+    <st c="17446"><st c="17447">is obtained by plugging the feature vector</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1380.png)
+    <st c="17491"><st c="17495">into this expression for our model, so</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub><mml:mo>=</mml:mo><mml:mo> </mml:mo><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mfenced
+    separators="|"><mml:mrow><mml:msub><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub><mml:mo> </mml:mo><mml:mo>|</mml:mo><mml:mo> </mml:mo><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1387.png)<st
+    c="17534"><st c="17535">. If we determine</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1388.png)
+    <st c="17553"><st c="17554">by minimizing the empirical risk function with respect
+    to</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1379.png)<st
+    c="17613"><st c="17614">, this is equivalent to minimizing</st> <st c="17649">the
+    followi</st><st c="17660">ng:</st></st></st></st></st></st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><msup><mfenced
+    open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><mspace width="0.25em"
+    /><mover><mi>y</mi><mo stretchy="true">ˆ</mo></mover><mfenced open="(" close=")"><mrow><msub><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder><mi>i</mi></msub><mspace width="0.25em" /><mo>|</mo><mspace
+    width="0.25em" /><munder><mi>β</mi><mo stretchy="true">_</mo></munder></mrow></mfenced></mrow></mfenced><mn>2</mn></msup></mrow></mrow></math>](img/1390.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="17666">Eq.</st> <st c="17670">10</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="17672">We have dropped the pre-factor of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mfrac><mml:mrow><mml:mn>1</mml:mn></mml:mrow><mml:mrow><mml:mi>N</mml:mi></mml:mrow></mml:mfrac></mml:math>](img/1391.png)
+    <st c="17707"><st c="17708">in</st> *<st c="17712">Eq.</st> <st c="17716">10</st>*
+    <st c="17718">because it is a constant and therefore makes no difference to the
+    value of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1392.png)
+    <st c="17794"><st c="17795">thatminimizes</st> *<st c="17810">Eq.</st> <st c="17814">10</st>*<st
+    c="17816">. The difference</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub><mml:mo>-</mml:mo><mml:msub><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1393.png)
+    <st c="17833"><st c="17834">is the</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:mi>i</mml:mi></mml:mrow><mml:mrow><mml:mi>t</mml:mi><mml:mi>h</mml:mi></mml:mrow></mml:msup></mml:math>](img/1394.png)
+    <st c="17842">**<st c="17846">residual</st>** <st c="17854">of the model, and
+    so the</st> <st c="17879">quantity in</st> *<st c="17892">Eq.</st> <st c="17896">10</st>*
+    <st c="17898">is the</st> **<st c="17906">sum-of-squared-residuals</st>**<st c="17930">,
+    which is often shortened to</st> **<st c="17960">sum-of-squares</st>**<st c="17974">.
+    When we determine the model parameters</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1395.png)
+    <st c="18015"><st c="18016">by minimizing the sum-of-squares in</st> *<st c="18053">Eq.</st>
+    <st c="18057">10</st>*<st c="18059">, we are adjusting</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1388.png)
+    <st c="18078"><st c="18079">until the sum-of-squares reaches its least possible
+    value.</st> <st c="18139">Hence this technique for determining a model’s</st>
+    <st c="18185">parameters is known as</st> **<st c="18209">least squares</st>**
+    <st c="18222">or</st> **<st c="18226">least</st>** **<st c="18232">squares minimization</st>**<st
+    c="18252">.</st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="18253">We have said very little about</st> <st c="18284">the mathematical
+    form of our model</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo> </mml:mo><mml:mo>|</mml:mo><mml:mo> </mml:mo><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:math>](img/1397.png)<st
+    c="18320"><st c="18321">. This is because we haven’t needed to.</st> <st c="18361">This
+    makes least squares a very general technique for estimating the parameters of
+    a model.</st> <st c="18453">We</st> <st c="18456">can apply the idea to very many
+    different types of models and very many different situations.</st> <st c="18550">We
+    already encountered least squares minimization in disguise when we minimized the
+    dissimilarity between</st> <st c="18655">two matrices in</st> [*<st c="18672">Chapter
+    3</st>*](B19496_03.xhtml#_idTextAnchor141) <st c="18681">when we introduced</st>
+    **<st c="18701">Non-negative Matrix</st>** **<st c="18721">Factorization</st>**
+    <st c="18734">(</st>**<st c="18736">NMF</st>**<st c="18739">).</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="18742">The idea of least squares minimization is a very intuitive one
+    – simply construct a mathematical expression for your model predictions, which
+    depends on the model parameters, use it to calculate the residuals</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub><mml:mo>-</mml:mo><mml:msub><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1398.png)
+    <st c="18952"><st c="18953">, then minimize the sum of the squared residuals.</st>
+    <st c="19003">However, least squares minimization is a heuristic idea, meaning
+    that, at the moment, we have not provided a formal or rigorous justification of
+    why we should minimize the sum-of-squared residuals to determine the model parameters.</st>
+    <st c="19235">Why, for example, do we square the residuals and not raise them
+    to the fourth power instead?</st> <st c="19328">We have given no proof that squaring
+    the residuals is the best choice we can make to turn the residual into a positive
+    quantity.</st> <st c="19457">We will provide a formal justification of least squares
+    minimization when we introduce probabilistic models in</st> *<st c="19568">Chapter
+    5</st>*<st c="19577">, but for now, we will stick with the heuristic viewpoint
+    – it is a very general, powerful, and extremely useful technique.</st> <st c="19701">So,
+    let’s dive into least squares minimization in a bit</st> <st c="19757">more detail.</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="19769">OLS regression</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="19784">The scatter plot in</st> <st c="19804">the left-hand plot of</st>
+    *<st c="19827">Figure 4</st>**<st c="19835">.2</st>* <st c="19837">shows some
+    example data that we would like to build a model of.</st> <st c="19902">The</st>
+    <st c="19906">scatter plot suggests a linear relationship, so we’ll use a linear
+    model to capture the relationship between the</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>x</mml:mi></mml:math>](img/10.png)
+    <st c="20019"><st c="20020">and</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/769.png)
+    <st c="20025"><st c="20035">values.</st> <st c="20043">For this 1D data (we have
+    only one feature,</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>x</mml:mi></mml:math>](img/10.png)<st
+    c="20087"><st c="20088">), a linear model is of the</st> <st c="20116">following
+    form:</st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mo>=</mo><mspace width="0.25em" /><msub><mi>β</mi><mn>0</mn></msub><mo>+</mo><mspace
+    width="0.25em" /><msub><mi>β</mi><mn>1</mn></msub><mi>x</mi></mrow></mrow></math>](img/1402.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="20141">Eq.</st> <st c="20145">11</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="20147">The intercept</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mn>0</mml:mn></mml:mrow></mml:msub></mml:math>](img/1403.png)
+    <st c="20162"><st c="20163">and gradient</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mn>1</mml:mn></mml:mrow></mml:msub></mml:math>](img/1404.png)
+    <st c="20177"><st c="20178">are the parameters of our model, so our parameter
+    vector</st> <st c="20236">β</st><st c="20237">_</st> <st c="20238">=</st> <st
+    c="20239">(</st><st c="20240">β</st><st c="20241">0</st><st c="20242">,</st> <st
+    c="20243">β</st><st c="20244">1</st><st c="20245">)</st><st c="20246">. An</st>
+    <st c="20250">example model is shown on the left-hand side of</st> *<st c="20299">Figure
+    4</st>**<st c="20307">.2</st>* <st c="20309">by the solid red line.</st> <st c="20333">In
+    fact, this line is the optimal or least squares ch</st><st c="20386">oice</st>
+    <st c="20392">for</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1379.png)<st
+    c="20396"><st c="20397">:</st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.2: least squares model optimization for a simple linear model](img/B19496_04_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="20454">Figure 4.2: least squares model optimization for a simple linear
+    model</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="20524">On the right-hand side of</st> *<st c="20551">Figure 4</st>**<st
+    c="20559">.2</st>*<st c="20561">, we have reproduced the scatter plot and least
+    squares optimal model line, but we have also highlighted, with vertical blue line
+    segments, the residuals of each of the datapoints.</st> <st c="20742">A residual
+    line segment above the red line indicates a positive residual, while a residual
+    line segment below the red line indicates a negative residual.</st> <st c="20896">We
+    can see that there is a mix of positive and negative residuals.</st> <st c="20963">At
+    any given value of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>x</mml:mi></mml:math>](img/1406.png)
+    <st c="20985"><st c="20986">the red line is passing approximately through the
+    middle of the</st> ![<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>y</mi></mrow></math>](img/769.png)
+    <st c="21051"><st c="21061">values that are located at that value of</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>x</mml:mi></mml:math>](img/169.png)<st
+    c="21102"><st c="21103">. In other words, the red line, or the least squares model,
+    is attempting the estimate the mean value of</st> ![<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>y</mi></mrow></math>](img/24.png)
+    <st c="21208"><st c="21231">given the value of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>x</mml:mi></mml:math>](img/10.png)<st
+    c="21250"><st c="21251">. Because we are estimating parameter values</st> <st
+    c="21296">β</st>![<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>β</mi></mrow></math>](img/1411.png)
+    <st c="21297"><st c="21298">that make our linear model predict the mean of</st>
+    ![<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>y</mi></mrow></math>](img/24.png)
+    <st c="21345"><st c="21368">given</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>x</mml:mi></mml:math>](img/10.png)<st
+    c="21374"><st c="21375">, the overall estimation process is called regression.</st>
+    <st c="21430">And because we are using least squares to estimate the optimal values
+    of</st> <st c="21503">β</st>![<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>β</mi></mrow></math>](img/1411.png)<st
+    c="21504"><st c="21505">, we call the overall process</st> **<st c="21535">least
+    squares regression</st>**<st c="21559">. Furthermore, because we are</st> <st
+    c="21588">using the vertical residuals we call this</st> **<st c="21631">ordinary
+    least squares</st>** <st c="21654">(</st>**<st c="21655">OLS</st>**<st c="21658">)</st>
+    **<st c="21660">regression</st>**<st c="21671">.</st></st></st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="21672">You may be wondering what is</st> <st c="21701">ordinary about
+    OLS regression.</st> <st c="21733">This refers to the fact that we are using least
+    squares regression in its most common setting – fitting a linear model and using
+    the vertical residuals.</st> <st c="21886">There are other types of least squares
+    regression that you may encounter.</st> <st c="21960">For example, if we have
+    a non-linear model but still use the vertical residuals, this is unsurprisingly</st>
+    <st c="22064">called</st> **<st c="22071">non-linear least squares regression</st>**
+    <st c="22106">(</st>**<st c="22108">NLS</st>**<st c="22111">).</st> <st c="22115">Alternatively,
+    if we still want to model a linear relationship but want the relationship to capture
+    how the</st> <st c="22223">x</st> <st c="22224">and</st> <st c="22229">y</st>
+    <st c="22230">values</st> <st c="22237">vary together, then the squares of the
+    orthogonal distances from the model line to the datapoints, rather than the vertical
+    distances, are a better way to measure the loss.</st> <st c="22411">This is</st>
+    <st c="22419">called</st> **<st c="22426">total least squares</st>** <st c="22445">(</st>**<st
+    c="22447">TLS</st>**<st c="22450">) regression.</st> <st c="22465">We already
+    encountered TLS regression in disguise when we learned about</st> **<st c="22537">principal
+    component analysis</st>** <st c="22565">(</st>**<st c="22567">PCA</st>**<st c="22570">)
+    in</st> [*<st c="22576">Chapter 3</st>*](B19496_03.xhtml#_idTextAnchor141)<st
+    c="22585">, when we</st> <st c="22594">chose our principal components to minimize
+    the variance lost by approximating a full dataset through</st> <st c="22696">dimensionality
+    reduction.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="22721">For now, we’re going to focus only on OLS regression.</st> <st
+    c="22776">It sounds like a great data science technique to have in our toolkit,
+    right?</st> <st c="22853">It is, but that doesn’t mean it doesn’t have its weaknesses.</st>
+    <st c="22914">We’ll explore one of its main</st> <st c="22944">weaknesses next.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="22960">OLS, outliers, and robust regression</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="22997">The scatter plot in</st> *<st c="23018">Figure 4</st>**<st c="23026">.3</st>*
+    <st c="23028">shows the influence of outliers on OLS regression.</st> <st c="23080">The
+    dataset clearly has two outlier values (with high</st> ![<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>y</mi></mrow></math>](img/24.png)
+    <st c="23134"><st c="23157">values) toward the right-hand end of the scatter plot.</st>
+    <st c="23212">The solid red line shows the OLS model</st> <st c="23251">when we
+    use all 31 datapoints, while the red</st> <st c="23296">dashed line shows the
+    OLS model when we exclude the two</st> <st c="23352">outlier points.</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="23367">Including the outlier points in the OLS regression has clearly
+    pulled the regression line upward despite the number of outliers being small.</st>
+    <st c="23509">One look at the shape of the loss function in</st> *<st c="23555">Figure
+    4</st>**<st c="23563">.1</st>* <st c="23565">explains why this is so.</st> <st
+    c="23591">The quadratic shape of the loss function means that outliers – that
+    is, points with large residuals – contribute significantly more to the sum-of-squared
+    residuals value.</st> <st c="23762">A residual,</st> ![<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>r</mi></mrow></math>](img/1416.png)<st
+    c="23774"><st c="23775">, of size 1.0 contributes a value of 1.0 when we plug
+    it into the squared-loss function</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>f</mml:mi></mml:mrow><mml:mrow><mml:mi>s</mml:mi><mml:mi>q</mml:mi></mml:mrow></mml:msub><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>r</mml:mi></mml:mrow></mml:mfenced></mml:math>](img/1417.png)<st
+    c="23863"><st c="23864">. However, a residual of size</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>r</mml:mi><mml:mo>=</mml:mo><mml:mn>2.0</mml:mn></mml:math>](img/1418.png)
+    <st c="23894"><st c="23895">contributes a value of 4.0 when we plug it into</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>f</mml:mi></mml:mrow><mml:mrow><mml:mi>s</mml:mi><mml:mi>q</mml:mi></mml:mrow></mml:msub><mml:mfenced
+    separators="|"><mml:mrow><mml:mi>r</mml:mi></mml:mrow></mml:mfenced></mml:math>](img/1419.png)<st
+    c="23944"><st c="23945">. Since OLS regression works by minimizing the sum-of-squared
+    residuals, the OLS algorithm is going to pay disproportionately more attention
+    to the outlier contributions when adjusting the m</st><st c="24135">odel</st>
+    <st c="24141">parameters</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1379.png)<st
+    c="24151"><st c="24153">.</st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.3: The effect of outliers on OLS regression](img/B19496_04_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="24186">Figure 4.3: The effect of outliers on OLS regression</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="24238">This tells us that OLS is sensitive to the</st> <st c="24281">effect
+    of outliers.</st> <st c="24302">Including the outliers in the OLS regression in</st>
+    *<st c="24350">Figure 4</st>**<st c="24358">.3</st>* <st c="24360">has led to
+    a</st> <st c="24374">model that is a poor fit for most of the data in the scatterplot,
+    and importantly, it has led to a model that will predict poorly for new datapoints.</st>
+    <st c="24524">Can we rectify this?</st> <st c="24545">Yes, we can.</st> <st c="24558">One
+    way to do so would be to modify the shape of our loss function so that it wasn’t
+    quadratic at large residual values.</st> <st c="24679">Such a loss function is
+    shown by the solid black line in</st> *<st c="24736">Figure 4</st>**<st c="24744">.4</st>*<st
+    c="24746">. For comparison, we have also plotted in</st> *<st c="24788">Figure
+    4</st>**<st c="24796">.4</st>* <st c="24798">the squared-loss function</st> <st
+    c="24825">of</st> *<st c="24828">Eq.</st> <st c="24832">8</st>*<st c="24833">,
+    as the dashed</st> <st c="24849">red line:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.4: The shape of the pseudo-Huber robust loss function](img/B19496_04_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="24949">Figure 4.4: The shape of the pseudo-Huber robust loss function</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="25011">This particular loss</st> <st c="25033">function is known as a
+    pseudo-Huber loss function, and its mathematical for</st><st c="25108">m is</st>
+    <st c="25114">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+    display="block"><mml:mi>f</mml:mi><mml:mfenced separators="|"><mml:mrow><mml:mi>x</mml:mi></mml:mrow></mml:mfenced><mml:mo> </mml:mo><mml:mo>=</mml:mo><mml:mo> </mml:mo><mml:msqrt><mml:mn>1</mml:mn><mml:mo>+</mml:mo><mml:msup><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mn>2</mml:mn></mml:mrow></mml:msup></mml:msqrt><mml:mo> </mml:mo><mml:mo>-</mml:mo><mml:mo> </mml:mo><mml:mn>1</mml:mn></mml:math>](img/1421.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="25144">Eq.</st> <st c="25148">12</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="25150">At large values of</st> <st c="25170">x</st><st c="25171">, this
+    loss function is</st> <st c="25195">approximately linear.</st> <st c="25217">The
+    contrast to the squared-loss function at large values of</st> <st c="25278">x</st>
+    <st c="25279">is marked.</st> <st c="25291">Using the pseudo-Huber loss function
+    in</st> *<st c="25331">Figure 4</st>**<st c="25339">.4</st>* <st c="25341">would
+    mean</st> <st c="25352">that outlier values would still contribute to the empirical
+    risk function, but not disproportionately so.</st> <st c="25459">The regression
+    algorithm would then be robust to the presence of outliers in the dataset, and
+    importantly, we would produce a model that is more accurate in its predictions
+    on new values</st> <st c="25646">of</st> <st c="25649">x</st><st c="25650">.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="25651">Not surprisingly, loss functions of the shape shown in</st> *<st
+    c="25707">Figure 4</st>**<st c="25715">.4</st>* <st c="25717">are studied as a
+    part of statistics known as</st> **<st c="25763">robust statistics</st>**<st c="25780">.
+    A detailed explanation of robust statistics techniques is beyond the scope of
+    this book.</st> <st c="25871">However, the</st> <st c="25883">very fact that robust
+    regression techniques</st> <st c="25927">are available to us may make you ask
+    why we still use and study OLS regression.</st> <st c="26008">The answer lies
+    in something we haven’t yet spoken about – for OLS, how do we actually do the
+    minimization of the empirical risk function?</st> <st c="26147">What are the details
+    of the algorithm we use?</st> <st c="26193">For OLS regression, the combination
+    of a linear model with a squared-loss function leads to an extremely efficient
+    solution to the empirical risk minimization problem.</st> <st c="26361">It is
+    this solution we will cover in the next section, but for now, let’s summarize
+    what we have learned about the squared-loss function and</st> <st c="26502">least
+    squares.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="26516">What we learned</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="26532">In this section, we have learned about</st> <st c="26572">the
+    following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="26586">The squared-loss function and its</st> <st c="26621">mathematical
+    shape</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="26639">Least squares minimization as a general heuristic technique for
+    estimating optimal model</st> <st c="26729">parameter values</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="26745">OLS regression as a technique for estimating the parameters of</st>
+    <st c="26809">linear models</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="26822">The sensitivity of OLS regression</st> <st c="26857">to outliers</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="26868">Robust loss functions and how they can mitigate the sensitivity
+    of OLS regression</st> <st c="26951">to outliers</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="26962">Having learned about the general ideas and principles of OLS regression,
+    we will delve into the mathematical detail behind OLS in the next section.</st>
+    <st c="27111">This will be useful because i) OLS is one of the workhorse algorithms
+    of data science, ii) it will help to highlight some ideas about the optimization
+    of objective functions in general that we will want to make use of</st> <st c="27329">later
+    on.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="27338">Linear models</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="27352">We’ve already introduced, at a high level, the idea of OLS regression
+    for a linear model.</st> <st c="27443">But this particular combination of squared
+    loss for measuring the risk and a linear model for</st> <st c="27537">ˆ</st><st
+    c="27538">y</st> <st c="27539">has some very convenient</st> <st c="27564">and
+    simple-to-use properties.</st> <st c="27595">This simplicity means that OLS regression
+    is one of the most widely used and studied data science modeling techniques.</st>
+    <st c="27714">That is why we are going to look in detail at fitting linear models
+    to data using</st> <st c="27796">OLS regression.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="27811">To start with, we’ll revisit the squared-loss empirical risk function
+    in</st> *<st c="27885">Eq.</st> <st c="27889">10</st>* <st c="27891">and look
+    at what happens to it when we have a linear model</st> <st c="27951">ˆ</st><st
+    c="27952">y</st><st c="27953">. To recap, the squared-loss empirical risk is</st>
+    <st c="27999">given by</st> <st c="28009">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+    display="block"><mml:mtext>Risk</mml:mtext><mml:mo> </mml:mo><mml:mo>=</mml:mo><mml:mfrac><mml:mrow><mml:mn>1</mml:mn></mml:mrow><mml:mrow><mml:mi>N</mml:mi></mml:mrow></mml:mfrac><mml:mo> </mml:mo><mml:mrow><mml:munderover><mml:mo
+    stretchy="false">∑</mml:mo><mml:mrow><mml:mi>i</mml:mi><mml:mo>=</mml:mo><mml:mn>1</mml:mn></mml:mrow><mml:mrow><mml:mi>N</mml:mi></mml:mrow></mml:munderover><mml:mrow><mml:msup><mml:mrow><mml:mfenced
+    separators="|"><mml:mrow><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub><mml:mo>-</mml:mo><mml:msub><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></mml:mrow><mml:mrow><mml:mn>2</mml:mn></mml:mrow></mml:msup></mml:mrow></mml:mrow></mml:math>](img/1422.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="28025">Eq.</st> <st c="28029">13</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="28031">Now, for a linear model with</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>d</mml:mi></mml:math>](img/596.png)
+    <st c="28061"><st c="28062">features,</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mn>1</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mn>2</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:mo>…</mml:mo><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mi>d</mml:mi></mml:mrow></mml:msub></mml:math>](img/1424.png)<st
+    c="28073"><st c="28086">, we can wri</st><st c="28098">te the model</st> <st c="28112">as
+    follows:</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mo>=</mo><mspace width="0.25em" /><msub><mi>β</mi><mn>0</mn></msub><mo>+</mo><mspace
+    width="0.25em" /><msub><mi>β</mi><mn>1</mn></msub><msub><mi>x</mi><mn>1</mn></msub><mo>+</mo><mspace
+    width="0.25em" /><msub><mi>β</mi><mn>2</mn></msub><msub><mi>x</mi><mn>2</mn></msub><mo>+</mo><mspace
+    width="0.25em" /><mo>⋯</mo><mo>+</mo><mspace width="0.25em" /><msub><mi>β</mi><mi>d</mi></msub><msub><mi>x</mi><mi>d</mi></msub></mrow></mrow></math>](img/1425.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="28142">Eq.</st> <st c="28146">14</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="28148">The vector of model parameters is</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">⊤</mml:mi></mml:mrow></mml:msup><mml:mo>=</mml:mo><mml:mo> </mml:mo><mml:mfenced
+    separators="|"><mml:mrow><mml:msub><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mn>0</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:mo> </mml:mo><mml:msub><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mn>1</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:mo>…</mml:mo><mml:mo>,</mml:mo><mml:mo> </mml:mo><mml:msub><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mi>d</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></mml:math>](img/1426.png)<st
+    c="28183"><st c="28196">. We can write the features in vector form as well.</st>
+    <st c="28248">We’ll write</st> <st c="28259">it as a row-vector,</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo>=</mml:mo><mml:mfenced
+    separators="|"><mml:mrow><mml:mn>1</mml:mn><mml:mo>,</mml:mo><mml:mo> </mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mn>1</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mn>2</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:mo>…</mml:mo><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mi>d</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></mml:math>](img/1427.png)<st
+    c="28280"><st c="28299">. Doing so allows us to write</st> *<st c="28329">Eq.</st>
+    <st c="28333">14</st>* <st c="28335">in the</st> <st c="28343">following form:</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mo>=</mo><mspace width="0.25em" /><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder><mspace width="0.25em" /><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder></mrow></mrow></math>](img/1428.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="28360">Eq.</st> <st c="28364">15</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="28366">We can think of the extra 1 in the feature vector</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo>=</mml:mo><mml:mfenced
+    separators="|"><mml:mrow><mml:mn>1</mml:mn><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mn>1</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mn>2</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:mo>…</mml:mo><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mi>d</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></mml:math>](img/1429.png)
+    <st c="28417"><st c="28436">as being a feature value</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mn>0</mml:mn></mml:mrow></mml:msub></mml:math>](img/1430.png)
+    <st c="28461"><st c="28462">that multiplies the intercept</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mn>0</mml:mn></mml:mrow></mml:msub></mml:math>](img/1431.png)
+    <st c="28493"><st c="28494">in the linear model in Eq.</st> <st c="28522">14\.</st>
+    <st c="28526">For the</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:mi>i</mml:mi></mml:mrow><mml:mrow><mml:mi>t</mml:mi><mml:mi>h</mml:mi></mml:mrow></mml:msup></mml:math>](img/1394.png)
+    <st c="28534"><st c="28538">datapoint the feature values can be written in vector
+    form,</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub><mml:mo>=</mml:mo><mml:mfenced
+    separators="|"><mml:mrow><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi><mml:mn>0</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi><mml:mn>1</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi><mml:mn>2</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:mo>…</mml:mo><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi><mml:mi>d</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></mml:math>](img/1433.png)<st
+    c="28598"><st c="28599">, with obviously</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi><mml:mn>0</mml:mn></mml:mrow></mml:msub><mml:mo>=</mml:mo><mml:mn>1</mml:mn></mml:math>](img/1434.png)
+    <st c="28616"><st c="28617">for all</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>i</mml:mi></mml:math>](img/102.png)<st
+    c="28626"><st c="28627">. We can combine all the feature vectors</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:munder><mml:mrow><mml:mi>x</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1380.png)
+    <st c="28668"><st c="28672">from all the datapoints into a</st> <st c="28703">data
+    matrix:</st></st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><munder><munder><mi>X</mi><mo
+    stretchy="true">_</mo></munder><mo stretchy="true">_</mo></munder><mspace width="0.25em"
+    /><mo>=</mo><mspace width="0.25em" /><mfenced open="(" close=")"><mtable columnspacing="0.8000em
+    0.8000em 0.8000em 0.8000em" columnwidth="auto auto auto auto auto" columnalign="center
+    center center center center" rowspacing="1.0000ex 1.0000ex 1.0000ex" rowalign="baseline
+    baseline baseline baseline"><mtr><mtd><msub><mi>x</mi><mn>10</mn></msub></mtd><mtd><msub><mi>x</mi><mn>11</mn></msub></mtd><mtd><msub><mi>x</mi><mn>12</mn></msub></mtd><mtd><mo>…</mo></mtd><mtd><msub><mi>x</mi><mrow><mn>1</mn><mi>d</mi></mrow></msub></mtd></mtr><mtr><mtd><msub><mi>x</mi><mn>20</mn></msub></mtd><mtd><msub><mi>x</mi><mn>21</mn></msub></mtd><mtd><msub><mi>x</mi><mn>22</mn></msub></mtd><mtd><mo>…</mo></mtd><mtd><msub><mi>x</mi><mrow><mn>2</mn><mi>d</mi></mrow></msub></mtd></mtr><mtr><mtd><mo>⋮</mo></mtd><mtd><mo>⋮</mo></mtd><mtd><mo>⋮</mo></mtd><mtd><mo>⋱</mo></mtd><mtd><mo>⋮</mo></mtd></mtr><mtr><mtd><msub><mi>x</mi><mrow><mi>N</mi><mn>0</mn></mrow></msub></mtd><mtd><msub><mi>x</mi><mrow><mi>N</mi><mn>1</mn></mrow></msub></mtd><mtd><msub><mi>x</mi><mrow><mi>N</mi><mn>2</mn></mrow></msub></mtd><mtd><mo>…</mo></mtd><mtd><msub><mi>x</mi><mrow><mi>N</mi><mi>d</mi></mrow></msub></mtd></mtr></mtable></mfenced><mspace
+    width="0.25em" /><mo>=</mo><mspace width="0.25em" /><mfenced open="(" close=")"><mtable
+    columnspacing="0.8000em 0.8000em 0.8000em 0.8000em" columnwidth="auto auto auto
+    auto auto" columnalign="center center center center center" rowspacing="1.0000ex
+    1.0000ex 1.0000ex" rowalign="baseline baseline baseline baseline"><mtr><mtd><mn>1</mn></mtd><mtd><msub><mi>x</mi><mn>11</mn></msub></mtd><mtd><msub><mi>x</mi><mn>12</mn></msub></mtd><mtd><mo>…</mo></mtd><mtd><msub><mi>x</mi><mrow><mn>1</mn><mi>d</mi></mrow></msub></mtd></mtr><mtr><mtd><mn>1</mn></mtd><mtd><msub><mi>x</mi><mn>21</mn></msub></mtd><mtd><msub><mi>x</mi><mn>22</mn></msub></mtd><mtd><mo>…</mo></mtd><mtd><msub><mi>x</mi><mrow><mn>2</mn><mi>d</mi></mrow></msub></mtd></mtr><mtr><mtd><mo>⋮</mo></mtd><mtd><mo>⋮</mo></mtd><mtd><mo>⋮</mo></mtd><mtd><mo>⋱</mo></mtd><mtd><mo>⋮</mo></mtd></mtr><mtr><mtd><mn>1</mn></mtd><mtd><msub><mi>x</mi><mrow><mi>N</mi><mn>1</mn></mrow></msub></mtd><mtd><msub><mi>x</mi><mrow><mi>N</mi><mn>2</mn></mrow></msub></mtd><mtd><mo>…</mo></mtd><mtd><msub><mi>x</mi><mrow><mi>N</mi><mi>d</mi></mrow></msub></mtd></mtr></mtable></mfenced></mrow></mrow></math>](img/1437.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="28724">Eq.</st> <st c="28728">16</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="28730">If we also put all the observed values,</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1438.png)<st
+    c="28771"><st c="28772">, into a vector</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">⊤</mml:mi></mml:mrow></mml:msup><mml:mo>=</mml:mo><mml:mfenced
+    separators="|"><mml:mrow><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mn>1</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mn>2</mml:mn></mml:mrow></mml:msub><mml:mo>,</mml:mo><mml:mo>…</mml:mo><mml:mo>,</mml:mo><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mi>N</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></mml:math>](img/1439.png)<st
+    c="28788"><st c="28807">, then we can write the risk function in</st> *<st c="28848">Eq.</st>
+    <st c="28852">13</st>* <st c="28854">in a very</st> <st c="28865">succinct form</st>
+    <st c="28879">as follows:</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mtext>Risk</mtext><mo>=</mo><mfrac><mn>1</mn><mi>N</mi></mfrac><mspace
+    width="0.25em" /><msup><mfenced open="(" close=")"><mrow><munder><mi>y</mi><mo
+    stretchy="true">_</mo></munder><mo>−</mo><mspace width="0.25em" /><munder><munder><mi>X</mi><mo
+    stretchy="true">_</mo></munder><mo stretchy="true">_</mo></munder><mspace width="0.25em"
+    /><munder><mi>β</mi><mo stretchy="true">_</mo></munder></mrow></mfenced><mi mathvariant="normal">⊤</mi></msup><mfenced
+    open="(" close=")"><mrow><munder><mi>y</mi><mo stretchy="true">_</mo></munder><mo>−</mo><mspace
+    width="0.25em" /><munder><munder><mi>X</mi><mo stretchy="true">_</mo></munder><mo
+    stretchy="true">_</mo></munder><mspace width="0.25em" /><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder></mrow></mfenced></mrow></mrow></math>](img/1440.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="28892">Eq.</st> <st c="28896">17</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="28898">The data matrix</st> <st c="28915">X</st><st c="28916">_</st><st
+    c="28917">_</st> <st c="28918">is also called the</st> **<st c="28938">design
+    matrix</st>**<st c="28951">. This terminology originates from statistics, where
+    often the datapoints</st> <st c="29024">and, hence, feature values were part of
+    a scientific experiment to quantify the various influences on the response variable</st>
+    <st c="29149">y</st><st c="29150">. Being part of a scientific experiment, the
+    feature values</st> <st c="29210">x</st><st c="29211">ij</st> <st c="29213">were
+    planned in advance; that</st> <st c="29244">is,</st> *<st c="29248">designed</st>*<st
+    c="29256">.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="29257">The optimal values of the model</st> <st c="29290">parameters</st>
+    <st c="29301">β</st><st c="29302">_</st> <st c="29303">are obtained by minimizing
+    the right-hand side of</st> *<st c="29354">Eq.</st> <st c="29358">17</st>* <st
+    c="29360">with respect to</st> <st c="29377">β</st><st c="29378">_</st><st c="29379">.
+    We’ll denote the optimal values of</st> <st c="29416">β</st><st c="29417">_</st>
+    <st c="29418">by the symbol</st> <st c="29433">ˆ</st><st c="29434">β</st><st c="29435">_</st><st
+    c="29436">. We can use the differential calculus we recapped in</st> [*<st c="29490">Chapter
+    1</st>*](B19496_01.xhtml#_idTextAnchor014) <st c="29499">to do the minimization.</st>
+    <st c="29524">Differentiating the right-hand side of</st> *<st c="29563">Eq.</st>
+    <st c="29567">17</st>* <st c="29569">with respect to</st> <st c="29586">β</st><st
+    c="29587">_</st> <st c="29588">and setting the derivatives to z</st><st c="29621">ero
+    gives us</st> <st c="29635">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><msub><mfenced
+    open="" close="|"><mrow><mspace width="0.25em" /><mfrac><mrow><mo>∂</mo><mtext>Risk</mtext></mrow><mrow><mo>∂</mo><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder></mrow></mfrac></mrow></mfenced><mrow><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder><mo>=</mo><munder><mover><mi>β</mi><mo stretchy="true">ˆ</mo></mover><mo
+    stretchy="true">_</mo></munder></mrow></msub><mo>=</mo><mfrac><mn>2</mn><mi>N</mi></mfrac><msup><munder><munder><mi>X</mi><mo
+    stretchy="true">_</mo></munder><mo stretchy="true">_</mo></munder><mi mathvariant="normal">⊤</mi></msup><mfenced
+    open="(" close=")"><mrow><munder><mi>y</mi><mo stretchy="true">_</mo></munder><mo>−</mo><mspace
+    width="0.25em" /><munder><munder><mi>X</mi><mo stretchy="true">_</mo></munder><mo
+    stretchy="true">_</mo></munder><mspace width="0.25em" /><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder></mrow></mfenced><mo>=</mo><mspace
+    width="0.25em" /><munder><mn>0</mn><mo stretchy="true">_</mo></munder></mrow></mrow></math>](img/1441.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="29651">Eq.</st> <st c="29655">18</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="29657">Re-arranging</st> *<st c="29671">Eq</st><st c="29673">. 18</st>*<st
+    c="29677">, we get</st> <st c="29686">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><msup><munder><munder><mi>X</mi><mo
+    stretchy="true">_</mo></munder><mo stretchy="true">_</mo></munder><mi mathvariant="normal">⊤</mi></msup><munder><munder><mi>X</mi><mo
+    stretchy="true">_</mo></munder><mo stretchy="true">_</mo></munder><mspace width="0.25em"
+    /><munder><mover><mi>β</mi><mo stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder><mo>=</mo><mspace
+    width="0.25em" /><msup><munder><munder><mi>X</mi><mo stretchy="true">_</mo></munder><mo
+    stretchy="true">_</mo></munder><mi mathvariant="normal">⊤</mi></msup><munder><mi>y</mi><mo
+    stretchy="true">_</mo></munder></mrow></mrow></math>](img/1442.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="29713">Eq.</st> <st c="29717">19</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="29719">We can solve</st> *<st c="29733">Eq.</st> <st c="29737">19</st>*
+    <st c="29739">by applying</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:mfenced
+    separators="|"><mml:mrow><mml:msup><mml:mrow><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">⊤</mml:mi></mml:mrow></mml:msup><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:mrow><mml:mrow><mml:mo>-</mml:mo><mml:mn>1</mml:mn></mml:mrow></mml:msup></mml:math>](img/1443.png)<st
+    c="29752"><st c="29753">to both the left- and right-hand sides of</st> *<st c="29795">E</st><st
+    c="29796">q.</st> <st c="29799">19</st>* <st c="29801">to get</st> <st c="29809">the
+    following:</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder><mo>=</mo><mspace
+    width="0.25em" /><msup><mfenced open="(" close=")"><mrow><msup><munder><munder><mi>X</mi><mo
+    stretchy="true">_</mo></munder><mo stretchy="true">_</mo></munder><mi mathvariant="normal">⊤</mi></msup><munder><munder><mi>X</mi><mo
+    stretchy="true">_</mo></munder><mo stretchy="true">_</mo></munder></mrow></mfenced><mrow><mo>−</mo><mn>1</mn></mrow></msup><msup><munder><munder><mi>X</mi><mo
+    stretchy="true">_</mo></munder><mo stretchy="true">_</mo></munder><mi mathvariant="normal">⊤</mi></msup><munder><mi>y</mi><mo
+    stretchy="true">_</mo></munder></mrow></mrow></math>](img/1444.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="29825">Eq.</st> <st c="29829">20</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="29831">This solution is very efficient.</st> <st c="29865">It is in a
+    closed-form, meaning we have an equation with the thing we want,</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1445.png)<st
+    c="29941"><st c="29942">, on its own on the left-hand side, and a mathematical
+    expression that doesn’t involve</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1445.png)
+    <st c="30029"><st c="30030">on the right-hand side.</st> <st c="30055">There is
+    no iterative algorithm required.</st> <st c="30097">We just perform a couple of
+    matrix calculations, and we have our optimal parameter estimates</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1447.png)<st
+    c="30190"><st c="30195">. That we can obtain a closed-form expression for the
+    parameter estimates is one of the most attractive aspects of OLS regression and
+    part of the reason it is so widely used.</st> <st c="30370">We’ll walk through
+    some code examples in a moment to illustrate how easy it is to perform</st> <st
+    c="30460">OLS regression.</st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="30475">Practical issues</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="30492">This doesn’t mean the closed-form expression in</st> *<st c="30541">Eq.</st>
+    <st c="30545">20</st>* <st c="30547">doesn’t cause problems.</st> <st c="30572">Firstly,
+    you’ll recall from</st> [*<st c="30600">Chapter 3</st>*](B19496_03.xhtml#_idTextAnchor141)
+    <st c="30609">on linear</st> <st c="30620">algebra that we can have square matrices
+    that do not have an inverse.</st> <st c="30690">It is very possible that the matrix</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:mfenced
+    separators="|"><mml:mrow><mml:msup><mml:mrow><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">⊤</mml:mi></mml:mrow></mml:msup><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:mrow><mml:mrow><mml:mo>-</mml:mo><mml:mn>1</mml:mn></mml:mrow></mml:msup></mml:math>](img/1448.png)<st
+    c="30726"><st c="30727">does not exist.</st> <st c="30743">This happens when there
+    are linear dependencies between the columns of the design matrix</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1449.png)<st
+    c="30832"><st c="30833">; for example, if one feature is simply a scaled version
+    of another feature, or where combining several features together gives the same
+    numerical value as another feature.</st> <st c="31006">In these circumstances,
+    one or more of the features are redundant since they add no</st> <st c="31090">new
+    information.</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="31106">Secondly, in a modern-day data science setting where we might
+    have many thousands of features in a model, the</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>d</mml:mi><mml:mo> </mml:mo><mml:mo>×</mml:mo><mml:mi>d</mml:mi></mml:math>](img/1450.png)
+    <st c="31217"><st c="31218">matrix</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">⊤</mml:mi></mml:mrow></mml:msup><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1451.png)
+    <st c="31226"><st c="31230">can be unwieldy to work with if</st> <st c="31262">d</st>
+    <st c="31263">is of the order of</st> <st c="31283">several thousand.</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="31300">How to deal with these computational issues is beyond the scope
+    of the book, but they are something you should be aware of in case they crop up
+    in a problem you are trying</st> <st c="31473">to solve.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="31482">The model residuals</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="31502">Once we have obtained an estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1445.png)
+    <st c="31537"><st c="31538">for the</st> <st c="31547">model parameters, using</st>
+    *<st c="31571">Eq.</st> <st c="31575">20</st>*<st c="31577">, we can calculate
+    the residuals.</st> <st c="31611">If we denote the</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:mi>i</mml:mi></mml:mrow><mml:mrow><mml:mi>t</mml:mi><mml:mi>h</mml:mi></mml:mrow></mml:msup></mml:math>](img/1394.png)
+    <st c="31628"><st c="31632">residual by</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msub><mml:mrow><mml:mi>r</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:math>](img/1454.png)<st
+    c="31644"><st c="31645">, then obviously we have</st> <st c="31670">the following:</st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><msub><mi>r</mi><mi>i</mi></msub><mo>=</mo><mspace
+    width="0.25em" /><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><mspace width="0.25em"
+    /><msub><mover><mi>y</mi><mo stretchy="true">ˆ</mo></mover><mi>i</mi></msub><mo>=</mo><mspace
+    width="0.25em" /><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><mspace width="0.25em"
+    /><msub><munder><mi>x</mi><mo stretchy="true">_</mo></munder><mi>i</mi></msub><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder><mo>=</mo><mspace
+    width="0.25em" /><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><mspace width="0.25em"
+    /><msub><mfenced open="(" close=")"><mrow><munder><munder><mi>X</mi><mo stretchy="true">_</mo></munder><mo
+    stretchy="true">_</mo></munder><mspace width="0.25em" /><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder></mrow></mfenced><mi>i</mi></msub></mrow></mrow></math>](img/1455.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="31695">Eq.</st> <st c="31699">21</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="31701">What happens if we sum up all the residuals?</st> <st c="31747">To
+    answer this question, we make use of</st> *<st c="31787">Eq.</st> <st c="31791">19</st>*
+    <st c="31793">and recall that the first row of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:msup><mml:mrow><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">⊤</mml:mi></mml:mrow></mml:msup></mml:math>](img/1456.png)<st
+    c="31827"><st c="31830">is all ones if our model has an intercept.</st> <st c="31873">So,</st>
+    *<st c="31877">Eq.</st> <st c="31881">19</st>* <st c="31883">tells us</st> <st
+    c="31893">the following:</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+    display="block"><mml:mfenced open="" close="" separators="|"><mml:mrow><mml:mrow><mml:munderover><mml:mo
+    stretchy="false">∑</mml:mo><mml:mrow><mml:mi>i</mml:mi><mml:mo>=</mml:mo><mml:mn>1</mml:mn></mml:mrow><mml:mrow><mml:mi>N</mml:mi></mml:mrow></mml:munderover><mml:mrow><mml:msub><mml:mrow><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo> </mml:mo><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mrow><mml:mo>=</mml:mo><mml:mo> </mml:mo><mml:mrow><mml:munderover><mml:mo
+    stretchy="false">∑</mml:mo><mml:mrow><mml:mi>i</mml:mi><mml:mo>=</mml:mo><mml:mn>1</mml:mn></mml:mrow><mml:mrow><mml:mi>N</mml:mi></mml:mrow></mml:munderover><mml:mrow><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mrow><mml:mo> </mml:mo><mml:mo> </mml:mo><mml:mo> </mml:mo><mml:mo>⇒</mml:mo><mml:mo> </mml:mo><mml:mo> </mml:mo><mml:mo> </mml:mo><mml:mo> </mml:mo><mml:mrow><mml:munderover><mml:mo
+    stretchy="false">∑</mml:mo><mml:mrow><mml:mi>i</mml:mi><mml:mo>=</mml:mo><mml:mn>1</mml:mn></mml:mrow><mml:mrow><mml:mi>N</mml:mi></mml:mrow></mml:munderover><mml:mrow><mml:mfenced
+    open="[" close="]" separators="|"><mml:mrow><mml:msub><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub><mml:mo>-</mml:mo><mml:mo> </mml:mo><mml:msub><mml:mrow><mml:mfenced
+    separators="|"><mml:mrow><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo> </mml:mo><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:mrow><mml:mrow><mml:mi>i</mml:mi></mml:mrow></mml:msub></mml:mrow></mml:mfenced></mml:mrow></mml:mrow><mml:mo>=</mml:mo><mml:mn>0</mml:mn></mml:mrow></mml:mfenced></mml:math>](img/1457.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="31909">Eq.</st> <st c="31913">22</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="31915">So, the sum of all the residuals is zero if our model has</st>
+    <st c="31974">an intercept.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="31987">Let’s see these ideas in</st> <st c="32012">action with a</st>
+    <st c="32027">code example.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="32040">OLS regression code example</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="32068">The data in the</st> `<st c="32085">Data/power_plant_output.csv</st>`
+    <st c="32112">file in the GitHub repository contains measurements of the power
+    output from electricity generation plants.</st> <st c="32221">The power (</st>`<st
+    c="32232">PE</st>`<st c="32235">) is generated from a combination of gas turbines,
+    steam turbines, and heat recovery steam generators, and</st> <st c="32343">so
+    is affected by environmental factors in which the turbines operate, such as the
+    ambient temperature (</st>`<st c="32447">AT</st>`<st c="32450">) and the steam
+    turbine exhaust vacuum level (</st>`<st c="32497">V</st>`<st c="32499">).</st>
+    <st c="32502">The dataset consists of 9,568 observations of the</st> `<st c="32552">PE</st>`<st
+    c="32554">,</st> `<st c="32556">AT</st>`<st c="32558">, and</st> `<st c="32564">V</st>`
+    <st c="32565">values.</st> <st c="32574">The data is a subset of the publicly
+    available dataset held in the</st> *<st c="32641">UCI Machine Learning Repository</st>*
+    <st c="32673">(</st>[<st c="32674">https://archive.ics.uci.edu/datasets</st>](https://archive.ics.uci.edu/datasets)<st
+    c="32710">).</st> <st c="32714">The original data can be found</st> <st c="32745">at</st>
+    [<st c="32748">https://archive.ics.uci.edu/ml/datasets/Combined+Cycle+Power+Plant</st>](https://archive.ics.uci.edu/ml/datasets/Combined+Cycle+Power+Plant)<st
+    c="32814">.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="32815">We’ll use the data to build a linear model of the power output</st>
+    `<st c="32879">PE</st>` <st c="32881">as a function of the</st> `<st c="32903">AT</st>`
+    <st c="32905">and</st> `<st c="32910">V</st>` <st c="32911">values.</st> <st c="32920">We
+    will build the linear model in two ways – i) using the Python</st> `<st c="32985">statsmodels</st>`
+    <st c="32996">package, ii) using</st> *<st c="33016">Eq.</st> <st c="33020">20</st>*
+    <st c="33022">via an explicit calculation.</st> <st c="33052">The following code
+    example can be found in the</st> `<st c="33099">Code_Examples_Chap4.ipynb</st>`
+    <st c="33124">notebook in the GitHub repository.</st> <st c="33160">To begin,
+    we need to read in</st> <st c="33189">the data:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: <st c="33381">We’ll do a quick inspection of the data.</st> <st c="33423">First,
+    we’ll compute some summary statistics of</st> <st c="33471">the data:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '|  | <st c="33556">AT</st> | <st c="33559">V</st> | <st c="33561">PE</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="33563">Count</st> | <st c="33569">9568.000000</st> | <st c="33581">9568.000000</st>
+    | <st c="33593">9568.000000</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="33605">Mean</st> | <st c="33610">19.651231</st> | <st c="33620">54.305804</st>
+    | <st c="33630">454.365009</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="33641">Std</st> | <st c="33645">7.452473</st> | <st c="33654">12.707893</st>
+    | <st c="33664">17.066995</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="33674">Min</st> | <st c="33678">1.810000</st> | <st c="33687">25.360000</st>
+    | <st c="33697">420.260000</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="33708">25%</st> | <st c="33712">13.510000</st> | <st c="33722">41.740000</st>
+    | <st c="33732">439.750000</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="33743">50%</st> | <st c="33747">20.345000</st> | <st c="33757">52.080000</st>
+    | <st c="33767">451.550000</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="33778">75%</st> | <st c="33782">25.720000</st> | <st c="33792">66.540000</st>
+    | <st c="33802">468.430000</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="33813">Max</st> | <st c="33817">37.110000</st> | <st c="33827">81.560000</st>
+    | <st c="33837">495.760000</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '<st c="33848">Table 4.1: Summary statistics for the power-plant dataset</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="33906">Next, we’ll visualize the relationship</st> <st c="33945">between
+    the response variable (the target variable) and the features.</st> <st c="34016">We’ll
+    start with the relationship between power output (</st>`<st c="34072">PE</st>`<st
+    c="34075">) and ambient</st> <st c="34090">temperature (</st>`<st c="34103">AT</st>`<st
+    c="34106">):</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 4.5: Plot of power output (PE) versus ambient temperature (AT)](img/B19496_04_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="34423">Figure 4.5: Plot of power output (PE) versus ambient temperature
+    (AT)</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="34492">Now, let’s look at the relationship</st> <st c="34528">between
+    power and</st> <st c="34547">vacuum (</st>`<st c="34555">V</st>`<st c="34557">):</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 4.6: Plot of power output (PE) versus vacuum level (V)](img/B19496_04_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="34942">Figure 4.6: Plot of power output (PE) versus vacuum level (V)</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="35003">Now, we’ll fit a linear model using the</st> `<st c="35044">statsmodels</st>`
+    <st c="35055">package.</st> <st c="35065">The linear model formula is specified
+    in statistical notation as</st> <st c="35130">PE</st> <st c="35132">∼</st> <st
+    c="35134">AT + V</st><st c="35140">. You can think of it as the statistical formula
+    equivalent</st> <st c="35199">of the mathematical formula</st> <st c="35228">PE
+    =</st> <st c="35233">β</st><st c="35234">0</st> <st c="35235">+</st> <st c="35236">β</st><st
+    c="35237">AT</st> <st c="35239">x</st><st c="35241">AT</st> <st c="35243">+</st>
+    <st c="35245">β</st><st c="35246">V</st> <st c="35247">x</st><st c="35248">V</st><st
+    c="35249">. We do this fitting using the</st> <st c="35280">following code:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: <st c="35632">This gives the following parameter estimates for our</st> <st
+    c="35686">linear model:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| <st c="35699">OLS</st> <st c="35704">Regression Results</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  | <st c="35722">coef</st> | <st c="35727">std err</st> | <st c="35735">T</st>
+    | <st c="35737">P>&#124;t&#124;</st> | <st c="35742">[</st><st c="35744">0.025</st>
+    | <st c="35749">0.975]</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="35756">Intercept</st> | <st c="35766">505.4774</st> | <st c="35775">0.240</st>
+    | <st c="35781">2101.855</st> | <st c="35790">0.000</st> | <st c="35796">505.006</st>
+    | <st c="35804">505.949</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="35812">AT</st> | <st c="35815">-</st><st c="35817">1.7043</st> | <st
+    c="35823">0.013</st> | <st c="35829">-</st><st c="35831">134.429</st> | <st c="35838">0.000</st>
+    | <st c="35844">-</st><st c="35846">1.729</st> | <st c="35851">-</st><st c="35853">1.679</st>
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="35858">V</st> | <st c="35860">-</st><st c="35861">0.3245</st> | <st
+    c="35867">0.007</st> | <st c="35873">-</st><st c="35875">43.644</st> | <st c="35881">0.000</st>
+    | <st c="35887">-</st><st c="35889">0.339</st> | <st c="35894">-</st><st c="35896">0.310</st>
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '<st c="35901">Table 4.2: OLS regression parameter estimates for our power-plant
+    linear model</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="35980">We can see from</st> *<st c="35997">Table 4.2</st>* <st c="36006">that,
+    as</st> <st c="36015">expected, we get negative estimates for the parameters corresponding
+    to the</st> `<st c="36092">AT</st>` <st c="36094">and</st> `<st c="36099">V</st>`
+    <st c="36100">features.</st> <st c="36111">Now, we’ll repeat the calculation explicitly
+    using the formula in</st> *<st c="36177">Eq.</st> <st c="36181">20</st>*<st c="36183">.
+    We’ll use the linear algebra functions available to us in</st> `<st c="36243">numpy</st>`<st
+    c="36248">. First, we need to extract the data from the</st> `<st c="36294">pandas</st>`
+    <st c="36300">DataFrame to appropriate</st> `<st c="36326">numpy</st>` <st c="36331">arrays:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: <st c="36920">Now, we can calculate the OLS parameter estimates using the</st>
+    <st c="36981">formula</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder><mml:mo>=</mml:mo><mml:mo> </mml:mo><mml:msup><mml:mrow><mml:mfenced
+    separators="|"><mml:mrow><mml:msup><mml:mrow><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">⊤</mml:mi></mml:mrow></mml:msup><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow></mml:mfenced></mml:mrow><mml:mrow><mml:mo>-</mml:mo><mml:mn>1</mml:mn></mml:mrow></mml:msup><mml:msup><mml:mrow><mml:munder><mml:mrow><mml:munder><mml:mrow><mml:mi>X</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:mrow><mml:mrow><mml:mi
+    mathvariant="normal">⊤</mml:mi></mml:mrow></mml:msup><mml:munder><mml:mrow><mml:mi>y</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1444.png)<st
+    c="36989"><st c="36990">::</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: <st c="37312">We can compare the OLS parameter</st> <st c="37346">estimates
+    obtained from</st> `<st c="37370">statsmodels</st>` <st c="37381">with those obtained
+    from the</st> <st c="37411">explicit calculation:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '|  | <st c="37649">statsmodels</st> | <st c="37661">explicit_ols</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="37674">Intercept</st> | <st c="37684">505.477434</st> | <st c="37695">505.477434</st>
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="37706">AT</st> | <st c="37709">-</st><st c="37711">1.704266</st> |
+    <st c="37719">-</st><st c="37721">1.704266</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '| <st c="37729">V</st> | <st c="37731">-</st><st c="37732">0.324487</st> |
+    <st c="37740">-</st><st c="37742">0.324487</st> |'
+  prefs: []
+  type: TYPE_TB
+- en: '<st c="37750">Table 4.3: A comparison of the parameter estimates from the statsmodels
+    packages and explicit calculation using the OLS formula</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="37878">The parameter estimates from the two different OLS regression
+    codes are identical to more than 6</st> <st c="37976">decimal places.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="37991">This walkthrough of a real example highlights the power of the
+    closed-form OLS regression formula in</st> *<st c="38093">Eq.</st> <st c="38097">20</st>*<st
+    c="38099">. This closed-form arises from the linear (in</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1392.png)<st
+    c="38145"><st c="38146">) nature of the optimality criterion in</st> *<st c="38186">Eq.</st>
+    <st c="38190">18</st>*<st c="38192">, which itself arises from the quadratic nature
+    of the risk function in</st> *<st c="38264">Eq.</st> <st c="38268">17</st>*<st
+    c="38270">, which ultimately is a consequence of the quadratic form of the squared-loss
+    function in</st> *<st c="38360">Eq.</st> <st c="38364">8</st>*<st c="38365">.</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="38366">But what if we don’t want to use</st> <st c="38399">a linear model
+    or a squared-loss function?</st> <st c="38443">Firstly, we can’t use OLS regression!</st>
+    <st c="38481">Secondly, a different choice of loss function, such as the absolute
+    loss or the pseudo-Huber robust loss function in</st> *<st c="38598">Eq.</st>
+    <st c="38602">12</st>*<st c="38604">, will not lead to a closed-form solution
+    for</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1460.png)
+    <st c="38650"><st c="38654">if we minimize the empirical risk in</st> *<st c="38691">Eq.</st>
+    <st c="38695">3</st>*<st c="38696">. So, how do we minimize the empirical risk
+    to obtain optimal model parameter estimates in these situations?</st> <st c="38805">We’ll
+    learn how to address this question in the next section, but for now, let’s review
+    what we have learned in</st> <st c="38917">this section.</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="38930">What we learned</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="38946">In this section, we have learned</st> <st c="38980">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="38994">How to write the empirical risk for OLS regression in</st> <st
+    c="39049">matrix notation</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="39064">How to derive a closed-form expression for OLS model</st> <st
+    c="39118">parameter estimates</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="39137">Some of the properties and practical limitations of</st> <st c="39190">OLS
+    regression</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="39204">How to perform OLS regression using available Python packages
+    such</st> <st c="39272">as</st> `<st c="39275">statsmodels</st>`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="39286">How to perform OLS regression by explicitly calculating the closed-form
+    formula for OLS model</st> <st c="39381">parameter estimates</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="39400">Having learned how to perform OLS regression, we’ll now learn
+    how to perform least squares regression in more general settings by using gradient
+    descent techniques to minimize the</st> <st c="39581">empirical risk.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="39596">Gradient descent</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="39613">As we just hinted at the end of the last section, we aren’t always
+    in a position where we can use the closed-form OLS solution of</st> *<st c="39744">Eq.</st>
+    <st c="39748">20</st>*<st c="39750">. What are</st> <st c="39761">our options?</st>
+    <st c="39774">To construct a more general approach to empirical risk minimization,
+    we’ll have to revisit the shape of the empirical risk function so that we can
+    understand how to locate</st> <st c="39946">its minima.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="39957">Locating the minimum of a simple risk function</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="40004">To understand the shape of the empirical risk function, let’s
+    take a simple example with a model that has a single parameter.</st> <st c="40131">We’ll
+    use the risk</st> <st c="40149">function for a linear model and a squared-loss
+    function.</st> <st c="40207">We’ll use a linear model with a single feature, and
+    so it is of the</st> <st c="40275">following form:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mo>=</mo><mspace width="0.25em" /><mi>β</mi><mi>x</mi></mrow></mrow></math>](img/1461.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="40292">Eq.</st> <st c="40296">23</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="40298">The model has a single parameter,</st> <st c="40333">β</st><st
+    c="40334">, which multiplies the single feature</st> <st c="40372">x</st><st c="40373">.
+    In</st> *<st c="40378">Figure 4</st>**<st c="40386">.7</st>* <st c="40388">we
+    have plotted the shape of the empirical risk function against the value of</st>
+    <st c="40467">β</st><st c="40468">, and where we have calculated the empirical
+    risk on a dataset of 100 datapoints.</st> <st c="40550">The dataset has been generated
+    via simulation and using a model of the mathematical form in</st> *<st c="40642">Eq.</st>
+    <st c="40646">23</st>*<st c="40648">. The model we are going to fit to this data
+    by minimizing the empirical risk is of the correct mathematical form (by construction);
+    it is just that we don’t know the true value of</st> <st c="40829">β</st> <st
+    c="40830">– well, I do, but I’m not going to tell you just yet.</st> <st c="40885">To
+    estimate the true value of</st> <st c="40915">β</st> <st c="40916">that underlies
+    the data, we’ll have to use the model form in</st> *<st c="40978">Eq.</st> <st
+    c="40982">23</st>* <st c="40984">and minimize the</st> <st c="41002">empirical
+    risk:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.7: Empirical risk function and starting parameter estimate for our
+    simulated dataset](img/B19496_04_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="41081">Figure 4.7: Empirical risk function and starting parameter estimate
+    for our simulated dataset</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="41174">From the shape of the risk function in</st> *<st c="41214">Figure
+    4</st>**<st c="41222">.7</st>*<st c="41224">, you can see that there is a single
+    minimum close to</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>β</mml:mi><mml:mo>=</mml:mo><mml:mn>3.5</mml:mn></mml:math>](img/1462.png)<st
+    c="41278"><st c="41279">. As you may have guessed,</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>β</mml:mi><mml:mo>=</mml:mo><mml:mn>3.5</mml:mn></mml:math>](img/1463.png)
+    <st c="41306"><st c="41307">is the value of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>β</mml:mi></mml:math>](img/1356.png)
+    <st c="41324"><st c="41325">that I used to generate the simulated data.</st> <st
+    c="41370">Let’s</st> <st c="41375">say we start with a guess for the true value
+    of</st> <st c="41424">β</st> <st c="41425">that is 1\.</st> <st c="41437">That
+    is, we’re going to initially set our estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mo>=</mml:mo><mml:mo> </mml:mo><mml:mn>1</mml:mn></mml:math>](img/1465.png)<st
+    c="41488"><st c="41490">. How good is that initial estimate?</st> <st c="41527">We
+    have also plotted the position of this estimate as a red dot in</st> *<st c="41594">Figure
+    4</st>**<st c="41602">.7</st>* <st c="41604">so that you can see how good an estimate
+    it is by seeing how close it is to the minimum.</st> <st c="41694">If it were
+    the optimal (best) estimate, we would be at the minimum of the empirical risk;
+    that is, we would have</st> <st c="41807">the following:</st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><msub><mfenced
+    open="" close="|"><mrow><mspace width="0.25em" /><mfrac><mrow><mo>∂</mo><mtext>Risk</mtext></mrow><mrow><mo>∂</mo><mi>β</mi></mrow></mfrac></mrow></mfenced><mrow><mi>β</mi><mo>=</mo><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover></mrow></msub><mo>=</mo><mn>0</mn></mrow></mrow></math>](img/1466.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="41828">Eq.</st> <st c="41832">24</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="41834">We can easily derive a formula for the derivative on the left-hand
+    side of</st> *<st c="41910">Eq.</st> <st c="41914">24</st>*<st c="41916">. It
+    is</st> <st c="41924">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mfrac><mrow><mo>∂</mo><mtext>Risk</mtext></mrow><mrow><mo>∂</mo><mi>β</mi></mrow></mfrac><mo>=</mo><mspace
+    width="0.25em" /><mfrac><mn>1</mn><mn>100</mn></mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mrow><mfrac><mo>∂</mo><mrow><mo>∂</mo><mi>β</mi></mrow></mfrac><mspace
+    width="0.25em" /><msup><mfenced open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><mspace
+    width="0.25em" /><mi>β</mi><msub><mi>x</mi><mi>i</mi></msub></mrow></mfenced><mn>2</mn></msup><mo>=</mo><mo>−</mo><mfrac><mn>2</mn><mn>100</mn></mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>100</mn></munderover><mrow><mfenced
+    open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><mspace width="0.25em"
+    /><mi>β</mi><msub><mi>x</mi><mi>i</mi></msub></mrow></mfenced><msub><mi>x</mi><mi>i</mi></msub></mrow></mrow></mrow></mrow></mrow></mrow></math>](img/1467.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="41984">Eq.</st> <st c="41988">25</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="41990">So, we can just plug our current estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mo>=</mml:mo><mml:mn>1</mml:mn></mml:math>](img/1468.png)
+    <st c="42033"><st c="42034">into</st> *<st c="42040">Eq.</st> <st c="42044">25</st>*
+    <st c="42046">to see how close we are to the optimality criterion in</st> *<st
+    c="42102">Eq.</st> <st c="42106">24</st>*<st c="42108">. If we are within a specified
+    tolerance of the criterion in</st> *<st c="42169">Eq.</st> <st c="42173">24</st>*<st
+    c="42175">, our estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1469.png)
+    <st c="42190"><st c="42194">is good.</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="42202">What happens if we are not within the specified tolerance?</st>
+    <st c="42262">How should we adjust our estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1357.png)<st
+    c="42296"><st c="42299">? Clearly, we want to adjust our estimate</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1357.png)
+    <st c="42341"><st c="42344">by moving it downhill toward the minimum.</st> <st
+    c="42386">How do we work out which direction is downward – that is, which direction
+    reduces the empirical risk?</st> <st c="42488">Well, this is what the derivative
+    in</st> *<st c="42525">Eq.</st> <st c="42529">25</st>* <st c="42531">tells us.</st>
+    <st c="42542">Recall from</st> [*<st c="42554">Chapter 1</st>*](B19496_01.xhtml#_idTextAnchor014)
+    <st c="42563">that the derivative of a function tells us the gradient or slope
+    of a function.</st> <st c="42644">So, the numerical</st> <st c="42661">value of
+    the calculation in</st> *<st c="42690">Eq.</st> <st c="42694">25</st>* <st c="42696">evaluated
+    at</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1469.png)
+    <st c="42710"><st c="42714">tells us in which direction we should adjust</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1473.png)<st
+    c="42759"><st c="42763">. If the derivative is positive then increasing</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1473.png)
+    <st c="42811"><st c="42815">will increase the empirical risk, so we want to decrease</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1357.png)<st
+    c="42872"><st c="42875">. Conversely, if the derivative is negative then increasing</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)
+    <st c="42935"><st c="42939">will decrease the empirical risk</st> <st c="42972">as
+    desired.</st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="42983">The size of the derivative also gives us a guide by how much we
+    should adjust</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)<st
+    c="43062"><st c="43066">. If the absolute value of the derivative is large, it
+    tells us we are high on the steep slopes of the risk function, as depicted by
+    the red dot starting point in</st> *<st c="43229">Figure 4</st>**<st c="43237">.7</st>*<st
+    c="43239">, and so we are a long way from the minimum.</st> <st c="43284">Overall,
+    the bigger the absolute value of the derivative, the more we should</st> <st c="43361">adjust</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)<st
+    c="43368"><st c="43372">.</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="43373">Putting together the arguments from the previous two paragraphs,
+    we should adjust our estimate of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1469.png)
+    <st c="43472"><st c="43476">by descending according to the direction and size
+    of the gradient of our objective function.</st> <st c="43569">This approach is</st>
+    <st c="43585">called</st> **<st c="43593">gradient descent</st>** <st c="43609">and
+    tells us we should adjust our estimate of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)
+    <st c="43656"><st c="43660">according to an</st> <st c="43676">update rule:</st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mfenced
+    open="" close=""><mrow><mover><mi>β</mi><mo stretchy="true">ˆ</mo></mover><mspace
+    width="0.25em" /><mo>←</mo><mspace width="0.25em" /><mover><mi>β</mi><mo stretchy="true">ˆ</mo></mover><mo>−</mo><mspace
+    width="0.25em" /><mi>η</mi><msub><mfenced open="" close="|"><mrow><mspace width="0.25em"
+    /><mfrac><mrow><mo>∂</mo><mtext>Risk</mtext></mrow><mrow><mo>∂</mo><mi>β</mi></mrow></mfrac></mrow></mfenced><mrow><mi>β</mi><mo>=</mo><mspace
+    width="0.25em" /><mover><mi>β</mi><mo stretchy="true">ˆ</mo></mover></mrow></msub><mspace
+    width="0.25em" /></mrow></mfenced></mrow></math>](img/1481.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="43690">Eq.</st> <st c="43694">26</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="43696">The quantity</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>η</mml:mi></mml:math>](img/1482.png)
+    <st c="43710"><st c="43711">controls how quickly we adjust</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)<st
+    c="43743"><st c="43747">, and so is called the learning rate, since it controls
+    how quickly we move toward or learn the true optimal value of</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)<st
+    c="43865"><st c="43869">. A very small value of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>η</mml:mi></mml:math>](img/1482.png)
+    <st c="43893"><st c="43894">will mean we make relatively small adjustments to</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1486.png)
+    <st c="43945"><st c="43949">even when the derivative</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mfrac><mml:mrow><mml:mo>∂</mml:mo><mml:mtext>Risk</mml:mtext></mml:mrow><mml:mrow><mml:mo>∂</mml:mo><mml:mi>β</mml:mi></mml:mrow></mml:mfrac></mml:math>](img/1487.png)
+    <st c="43974"><st c="43980">is relatively large.</st> <st c="44001">Conversely,
+    a larger value of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>η</mml:mi></mml:math>](img/1482.png)
+    <st c="44031"><st c="44032">will mean we take larger steps toward the minimum
+    of the</st> <st c="44090">empirical risk.</st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="44105">Let’s see what happens when we use the update rule in</st> *<st
+    c="44160">Eq.</st> <st c="44164">26</st>* <st c="44166">for a few iterations.</st>
+    <st c="44189">The results are shown in</st> *<st c="44214">Figure 4</st>**<st
+    c="44222">.</st><st c="44223">8</st>*<st c="44225">:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.8: Evolution of the model parameter estimate as we iterate the gradient
+    descent update rule](img/B19496_04_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="44411">Figure 4.8: Evolution of the model parameter estimate as we iterate
+    the gradient descent update rule</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="44511">In the left-hand panel of</st> *<st c="44538">Figure 4</st>**<st
+    c="44546">.8</st>*<st c="44548">, we see our starting estimate of</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)<st
+    c="44582"><st c="44586">=1, shown by the position of the red dot.</st> <st c="44628">After
+    one iteration, we have updated our estimate of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1357.png)
+    <st c="44681"><st c="44684">according to the update rule in</st> *<st c="44716">Eq.</st>
+    <st c="44720">26</st>* <st c="44722">(and using a learning rate of</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>η</mml:mi><mml:mo>=</mml:mo><mml:mn>0.05</mml:mn></mml:math>](img/1491.png)<st
+    c="44753"><st c="44763">).</st> <st c="44766">This gives us a new value of</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mo>=</mml:mo><mml:mn>2.062</mml:mn></mml:math>](img/1492.png)
+    <st c="44795"><st c="44805">for</st> <st c="44808">our estimate</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1469.png)<st
+    c="44822"><st c="44826">. This is shown in the middle panel of</st> *<st c="44865">Figure
+    4</st>**<st c="44873">.8</st>*<st c="44875">, with again the red dot showing the
+    position of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1486.png)
+    <st c="44924"><st c="44928">and its corresponding empirical risk value.</st> <st
+    c="44972">In the right-hand panel, the red dot shows the updated value of</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)
+    <st c="45036"><st c="45040">at</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover><mml:mo>=</mml:mo><mml:mn>2.664</mml:mn></mml:math>](img/1496.png)
+    <st c="45043"><st c="45053">(and corresponding empirical risk) after iteration
+    2\.</st> <st c="45107">For each of the iterations in</st> *<st c="45137">Figure
+    4</st>**<st c="45145">.8</st>*<st c="45147">, the direction and size of the update
+    to the current estimate of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)
+    <st c="45213"><st c="45217">is shown schematically by the arrow.</st> <st c="45254">We
+    can see that the updates all move the estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1498.png)
+    <st c="45304"><st c="45308">closer to the minimum, but the magnitude of the updates
+    decrease as we get closer to the minimum.</st> <st c="45406">What happens if we
+    carry on iterating?</st> <st c="45445">Let’s look at how we would do that in a</st>
+    <st c="45485">code example.</st></st></st></st></st></st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="45498">Gradient descent code example</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="45528">The simulated data is in the</st> `<st c="45558">Data/gradient_descent_example.csv</st>`
+    <st c="45591">file in the GitHub repository.</st> <st c="45623">You’ll also find
+    the following code example (and more) in the</st> `<st c="45685">Code_Examples_Chap4.ipynb</st>`
+    <st c="45710">Jupyter</st> <st c="45718">notebook in</st> <st c="45731">the repository.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="45746">To begin, we’ll read in</st> <st c="45771">the data:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: <st c="46016">Then, we’ll define some functions to</st> <st c="46054">calculate
+    the empirical risk and</st> <st c="46087">its derivative:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: <st c="46967">Now, we’ll perform 20 iterations</st> <st c="47000">of the gradient
+    descent</st> <st c="47025">update rule:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: <st c="47594">Finally, we can plot the trajectory of the</st> <st c="47638">parameter
+    estimates:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 4.9: Plot of gradient descent trajectory of the model parameter estimate](img/B19496_04_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '<st c="48018">Figure 4.9: Plot of gradient descent trajectory of the model
+    parameter estimate</st>'
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="48097">We can see from</st> *<st c="48114">Figure 4</st>**<st c="48122">.9</st>*
+    <st c="48124">that as we perform more gradient descent iterations, the parameter
+    estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)
+    <st c="48201"><st c="48205">appears to converge to a value close to 3.5\.</st>
+    <st c="48250">What is the value that</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1476.png)
+    <st c="48273"><st c="48277">converges to?</st> <st c="48291">If you run the</st>
+    <st c="48305">code in the notebook, you’ll find that</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:math>](img/1501.png)
+    <st c="48345"><st c="48349">converges to 3.453\.</st> <st c="48369">This is not
+    the true value of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>β</mml:mi><mml:mo>=</mml:mo><mml:mn>3.5</mml:mn></mml:math>](img/1502.png)
+    <st c="48399"><st c="48400">that was used to generate the data.</st> <st c="48437">Why
+    is this so?</st> <st c="48453">What has happened?</st> <st c="48472">The answer
+    is that the empirical risk is a function of the dataset, and the data contains
+    a random component.</st> <st c="48582">Because of this, the value of</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>β</mml:mi></mml:math>](img/1503.png)
+    <st c="48612"><st c="48613">that minimizes the empirical risk will be close to
+    but not precisely the same as the true value that was used to generate</st> <st
+    c="48736">the data.</st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="48745">Gradient descent is a general technique</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="48785">The example we just walked</st> <st c="48812">through, including
+    the code, is very simplistic.</st> <st c="48862">What it does highlight, though,
+    is how general the update rule in</st> *<st c="48928">Eq.</st> <st c="48932">26</st>*
+    <st c="48934">is.</st> <st c="48939">We can extend the update rule to when we
+    have multiple model parameters, which we’ll denote by the vector</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1504.png)<st
+    c="49045"><st c="49046">. The new update rule is</st> <st c="49071">the following:</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mfenced
+    open="" close=""><mrow><munder><mover><mi>β</mi><mo stretchy="true">ˆ</mo></mover><mo
+    stretchy="true">_</mo></munder><mo>←</mo><mspace width="0.25em" /><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder><mo>−</mo><mspace
+    width="0.25em" /><mi>η</mi><mspace width="0.25em" /><msub><mfenced open="" close="|"><mrow><mspace
+    width="0.25em" /><mfrac><mrow><mo>∂</mo><mtext>Risk</mtext></mrow><mrow><mo>∂</mo><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder></mrow></mfrac></mrow></mfenced><mrow><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder><mo>=</mo><mspace width="0.25em" /><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder></mrow></msub></mrow></mfenced></mrow></math>](img/1505.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="49087">Eq.</st> <st c="49091">27</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="49093">The gradient descent update rule in</st> *<st c="49130">Eq.</st>
+    <st c="49134">27</st>* <st c="49136">can be applied to any empirical risk function,
+    meaning we have a method of constructing optimal parameter estimates</st> ![<mml:math
+    xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder><mml:mrow><mml:mover
+    accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mrow><mml:mo>_</mml:mo></mml:mrow></mml:munder></mml:math>](img/1445.png)
+    <st c="49253"><st c="49254">for any model and any choice of</st> <st c="49287">loss
+    function.</st></st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="49301">To illustrate this, imagine</st> <st c="49330">we wanted to use
+    the pseudo-Huber loss function of</st> *<st c="49381">Eq.</st> <st c="49385">12</st>*<st
+    c="49387">. Our empirical risk function is given by</st> <st c="49429">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="49443">Empirical Risk =</st> <st c="49461">1</st><st c="49462">_</st><st
+    c="49463">N</st> <st c="49464">∑</st><st c="49465">i</st><st c="49466">=</st><st
+    c="49467">1</st><st c="49468">N</st><st c="49469">[</st><st c="49470">√</st><st
+    c="49471">_______________</st><st c="49486">1</st><st c="49488">+</st> <st c="49489">(</st><st
+    c="49490">y</st><st c="49491">i</st><st c="49492">−</st> <st c="49493">ˆ</st><st
+    c="49494">y</st><st c="49495">i</st><st c="49496">(</st><st c="49497">x</st><st
+    c="49498">_</st><st c="49499">i</st><st c="49500">|</st> <st c="49501">β</st><st
+    c="49502">_</st><st c="49503">)</st><st c="49504">)</st><st c="49505">2</st> <st
+    c="49506">−</st> <st c="49507">1</st><st c="49508">]</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="49509">Eq.</st> <st c="49513">28</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="49515">So, we have a gradient descent update rule of the</st> <st c="49566">following
+    form:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder><mo mathvariant="italic">←</mo><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder><mo mathvariant="italic">+</mo><mn
+    mathvariant="italic">2</mn><mfrac><mi>η</mi><mi>N</mi></mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><mfenced
+    open="[" close="]"><mrow><mfrac><mfenced open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mi>i</mi></msub><mfenced open="(" close=")"><mrow><msub><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder><mi>i</mi></msub><mo>|</mo><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder></mrow></mfenced></mrow></mfenced><msqrt><mrow><mn>1</mn><mo>+</mo><msup><mfenced
+    open="(" close=")"><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mi>i</mi></msub><mfenced open="(" close=")"><mrow><msub><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder><mi>i</mi></msub><mo>|</mo><munder><mover><mi>β</mi><mo
+    stretchy="true">ˆ</mo></mover><mo stretchy="true">_</mo></munder></mrow></mfenced></mrow></mfenced><mn>2</mn></msup></mrow></msqrt></mfrac><msub><mfenced
+    open="" close="|"><mfrac><mrow><mo mathvariant="italic">∂</mo><msub><mover><mi>y</mi><mo
+    stretchy="true">ˆ</mo></mover><mi>i</mi></msub><mfenced open="(" close=")"><mrow><msub><munder><mi>x</mi><mo
+    stretchy="true">_</mo></munder><mi>i</mi></msub><mo>|</mo><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder></mrow></mfenced></mrow><mrow><mo mathvariant="italic">∂</mo><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder></mrow></mfrac></mfenced><mrow><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder><mo>=</mo><munder><mover><mi>β</mi><mo stretchy="true">ˆ</mo></mover><mo
+    stretchy="true">_</mo></munder></mrow></msub></mrow></mfenced></mrow></mrow></mrow></math>](img/1507.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="49607">Eq.</st> <st c="49611">29</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="49613">Beyond simple gradient descent</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="49644">Although being an iterative technique rather than a closed-form
+    solution, gradient descent is a very general technique.</st> <st c="49765">This
+    makes it a very powerful technique.</st> <st c="49806">Consequently, it has been
+    widely studied, modified, and adapted in different ways.</st> <st c="49889">One
+    of the main drivers of this is the fact that</st> <st c="49938">variants of gradient
+    descent are used in the training of</st> **<st c="49995">neural networks</st>**
+    <st c="50010">(</st>**<st c="50012">NNs</st>**<st c="50015">), including</st>
+    **<st c="50029">deep learning</st>** <st c="50042">(</st>**<st c="50044">DL</st>**<st
+    c="50046">) NNs.</st> <st c="50054">We don’t have</st> <st c="50067">space here
+    to go into the full mathematical detail of the various adaptations of gradient
+    descent.</st> <st c="50167">Instead, we will briefly describe some of the most
+    important modifications</st> <st c="50242">and concepts:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**<st c="50255">Local minima</st>**<st c="50268">: The risk function shown
+    in</st> *<st c="50298">Figure 4</st>**<st c="50306">.7</st>* <st c="50308">has
+    a single minimum.</st> <st c="50331">For real-world datasets, it is typical for</st>
+    <st c="50373">a risk function to have multiple minima.</st> <st c="50415">Since
+    the process of gradient descent is akin to the red dot shown in</st> *<st c="50485">Figure
+    4</st>**<st c="50493">.7</st>* <st c="50495">rolling down the slope of the risk
+    function, it means gradient descent will roll downhill to the minimum closest
+    to its starting point.</st> <st c="50632">Consequently, the result of a simple
+    gradient descent can vary according to where we start.</st> <st c="50724">One
+    pragmatic solution to this is to run the gradient descent multiple times and keep
+    the results from the run with the lowest final value of the</st> <st c="50870">risk
+    function.</st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**<st c="50884">Stochastic gradient descent (SGD)</st>**<st c="50918">: If
+    we have a large training dataset, calculating even just a single iteration of
+    the update rule given by</st> *<st c="51027">Eq.</st> <st c="51031">27</st>* <st
+    c="51033">may be computationally costly.</st> <st c="51065">An alternative</st>
+    <st c="51080">approach is to evaluate the empirical risk (and hence the update
+    rule) for just a random subset of the training data.</st> <st c="51198">At one
+    extreme, we can just select a single training datapoint to update our model parameter
+    estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder
+    underaccent="false"><mml:mrow><mml:mover accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mo>_</mml:mo></mml:munder></mml:math>](img/1508.png)<st
+    c="51300"><st c="51301">. This leads to quicker updating of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder
+    underaccent="false"><mml:mrow><mml:mover accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mo>_</mml:mo></mml:munder></mml:math>](img/1508.png)
+    <st c="51337"><st c="51338">but we must perform multiple updates (that is, random
+    selections of single training datapoints) to obtain a reliable overall estimate</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder
+    underaccent="false"><mml:mrow><mml:mover accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mo>_</mml:mo></mml:munder></mml:math>](img/1510.png)<st
+    c="51473"><st c="51474">. We may cycle through the entire training data but in
+    a random order.</st> <st c="51545">Because of this random order in which we use
+    the training data to calculate parameter updates, this</st> <st c="51645">approach
+    is called SGD.</st> <st c="51669">An alternative version of SGD is to use bigger
+    random subsets of the training data to calculate the empirical risk in the update
+    rule in</st> *<st c="51806">Eq.</st> <st c="51810">27</st>*<st c="51812">. This
+    approach is known as</st> **<st c="51840">mini-batch</st>** <st c="51850">SGD
+    since we are using the training data in small batches, rather than just its entirety
+    as we did in the simple</st> <st c="51963">version of gradient descent.</st> <st
+    c="51993">In fact, the simple version of gradient descent is also known as batch
+    gradient descent</st> <st c="52081">because we are using the entire batch of training
+    data in</st> <st c="52139">one go.</st></st></st></st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**<st c="52146">Adaptive gradient descent algorithms</st>**<st c="52183">:
+    The simple version of gradient descent we demonstrated had a fixed learning rate.</st>
+    <st c="52268">We explained that this learning rate had to be chosen well, but</st>
+    <st c="52332">we didn’t explain how to do this.</st> <st c="52366">Tuning the
+    learning rate can be an art.</st> <st c="52406">However, adaptive gradient descent
+    algorithms attempt to automatically tune parameters such as the learning rate,
+    so we have an adaptive learning rate whose value depends on where we are on the
+    empirical risk function surface.</st> <st c="52633">There are a number of these
+    adaptive gradient descent algorithms.</st> <st c="52699">Some of the more well-known
+    (and well-used) ones include the AdaGrad optimizer and the Adam optimizer.</st>
+    <st c="52802">The Adam optimizer also</st> <st c="52825">makes use of the concept
+    of</st> **<st c="52854">momentum</st>**<st c="52862">, whereby the updates to
+    the parameter estimate</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:munder
+    underaccent="false"><mml:mrow><mml:mover accent="true"><mml:mrow><mml:mi>β</mml:mi></mml:mrow><mml:mo>^</mml:mo></mml:mover></mml:mrow><mml:mo>_</mml:mo></mml:munder></mml:math>](img/1511.png)
+    <st c="52910"><st c="52911">are based not just on the current risk gradient</st>
+    ![<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mfenced open=""
+    close="|"><mstyle scriptlevel="+1"><mfrac><mrow><mo>∂</mo><mtext>Risk</mtext></mrow><mrow><mo>∂</mo><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder></mrow></mfrac></mstyle></mfenced><mrow><munder><mi>β</mi><mo
+    stretchy="true">_</mo></munder><mo>=</mo><munder><mover><mi>β</mi><mo stretchy="true">ˆ</mo></mover><mo
+    stretchy="true">_</mo></munder></mrow></msub></mrow></math>](img/1512.png) <st
+    c="52960"><st c="52961">but also on the gradient at the</st> <st c="52994">preceding
+    iterations.</st></st></st>'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="53015">That brief summary of some of the improvements on simple gradient
+    descent is a good place to stop and recap what we have learned in this section
+    and summarize the</st> <st c="53179">chapter overall.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="53195">What we learned</st>
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: <st c="53211">In this section, we have learned</st> <st c="53245">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="53259">How to use the derivative of the empirical risk to estimate model
+    parameters with any choice of</st> <st c="53356">loss function</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="53369">How the simple idea of gradient descent has been extended to create
+    sophisticated gradient-based general</st> <st c="53475">optimization algorithms</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="53498">Summary</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="53506">This chapter has focused on a single, but important, concept –
+    loss functions.</st> <st c="53586">Loss functions are important because they help
+    us measure how good our predictive models are and, more generally, how well one
+    mathematical object approximates another.</st> <st c="53755">They are also important
+    because we can minimize them with respect to our model parameters, and so we can
+    use loss functions, or more specifically risk functions, to fit our models to
+    training data.</st> <st c="53953">In this chapter, we have learned about the different
+    aspects of risk functions and how to minimize them.</st> <st c="54058">Specifically,
+    we have learned about</st> <st c="54094">the following:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="54108">What a loss function is and what</st> <st c="54142">it measures</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54153">That a risk function is the expectation value of a</st> <st c="54205">loss
+    function</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54218">What the empirical risk function is and how it is calculated from</st>
+    <st c="54285">training data</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54298">How least squares minimization is a form of empirical risk minimization
+    and can be used to estimate optimal parameter values for</st> <st c="54428">a
+    model</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54435">How OLS regression performs least squares minimization for</st>
+    <st c="54495">linear models</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54508">How to derive the closed-form formula for the OLS parameter estimates
+    of a</st> <st c="54584">linear model</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54596">How to perform OLS regression using specialized regression packages
+    such as</st> `<st c="54673">statsmodels</st>` <st c="54684">and via explicit calculation
+    using the</st> <st c="54724">closed-form formula</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54743">How empirical risk minimization can also be performed very generally
+    via</st> <st c="54817">gradient descent</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54833">Variants of simple gradient descent, such as SGD, and also adaptive
+    gradient descent algorithms such as the</st> <st c="54942">Adam optimizer</st>
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: <st c="54956">Now we have learned how to measure how good a model is, we’ll
+    move on to the task of learning the math behind the building of those models.</st>
+    <st c="55097">Since those models will be built on data and data always contains
+    a random component, it is natural for the building of models to use the probability
+    concepts we introduced in</st> [*<st c="55273">Chapter 2</st>*](B19496_02.xhtml#_idTextAnchor061)<st
+    c="55282">. That is why, in the next chapter, we’ll learn about</st> <st c="55336">probabilistic
+    models.</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="55357">Exercises</st>
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: <st c="55367">Next is a series of exercises.</st> <st c="55399">Answers to all
+    the exercises are given in the</st> `<st c="55445">Answers_to_Exercises_Chap4.ipynb</st>`
+    <st c="55477">Jupyter notebook in the</st> <st c="55502">GitHub repository:</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="55520">Look at the documentation for the</st> `<st c="55555">scikit-learn</st>`
+    <st c="55567">class named</st> `<st c="55580">sklearn.linear_model.LinearRegression</st>`<st
+    c="55617">, which can fit a linear model using OLS regression.</st> <st c="55670">See
+    if you can use it to fit a linear model to the power-plant output data that we
+    analyzed in the code example in the</st> *<st c="55789">Linear models</st>* <st
+    c="55802">section of this chapter.</st> <st c="55828">Do you get the same parameter
+    estimates as when we used the</st> `<st c="55888">statsmodels</st>` <st c="55899">package?</st>
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: <st c="55908">The data plotted in</st> *<st c="55929">Figure 4</st>**<st c="55937">.3</st>*
+    <st c="55939">is stored in the</st> `<st c="55957">Data/outliers_example.csv</st>`
+    <st c="55982">file of the GitHub repository.</st> <st c="56014">Using the pseudo-Huber
+    loss function in</st> *<st c="56054">Eq.</st> <st c="56058">12</st>* <st c="56060">and
+    a learning rate of</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>η</mml:mi><mml:mo>=</mml:mo><mml:mn>0.05</mml:mn></mml:math>](img/1513.png)<st
+    c="56084"><st c="56094">, see if you can use the simple gradient descent algorithm
+    to construct robust estimates for both the intercept and the slope for a linear
+    model of</st> <st c="56242">the data.</st></st>
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: <st c="56251">The data in the</st> `<st c="56268">Data/nls_example.csv</st>`
+    <st c="56288">file of the GitHub repository contains data that has been generated
+    according to the</st> <st c="56374">following relationship:</st>
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mrow><mi>y</mi><mo
+    mathvariant="italic">=</mo><mi>A</mi><mo mathvariant="italic">+</mo><mi>B</mi><msup><mi>e</mi><mrow><mo
+    mathvariant="italic">−</mo><mi>C</mi><mi>x</mi></mrow></msup></mrow></mrow></math>](img/1514.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: <st c="56406">Eq.</st> <st c="56410">30</st>
+  prefs: []
+  type: TYPE_NORMAL
+- en: <st c="56412">The</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>y</mml:mi></mml:math>](img/24.png)
+    <st c="56417"><st c="56440">values in the dataset have been corrupted by noise;
+    that is, they also contain an additive random component.</st> <st c="56549">Use
+    least squares minimization to estimate suitable values for the parameters</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>A</mml:mi><mml:mo>,</mml:mo><mml:mi>B</mml:mi></mml:math>](img/1516.png)<st
+    c="56627"><st c="56628">, and</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>C</mml:mi></mml:math>](img/461.png)<st
+    c="56634"><st c="56635">. That is, minimize the empirical risk using a squared-loss
+    function and a model of the form in the preceding equation.</st> <st c="56755">You
+    can assume that the parameter</st> ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"
+    xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>C</mml:mi></mml:math>](img/461.png)
+    <st c="56789"><st c="56790">is strictly positive; that</st> <st c="56818">is,</st>
+    ![<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><mml:mi>C</mml:mi><mml:mo>></mml:mo><mml:mn>0</mml:mn></mml:math>](img/1519.png)<st
+    c="56822"><st c="56823">.</st></st></st></st></st></st>
+  prefs: []
+  type: TYPE_NORMAL

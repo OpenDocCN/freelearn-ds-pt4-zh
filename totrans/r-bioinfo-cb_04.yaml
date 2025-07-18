@@ -1,0 +1,889 @@
+- en: Phylogenetic Analysis and Visualization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The comparison of sequences in order to infer evolutionary relationships is
+    a fundamental technique of bioinformatics. It has a long history in R, too. There
+    are many packages outside of Bioconductor for evolutionary analysis. In the recipes
+    in this chapter, we will take a good look at how to work with tree formats from
+    a variety of sources. A key focus will be how to manipulate trees to focus on
+    particular parts and work with visualizations based on the new `ggplot`-based
+    tree visualization packages, and the latter's usefulness in terms of viewing and
+    annotating large trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following recipes will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading and writing varied tree formats with ape and treeio
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualizing trees of many genes quickly with ggtree
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Quantifying distances between trees with treespace
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Extracting and working with subtrees using ape
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating dot plots for alignment visualization
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reconstructing trees from alignments using phangorn
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sample data you'll need is available from this book's GitHub repository
+    at [https://github.com/danmaclean/R_Bioinformatics_Cookbook](https://github.com/danmaclean/R_Bioinformatics_Cookbook)[.](https://github.com/danmaclean/R_Bioinformatics_Cookbook) If
+    you want to use the code examples as they are written, then you will need to make
+    sure that this data is located in a subdirectory of whatever your working directory
+    is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the R packages that you''ll need. The majority of these will install
+    with `install.packages()`; others are a little more complicated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ape`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`adegraphics`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Bioconductor:`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Biostrings`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ggtree`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`treeio`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`msa`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`devtools`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dotplot`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ggplot2`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`phangorn`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`treespace`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Bioconductor` is huge and has its own installation manager. You can install
+    it with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further information is available at [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, in R, a user will load a library and use the functions directly by
+    name. This is great in interactive sessions, but it can cause confusion when many
+    packages are loaded. To clarify which package and function I'm using at a given
+    moment, I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, in the middle of a recipe, I''ll interrupt the code so that you
+    can see some intermediate output or the structure of an object that''s important
+    to understand. Whenever that happens, you''ll see a code block where each line
+    begins with `##` (double hash) symbols. Consider the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`letters[1:5]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will give us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`## a b c d e`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the output lines are prefixed with `##`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading and writing varied tree formats with ape and treeio
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Phylogenetic analysis is a cornerstone of biology and bioinformatics. The programs
+    are diverse and complex, the computations are long-running, and the datasets are
+    often large. Many programs are standalone and many have proprietary input and
+    output formats. This has created a very complex ecosystem that we must navigate
+    when dealing with phylogenetic data, meaning that, often, the simplest strategy
+    is to use combinations of tools to load, convert, and save the results of analyses
+    in order to be able to use them in different packages. In this recipe, we'll look
+    at dealing with phylogenetic tree data in R. To date, R support for the wide range
+    of tree formats is restricted, but a few core packages have sufficient standardized
+    objects such that workflows can focus on a few types and conversion to those types
+    is streamlined. We'll look at using the `ape` and `treeio` packages to get tree
+    data into and out of R.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this section, we'll need the tree and phylogenetic information in `datasets/ch4/` from
+    the book's data repository, specifically the `mammal_tree.nwk` and `mammal_tree.nexus` files,
+    which are Newick and Nexus format trees of a mammal phylogeny (you can see brief
+    descriptions of these file types in this book's Appendix). We'll need `beast_mcc.tree`, which
+    is a tree file from a run of BEAST, and `RAxML_bipartitionsBranchLabels.H3`, which
+    is an RAxML output file. Both of these files are taken from the extensive data
+    provided with the `treeio` package. We'll require the Bioconductor package, `treeio`,
+    and the `ape` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Reading and writing tree formats with `ape` and `treeio` can be executed using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the `ape` library and load in trees:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load the `treeio` library and load in BEAST/RAxML output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Check the object types that the different functions return:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Convert `tidytree` to `phylo`, and vice versa:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Write output files using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we make use of very straightforward loading functions from `ape`—we
+    use the `read.tree()` and `read.nexus()` functions, which can read the generic
+    format trees. In *Step 2*, we repeat this using the specific format functions
+    from `treeio` for BEAST and RaXML output. *Step 3* simply confirms the object
+    types that the function returns; note that `ape` gives `phylo` objects, while `treeio` gives
+    `treedata` objects. The two are interconverted using `as.phylo()` and `as.treedata()`from
+    `treeio` in *Step 4*. By converting in this way, we can get input in many formats
+    into downstream analysis in R. Finally, we write the files in *Step 5*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The loading functions we used in *Step 2* are just a couple of those available.
+    Refer to the `treeio` package vignettes for a comprehensive list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing trees of many genes quickly with ggtree
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Once you have computed a tree, the first thing you will want to do with it is
+    take a look. That's possible in many programs, but R has an extremely powerful,
+    flexible, and fast system in the form of the `ggtree` package. In this recipe,
+    we'll learn how to get data into ggtree and re-layout, highlight, and annotate
+    tree images in just a few commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You'll need the `ggplot2`, `ggtree`**, **and `ape` packages. You'll also require
+    the `itol.nwk` file from the `datasets/ch4` folder of this book's repository,
+    which is a Newick tree of 191 species from the *Interactive Tree of Life* online
+    tool's public dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Visualizing trees of many genes quickly with `ggtree` can be executed using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries and get a `phylo` object of the Newick tree:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a basic tree plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a circular plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Rotate and invert the tree:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add labels to the tree tips:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a strip of color to annotate a particular clade:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a blob of color to highlight a particular clade:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This code achieves a lot very quickly. It can do this by virtue of its `ggplot`-like
+    layer syntax. Here''s what each step does and its output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Load in a tree from a file. The tree here has 191 tips, so it's quite large.
+    It happens to be in Newick format, so we use the `ape` `read.tree()` function.
+    Note that we don't need to have a `treedata` object for `ggtree` in subsequent
+    steps; the `phylo` object returned from `read.tree()` is perfectly acceptable
+    to `ggtree()`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a basic tree with `ggtree()`. This function is a wrapper for a longer
+    `ggplot`-style syntax, specifically, `ggplot(itol) + aes(x,y) + geom_tree() +
+    theme_tree()`. Hence, all the usual `ggplot` functions can be used as extra layers
+    in the plot. The code in this step gives us the following plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/c524bc24-5636-45da-be9e-51680a5a4897.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Change the layout of the plot. Setting the layout argument to circular gives
+    us a round tree. There are many other tree types available through this argument:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/93e048c2-c9fe-4549-b707-0a97cdf0df0d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can change the left-right direction of the tree to a top-bottom one using
+    the standard `ggplot` functions, `coord_flip()` and `scale_x_reverse()`, to make
+    the plot look like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/53da2023-c4e1-496c-a52b-72a3b0a210d9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can add names to the end of the tips with `geom_tiplab()`. The size argument
+    sets the text size. This code generates the following output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/6da4e55f-8f77-41ed-a213-a6e0191e5ca6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'By adding a `geom_strip()` layer, we can annotate clades in the tree with a
+    block of color. The first argument (`13` in this instance) is the start node in
+    the tree, while the second argument is the end node in the tree for the strip
+    of color. The `barsize` argument sets the width of the color block. The result
+    looks like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/4d934492-a6da-4a18-97c4-e0a8fa840ebe.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can highlight clades in unrooted trees with blobs of color using the `geom_hilight_encircle()`
+    geom. We need to pick a value for the `node` argument, which tells `ggtree()` which
+    node to center the color over. The code here provides the following output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/c6da3037-3ccc-40ac-8cbd-a8adbc0201d5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Steps 6* and *7* here relied on us knowing which nodes in the tree to manipulate.
+    This isn''t always obvious as the nodes are identified by number and not name.
+    We can get at the node number we want if we use the `MRCA()` (**Most Recent Common
+    Ancestor**) function. Simply pass it a vector of node names and it returns the
+    ID of the node that represents the MRCA:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Quantifying differences between trees with treespace
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Comparing trees to differentiate or group them can help researchers to see patterns
+    of evolution. Multiple trees of a single gene tracked across species or strains
+    can reveal differences in how that gene is changing across species. At the core
+    of these approaches are metrics of distances between trees. In this recipe, we'll
+    calculate one such metric to find pairwise differences between 20 different gene
+    trees in 15 different species—hence, 15 different tips with identical names in
+    each tree. Such similarity in trees is usually needed to compare and get distances,
+    and we can't do an analysis like this unless these conditions are met.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll use the `treespace` package to compute distances and
+    clusters. We'll use `ape` and `adegraphics` for accessory loading and visualization
+    functions. The input data here will be all 20 files in `datasets/ch4/gene_trees`,
+    each of which is a Newick-format tree for a single gene in each of 15 species.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Quantifying differences between trees with `treespace` can be executed using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load all the tree files into a `multiPhylo` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Compute the Kendall-Colijn distances:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plot pairwise distances:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plot **principal component analysis** (**PCA**) and clusters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The short and sweet code here is really powerful—and gives us a lot of analysis
+    in a few commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 1*, initially, we load the libraries we require.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, after loading the necessary libraries, we make a character vector, `treefiles`,
+    which holds paths to the 20 trees we wish to use. The `list.files()` function that we
+    use takes a filesystem path as its argument and returns the names of files it
+    finds in that path. As `treefiles` is a vector, we can use it as the first argument
+    to `lapply()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In case you're not familiar with it, `lapply()` is an iterator function that
+    returns an R list (hence, `lapply()`).Simply put, `lapply()` runs the function
+    named in the second argument over the list of things in the first. The current
+    thing is passed as the target function's first argument. So, in *Step 2*, we run
+    the **ape** `read.tree()` function on each file named in `treefiles` and receive
+    a list of `phylo` tree objects in return. The final step is to ensure that the
+    `tree_list` object has the class, `multiPhylo`, so that we satisfy the requirements
+    of the downstream functions. Helpfully, a `multiPhylo` object is a list-like object
+    anyway, so we can get away with adding the `multiPhylo` string to the class attribute
+    with the `class()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, the `treespace()` function from the package of the same name does
+    an awful lot of analysis. First, it runs pairwise comparisons of all trees in
+    the input, and then it carries out clustering using PCA. These are returned in
+    a list object, with a member *D* containing the pairwise distances for the trees,
+    and `pco` containing the PCA. The default distance metric, the Kendall-Colijn
+    distance, is particularly suitable for rooted gene trees as we have here, though
+    the metric can be changed. The argument `nf` simply tells us how many of the principal
+    components to retain. As our aim is plotting, we won't need more than three.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 4*, we plot the distance matrix in `comparisons$D` using the `table.image()`
+    function in `adegraphics`—a convenient heatmap-style function. The `nclass` argument tells
+    us how many levels of color to use. We get a plot as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5d616d00-9d11-4851-95b7-458c94ed1d72.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 5*, the `plotGroves()` functionplots a `treespace` object directly,
+    so we can see the plot of the PCA:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2fca568c-2421-475d-9025-70ce3394583a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can use the `findGroves()` function to group the trees into the number of
+    groups given by the `nclust` argument and re-plot to view that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cb693e11-7f01-419f-b7ad-0b6d5073334c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If you have many trees and the plot is crowded, you can create an interactive
+    plot that can be zoomed and panned using the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Extracting and working with subtrees using ape
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this short recipe, we'll look at how easy it can be to manipulate trees;
+    specifically, how to pull out a subtree as a new object and how to combine trees
+    into other trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll need a single example tree; the `mammal_tree.nwk` file in the `datasets/ch4` folder
+    will be fine. All the functions we require can be found in the `ape` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Extracting and working with subtrees using `ape` can be executed using the
+    following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the `ape` library and then load the tree:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get a list of all of the subtrees:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract a specific subtree:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Combine two trees:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The functions in this recipe are really straightforward, but extremely useful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 1* is a familiar tree-loading step. We need a phylo object tree to progress.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 2* uses the `subtrees()` function, which extracts all non-trivial (greater
+    than one node) subtrees and puts them in a list. The members of the list are numbered
+    according to the node number in the original tree, and each object in the list
+    is a `phylo` object, like the parent. We can inspect the original tree and the
+    subtree at node 4 using the `plot()` function, which generates the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/87afa2f7-6e77-427a-a027-224ee38952cc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In *Step 3*, we get a single specific subtree using the `extract.clade()` function.
+    The first argument to this function is the tree, while the second is the node
+    that will be extracted. In fact, all nodes downstream of this node are taken and
+    a new `phylo` object is returned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last example shows how to use the `bind.tree()` function to combine two
+    `phylo` objects. The first argument is the major tree, which will receive the
+    tree of the second argument. Here, we''ll be stitching `small_tree` onto Newick.
+    The third argument is the node in the major tree to which the second tree will
+    be joined. Again, a new `phylo` object is returned. When we plot the new tree,
+    we can see the repeated segment relative to our original tree:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/fe646dab-df22-4c39-9200-2a1a3acbd0c1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A minor problem with the preceding functions is that they expect us to know
+    the node number we want to work with. A simple way to access this is by using
+    the interactive `subtreeplot()` command. The `subtreeplot(newick)` code generates
+    an interactive plot for the tree provided, like the one here. By clicking on particular
+    nodes in the tree, we can get the viewer to render the subtree and print the node
+    ID. We can then use the node ID in the functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/77fd4bed-d815-4939-85c0-146c10beaaf5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating dot plots for alignment visualization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Dot plots of pairs of aligned sequences are probably the oldest alignment visualization.
+    In these plots, the positions of two sequences are plotted on the *x* axis and
+    *y* axis, and for every coordinate in that space, a point is drawn if the letters
+    (nucleotides or amino acids) correspond at that `(x,y)` coordinate. Since the
+    plot can show regions that match that aren't generally in the same region of the
+    two sequences, this is a good way to visually spot insertions and deletions and
+    structural rearrangements in the two sequences. In this recipe, we'll look at
+    a speedy method for constructing a dot plot using the `dotplot` package and a
+    bit of code for getting a grid plot of all pairwise dot plots for sequences in
+    a file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We''ll need the `datasets/ch4/bhlh.fa` file, which contains three **basic helix-loop-helix**
+    (**bHLH**) transcription factor sequences from pea, soy, and lotus. We''ll also
+    need the `dotplot` package, which isn''t on CRAN or Bioconductor, so you''ll need
+    to install it from GitHub using the `devtools` package. The following code should
+    work:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Creating dot plots for alignment visualization can be executed using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries and sequences:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a basic dot plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Change the dot plot and apply the `ggplot2` themes and labels:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a function that will create a dot plot from sequences provided and the
+    sequence index:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set up data structures to run the function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run the function on all the possible combinations of pairs of sequences:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plot the grid of plots:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first part of this recipe is pretty familiar. We load in the libraries and
+    use `Biostrings` to load in our protein sequences. Note that our sequences in
+    the `seqs` variable are an instance of the `XStringSet` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we can create a basic dot plot using the `dotplotg()` function.
+    The arguments are the sequences we want to plot. Note that we can''t pass the
+    `XStringSet` objects directly; we need to pass character vectors, so we coerce
+    our sequences into that format with the `as.character()` function. Running this
+    code gives us the following dot plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7d3856f1-de5c-4fe1-ad63-781cf25c3445.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 3*, we elaborate on the basic dot plot by first changing the way a
+    match is considered. With the `wsize=7` option, we state that we are looking at
+    seven residues at a time (instead of the default of one), the `wstep=5` option
+    tells the plotter to jump five residues each step (instead of one, again), and
+    the `nmatch=4` option tells the plotter to mark a window as matching if four of
+    the residues are identical. We then customize the plot by adding a `ggplot2` theme
+    to it in the usual `ggplot` manner and add axis names with the label function.
+    From this, we get the following dot plot. Note how it is different to the first
+    one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/05cbd1a9-77a9-4c60-a456-5463b1e45d44.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The custom function, `make_dot_plot()`, defined in *Step 4* takes two numbers
+    in variables, `i` and `j`, and an `XStringSet` object in the `seqs` argument.
+    It then converts the i-th and j-th sequence in the `seqs` object to characters
+    and stores those in `seqi` and `seqj` variables. It also extracts the names of
+    those sequences to `namei` and `namej`. Finally, it creates and returns a dot
+    plot using the variables created
+  prefs: []
+  type: TYPE_NORMAL
+- en: To use the function, we need two things; the combinations of sequences to be
+    plotted and a list to hold the results in. In *Step 4*, the `expand.grid()` function
+    is used to create a data frame of all possible combinations of sequences by number,
+    which we store in the `combinations` variable. The `plots` variable, created with
+    the `vector()` function, contains a `list` object with the right number of slots
+    to hold the resultant dot plots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 6* is a loop that iterates over each row of the combination''s data frame,
+    extracting the sequence numbers we wish to work with and storing them in the `i`
+    and `j` variables. The `make_dot_plot()` function is then called with `i`, `j`,
+    and `seqs`, and its results stored in the `plots` list we created.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, in *Step 7*, we use the `cowplot` library function, `plot_grid()`,
+    with our list of plots to make a master plot of all possible combinations that
+    looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bec8bae0-5740-4178-bd18-9f17a5f6de59.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Reconstructing trees from alignments using phangorn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far in this chapter, we've assumed that trees are already available and ready
+    to use. Of course, there are many ways to make a phylogenetic tree and, in this
+    recipe, we'll take a look at some of the different methods available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this chapter, we'll use the `datasets/ch4/` file, the `abc.fa` file of yeast
+    ABC transporter sequences, the `Bioconductor Biostrings` package, and the `msa`
+    and `phangorn` packages from CRAN.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Constructing trees using `phangorn` can be executed using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in the libraries and sequences, and make an alignment:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Convert the alignment to the `phyDat` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make UPGMA and neighbor-joining trees from a distance matrix:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Calculate the bootstraps and plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first step carries out a loading and amino acid sequence alignment, as we've
+    seen in an earlier recipe with the `msa` package, returning an `MsaAAMultipleAlignment` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second step uses the `as.phyDat()` function to convert the alignment to
+    a `phyDat` object that can be used by the `phangorn` functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 3*, we actually make trees. Trees are made from a distance matrix,
+    which we can compute with `dist.ml()` and our alignment (this is a maximum-likelihood
+    distance measure; other functions can be used here if needed). The `dist_mat`
+    is passed to the `upgma()` and `NJ()` functions to make UPGMA and neighbor-joining
+    trees, respectively. These return standard `phylo` objects that can be worked
+    with in many other functions. Here, we plot directly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/807b4486-43e0-4838-b9e6-a3147134c115.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the final step, we use the `bootstraps.phyDat()` function to compute bootstrap
+    support for the branches in the tree. The first argument is the `phyDat` object, `aln`,
+    while the second argument, `FUN`, requires a function to calculate trees. Here,
+    we use an anonymous function wrapping the `NJ()` method we used to generate `nj_tree`
+    in the first place. The `bs` argument tells the functions how many bootstraps
+    to compute. Finally, we can plot the resultant bootstraps onto the tree using
+    the `plotBS()` function.
+  prefs: []
+  type: TYPE_NORMAL

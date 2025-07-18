@@ -1,0 +1,1182 @@
+- en: '14'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Creating a Distributed Text-to-Image AI System Using the Stable Diffusion Model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Until now, in this book, we’ve built APIs where all the operations were computed
+    inside the request handling. Said another way, before they could get their response,
+    the user had to wait for the server to do everything we had defined: request validation,
+    database queries, ML predictions, and so on. However, this behavior is not always
+    desired or possible.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A typical example is email notifications. It happens quite often in a web application
+    that we need to send an email to the user because they just registered or they
+    performed a specific action. To do this, the server needs to send a request to
+    an email server so the email can be sent. This operation could take a few milliseconds.
+    If we do this inside the request handling, the response will be delayed until
+    we send the email. This is not a very good experience since the user doesn’t really
+    care how and when the email is sent. This example is typical of what we usually
+    call **background operations**: things that need to be done in our application
+    but don’t require direct user interaction.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another case is when the user requests an expensive operation that can’t be
+    done in a reasonable time. It’s usually the case for complex data exports or heavy
+    AI models. In this context, the user would like to get the result directly, but
+    doing this in the request handler would block the server process until it’s done.
+    If lots of users were requesting this kind of operation, it would quickly make
+    our server unresponsive. Besides, some network infrastructure such as proxy or
+    web clients, like browsers, have quite strict timeout settings, meaning they will
+    usually cancel an operation if it takes too much time to respond.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To solve this, we’ll introduce a typical architecture for web applications:
+    **web-queue-worker**. As we’ll see in this chapter, we’ll defer the most expensive,
+    long operations to a background process, a **worker**. To show you this architecture
+    in action, we’ll build our very own AI system to generate images from text prompts
+    using the **Stable** **Diffusion** model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Stable Diffusion model with Hugging Face Diffusers to generate images
+    from text prompts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing a worker process using Dramatiq and an image-generation task
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Storing and serving files in object storage
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this chapter, you’ll require a Python virtual environment, just as we set
+    up in [*Chapter 1*](B19528_01.xhtml#_idTextAnchor024), *Python Development* *Environment
+    Setup*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To run the Stable Diffusion model correctly, we recommend you have a recent
+    computer equipped with at least 16 GB of RAM and, ideally, a dedicated GPU with
+    8 GB of VRAM. For Mac users, recent models equipped with the M1 Pro or M2 Pro
+    chips are also a good fit. If you don’t have that kind of machine, don’t worry:
+    we’ll show you ways to run the system anyway – the only drawback is that image
+    generation will be slow and show poor results.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For running the worker, you’ll need a running **Redis server** on your local
+    computer. The easiest way is to run it as a Docker container. If you’ve never
+    used Docker before, we recommend you read the *Getting started* tutorial in the
+    official documentation at [https://docs.docker.com/get-started/](https://docs.docker.com/get-started/).
+    Once done, you’ll be able to run a Redis server with this simple command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: You’ll find all the code examples of this chapter in the dedicated GitHub repository
+    at [https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating images from text prompts with Stable Diffusion
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Recently, a new generation of AI tools has emerged and fascinated the whole
+    world: image-generation models, such as DALL-E or Midjourney. Those models are
+    trained on huge amounts of image data and are able to generate completely new
+    images from a simple text prompt. These AI models are very good use cases for
+    background workers: they take seconds or even minutes to process, and they need
+    lots of resources in the CPU, RAM, and even the GPU.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To build our system, we’ll rely on Stable Diffusion, a very popular image-generation
+    model that was released in 2022\. This model is available publicly and can be
+    run on a modern gaming computer. As we did in the previous chapter, we’ll rely
+    on Hugging Face tools for both downloading the model and running it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s first install the required tools:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: We’re now ready to use diffuser models thanks to Hugging Face.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing the model in a Python script
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the following example, we’ll show you the implementation of a class able
+    to instantiate the model and run an image generation. Once again, we’ll apply
+    our lazy loading pattern with separate `load_model` and `generate` methods. Let’s
+    first focus on `load_model`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: text_to_image.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/text_to_image.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/text_to_image.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first part of this method aims to find the most efficient way to run the
+    model given your computer. These diffusion models are faster when run on the GPU
+    – that’s why we check first if there are CUDA (NVIDIA GPU) or MPS (Apple Silicon)
+    devices available. If there are none, we fall back to the CPU.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we simply have to create a `StableDiffusionPipeline` pipeline, as provided
+    by Hugging Face. We simply have to set the model we want to download from the
+    hub. For this example, we chose `runwayml/stable-diffusion-v1-5`. You can find
+    its details on Hugging Face: [https://huggingface.co/runwayml/stable-diffusion-v1-5](https://huggingface.co/runwayml/stable-diffusion-v1-5).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now focus on the `generate` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: text_to_image.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/text_to_image.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/text_to_image.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can see it accepts four parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`prompt`, which is, of course, the text prompt describing the image we want
+    to generate.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`negative_prompt`, which is an optional prompt to tell the model what we absolutely
+    don’t want.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`num_steps`, which is the number of inference steps the model should run. More
+    steps lead to a better image, but each iteration delays the inference. The default,
+    `50`, should provide a good balance between speed and quality.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`callback`, which is an optional function that will be called at each iteration
+    step. This is helpful to be informed about the progress of the generation and
+    possibly execute more logic, such as saving the progress in a database.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What does the asterisk (*) in the method signature mean?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may have noticed the asterisk, `*`, in the method signature. It tells Python
+    that the arguments coming after this symbol should only be treated as keyword-only
+    arguments. Said another way, you can only call them like this: `.generate("PROMPT",`
+    `negative_prompt="NEGATIVE", num_steps=10)`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While not necessary, it’s a way to keep your functions clear and self-explanatory.
+    It’s especially true if you develop classes or functions that are meant to be
+    used by other developers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another syntax also exists to force arguments to be positional-only, using
+    a slash (`/`) symbol. You can read more about it here: [https://docs.python.org/3/whatsnew/3.8.html#positional-only-parameters](https://docs.python.org/3/whatsnew/3.8.html#positional-only-parameters).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All we have to do then is to pass those parameters to `pipe`. There are a lot
+    more parameters for you to tune if needed, but the default ones should give you
+    quite good results. You can find the whole list of them in the Hugging Face documentation:
+    [https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/text2img#diffusers.StableDiffusionPipeline.__call__](https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/text2img#diffusers.StableDiffusionPipeline.__call__).
+    This `pipe` object is able to generate several images per prompt, that’s why the
+    result of this operation is a list of Pillow images. The default here is to generate
+    only one image, so we directly return the first one.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: And that’s about it! Once again, Hugging Face makes our lives really easy by
+    allowing us to run cutting-edge models in dozens of lines!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Executing the Python script
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We bet that you’re eager to try it yourself – that’s why we added a small `main`
+    script at the bottom of our example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: text_to_image.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/text_to_image.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/text_to_image.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This small script instantiates our `TextToImage` class, loads the model, and
+    generates an image before saving it to disk. We also define a dummy callback function
+    so you can see how it works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you run this script for the first time, you’ll notice that Hugging Face
+    downloads files of several gigabytes to your computer: that’s the Stable Diffusion
+    model, and it’s indeed quite big!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, the inference will start. You’ll see a progress bar showing you how many
+    inference steps are left, along with the `print` statement from our callback,
+    as shown in *Figure 14**.1*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.1 – Stable Diffusion generating an image](img/Figure_14.1_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.1 – Stable Diffusion generating an image
+  prefs: []
+  type: TYPE_NORMAL
+- en: How much time does it take to generate a single image?
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ve run several tests on different types of computers. With a modern NVIDIA
+    GPU with 8 GB of RAM or a Mac with an M1 Pro chip, the model is able to generate
+    an image with 50 inference steps in *around a minute*, with reasonable RAM usage.
+    When run on a CPU, it takes around *5 to 10 minutes* and eats up to 16 GB of RAM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the inference is really too slow on your computer, you can try to reduce
+    the `num_steps` parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the inference is done, you’ll find your generated image on the disk along
+    with your script. *Figure 14**.2* shows an example of such a result. Nice, isn’t
+    it?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.2 – Result of a Stable Diffusion image generation](img/Figure_14.2_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.2 – Result of a Stable Diffusion image generation
+  prefs: []
+  type: TYPE_NORMAL
+- en: We now have the fundamental brick of our AI system. Now, we need to build an
+    API so users can generate their own images. As we’ve just seen, generating a single
+    image takes some time. As we said in the introduction, we’ll need to introduce
+    a web-queue-worker architecture to make this system reliable and scalable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a Dramatiq worker and defining an image-generation task
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As we mentioned in the introduction of this chapter, it’s not conceivable to
+    run our image-generation model directly on our REST API server. As we saw in the
+    previous section, the operation can take several minutes and consumes a massive
+    amount of memory. To solve this, we’ll define another process, apart from the
+    server process, that’ll take care of this image-generation task: the **worker**.
+    In essence, a worker can be any program whose role is to compute a task in the
+    background.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In web development, this concept usually implies a bit more than this. A worker
+    is a process running continuously in the background, waiting for incoming tasks.
+    The tasks are usually sent by the web server, which asks for specific operations
+    given the user actions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, we see that we need a communication channel between the web server
+    and the worker. That’s the role of the **queue**. It’ll accept and stack messages
+    coming from the web server and make them available to read for the worker. That’s
+    the web-queue-worker architecture. To better understand it, *Figure 14**.4* shows
+    you the schema of such an architecture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.3 – Schema of web-queue-worker architecture](img/Figure_14.3_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.3 – Schema of web-queue-worker architecture
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Does it ring a bell? Yes, it’s very similar to what we saw in [*Chapter 8*](B19528_08.xhtml#_idTextAnchor551),
+    in the *Handling multiple WebSocket connections and broadcasting messages* section.
+    Actually, this is the same principle: we solve the problem of having separate
+    processes by having a single central data source.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The great feature of this architecture is that it scales very easily. Imagine
+    your application is a huge success and thousands of users want to generate images:
+    a single worker wouldn’t be able to meet the demand. Actually, all we need to
+    do is to start more worker processes. Since there is a single message broker in
+    the architecture, each worker will pull messages as they come, allowing tasks
+    to be processed in parallel. They don’t even need to be on the same physical machine.
+    This is shown in *Figure 14**.4*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.4 – Web-queue-worker architecture with multiple workers](img/Figure_14.4_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.4 – Web-queue-worker architecture with multiple workers
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Python, there are several libraries to help implement a worker. They provide
+    the required tools to define tasks, schedule them in the queue, and run a process,
+    pulling them and executing them. In this book, we’ll use Dramatiq, a lightweight
+    but powerful and modern background task-processing library. As we did in [*Chapter
+    8*](B19528_08.xhtml#_idTextAnchor551), we’ll use Redis as a message broker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a worker
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As usual, we’ll start by installing the required dependency. Run the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will install Dramatiq with the required dependencies to talk with a Redis
+    broker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In a minimal example, setting up a Dramatiq worker involves two things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting the broker type and URL.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Defining tasks by wrapping functions with the `@``dramatiq.actor` decorator.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It works very well for the vast majority of tasks, such as sending emails or
+    generating exports.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our case, however, we need to load the heavy Stable Diffusion model. As we
+    usually do in the FastAPI server with the `startup` event, we want to do this
+    only when the process is actually started. To do this with Dramatiq, we implement
+    a *middleware*. They allow us to plug custom logic at several key events in the
+    lifetime of the worker, including when it’s started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can see the implementation of our custom middleware in the following sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We define a `TextToImageMiddleware` class whose role is to bear an instance
+    of `TextToImage`, the image generation service we defined in the previous section.
+    It inherits from the `Middleware` class of Dramatiq. The key thing here is the
+    `after_process_boot` method. It’s one of the event hooks exposed by Dramatiq,
+    allowing us to plug our own logic. Here, we tell it to load the Stable Diffusion
+    model when the worker process has booted up. You can see the full list of supported
+    hooks in the official documentation: [https://dramatiq.io/reference.html#middleware](https://dramatiq.io/reference.html#middleware).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next lines allow us to configure our worker. We first instantiate an instance
+    of our custom middleware. Then, we create a broker class corresponding to the
+    technology we chose; in our case, Redis. We take care of adding our middleware
+    to this broker before telling Dramatiq to use it. Our worker is now completely
+    configured to connect to a Redis broker and load our model at startup.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s see how we can define a task to generate images:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The implementation is straightforward: Dramatiq tasks are actually plain functions
+    that we decorated with `@dramatiq.actor`. We can define arguments as we would
+    for any other function. However, there is an important pitfall to avoid here:
+    when we schedule tasks from our server, the arguments will have to be stored in
+    the queue storage. Thus, *Dramatiq will internally serialize the arguments to
+    JSON*. It means your task arguments must be serializable data – you can’t have
+    arbitrary Python objects, such as class instances or functions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The function body calls our `TextToImage` instance loaded in `text_to_image_middleware`,
+    before saving the image to the disk. To avoid file overrides, we choose here to
+    generate a **UUID**, a **Universally Unique IDentifier**. It’s a big random string
+    that’s guaranteed to be unique in each generation. Thanks to this, we can safely
+    use it as a filename and be sure it won’t already exist on our disk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s it for the worker implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Starting the worker
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We don’t have the web server code to call it yet, but we can already try it
+    manually. First, make sure you have a Redis server started, as explained in the
+    *Technical requirements* section. Then, we can start the Dramatiq worker using
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Dramatiq comes with command-line tools to take care of starting the worker
+    processes. The main positional argument is the dotted path of your worker module.
+    It’s similar to what we do with Uvicorn. We also set two optional parameters,
+    `-p` and `-t`. They control the number of processes and threads Dramatiq will
+    start. By default, it starts 10 processes, each one with 8 threads. This means
+    there will be 80 workers able to pull and execute tasks. While this default is
+    good for common needs, it doesn’t work with our Stable Diffusion model for two
+    reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each thread in a process shares the same memory space. This means that if two
+    (or more) threads try to generate an image, they will read and write on the same
+    objects in memory. For our model here, this causes concurrency problems. We say
+    that it’s *not thread-safe*. Hence, each process should start only one thread:
+    that’s the point of the `-t` `1` option.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each process should load the model in memory. This means that if we start 8
+    processes, we’ll load the model 8 times. As we saw earlier, it takes quite a huge
+    amount of memory, so doing this would probably blow up your computer’s memory.
+    To be safe here, we start only one process thanks to the `-p 1` option. If you
+    want to try parallelization and see that our worker is able to generate two images
+    in parallel, you can try `-p 2` to spawn two processes. Make sure your computer
+    can handle it though!
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you run the preceding command, you should see an output like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can see the output of the Stable Diffusion pipeline checking whether the
+    model files are downloaded before the worker is fully started. This means that
+    it has been correctly loaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scheduling tasks in the worker
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can now try to schedule tasks in our worker. For this, we can start a Python
+    interactive shell and import the `task` function. Open a new command line and
+    run the following commands (make sure you enabled your Python virtual environment):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That’s it – we scheduled a task in the worker! Notice how we used the `send`
+    method on our `task` function instead of calling it directly: this is how you
+    tell Dramatiq to send it in the queue.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you go back to your worker terminal, you’ll see the Stable Diffusion output
+    generating the image. After a moment, you’ll have your image saved on disk. You
+    can also try to send two tasks in a row in a short time. You’ll find that Dramatiq
+    processes them one after the other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great job! We have our background process ready and are even able to schedule
+    tasks in it. The next step now is to implement a REST API so the users can ask
+    for image generation themselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing the REST API
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To schedule tasks in our worker, we need a safe interface users can interact
+    with. A REST API is a good choice for this, since it can be easily integrated
+    into any software, such as a website or a mobile app. In this section, we’ll very
+    quickly review a simple API endpoint we implemented to send image-generation tasks
+    into our queue. Here’s the implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: api.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/api.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/basic/api.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you have followed along since the beginning of this book, this shouldn’t
+    surprise you. We took care of defining proper Pydantic models to structure and
+    validate the endpoint payload. This data is then directly used to send a task
+    to Dramatiq, as we saw in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this simple implementation, the output consists only of the message ID, which
+    is automatically assigned to each task by Dramatiq. Notice that we set the HTTP
+    status code to `202`, which means *Accepted*. Semantically, it means the server
+    understood and accepted the request, but the processing has not yet finished or
+    even started. It’s specifically designed for cases where the processing is done
+    in the background, which is exactly our case here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you start both the worker and this API, you’ll be able to trigger image generations
+    with an HTTP call.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You’re probably wondering here: *That’s nice… But how will the users retrieve
+    the result? How will they know whether the task is done?*. You’re right – we didn’t
+    talk at all about this problem! Actually, there are two aspects to solve here:
+    how do we keep track of the pending tasks and their execution? How do we store
+    and serve the resulting images? That’s the subject of the next section.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storing results in a database and object storage
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous section, we showed how to implement a background worker to
+    do the heavy computation and an API to schedule tasks on this worker. However,
+    we are still missing two important aspects: the user doesn’t have any way to know
+    the progress of the task nor to retrieve the final result. Let’s fix this!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sharing data between the worker and the API
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As we’ve seen, the worker is a program running in the background executing
+    the computations the API has asked it to do. However, the worker doesn’t have
+    any way to talk with the API server. That’s expected: since there could be any
+    number of server processes, and since they could even run on different physical
+    servers, processes cannot communicate directly. It’s always the same problem of
+    having a central data source on which processes can write and read data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Actually, the first approach to solve the lack of communication between the
+    API and the worker could be to use the same broker we use to schedule tasks: the
+    worker could write results in the broker, and the API could read from it. This
+    is something possible with most background task libraries, including Dramatiq.
+    However, this solution has some limitations, the principal one being the limited
+    time we can retain the data. Brokers, such as Redis, are not really suited to
+    storing data reliably for a long period. At some point, we’ll need to erase the
+    most ancient data to limit memory usage.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Yet, we already know of something able to store structured data efficiently:
+    a database, of course! That’s the approach we’ll show here. By having a central
+    database where we’ll store our image generation requests and results, we’ll be
+    able to share information between the worker and the API. For this, we’ll reuse
+    a lot of techniques we showed in the *Communicating with a SQL database with SQLAlchemy
+    ORM* section of [*Chapter 6*](B19528_06.xhtml#_idTextAnchor346). Let’s go!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining an SQLAlchemy model
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The first step is defining an SQLAlchemy model to store a single image-generation
+    task. You can see it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: models.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/models.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/models.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As usual, we define an auto-incremented ID as the primary key. We also add `prompt`,
+    `negative_prompt`, and `num_steps` columns, which correspond to the arguments
+    we give to the worker task. This way, we’ll be able to directly give the ID to
+    the worker, and it’ll take the parameter directly from the object. Besides, it’ll
+    allow us to store and remember the parameters we used for a specific generation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `progress` column is an integer where we’ll store the current progress of
+    the generation task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, `file_name` will store the actual filename we’ll store on our system.
+    We’ll see how we use it in the next section, about object storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adapting the API to save image-generation tasks in a database
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'With this model at hand, our approach to scheduling image generation in the
+    API changes a bit. Instead of directly sending the task to the worker, we first
+    create a row in our database and use the ID of this object as input for the worker
+    task. The endpoint implementation is shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: api.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/api.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/api.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We won’t go into the details about how to create an object in a database with
+    SQLAlchemy ORM. If you need a refresher, you can refer to the *Communicating with
+    a SQL database with SQLAlchemy ORM* section of [*Chapter 6*](B19528_06.xhtml#_idTextAnchor346).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main thing to notice in this snippet is that we pass the ID of the newly
+    created object as an argument of `text_to_image_task`. As we’ll see right after,
+    the worker will read it again from the database to retrieve the generation parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The response of this endpoint is simply a representation of our `GeneratedImage`
+    model, using the Pydantic schema `GeneratedImageRead`. Thus, the user will get
+    a response like this to their request:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: It shows the prompt we gave in our request and, most importantly, *it gives
+    it an ID*. This means that the user will be able to query for this specific request
+    again to retrieve the data and see whether it’s done. That’s the purpose of the
+    `get_generated_image` endpoint defined below the previous snippet. We won’t show
+    it here, but you can read it in the examples repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adapting the worker to read and update image-generation tasks from a database
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You probably have guessed that we need to change the implementation of our task
+    so it can retrieve objects from the database instead of reading the parameters
+    directly. Let’s go through this step by step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first thing we do is retrieve a `GeneratedImage` from the database using
+    the ID we got in the task argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To achieve this, you see that we use a helper function called `get_image`.
+    It’s defined right above the task. Let’s review it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It may look quite strange, but actually, you are already familiar with most
+    of its logic. If you look closely, you’ll see that it defines a nested and private
+    function where we define the actual logic to retrieve and save the object using
+    SQLAlchemy ORM. Notice that it’s *async*, and that we make great use of async
+    I/O patterns, as we’ve seen throughout this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s the exact reason why we need a helper function like this. Indeed, Dramatiq
+    is not designed to run async functions natively, so we need to manually schedule
+    their execution using `asyncio.run`. We already saw this function in [*Chapter
+    2*](B19528_02.xhtml#_idTextAnchor032), where we presented async I/O. Its role
+    is to run an async function and return its result. That’s how we can call the
+    wrapping function synchronously in our task without any issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other approaches could work to tackle the async I/O problem
+  prefs: []
+  type: TYPE_NORMAL
+- en: The approach we show here is the most straightforward and robust one to tackle
+    the problem of asynchronous workers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another approach could be to set up a decorator or middleware for Dramatiq so
+    it could natively run async functions, but this is complex and subject to bugs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could also consider having another SQLAlchemy engine and session maker that
+    works synchronously. However, this would require us to have a lot of duplicated
+    things in our code. Besides, this wouldn’t help if we had async functions other
+    than SQLAlchemy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s get back to the implementation of `text_to_image_task`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We define a `callback` function for the Stable Diffusion pipeline. Its role
+    is to save the current progress in a database for the current `GeneratedImage`.
+    For this, we once again use a helper function, `update_progress`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We use the same approach we explained for `get_image`, so we can wrap the async
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Going back to `text_to_image_task`, we can now call our `TextToImage` model
+    to generate an image. It’s exactly the same call we showed in the previous section.
+    The only difference is that we take the parameters from the `image` object. We
+    also generate a random filename using a UUID:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following part is designed to upload the image to object storage. We’ll
+    explain this in more detail in the next section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we call another helper function, `update_file_name`, to save the random
+    filename in the database. It’ll allow us to retrieve the file for the user:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, the main point of attention throughout this implementation is
+    that we read and write information about `GeneratedImage` from and to the database.
+    This is how we can *synchronize* between the API server and the worker. That’s
+    it for the worker! With this logic, we are able to schedule an image-generation
+    task from the API, and the worker is able to regularly update the task progress
+    before setting the resulting filename. Thus, from the API, a simple `GET` request
+    allows us to see the status of our task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storing and serving files in object storage
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The last challenge we have to tackle concerns the storage of our resulting images.
+    We need a way to store them reliably while letting users retrieve them easily
+    from the internet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Traditionally, web applications handled this quite simply. They stored the
+    files directly on the server hard disk, in a defined directory, and configured
+    their web server to serve those files when accessed under a certain URL. This
+    is actually what we did in [*Chapter 13*](B19528_13.xhtml#_idTextAnchor1005),
+    in the WebSocket example: we used the `StaticFiles` middleware to statically serve
+    the JavaScript script we had on disk.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While this works well for static files, such as JavaScript or CSS files, for
+    which each server has its own copy, it is not suitable for dynamic files uploaded
+    by the user or generated by the backend, in particular for complex architectures
+    where several processes are run on different physical machines. Once again, this
+    is the problem of having a central source of data that the different processes
+    read from. In the previous sections, we saw that message brokers and databases
+    could solve this issue in several contexts. In the case of arbitrary binary files,
+    whether they are images, videos, or simple text files, we need something else.
+    Let’s introduce **object storage**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Object storage is a bit different from the standard file storage we use daily
+    in computers, where the disk is organized in a hierarchy of directories and files.
+    Instead, object storage will store each file as an object, which includes the
+    actual data and all its metadata, such as its name, size, type, and a unique ID.
+    The main benefit of such conceptualization is that it’s easier to spread those
+    files across multiple physical machines: *we can store billions of files on the
+    same object storage*. From the user’s point of view, we just ask for a specific
+    file, and the storage will take care of loading the file from the actual physical
+    disk.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the cloud era, this approach has obviously gained a lot of popularity. In
+    2006, **Amazon Web Services** (**AWS**) launched Amazon S3, its own implementation
+    of object storage. It gave developers access to virtually unlimited disk space
+    to store files using a simple API, all at a very cheap price. Amazon S3 gained
+    so much popularity its API became the de facto standard in the industry. Nowadays,
+    most cloud object storage, including storage from competitors such as Microsoft
+    Azure or Google Cloud, is compatible with the S3 API. Open source implementations
+    have also emerged, such as MinIO. The main benefit of this common S3 API is that
+    you can use the same code and libraries in your project to talk with any object
+    storage provider and easily switch if needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To sum up, object storage is a very convenient way to store and serve files
+    at scale, no matter the number of processes that need to access this data. At
+    the end of this section, the global architecture of our project will look like
+    the one shown in *Figure 14**.5*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.5 – Web-queue-worker architecture and object storage](img/Figure_14.5_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.5 – Web-queue-worker architecture and object storage
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s worth noting that the *object storage will serve the file directly to the
+    user*. There won’t be an endpoint where the server would act as a proxy by downloading
+    the file from the object storage before sending it to the user. There isn’t much
+    benefit in doing it that way, even in terms of authentication. We’ll see that
+    S3-compatible storage has built-in mechanisms to protect files from unauthorized
+    access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing an object storage helper
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s get to the code then! We’ll use the MinIO client for Python, a library
+    to interact with any S3-compatible storage. Let’s install it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now implement a class to have all the operations we need at hand. Let’s
+    first go with the initializer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: storage.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the initializer of this class, we create a `Minio` client instance. You’ll
+    see that we use a `settings` object to pull the storage URL and credentials. Thus,
+    it’s very easy to switch them by using environment variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’ll then implement several methods that’ll help us work with object storage.
+    The first one is `ensure_bucket`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: storage.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The role of this method is to make sure the right bucket is created in our object
+    storage. In S3 implementations, a **bucket** is like a folder that you own and
+    in which you can store your files. Each file you upload has to be put into an
+    existing bucket.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we define `upload_image`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: storage.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is for uploading an image to the storage. To simplify things, this method
+    accepts a Pillow `Image`, as it’s the result we get at the end of the Stable Diffusion
+    pipeline. We implemented some logic to convert this `Image` object into a raw
+    stream of bytes suitable for the S3 upload. This method also expects `object_name`,
+    which will be the actual name of the file in the storage, along with `bucket_name`.
+    Notice that we first ensure the bucket is correctly created before trying to upload
+    the file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we add the `get_presigned_url` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: storage.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/storage.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This method will help us to serve the file securely to the user. By default,
+    for security reasons, files in S3 storage are not accessible by any user on the
+    internet. To give access to a file, we can do either of the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Set the file as public so anybody with the URL can access it. This is suitable
+    for public files but certainly not for private user files.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Generate a URL with a temporary access key. Thus, we can give access to the
+    file to the user, knowing that even if the URL is stolen, the access will be revoked
+    after a certain time. The huge benefit of this is that this URL generation happens
+    on our API server using the S3 client. Therefore, we could check whether the user
+    is correctly authenticated and has the rights to this specific file following
+    our own logic before generating the file URL. This is the approach we adopt here,
+    and this method generates the pre-signed URL on a specific file in a specific
+    bucket for a certain amount of time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As you can see, our class is just a thin wrapper around the MinIO client. All
+    we have to do now is to use it to upload the images and get a pre-signed URL from
+    the API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the object storage helper in the worker
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the previous section, we showed the following lines in our task implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: worker.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/worker.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we’ve talked about the `Storage` class, you should guess what we’re
+    doing here: we take the generated image and its random name and upload it to a
+    bucket defined in `settings`. And… That’s it!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating a pre-signed URL on the server
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'On the API’s side, we implement a new endpoint whose role is to return a pre-signed
+    URL for a given `GeneratedImage`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: server.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/server.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter14/complete/server.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before generating the URL, we first check whether the `file_name` property is
+    set on the `GeneratedImage` object. If it’s not, it means the worker has not completed
+    the task yet. If it is, we can proceed with the call to the `get_presigned_url`
+    method of our `Storage` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we took care of defining a dependency injection to get our `Storage`
+    instance. As we’ve seen throughout this book, using dependencies in FastAPI is
+    a very good practice when dealing with external services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Well, it seems that we’re all set! Let’s see it in action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the image-generation system
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'First of all, we need to populate the environment variables for our project
+    with, in particular, a database URL and S3 credentials. To keep things simple,
+    we’ll use a simple SQLite database and the MinIO playground for the S3 storage.
+    It’s a free and open instance of MinIO object storage that’s perfect for examples
+    and toy projects. When going into production, you’ll be able to easily switch
+    to any S3-compatible provider. Let’s create a `.env` file at the root of the project:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The storage endpoint, access key, and secret key are the parameters for the
+    MinIO playground. Make sure to check their official documentation to see whether
+    they have changed since we wrote this book: [https://min.io/docs/minio/linux/developers/python/minio-py.html#id5](https://min.io/docs/minio/linux/developers/python/minio-py.html#id5).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our `Settings` class will automatically load this file to populate the settings
+    we use throughout the code. Make sure to check the *Setting and using environment
+    variables* section of [*Chapter 10*](B19528_10.xhtml#_idTextAnchor694) if you
+    need a refresher on this concept.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now run our system. Make sure your Redis server is still running, as
+    explained in the *Technical requirements* section. First of all, let’s run the
+    FastAPI server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, start the worker:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The stack is now ready to generate images. Let’s make a request with HTTPie
+    to start a new task:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A new `GeneratedImage` has been created in the database with the assigned ID
+    `1`. The progress is at *0%*; the processing has not started yet. Let’s try to
+    query it with our API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The API returns the same object with all its properties. Notice that the progress
+    has been updated and that it’s now at *36%*. After a while, we can try the same
+    request again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This time, the progress is at *100%* and the filename has been filled. The
+    image is ready! We can now ask our API to generate a pre-signed URL for this image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: We get a very long URL on the MinIO server. If you open it in your browser,
+    you’ll see the image that has just been generated by our system, as you can see
+    in *Figure 14**.6*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.6 – Generated image hosted on object storage](img/Figure_14.6_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.6 – Generated image hosted on object storage
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Quite nice, isn’t it? We now have a fully featured system where the user is
+    able to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Request to generate images following their own prompt and parameters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Get information about the progress of the request
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Get the resulting image from reliable storage
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The architecture we see here is already deployable in a cloud environment with
+    multiple machines. Typically, we may have a standard, cheap server to serve the
+    API and a more expensive one with a dedicated GPU and a good amount of RAM to
+    run the worker. The code doesn’t have to change to handle this kind of deployment
+    since the communication between processes is handled by the central elements –
+    the message broker, the database, and the object storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Awesome! You may not have realized it yet, but in this chapter, you learned
+    how to architect and implement a very complex machine learning system that could
+    rival existing image-generation services you see out there. The concepts we showed
+    here are essential and are at the heart of all the distributed systems you could
+    imagine, whether they are designed to run machine learning models, extraction
+    pipelines, or math computations. By using modern tools such as FastAPI and Dramatiq,
+    you’ll be able to implement this kind of architecture in a short time with a minimum
+    amount of code, leading to a very quick and robust result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’re near the end of our journey. Before letting you live your own adventures
+    with FastAPI, we’ll study one last important aspect when building data science
+    applications: logging and monitoring.'
+  prefs: []
+  type: TYPE_NORMAL

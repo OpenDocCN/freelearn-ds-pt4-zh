@@ -1,0 +1,2046 @@
+- en: 9 Exploratory Data Analysis and Diagnosis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Join our book community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '![](img/file0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[https://packt.link/zmkOY](https://packt.link/zmkOY)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, we have covered techniques to extract data from various sources. This
+    was covered in *Chapter 2*, *Reading Time Series Data from Files*, and *Chapter
+    3*, *Reading Time Series Data from Databases*. *Chapter 6*, *Working with Date
+    and Time in Python*, and *Chapter 7*, *Handling Missing Data*, covered several
+    techniques to help prepare, clean, and adjust data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will continue to explore additional techniques to better understand the
+    time series process behind the data. Before modeling the data or doing any further
+    analysis, an important step is to inspect the data at hand. More specifically,
+    there are specific time series characteristics that you need to check for, such
+    as stationarity, effects of trend and seasonality, and autocorrelation, to name
+    a few. These characteristics that describe the time series process you are working
+    with need to be combined with domain knowledge behind the process itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter will build on what you have learned from previous chapters to prepare
+    you for creating and evaluating forecasting models starting from *Chapter 10*,
+    *Building Univariate Time Series Models Using Statistical Methods*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn how to visualize time series data, decompose
+    a time series into its components (trend, seasonality, and the residual random
+    process), test for different assumptions that your models may rely on (such as
+    stationarity, normality, and homoskedasticity), and explore techniques to transform
+    the data to satisfy some of these assumptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The recipes that you will encounter in this chapter are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Plotting time series data using pandas
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Plotting time series data with interactive visualizations using hvPlot
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Decomposing time series data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting time series stationarity
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Applying power transformations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Testing for autocorrelation in time series data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can download the Jupyter notebooks and datasets needed from the GitHub
+    repository to follow along:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Jupyter notebooks: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch9/Chapter%209.ipynb](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch9/Chapter%209.ipynb)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Datasets: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch9](ch010.xhtml)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this chapter and onward, we will extensively use pandas 2.2.0 (released Jan
+    20, 2024). This applies to all the recipes in the chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are four additional libraries that we will be using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`hvplot` and `PyViz`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`seaborn`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`matplotlib`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you are using `pip`, then you can install these packages from your terminal
+    with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you are using `conda`, then you can install these packages with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The **HvPlot** library will be used to build interactive visualizations in
+    JupyterLab. If you are on the latest version of **JupyterLab** (`jupyterlab >=
+    3.0`) then all the required extensions are automatically installed as they are
+    bundled in the `pyviz_comms` package. If you are on an older version of JupyterLab
+    (`jupyterlab < 3.0`) then you will need to install `jupyterlab_pyviz` extension
+    manually as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Throughout this chapter, you will be using three datasets (`Closing Price Stock
+    Data`, `CO2`, and `Air Passengers`). The CO2 and Air Passengers datasets are provided
+    with the `statsmodels` library. The Air Passengers dataset contains monthly airline
+    passenger numbers from 1949 to 1960\. The CO2 dataset contains weekly atmospheric
+    carbon dioxide levels on Mauna Loa from 1958 to 2001\. The Closing Price Stock
+    Data dataset includes Microsoft, Apple, and IBM stock prices from November 2019
+    to November 2021.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get started, you will need to load the datasets and store them as pandas
+    DataFrames and load any libraries or methods that are needed throughout:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, you should have three DataFrames: `airp_df`, `closing_price`, and `co2_df`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Plotting time series data using pandas
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Visualization is a crucial aspect of data analysis, becoming even more significant
+    when dealing with time series data. In previous chapters and recipes, you have
+    encountered numerous instances where plotting the data was essential to highlight
+    specific points or to draw conclusions about the time series. Visualizing our
+    time series data enables us to easily identify patterns, trends, outliers, and
+    other critical information at a glance. Furthermore, data visualization facilitates
+    communication across different groups and can help bridge the gap between various
+    stakeholders (such as business professionals and data scientists) by providing
+    a common platform for communication and fostering constructive dialogue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In time series analysis, as well as in machine learning at large, we prioritize
+    visualizing our data during exploratory data analysis (EDA) to gain a comprehensive
+    understanding of the data we’re working with. We also depend on visualization
+    when evaluating our models, comparing their performance, and identifying areas
+    for improvement. Visualization plays a key role in model explainability, allowing
+    stakeholders to grasp how models make predictions. Furthermore, after deploying
+    our models, we rely on visualizations for ongoing monitoring, looking for any
+    indications of performance degradation, such as model drift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The pandas library offers built-in plotting capabilities for visualizing data
+    stored in a DataFrame or Series data structures. In the backend, these visualizations
+    are powered by the **Matplotlib** library, which is also the default option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The pandas library offers many convenient methods to plot data. Simply calling
+    `DataFrame.plot()` or `Series.plot()` will generate a line plot by default. You
+    can change the type of the plot in two ways:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the `kind` argument in the `plot` method as in`.plot(kind=“<charttype>“)`
+    to specify the type of plot by replacing `<charttype>` with a chart type. For
+    example, `.plot(kind=“hist”)` will plot a histogram while `.plot(kind=“bar”)`
+    will produce a bar plot.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Alternatively, you can extendthe `plot` method. This can be achieved by chaining
+    a specific plot function, such as `.hist()` or `.scatter()`, for example, using
+    `.plot.hist()` or `.plot.line()`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This recipe will use the standard pandas `.plot()` method with Matplotlib backend
+    support.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and datasets needed from the GitHub repository.
+    Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will be using the `Closing Price Stock` dataset for Microsoft, Apple, and
+    IBM, which you can find in the `closing_price.csv` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will explore how to plot time series data, change themes,
+    produce subplots, and customize the output visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plotting in pandas can be done by simply adding `.plot()` to the end of the
+    DataFrame or Series name:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will produce a line plot, which is the default option for the `kind` parameter,
+    which looks like `.plot(kind=“line”)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.1: Multiline time series plot using pandas](img/file110.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.1: Multiline time series plot using pandas'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can customize the plot further by adding a title, update the axes labels,
+    and customizing the *x* ticks and *y* ticks, to name a few. To add a title to
+    the plot and update the y-axis label use the `title` and `ylabel` parameters as
+    shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you want to see how the prices fluctuate (up or down) in comparison to each
+    other, one easy approach is to **normalize** the data. To accomplish this, just
+    divide the stock prices by the first-day price (first row) for each stock. This
+    will make all the stocks have the same starting point:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This would produce the following plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.2: Using a simple normalizing technique to make it visually easier
+    to compare price fluctuations](img/file111.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.2: Using a simple normalizing technique to make it visually easier
+    to compare price fluctuations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From the output, you can observe that the lines now have the same starting
+    point (origin), set to `1`. The plot shows how the prices in the time series plot
+    deviate from each other:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice that the first row from the output table is set to `1.0`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.3: Output of normalized time series with a common starting point
+    at 1](img/file112.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.3: Output of normalized time series with a common starting point at
+    1'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Additionally, Matplotlib allows you to change the style of the plots. To do
+    that, you can use the `style.use()` function. You can specify a style name from
+    an existing template or use a custom style. For example, the following code shows
+    how you can change from the `default` style to the `ggplot` style:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce the same plot in terms of data content but
+    a different style.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.4: Using the ggplot style from Matplotlib](img/file113.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.4: Using the ggplot style from Matplotlib'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ggplot` style was inspired by the `ggplot2` package from **R**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can explore other attractive styles: `fivethirtyeight`, which is inspired
+    by **fivethirtyeight.com**, `dark_background`, `dark-background`, and `tableau-colorblind10`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For a comprehensive list of available style sheets, you can reference the Matplotlib
+    documentation here: [https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html.](https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html.)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to revert to the original theme, you specify `plt.style.use("default")`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can save your plots as a jpeg, png, svg or other file types. For example,
+    you can save your file as a `plot_1.jpg` file with `.savefig()` method and specify
+    dpi to be at a higher resolution for printing quality. The default dpi is 100:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The plot should be saved as a `plot_1.jpg` image file on your local directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There is good collaboration between the pandas and Matplotlib libraries, with
+    an ambition to integrate and add more plotting capabilities within pandas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are many plotting styles that you can use within pandas simply by providing
+    a value to the `kind` argument. For example, you can specify the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`line` for line charts commonly used to display time series'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`bar` or `barh` (horizontal) for bar plots'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`hist` for histogram plots'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`box` for boxplots'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`kde` or `density` for kernel density estimation plots'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`area` for area plots'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pie` for pie plots'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`scatter` for scatter plots'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`hexbin` for hexagonal bin plots'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As observed in the previous section, we plotted all three columns in the time
+    series in one plot (three line charts in the same plot). What if you want each
+    symbol (column) plotted separately?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This can be done by simply changing the `subplots` parameter to `True`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code will generate a subplot for each column in the DataFrame.
+    Using the `closing_price` DataFrame, this will generate three subplots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.5: Using the pandas subplot feature](img/file114.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.5: Using the pandas subplot feature'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about pandas charting and plotting capabilities, please visit
+    the official documentation here: [https://pandas.pydata.org/pandas-docs/stable/user_guide/visualization.html](https://pandas.pydata.org/pandas-docs/stable/user_guide/visualization.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Plotting time series data with interactive visualizations using hvPlot
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Interactive visualizations allow us to analyze data more efficiently compared
+    to static visuals. Simple interactions, such as zooming in and out or slicing
+    through the visual, can unearth additional insights for further investigation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will explore the **hvPlot** library to create interactive
+    visualizations. HvPlot offers a high-level API for data visualization and integrates
+    seamlessly with various data sources, including pandas, Xarray, Dask, Polars,
+    NetworkX, Streamlit, and GeoPandas. Utilizing hvPlot with pandas for rendering
+    interactive visualizations requires minimal effort, allowing you to create dynamic
+    visualizations with few modifications to the original code. We will use the 'closing_price.csv'
+    dataset to explore the capabilities of the library in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and datasets needed from the GitHub repository.
+    Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Start by importing the libraries needed. Notice that hvPlot has a pandas extension,
+    which makes it more convenient. This will allow you to use the same syntax as
+    in the previous recipe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When plotting using pandas, you would use the `.plot()` method, for example,
+    `closing_price_n.plot()`. Similarly, hvPlot allows you to render an interactive
+    plot simply by substituting `.plot()` with `.hvplot()`. This can be useful if
+    you have a dense chart in terms of content. You can zoom in to a specific portion
+    of the chart and then, with the panning feature, move to different portions of
+    the chart:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By substituting `.plot` with `.hvplot`, you get an interactive visualization
+    with a hover effect:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.6: hvPlot interactive visualization](img/file115.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.6: hvPlot interactive visualization'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The same result could be accomplished simply by switching the pandas plotting
+    backend. The default backend is `matplotlib`. To switch it to hvPlot, you can
+    just update `backend=''hvplot''`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should produce the same plot as in *Figure 9.6*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice the widget bar to the right, which has a set of modes for interaction,
+    including pan, box zoom, wheel zoom, save, reset, and hover.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.7: Widget bar with six modes of interaction](img/file116.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.7: Widget bar with six modes of interaction'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can split each time series into separate plots per symbol (column). For
+    example, to split into three columns one for each symbol (or ticker): MSFT, AAPL,
+    and IBM. **Subplotting** can be done by specifying `subplots=True`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce a subplot for each column:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.8: hvPlot subplot example](img/file117.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.8: hvPlot subplot example'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can use the `.cols()` method for more control over the layout. The method
+    allows you to control the number of plots per row. For example, `.cols(1)` means
+    one plot per row, whereas `.cols(2)` indicates two plots per line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce a figure with two subplots in the first row and the third
+    subplot on the second row, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.9: Example hvPlot with two columns per row using .col(2)](img/file118.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.9: Example hvPlot with two columns per row using .col(2)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that the `.cols()` method only works if the `subplots` parameter
+    is set to `True`. Otherwise, you will get an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Given the widespread use of pandas, it's notable that many libraries now integrate
+    with pandas DataFrames and Series as inputs. Additionally, the integration between
+    Matplotlib and hvPlot simplifies the process of changing the plotting engine used
+    with pandas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'HvPlot provides several convenient options for plotting your DataFrame: you
+    can switch the backend easily, extend pandas functionality using `DataFrame.hvplot()`,
+    or leverage hvPlot''s native API for more advanced visualizations.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: hvPlot allows you to use two arithmetic operators, `+` and `*`, to configure
+    the layout of the plots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The plus sign (`+`) allows you to add two charts side by side, while multiply
+    (`*`) will enable you to combine charts (merge one graph with another). In the
+    following example, we will add two plots, so they are aligned side by side on
+    the same row:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce what is shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.10: Two plots side by side using the addition operator](img/file119.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.10: Two plots side by side using the addition operator'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that the two plots will share the same widget bar. If you filter or zoom
+    into one of the charts, the other chart will have the same action applied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s see how multiplication will combine the two plots into one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code should produce one plot that combines both AAPL and MSFT:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.11: Two plots combined into one using the multiplication operator](img/file120.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.11: Two plots combined into one using the multiplication operator'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lastly, to create subgroups (akin to a ''group by'' operation) where each group
+    is represented by a different color, you can use the by parameter as demonstrated
+    below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code generates a line chart, as expected, segmented by year (grouped by)
+    as shown in Figure 9.12:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.12: Line chart with subgroups (by year).](img/file121.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.12: Line chart with subgroups (by year).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given that we have data spanning three years, you will observe three distinct
+    colors on the chart, each corresponding to a different year, as indicated by the
+    legend.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information on hvPlot, please visit their official page here: [https://hvplot.holoviz.org/](https://hvplot.holoviz.org/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decomposing time series data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When conducting time series analysis, one key objective often involves forecasting,
+    where you build a model capable of making future predictions. Before starting
+    the modeling process, it is crucial to extract the components of the time series
+    for analysis. This step is essential for making informed decisions throughout
+    the modeling process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A time series typically comprises of **three** main components: trend, seasonality,
+    and the residual random process. For statistical models that require the time
+    series to be stationary, estimating and subsequently removing the trend and seasonality
+    components from the time series might be necessary. Techniques and libraries for
+    time series decomposition generally provide visual representations and identification
+    of the trend, seasonality, and the residual random process.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **trend** component reflects the long-term direction of the time series,
+    which can be upward, downward, or horizontal. For instance, a sales data time
+    series might exhibit an upward trend, indicating increasing sales over time. **Seasonality**
+    refers to patterns that repeat over specific intervals, such as an annual increase
+    in sales around Christmas, a pattern that recurs each year as the holiday season
+    approaches. The **residual** random process represents the portion of the time
+    series that remains once the trend and seasonality have been extracted, encompassing
+    the unexplained variability in the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **decomposition** of a time series is the process of separating it into
+    the three components and estimating the trend and seasonality components as their
+    respective models. The modeling of the decomposed components can be either **additive**
+    or **multiplicative** depending on the nature of the interaction between the components.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you have an *additive* model the original time series can be reconstructed
+    by adding all three components together:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/file122.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'An additive decomposition model is reasonable when the seasonal variations
+    do not change over time. On the other hand, if the time series can be reconstructed
+    by multiplying all three components, you have a *multiplicative* model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/file123.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: A *multiplicative* model is suitable when the seasonal variation fluctuates
+    over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, you can group these into predictable versus non-predictable components.
+    Predictable components are consistent, repeating patterns that can be captured
+    and modeled. Seasonality and trend are examples. On the other hand, every time
+    series has an unpredictable component that shows irregularity, often called **noise**,
+    though it is referred to as **residual** in the context of decomposition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will explore different techniques for **decomposing** your
+    time series using the `seasonal_decompose`, **Seasonal-Trend decomposition with
+    LOESS** (`STL`), and `hp_filter` methods available in the `statsmodels` library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and datasets needed from the GitHub repository.
+    Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You will explore two methods available in the statsmodels library: seasonal_decompose
+    and STL.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using seasonal_decompose
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The `seasonal_decompose` function relies on moving average to decompose a time
+    series. You will be working with the CO2 and Air Passenger datasets from the *Technical
+    requirements* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the libraries needed and set `rcParams` for the visuals to make them
+    large enough. Generally, plots produced by statsmodels are small. You can fix
+    this by adjusting `rcParams` for `figure.figsize` to apply for all the plots in
+    this recipe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will make all the charts in the notebook the same size: width at 10 inches
+    and height at 3 inches (*W x H*).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can apply a style such as the grayscale theme
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can decompose both datasets using the `seasonal_decompose()` function.
+    But before doing so, you should plot your time series to understand whether the
+    seasonality shows *multiplicative* or *additive* behavior:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should display a line chart showing weekly carbon dioxide levels measured
+    in **parts per million** (**ppm**) from 1960 to 2000\. When using the `.plot()`
+    method, the default chart type is a line chart with the `kind="line"` parameter.
+    For more information about pandas' plotting capabilities, refer to the *Plotting
+    time series data using pandas recipe*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.13: The CO2 dataset showing an upward trend and constant seasonal
+    variation](img/file124.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.13: The CO2 dataset showing an upward trend and constant seasonal
+    variation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `co2_df` data shows a long-term linear trend (upward), with a repeated seasonal
+    pattern at a constant rate (seasonal variation). This indicates that the CO2 dataset
+    is an additive model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, you can explore the `airp_df` DataFrame for the Air Passengers dataset
+    to observe whether the seasonality shows *multiplicative* or *additive* behavior:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce a line chart showing the number of passengers per month
+    from 1949 to 1960:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.14: The Air Passengers dataset showing trend and increasing seasonal
+    variation](img/file125.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.14: The Air Passengers dataset showing trend and increasing seasonal
+    variation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `airp_df` data shows a long-term linear trend and seasonality (upward).
+    However, the seasonality fluctuations seem to be increasing as well, indicating
+    a multiplicative model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use `seasonal_decompose` on the two datasets. For the CO2 data, use an additive
+    model and a multiplicative model for the air passenger data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Both `co2_decomposed` and `air_decomposed` have access to several methods,
+    including `.trend`, `.seasonal`, and `.resid`. You can plot all three components
+    by using the `.plot()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following plot is the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.15: Air Passengers multiplicative decomposed into trend, seasonality,
+    and residual](img/file126.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.15: Air Passengers multiplicative decomposed into trend, seasonality,
+    and residual'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s break down the resulting plot into four parts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the original observed data that we are decomposing.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The *trend* component shows an upward direction. The trend indicates whether
+    there is positive (increasing or upward), negative (decreasing or downward), or
+    constant (no trend or horizontal) long-term movement.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The *seasonal* component shows the seasonality effect in terms of a repeating
+    pattern of highs and lows.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, the *residual* (sometimes called *noise*) component shows the random
+    variation in the data after removing trend and seasonality. In this case, a multiplicative
+    model was used.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Similarly, you can plot the decomposition of the CO2 dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.16: CO2 additive decomposition into trend, seasonality, and residual](img/file127.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.16: CO2 additive decomposition into trend, seasonality, and residual'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When reconstructing the time series, for example, in a multiplicative model,
+    you will be multiplying the three components. To demonstrate this concept, use
+    `air_decomposed`, an instance of the `DecomposeResult` class. The class provides
+    the `seasonal`, `trend`, and `resid` attributes as well as the `.plot()` method.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the following code, you can multiply the components to reconstruct the time
+    series:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It gives the following plot as output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.17: Reconstructing the Air Passengers time series dataset](img/file128.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.17: Reconstructing the Air Passengers time series dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using STL
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Another decomposition option within `statsmodels` is **STL**. STL Stands for
+    *Seasonal-Trend decomposition using LOESS* which is a more advanced decomposition
+    technique. In statsmodels, the `STL` class requires additional parameters than
+    the `seasonal_decompose` function. The two other parameters you will use are `seasonal`
+    and `robust`. The `seasonal` parameter is for the seasonal smoother and can *only
+    take odd integer values greater than or equal to 7*. Similarly, the `STL` function
+    has a trend smoother (the `trend` parameter).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second parameter is `robust`, which takes a Boolean value (`True` or `False`).
+    Setting `robust=True` helps remove the impact of outliers on seasonal and trend
+    components when calculated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will use `STL` to decompose the `co2_df` DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce similar subplots to the `seasonal_decompose` function,
+    showing the trend, seasonality, and residuals:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.18: Decomposing the CO2 dataset with STL](img/file129.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.18: Decomposing the CO2 dataset with STL'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the output in `Figure 9.16` to that in `Figure 9.18`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice when you used `STL`, you provided `seasonal=13` because the data has
+    an annual seasonal effect. The seasonal argument takes only odd integers that
+    are greater than or equal to 7.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Both seasonal decomposition and STL produce an instance of DecomposeResult
+    class which gives you access to residuals directly. You can compare the residuals
+    from seasonal decomposition and STL from resid as shown:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should produce the following figure with two plots
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.19: Comparing residual plots from seasonal decomposition and STL](img/file130.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.19: Comparing residual plots from seasonal decomposition and STL'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will notice that the residual plots look different, indicating that both
+    methods capture similar information using distinct mechanisms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You used two different approaches for time series decomposition. Both methods
+    decompose a time series into trend, seasonal, and residual components.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `STL` class uses the **LOESS** seasonal smoother, which stands for **Locally
+    Estimated Scatterplot Smoothing**. `STL` is more robust than `seasonal_decompose`
+    for measuring non-linear relationships. On the other hand, `STL` assumes additive
+    composition, so you do not need to indicate a model, unlike with `seasonal_decompose`.
+    Both approaches can extract seasonality from time series to better observe the
+    overall trend in the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `seasonal_decompose` function performs the following *simplified* logic:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Smooth the time series data to observe the trend. This is achieved by applying
+    a convolution filter to estimate the trend.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Once the trend is estimated, it is then removed from the time series (de-trended).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The remaining de-trended time series is then averaged for each period or seasonal
+    group. The seasonal averaging takes all data values in the time series corresponding
+    to each season and averages them (for example, we take every January from each
+    year and average that).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Once the seasonal component is estimated, it is then removed, and you are left
+    with the residuals.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The `STL` function performs the following *simplified* logic:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similar to `seasonal_decompose`, the time series is smoothed to estimate the
+    trend, but in STL, this is done using LOESS smoothing.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Once the trend is estimated, it is then removed from the time series (de-trended).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For the seasonal component, STL applies Loess smoothing to the de-trended data,
+    but separately for each season.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Once the seasonal component is estimated, it is then removed, and you are left
+    with the residuals.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The **Hodrick-Prescott filter** is a smoothing filter that can be used to separate
+    short-term fluctuations (cyclic variations) from long-term trends. This is implemented
+    as `hp_filter` in the statsmodels library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Recall that `STL` and `seasonal_decompose` returned three components (trend,
+    seasonal, and residual). On the other hand, `hp_filter` returns only two components:
+    a **cyclical component** and a **trend component**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the `hpfilter` function from the statsmodels library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To decompose your time series into trend and cyclical components simply provide
+    your time series DataFrame to the `hpfilter` function as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `hpfilter` function returns two pandas Series: the first Series is for
+    the cycle and the second Series is for the trend. Plot `co2_cyclic` and `co2_trend`
+    side by side to gain a better idea of what information the Hodrick-Prescott filter
+    was able to extract from the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce two subplots on the same row (side by side), as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.20: Cyclical and trend components using the Hedrick-Prescott filter](img/file131.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.20: Cyclical and trend components using the Hedrick-Prescott filter'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the two components from `hpfilter` are **additive**. In other words,
+    to reconstruct the original time series, you would add `co2_cyclic` and `co2_trend`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 9.21: Reconstructing the CO2 dataset from the trend and cyclical components
+    given by hpfilter function](img/file132.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.21: Reconstructing the CO2 dataset from the trend and cyclical components
+    given by hpfilter function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can compare the reconstructed CO2 plot form the trend and cyclical components
+    in Figure 9.21 with the original CO2 plot in Figure 9.13.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about `hpfilter(),` please visit the official documentation page
+    here: [https://www.statsmodels.org/dev/generated/statsmodels.tsa.filters.hp_filter.hpfilter.html#statsmodels.tsa.filters.hp_filter.hpfilter](https://www.statsmodels.org/dev/generated/statsmodels.tsa.filters.hp_filter.hpfilter.html#statsmodels.tsa.filters.hp_filter.hpfilter).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To learn more about `seasonal_decompose(),` please visit the official documentation
+    page here: [https://www.statsmodels.org/dev/generated/statsmodels.tsa.seasonal.seasonal_decompose.html](https://www.statsmodels.org/dev/generated/statsmodels.tsa.seasonal.seasonal_decompose.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To learn more about `STL(),` please visit the official documentation page here:
+    [https://www.statsmodels.org/dev/generated/statsmodels.tsa.seasonal.STL.html#statsmodels.tsa.seasonal.STL](https://www.statsmodels.org/dev/generated/statsmodels.tsa.seasonal.STL.html#statsmodels.tsa.seasonal.STL).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting time series stationarity
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Several time series forecasting techniques assume a **stationary time** series
+    process. Thus, it is crucial to determine whether the time series you are working
+    with (the observed time series or the realization that you have) originates from
+    a **stationary** or **non-stationary** process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A stationary time series suggests that specific statistical properties do not
+    change over time and remain steady, making the processes easier to model and predict.
+    Conversely, a non-stationary process is more challenging to model due to its dynamic
+    nature and variations over time (for example, in the presence of trend or seasonality).
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are different approaches for defining stationarity; some are strict and
+    may not be observable in real-world data, referred to as **strong stationarity**.
+    In contrast, other definitions are more modest in their criteria and can be observed
+    in real-world data (or transformed into), known as **weak stationarity**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, and for practical reasons, the term stationarity implies “weak”
+    stationary defined as a time series with a constant mean called *mu* (), a constant
+    variance called *sigma squared* (), and a consistent covariance (or autocorrelation)
+    between identical distanced periods (*lags*). Having the mean and variance as
+    constants simplifies modeling since you are not solving for them as functions
+    of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, a time series with trend or seasonality can be considered non-stationary.
+    Usually, spotting trends or seasonality visually in a plot can help you determine
+    whether the time series is stationary or not. In such cases, a simple line plot
+    would suffice. But in this recipe, you will explore statistical tests to help
+    you identify a stationary or non-stationary time series numerically. You will
+    explore testing for stationarity and techniques for making a time series stationary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will explore two statistical tests, the **Augmented Dickey-Fuller** (**ADF**)
+    test and the **Kwiatkowski-Phillips-Schmidt-Shin** (**KPSS**) test, using the
+    `statsmodels` library. Both ADF and KPSS test for unit roots in a univariate time
+    series process. Note that unit roots are just one cause for a time series to be
+    non-stationary, but generally, the presence of unit roots indicates non-stationarity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both ADF and KPSS are based on linear regression and are a type of statistical
+    hypothesis test. For example, the **null hypothesis** for ADF states that there
+    is a unit root in the time series, and thus, it is non-stationary. On the other
+    hand, KPSS has the opposite null hypothesis, which assumes the time series is
+    stationary. Therefore, you will need to interpret the test results to determine
+    whether you can reject or fail to reject the null hypothesis. Generally, you can
+    rely on the p-values returned to decide whether you reject or fail to reject the
+    null hypothesis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember, the interpretation for ADF and KPSS test results differs due to their
+    opposite null hypotheses. If the p-value is less than the significance level (usually
+    0.05), you can reject the null hypothesis, suggesting the time series does not
+    have a unit root and is likely **stationary**. If the p-value is less than the
+    significance level in the KPSS test, it indicates you can reject the null hypothesis,
+    suggesting the series is **not stationary**.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and datasets needed from the GitHub repository.
+    Please refer to the `Technical requirements` section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will be using the CO2 dataset, which was previously loaded
+    as a pandas DataFrame under the `Technical requirements` section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In addition to the visual interpretation of a time series plot to determine
+    stationarity, a more concrete method would be to use one of the *unit root tests*,
+    such as the ADF KPSS test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Figure 9.13*, you can spot an upward trend and a reoccurring seasonal pattern
+    (annual). However, when trend or seasonality exists (in this case, both), it makes
+    the time series non-stationary. It's not always this easy to identify stationarity
+    or lack of it visually, and therefore, you will rely on statistical tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will use both the `adfuller` and `kpss` tests from the statsmodels library
+    and interpret their results knowing they have opposite null hypotheses:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing both the `adfuller` and `kpss` functions from statsmodels:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To simplify the interpretation of the test results, create a function that
+    outputs the results in a user-friendly way. Let''s call the function `print_results`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: The function takes the output from the `adfuller` and `kpss` functions and returns
+    a dictionary that adds labels to the output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run both the `kpss` and `adfuller` tests. Use the default parameter values
+    for both functions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Pass both outputs to the `print_results` function and concatenate them into
+    a pandas DataFrame for easier comparison:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.22: Result output from the ADF and KPSS unit root tests](img/file133.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.22: Result output from the ADF and KPSS unit root tests'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For ADF, the p-value is at 0.96, which is greater than 0.05, so you *cannot
+    reject* the null hypothesis, and therefore, the time series is non-stationary.
+    For KPSS, the p-value is at 0.01, which is less than 0.05, so you *reject* the
+    null hypothesis, and therefore, the time series is non-stationary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, you will explore six techniques for making the time series stationary,
+    such as transformations and differencing. The techniques covered are first-order
+    differencing, second-order differencing, subtracting moving average, log transformation,
+    decomposition, and Hodrick-Prescott filter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Essentially, stationarity can be achieved by removing trend (de-trending) and
+    seasonality effects. For each transformation, you will run the stationarity tests
+    and compare the results between the different techniques. To simplify the interpretation
+    and comparison, you will create two functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`check_stationarity` takes a DataFrame, performs both KPSS and ADF tests, and
+    returns the outcome.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`plot_comparison` takes a list of methods and compares their plots. The function
+    takes a `plot_type` parameter, so you can explore a line chart and a histogram.
+    The function calls the `check_stationarity` function to capture the results for
+    the subplot titles.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Create the `check_stationarity` function, which is a simplified rewrite of
+    the `print_results` function used earlier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create the `plot_comparison` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s implement some of the methods for making the time series stationary
+    or extracting a stationary component. Then, combine the methods into a Python
+    list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**First-order differencing**: Also known as de-trending, which is calculated
+    by subtracting an observation at time `t` from the previous observation at time
+    `t-1` ('
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/file134.png)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: '). In pandas this can be done using the `.diff()` function, which defaults
+    to `period=1`. Note that the differenced data will contain one less data point
+    (row) than the original data, hence the use of the `.dropna()` method:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Second-order differencing**: This is useful if seasonality exists or if the
+    first-order differencing was insufficient. This is essentially differencing twice
+    – differencing to remove trend followed by differencing to seasonality trend:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Subtracting moving average** (rolling window) from the time series using
+    `DataFrame.rolling(window=52).mean()` since it is weekly data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Log transformation** using `np.log()` is a common technique to stabilize
+    the variance in a time series and sometimes enough to make the time series stationary.
+    Simply, all it does is replace each observation with its log value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using time series **decomposition** to remove the trend and seasonality components,
+    such as `seasonal_decompose`. From *Figure 9.13,* it seems the process is additive.
+    This is the default parameter in `seasonal_decompose`, so you do not need to make
+    any changes here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s add STL as well for another decomposition method
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the **Hodrick-Prescott filter** to remove the trend component, for example,
+    using `hp_filter`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let''s combine the methods into a Python list, then pass the list to the
+    `plot_comparison` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should display 4 x 2 subplots as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.23: Plotting the different methods to make the CO2 time series stationary](img/file135.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.23: Plotting the different methods to make the CO2 time series stationary'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, you do not want to over-difference your time series as some studies
+    have shown that models based on over-differenced data are less accurate. For example,
+    `first_order_diff` already made the time series stationary, and thus there was
+    no need to *difference* it any further. In other words, `differencing_twice` was
+    not needed. Additionally, notice how `log_transform` is still non-stationary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice the center line representing the time series average (moving average).
+    The mean should be constant for a stationary time series and look more like a
+    straight horizontal line.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Stationarity is an essential concept in time series forecasting, and more relevant
+    when working with financial or economic data. Earlier we defined stationarity
+    (weak) as having constant mean, a constant variance, and a consistent covariance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The mean is considered stable and constant if the time series is stationary.
+    In other words, there is an equilibrium as values may deviate from the mean (above
+    or below), but eventually, it always returns to the mean. Some trading strategies
+    rely on this core assumption, formally called a *mean reversion* strategy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The statsmodels library offers several stationarity tests, such as the `adfuller`
+    and `kpss` functions. Both are considered **unit root tests** and are used to
+    determine whether differencing or other transformation strategies are needed to
+    make the time series stationary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember, ADF and KPSS tests are based on different null hypotheses. For example,
+    `adfuller` and `kpss` have an opposite null hypothesis. So, the p-value that you
+    use to reject (or fail to reject) the null hypothesis will be interpreted differently
+    between the two.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Figure 9.22*, there is additional information returned by the tests. This
+    includes the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **Test Statistic** value is 0.046 for ADF and 8.18 for KPSS, which are above
+    the 1% critical value threshold. This indicates that the time series is non-stationary.
+    It confirms that you cannot reject the null hypothesis. The critical values for
+    ADF comes from a Dickey-Fuller table. Luckily, you do not have to reference the
+    Dickey-Fuller table since all statistical software/libraries that offer the ADF
+    test use the table internally. The same applies to KPSS.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **p-value** result is associated with the test statistic. Generally, you
+    can reject the null hypothesis if the p-value is less than 0.05 (5%). Again, when
+    using ADF, KPSS, or other stationarity tests, make sure to understand the null
+    hypothesis to accurately interpret the results.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Number of lags** represents the number of lags used in the autoregressive
+    process in the test (ADF and KPSS). In both tests, 27 lags were used. Since our
+    CO2 data is weekly, a lag represents 1 week back. So, 27 lags represent 27 weeks
+    in our data.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The number of observations used is the number of data points, excluding the
+    number of lags.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The maximized info criteria are based on the **autolag** parameter. The default
+    is `autolag="aic"` for the **Akaike Information Criterion**. Other acceptable
+    `autolag` parameter values are `bic` for the **Bayesian Information Criterion**
+    and `t-stat`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You also explored some techniques for de-trending (removing trend) in a time
+    series to make it stationary. For example, you used first-order differencing,
+    decomposition, and log transform to remove the effect of the trend. Detrending
+    stabilizes the mean of the time series and sometimes can be all that is needed
+    to make it stationary. When you decide to de-trend your data, you are essentially
+    removing an element of distraction so you can focus on hidden patterns that are
+    not as obvious. Hence, you can build a model to capture these patterns and not
+    be overshadowed by the long-term trend (upward or downward movement). An example
+    was the first differencing approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, in the presence of seasonal patterns you will need to remove the seasonal
+    effect as well, which can be done through seasonal differencing. This is done
+    in addition to the first-order differencing for detrending; hence it can be called
+    second-order differencing, twice-differencing, or differencing twice as you use
+    differencing to remove the trend effect first and again to remove the seasonality.
+    This assumes the seasonal differencing was insufficient to make the time series
+    stationary. Your goal is to use the minimal amount of differencing needed and
+    avoid over-differencing. You will rarely need to go beyond differencing twice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the introduction section of this recipe, we mentioned that both ADF and
+    KPSS use linear regression. More specifically, **Ordinary Least Squares** (**OLS**)
+    regression is used to compute the model''s coefficients. To view the OLS results
+    for ADF, you use the `store` parameter and set it to `True`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code will return a tuple that contains the test results. The
+    regression summary will be appended as the last item. There should be four items
+    in the tuple: the first item, `adf_result[0]`, contains the **t-statistic**, the
+    second item, `adf_result[1]`, includes the **p-value**, and the third item, `adf_result[2]`,
+    contains the **critical values** for 1%, 5%, and 10% intervals. The last item,
+    `adf_result[3]`, includes a **ResultStore** object. You can also access the last
+    item by using `adf_result[-1]`, as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `ResultStore` object gives you access to `.resols`, which contains the
+    `.summary()` method. This should produce the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.24: ADF OLS regression summary and the first five lags and their
+    coefficients](img/file136.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.24: ADF OLS regression summary and the first five lags and their coefficients'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about stationarity and detrending, visit the official statsmodels
+    page here: [https://www.statsmodels.org/dev/examples/notebooks/generated/stationarity_detrending_adf_kpss.html](https://www.statsmodels.org/dev/examples/notebooks/generated/stationarity_detrending_adf_kpss.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying power transformations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Time series data can be complex, and embedded within the data is critical information
+    that you will need to understand and peek into to determine the best approach
+    for building a model. For example, you have explored time series decomposition,
+    understood the impact of trend and seasonality, and tested for stationarity. In
+    the previous recipe, *Detecting time series stationarity*, you examined the technique
+    to transform data from non-stationary to stationary. This includes the idea of
+    detrending, which attempts to stabilize the mean over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Depending on the model and analysis you are pursuing, you may need to test for
+    additional assumptions against the observed dataset or the model's residuals.
+    For example, testing for **homoskedasticity** (also spelled homoscedasticity)
+    and **normality**. Homoskedasticity means that the variance is stable over time.
+    More specifically, it is the variance of the residuals. When the variance is not
+    constant, changing over time, we call it **heteroskedasticity** (also spelled
+    heteroscedasticity). Another assumption you will need to test for is normality;
+    does the specific observation come from a normal (Gaussian) distribution? Sometimes,
+    you may want to check the normality of the residuals as well, which can be part
+    of the model diagnostics stage. Therefore, it is important to be aware of the
+    assumptions made by specific models or techniques so you can determine which test
+    to use and against which dataset. If you do not do this, you may end up with a
+    flawed model or an outcome that may be overly optimistic or overly pessimistic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Additionally, in this recipe, you will learn about **Box-Cox transformation**,
+    which you can use to transform the data to satisfy normality and homoskedasticity.
+    Box-Cox transformation takes the following form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.25: Box-Cox transformation](img/file137.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.25: Box-Cox transformation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Box-Cox transformation relies on just one parameter, lambda (![](img/file138.png)),
+    and covers both logarithm and power transformations. If![](img/file139.png)is
+    0, then you get a **natural log transformation**; otherwise, it's a power transformation.
+    The approach is to try different values of![](img/file140.png)and then test for
+    normality and homoskedasticity. For example, the **SciPy** library has the `boxcox`
+    function, and you can specify different![](img/file141.png)values using the `lmbda`
+    parameter (interestingly, this is how it is spelled in the implementation since
+    `lambda` is a reserved Python keyword). If the `lmbda` parameter is set to `None`,
+    the function will find the optimal lambda (![](img/file142.png)) value for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and datasets needed from the GitHub repository.
+    Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will be using the Air Passengers dataset, which was previously
+    loaded as a pandas DataFrame under the *Technical requirements* section of this
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will be using the SciPy and `statsmodels`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For `pip` installation, use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For `conda` installation, use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition to the preparation highlighted in the *Technical requirements*
+    section, you will need to import these common libraries that you will use throughout
+    this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To make the plots a lot bigger and easier to read, use the following command
+    to establish a fixed size (20, 8) – a width of 20 inches and a height of 8 inches:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will extend what you learned from the previous recipe,
+    *Detecting time series stationarity*, and test for two additional assumptions:
+    **normality** and **homoskedasticity**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Usually, stationarity is the most crucial assumption you will need to worry
+    about but being familiar with additional diagnostic techniques will serve you
+    well.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Sometimes, you can determine normality and homoskedasticity from plots, for
+    example, a histogram or a **Q-Q plot**. This recipe aims to teach you how to perform
+    these diagnostic tests programmatically in Python. In addition, you will be introduced
+    to the **White test** and the **Breusch-Pagan Lagrange** statistical test for
+    *homoskedactisity*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For normality diagnostics, you will explore the **Shapiro-Wilk**, **D'Agostino-Pearson**,
+    and **Kolmogorov-Smirnov** statistical tests. Overall, Shapiro-Wilk tends to perform
+    best and handles a broader set of cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing normality
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The statsmodels library and the SciPy library have overlapping implementations.
+    For example, the Kolmogorov-Smirnov test is implemented as `ktest` in SciPy and
+    `ktest_normal` in statsmodels. In SciPy, the D''Agostino-Pearson test is implemented
+    as `normaltest` and the Shapiro-Wilk test as `shapiro`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the normality tests provided by the SciPy and statsmodels
+    libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The normality diagnostic is a statistical test based on a null hypothesis that
+    you need to determine whether you can accept or reject. Conveniently, the following
+    tests that you will implement have the same null hypothesis. *The null hypothesis
+    states that the data is normally distributed*; for example, you would reject the
+    null hypothesis if the p-value is less than 0.05, making the time series not normally
+    distributed. Let''s create a simple function, `is_normal()`, that will return
+    either `Normal` or `Not Normal` based on the p-value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run each test to check the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output from the tests confirms the data does not come from a normal distribution.
+    You do not need to run that many tests. The `shapiro` test, for example, is a
+    very common and popular test that you can rely on. Generally, as with any statistical
+    test, you need to read the documentation regarding the implementation to gain
+    an understanding of the test. More specifically, you will need to understand the
+    null hypothesis behind the test to determine whether you can reject or fail to
+    reject the null hypothesis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, you may need to test normality as part of model evaluation and diagnostics.
+    For example, you would evaluate the residuals (defined as the difference between
+    actual and predicted values) if they follow a normal distribution. In *Chapter
+    10*, *Building Univariate Time Series Models Using Statistical Methods*, you will
+    explore building forecasting models using autoregressive and moving average models.
+    For now, you will run a simple autoregressive (AR(1)) model to demonstrate how
+    you can use a normality test against the residuals of a model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can run the `shapiro` test against the residuals. To access the residuals,
+    you would use the `.resid` property as in `model.resid`. This is common in many
+    models you will build in *Chapter 10*, *Building Univariate Time Series Models
+    Using Statistical Methods*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output indicates the residuals are not normally distributed. This fact,
+    residuals not being normally distributed, is not enough to determine the model's
+    validity or potential improvements. But taken into context with the other tests,
+    it should help you determine how good your model is. This is a topic you will
+    explore further in the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing homoskedactisity
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'You will be testing for the stability of the variance against the model''s
+    residuals. This will be the same AR(1) model used in the previous normality test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start by importing the method needed for this recipe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will perform a homoskedasticity test on the model's residuals. As stated
+    earlier regarding statistical tests, it is vital to understand the hypothesis
+    behind these tests. The null hypothesis states that *the data is homoskedastic*
+    for the two tests. For example, you would reject the null hypothesis if the p-value
+    is less than 0.05, making the time series heteroskedastic.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s create a small function, calling it `het_test(model, test)`, that takes
+    in a model and the test function and returns either `Heteroskedastic` or `Homoskedastic`
+    based on the p-value to determine whether the null hypothesis is accepted or rejected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Start with the Breusch-Pagan Lagrange multiplier test to diagnose the residuals.
+    In statsmodels, you will use the `het_breuschpagan` function, which takes `resid`,
+    the model''s residual, and `exog_het`, where you provide the original data (explanatory
+    variables) related to the heteroskedasticity in the residual:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: This result indicates that the residual is homoskedastic, with a constant variance
+    (stable).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A very similar test is White''s Lagrange multiplier test. In statsmodels, you
+    will use the `het_white` function, which has the same two parameters that you
+    used with `het_breuschpagan`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: Both tests indicate that the residuals of the autoregressive model have constant
+    variance (homoskedastic). Both tests estimate the auxiliary regression against
+    the squared residuals and all the explanatory variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that both normality and homoskedasticity are some of the tests
+    you may need to conduct on the residuals as you diagnose your model. Another essential
+    test is testing for autocorrelation, which is discussed in the following recipe,
+    *Testing for autocorrelation in time series data*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying Box-Cox transform
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Box-Cox transformation can be a useful tool, and it''s good to be familiar
+    with. Box-Cox transforms a non-normally distributed dataset into a normally distributed
+    one. At the same time, it stabilizes the variance, making the data homoskedastic.
+    To gain a better understanding of the effect of Box-Cox transformation, you will
+    use the Air Passengers dataset, which contains both trend and seasonality:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the `boxcox` function from the SciPy library:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Recall, from the introduction section of this recipe and *Figure 9.22*, there
+    is a lambda parameter used to determine which transformation to apply (logarithm
+    or power transform). Use the `boxcox` function with the default parameter value
+    for `lmbda`, which is `None`. Just provide the dataset to satisfy the required
+    `x` parameter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: By not providing a value to `lmbda` and keeping it at `None`, the function will
+    find the optimal lambda (![](img/file143.png)) value. From the introduction of
+    this recipe, you'll remember lambda is spelled `lmbda` in the `boxcox` implementation.
+    The function returns two values captured by `xt` for the transformed data and
+    `lmda` for the optimal lambda value found.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A histogram can visually show the impact of the transformation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following two plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.26: Box-Cox transformation and effect on the distribution](img/file144.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.26: Box-Cox transformation and effect on the distribution'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second histogram shows that the data was transformed, and the overall distribution
+    changed. It would be interesting to examine the dataset as a time series plot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plot both datasets to compare before and after the transformation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following two plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.27: Box-Cox transformation and overall effect on time series data](img/file145.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.27: Box-Cox transformation and overall effect on time series data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice how the seasonal effect on the transformed dataset looks more stable
+    than before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, build two simple autoregressive models to compare the effect on the
+    residuals before and after the transformation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following two plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.28: Box-Cox transformation and effect on residuals](img/file146.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.28: Box-Cox transformation and effect on residuals'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Box-Cox allows us to make the data both normal and homoskedastic and is part
+    of a family of power transforms that includes log transform and square root transform.
+    Box-Cox is a powerful transform because it supports both root and log transforms,
+    and others are made possible by changing the lambda values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One thing to point out is that the `boxcox` function requires the data to be
+    positive.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The AutoReg model comes with two useful methods: diagnostic_summary() and plot_diagnostics().
+    They will save you time from having to write additional code to test the model''s
+    residuals for normality, homoskedasticity, and autocorrelation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code shows how you can get the diagnostic summary for `model_bx`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should display the results from the Ljung-Box test for autocorrelation
+    and the homoskedasticity test against the model's residuals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.29: diagnostic_summary for autocorrelation](img/file147.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.29: diagnostic_summary for autocorrelation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get the visual summary, you can use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `.plot_diagnostics()` function will show four plots so you can examine the
+    model's residuals. Mainly, the plots will show whether the residuals are normally
+    distributed from the Q-Q plot and histogram. Additionally, the **autocorrelation
+    function plot** (**ACF**) will allow you to examine for autocorrelation. You will
+    examine ACF plots in more detail in the *Plotting ACF and PACF* recipe in *Chapter
+    10*, *Building Univariate Time Series Models Using Statistical Methods*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.30: Output from the plot_diagnostics() method](img/file148.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.30: Output from the plot_diagnostics() method'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about the `boxcox` function, visit the official SciPy documentation
+    here: [https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing for autocorrelation in time series data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Autocorrelation** is like statistical correlation (think **Pearson correlation**
+    from high school), which measures the strength of a linear relationship between
+    two variables, except that we measure the linear relationship between *time series
+    values separated by a lag*. In other words, we are comparing a variable with its
+    lagged version of itself.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will perform a **Ljung-Box test** to check for autocorrelations
+    up to a specified lag and whether they are significantly far off from 0\. *The
+    null hypothesis for the Ljung-Box test states that the previous lags are not correlated
+    with the current period*. In other words, you are testing for the absence of autocorrelation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When running the test using `acorr_ljungbox` from statsmodels, you need to provide
+    a lag value. The test will run for all lags up to the specified lag (maximum lag).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The autocorrelation test is another helpful test for model diagnostics. As discussed
+    in the previous recipe, *Applying power transformations*, there are assumptions
+    that you need to test against the model's residuals. For example, when testing
+    for autocorrelation on the residuals, the expectation is that there should be
+    no autocorrelation between the residuals. This ensures that the model has captured
+    all the necessary information. The presence of autocorrelation in the residuals
+    can indicate that the model missed an opportunity to capture critical information
+    and will need to be evaluated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and datasets needed from the GitHub repository.
+    Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will be using `acorr_ljungbox` from the statsmodels library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You will use the CO2 dataset stored in the `co2_df` DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load `acorr_ljungbox` from the statsmodels library:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since the data is not stationary (review the *Detecting time series stationarity*
+    recipe), you will perform a log transform this time (log differencing):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run the Ljung-Box test. Start with `lags=10`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should print the results for the first 10 lags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.31: The first 10 lags for the autocorrelation test](img/file149.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.31: The first 10 lags for the autocorrelation test'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This shows that the test statistic for all lags up to lag 10 are significant
+    (*p-value < 0.05*), so you can reject the null hypothesis. Rejecting the null
+    hypothesis means you reject the claim that there is no autocorrelation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`acorr_ljungbox` is a function that accumulates autocorrelation up until the
+    lag specified. Therefore, it is helpful to determine whether the structure is
+    worth modeling in the first place.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s use the Ljung-Box test against the residual from `model_bx` that was
+    created in the *Applying power transformations* recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should print the results for the first 10 lags:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.32: The first 10 lags for the autocorrelation test against residuals](img/file150.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.32: The first 10 lags for the autocorrelation test against residuals'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the preceding example, the p-values are less than 0.05, so you reject the
+    null hypothesis, and there is autocorrelation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about the `acorr_ljungbox` function, visit the official documentation
+    here: [https://www.statsmodels.org/dev/generated/statsmodels.stats.diagnostic.acorr_ljungbox.html](https://www.statsmodels.org/dev/generated/statsmodels.stats.diagnostic.acorr_ljungbox.html).'
+  prefs: []
+  type: TYPE_NORMAL

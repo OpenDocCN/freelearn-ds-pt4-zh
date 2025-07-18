@@ -1,0 +1,1096 @@
+- en: '7'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Managing Authentication and Security in FastAPI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Most of the time, you don’t want everyone on the internet to have access to
+    your API, without any restrictions on the data they can create or read. That’s
+    why you’ll need to at least protect your application with a private token or have
+    a proper authentication system to manage the rights given to each user. In this
+    chapter, we’ll see how FastAPI provides security dependencies to help us retrieve
+    credentials by following different standards that are directly integrated into
+    the automatic documentation. We’ll also build a basic user registration and authentication
+    system to secure our API endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we’ll cover the security challenges you must tackle when you want to
+    call your API from a web application in a browser – in particular, the risks of
+    CORS and CSRF attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Security dependencies in FastAPI
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Retrieving a user and generating an access token
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Securing API endpoints for authenticated users
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Securing endpoints with access tokens
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configuring CORS and protecting against CSRF attacks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this chapter, you’ll require a Python virtual environment, just as we set
+    up in [*Chapter 1*](B19528_01.xhtml#_idTextAnchor024), *Python Development* *Environment
+    Setup*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You’ll find all the code examples of this chapter in the dedicated GitHub repository
+    at [https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Security dependencies in FastAPI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To protect REST APIs, and HTTP endpoints more generally, lots of standards
+    have been proposed. Here is a non-exhaustive list of the most common ones:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Authorization`. The value consists of the `Basic` keyword, followed by the
+    user credentials encoded in `Base64`. This is a very simple scheme to implement
+    but not very secure since the password appears in every request.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Cookies**: Cookies are a useful way to store static data on the client side,
+    usually on web browsers, that is sent in each request to the server. Typically,
+    a cookie contains a session token that can be verified by the server and linked
+    to a specific user.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Authorization` header: Probably the most used header in a REST API context,
+    this simply consists of sending a token in an HTTP `Authorization` header. The
+    token is often prefixed by a method keyword, such as `Bearer`. On the server side,
+    this token can be verified and linked to a specific user.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each standard has its pros and cons and is suitable for a specific use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you already know, FastAPI is mainly about dependency injection and callables
+    that are automatically detected and called at runtime. Authentication methods
+    are no exception: FastAPI provides most of them out of the box as security dependencies.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s learn how to retrieve an access token in an arbitrary header.
+    For this, we can use the `ApiKeyHeader` dependency, as shown in the following
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter07_api_key_header.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/chapter07_api_key_header.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/chapter07_api_key_header.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this simple example, we hardcoded a token, `API_TOKEN`, and checked whether
+    the token passed in the header was equal to this token, before authorizing the
+    endpoint to be called. To do this, we used the `APIKeyHeader` security dependency,
+    which is designed to retrieve a value from a header. It’s a class dependency that
+    can be instantiated with arguments. In particular, it accepts the `name` argument,
+    which holds the name of the header it’ll look for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, in our endpoint, we injected this dependency to get the token’s value.
+    If it’s equal to our token constant, we proceed with the endpoint logic. Otherwise,
+    we raise a `403` error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our example from the *Path, router, and global dependencies* section of [*Chapter
+    5*](B19528_05.xhtml#_idTextAnchor285), *Dependency Injection in FastAPI*, is not
+    very different from this one. We are simply retrieving a value from an arbitrary
+    header and making an equality check. So, why bother with a dedicated dependency?
+    There are two reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, the logic to check whether the header exists and retrieve its value is
+    included in `APIKeyHeader`. When you reach the endpoint, you are sure that a token
+    value was retrieved; otherwise, a `403` error will be thrown.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The second, and probably most important, thing is that it’s detected by the
+    OpenAPI schema and included in its interactive documentation. This means that
+    endpoints using this dependency will display a lock icon, showing that it’s a
+    protected endpoint. Furthermore, you’ll have access to an interface to input your
+    token, as shown in the following screenshot. The token will then be automatically
+    included in the requests you are making from the documentation:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 7.1 – Token authorization in interactive documentation](img/Figure_7.1_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.1 – Token authorization in interactive documentation
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, you can wrap the logic that checks the token value in its own dependency
+    to reuse it across your endpoints, as shown in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter07_api_key_header_dependency.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/chapter07_api_key_header.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/chapter07_api_key_header.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: These kinds of dependencies are very good candidates to be used as routers or
+    global dependencies to protect whole sets of routes, as we saw in [*Chapter 5*](B19528_05.xhtml#_idTextAnchor285),
+    *Dependency Injection* *in FastAPI*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a very basic example of adding authorization to your API. In this example,
+    we don’t have any user management; we are only checking that a token corresponds
+    to a constant value. While it could be useful for private microservices that are
+    not intended to be called by end users, this approach should not be considered
+    very secure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, make sure your API is always served using HTTPS to ensure your token
+    is not exposed in the headers. Then, if it’s a private microservice, you should
+    also consider not exposing it publicly on the internet and making sure only trusted
+    servers can call it. Since you don’t need users to make requests to this service,
+    it’s much safer than a simple token key that could be stolen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, most of the time, you’ll want to authenticate real users with their
+    own individual access tokens with which they can access their own data. You have
+    probably already used a service that implements this very typical pattern:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, you must register an account on this service, usually by providing your
+    email address and a password.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Next, you can log in to the service using the same email address and password.
+    The service checks whether the email address exists and that the password is valid.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In exchange, the service provides you with a session token that can be used
+    on subsequent requests to authenticate yourself. This way, you don’t have to provide
+    your email address and password on each request, which would be annoying and dangerous.
+    Usually, such session tokens have a limited lifetime, which means you’ll have
+    to log in again after some time. This mitigates any security risks if the session
+    token is stolen.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the next section, you’ll learn how to implement such a system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storing a user and their password securely in a database
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Storing a user entity in a database is no different from storing any other entity,
+    and you can implement this in the same way as in [*Chapter 6*](B19528_06.xhtml#_idTextAnchor346),
+    *Databases and Asynchronous ORMs*. The only thing you must be extremely cautious
+    about is password storage. You must not store the password as plain text in your
+    database. Why? If, unfortunately, a malicious person manages to get into your
+    database, they’ll be able to get the passwords of all your users. Since many people
+    use the same password multiple times, the security of their accounts on other
+    applications and websites would be seriously compromised.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To avoid a disaster like this, we can apply **cryptographic hash functions**
+    to the password. The goal of those functions is to transform the password string
+    into a hash value. This is designed to make it near impossible to retrieve the
+    original data from the hash. Hence, even if your database is compromised, the
+    passwords are still safe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When users try to log in, we simply compute the hash of the password they input
+    and compare it with the hash we have in our database. If they match, this means
+    it’s the right password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s learn how to implement such a system with FastAPI and SQLAlchemy
+    ORM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We start by creating the SQLAlchemy ORM model for a user, as shown in the following
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: models.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/models.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/models.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To keep this example simple, we’re only considering the ID, email address, and
+    password in our model. Note that we added a unique constraint to the `email` column
+    to ensure we can’t have duplicate emails in our database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we can implement the corresponding Pydantic schemas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: schemas.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/schemas.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/schemas.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, there is a major difference between `UserCreate` and `User`:
+    the former accepts the plain text password we’ll hash during registration, while
+    the second will only keep the hashed password in the database. We also take care
+    to not include `hashed_password` in `UserRead`, so the hash doesn’t appear in
+    API responses. Even though hashed data should be indecipherable, it’s generally
+    not advised to leak it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hashing passwords
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before we look at the registration endpoint, let’s implement some important
+    utility functions for hashing passwords. Fortunately, libraries exist that provide
+    the most secure and efficient algorithms for this task. Here, we’ll use `passlib`.
+    You can install it along with `argon2_cffi`, which is one of the safest hash functions
+    at the time of writing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we’ll just instantiate the `passlib` classes and wrap some of their functions
+    to make our lives easier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: password.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/password.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/password.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`CryptContext` is a very useful class since it allows us to work with different
+    hash algorithms. If, one day, a better algorithm than `argon2` emerges, we can
+    just add it to our allowed schemas. New passwords will be hashed using the new
+    algorithm, but existing passwords will still be recognized (and optionally upgraded
+    to the new algorithm).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing registration routes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now, we have all the elements to create a proper registration route. Once again,
+    it’ll be very similar to what we saw earlier. The only thing we must remember
+    is to hash the password before inserting it into our database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at the implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, we are calling `get_password_hash` on the input password before
+    inserting the user into the database. Note that we are catching a possible `exc.IntegrityError`
+    exception, which means we’re trying to insert an email that already exists.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, notice that we took care to set `response_model` to `UserRead`. By doing
+    this, we’re ensuring that `hashed_password` is not part of the output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great! We now have a proper user model and users can create a new account with
+    our API. The next step is to allow them to log in and give them an access token.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Retrieving a user and generating an access token
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'After successful registration, the next step is being able to log in: the user
+    will send their credentials and receive an authentication token to access the
+    API. In this section, we’ll implement the endpoint that allows this. Basically,
+    we’ll get the credentials from the request payload, retrieve the user with the
+    given email, and verify their password. If the user exists and their password
+    is valid, we’ll generate an access token and return it in the response.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a database access token
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, let’s think about the nature of this access token. It should be a data
+    string that uniquely identifies a user that is impossible to forge by a malicious
+    third party. In this example, we will take a simple but reliable approach: we’ll
+    generate a random string and store it in a dedicated table in our database, with
+    a foreign key referring to the user.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This way, when an authenticated request arrives, we simply have to check whether
+    it exists in the database and look for the corresponding user. The advantage of
+    this approach is that tokens are centralized and can easily be invalidated if
+    they are compromised; we only need to delete them from the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step is to implement the SQLAlchemy ORM model for this new entity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: models.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/models.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/models.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We define three columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`access_token`: This is the string that will be passed in the requests to authenticate
+    them. Notice that we defined the `generate_token` function as the default factory;
+    it’s a simple function defined previously that generates a random secure passphrase.
+    Under the hood, it relies on the standard `secrets` module.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`user_id`: A foreign key referring to the `users` table that identifies the
+    user corresponding to this token.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`expiration_date`: The date and time when the access token will expire and
+    won’t be valid anymore. It’s always a good idea to give access tokens an expiry
+    date to mitigate the risk if they are stolen. Here, the `get_expiration_date`
+    factory sets a default validity of 24 hours.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We also don’t forget to define the relationship so we can directly access the
+    user entity from an access token object. Notice we set an eager loading strategy
+    by default, so we always retrieve the user when querying for an access token.
+    If you need the rationale behind this, check the *Adding relationships* section
+    of [*Chapter 6*](B19528_06.xhtml#_idTextAnchor346)*, Databases and* *Asynchronous
+    ORMs*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We won’t need Pydantic schemas here, as access tokens will be created and serialized
+    through specific methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a login endpoint
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now, let’s think about the login endpoint. Its goal is to take credentials
+    in the request payload, retrieve the corresponding user, check the password, and
+    generate a new access token. Its implementation is quite straightforward, apart
+    from one thing: the model that’s used to handle the request. You’ll see why thanks
+    to the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, we retrieve the request data thanks to the `OAuth2PasswordRequestForm`
+    module, which is provided by FastAPI in its security module. It expects several
+    fields, especially `username` and `password`, in a form encoding rather than JSON.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Why do we use this class? The main benefit of using this class is that it’s
+    completely integrated into the OpenAPI schema. This means that the interactive
+    documentation will be able to automatically detect it and present a proper authentication
+    form behind the **Authorize** button, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.2 – OAuth2 authorization in interactive documentation](img/Figure_7.2_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.2 – OAuth2 authorization in interactive documentation
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But that’s not all: it will be able to automatically retrieve the returned
+    access token and set the proper authorization header in subsequent requests. The
+    authentication process is handled transparently by the interactive documentation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This class follows the OAuth2 protocol, which means you also have fields for
+    the client ID and secret. We won’t learn how to implement the complete OAuth2
+    protocol here, but note that FastAPI provides all the tools needed to do so properly.
+    For our project, we’ll just stick with a username and a password. Notice that,
+    following the protocol, the field is named *username*, regardless of whether we
+    are using an email address to identify the user. This isn’t a big deal; we just
+    have to remember it while retrieving it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The rest of the path operation function is quite simple: first, we try to retrieve
+    a user from this email and password. If no corresponding user is found, we raise
+    a `401` error. Otherwise, we generate a new access token before returning it.
+    Notice that the response structure also includes the `token_type` property. This
+    allows the interactive documentation to automatically set the authorization headers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we’ll look at the implementation of the `authenticate`
+    and `create_access_token` functions. We won’t go into too much detail here as
+    they are quite simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: authentication.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/authentication.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/authentication.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we defined a function called `verify_password` to check the validity
+    of the password. Once again, it uses `passlib` under the hood, which takes care
+    of comparing the hashes of the passwords.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Password hash upgrade
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To keep this example simple, we implemented a simple password comparison. Usually,
+    it’s good practice to implement a mechanism to upgrade the password hash at this
+    stage. Imagine that a new and more robust hash algorithm has been introduced.
+    We can take this opportunity to hash the password with this new algorithm and
+    store it in a database. `passlib` includes a function for verifying and upgrading
+    the hash in one operation. You can learn more about this in the following documentation:
+    [https://passlib.readthedocs.io/en/stable/narr/context-tutorial.html#integrating-hash-migration](https://passlib.readthedocs.io/en/stable/narr/context-tutorial.html#integrating-hash-migration).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ve almost achieved our goal! Users can now log in and get a new access token.
+    All we need to do now is implement a dependency to retrieve the `Authorization`
+    header and verify this token!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Securing endpoints with access tokens
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Previously, we learned how to implement a simple dependency to protect an endpoint
+    with a header. Here, we’ll also retrieve a token from a request header, but then,
+    we’ll have to check the database to see whether it’s valid. If it is, we’ll return
+    the corresponding user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s see what our dependency looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first thing to notice is that we used the `OAuth2PasswordBearer` dependency
+    from FastAPI. It goes hand in hand with `OAuth2PasswordRequestForm`, which we
+    saw in the previous section. It not only checks for the access token in the `Authorization`
+    header, but it also informs the OpenAPI schema that the endpoint to get a fresh
+    token is `/token`. This is the purpose of the `tokenUrl` argument. This is how
+    the automatic documentation can automatically call the access token endpoint in
+    the login form we saw earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then we performed a database query with SQLAlchemy. We applied two clauses:
+    one to match the token we got and another to ensure that the expiration date is
+    in the future. If no corresponding record is found in the database, we raise a
+    `401` error. Otherwise, we return the user related to the access token.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And that’s it! Our whole authentication system is complete. Now, we can protect
+    our endpoints simply by injecting this dependency. We even have access to the
+    user data so that we can tailor the response according to the current user. You
+    can see this in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/authentication/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With that, you’ve learned how to implement a whole registration and authentication
+    system from scratch. We voluntarily kept it simple to focus on the most important
+    points, but it’s a good base on which you can expand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The patterns we showed here are good candidates for a REST API, which is called
+    externally by other client programs. However, you may wish to call your API from
+    a very common piece of software: the browser. In this case, there are some additional
+    security considerations to be taken care of.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring CORS and protecting against CSRF attacks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Nowadays, numerous pieces of software are designed to be used in a browser through
+    an interface built with HTML, CSS, and JavaScript. Traditionally, web servers
+    were responsible for handling browser requests and returning an HTML response
+    to be shown to the user. This is a common use case for frameworks such as Django.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For a few years now, there has been a shift underway in that pattern. With the
+    emergence of JavaScript frameworks such as Angular, React, and Vue, we tend to
+    have a clear separation between the frontend, a highly interactive user interface
+    powered by JavaScript, and the backend. Thus, those backends are now only responsible
+    for data storage and retrieving and executing business logic. This is a task that
+    REST APIs are very good at! From the JavaScript code, the user interface can then
+    just spawn requests to your API and handle the result to present it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, we must still handle authentication: we want our user to be able to
+    log in to the frontend application and make authenticated requests to the API.
+    While an `Authorization` header, as we’ve seen so far, could work, there is a
+    better way to handle authentication when working in browsers: **cookies**!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cookies are designed to store user information in browser memory and are sent
+    automatically in every request made to your server. They have been supported for
+    years, and browsers integrate lots of mechanisms to make them safe and reliable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, this comes with some security challenges. Websites are very common
+    targets for hackers and lots of attacks have emerged over the years.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the most typical is **Cross-Site Request Forgery** (**CSRF**). In this
+    scenario, an attacker on another website tries to trick a user who is currently
+    authenticated with your application to perform a request on your server. Since
+    browsers tend to send cookies with every request, your server wouldn’t be able
+    to tell that the request was actually forged. Since it’s the users themselves
+    who unintentionally launched the malicious request, these kinds of attacks don’t
+    aim to steal data but to execute operations that change the state of the application,
+    such as changing an email address or making a money transfer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obviously, we should be prepared for these kinds of risks and have measures
+    in place to mitigate them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding CORS and configuring it in FastAPI
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When you have a clearly separated frontend application and a REST API backend,
+    they are not typically served from the same subdomain. For example, the frontend
+    may be available from [www.myapplication.com](http://www.myapplication.com), while
+    the REST API is available from `api.myapplication.com`. As we mentioned in the
+    introduction, we would like to make requests to this API from our frontend application
+    in JavaScript.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, browsers don’t allow **cross-origin** **resource sharing (CORS)** **HTTP
+    requests**, meaning domain A can’t make requests to domain B. This follows what
+    is called a **same-origin policy**. This is a good thing in general as it’s the
+    first barrier to preventing CSRF attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To experience this behavior, we’ll run a simple example. In our example repository,
+    the `chapter07/cors` folder contains a FastAPI app called `app_without_cors.py`
+    and a simple HTML file called `index.html` that contains some JavaScript for performing
+    HTTP requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s run the FastAPI application using the usual `uvicorn` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will launch the FastAPI application on port `8000` by default. On another
+    terminal, we’ll serve the HTML file using the built-in Python HTTP server. It’s
+    a simple server, but it’s ideal for quickly serving static files. We can launch
+    it on port `9000` thanks to the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Starting several terminals
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On Linux and macOS, you should be able to simply start a new Terminal by creating
+    a new window or tab. On Windows and WSL, you can also have several tabs if you’re
+    using the Windows Terminal application: [https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Otherwise, you can simply click on the Ubuntu shortcut in your **Start** menu
+    to start another terminal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We now have two running servers – one on `localhost:8000` and one on `localhost:9000`.
+    Strictly speaking, since they are on different ports, they are of different origins;
+    so, it’s a good setup to try out cross-origin HTTP requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In your browser, go to `http://localhost:9000`. You’ll see the simple application
+    implemented in `index.html`, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.3 – Simple application to try CORS policies](img/Figure_7.3_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.3 – Simple application to try CORS policies
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are two buttons that initiate GET and POST requests to our FastAPI application
+    on port `8000`. If you click on either of those, you’ll get a message in the error
+    area stating **Failed to fetch**. If you look at the browser console in the development
+    tools section, you’ll see that the request failed because there isn’t a CORS policy,
+    as shown in the following screenshot. That’s what we wanted – by default, browsers
+    block cross-origin HTTP requests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.4 – CORS error in browser console](img/Figure_7.4_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.4 – CORS error in browser console
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, if you look at the terminal running the FastAPI application, you’ll
+    see an output similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.5 – Uvicorn output when performing simple requests](img/Figure_7.5_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.5 – Uvicorn output when performing simple requests
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clearly, both the `GET` and `POST` requests have been received and processed:
+    we even returned a `200` status. So, what does this mean? In this case, the browser
+    does send the request to the server. The lack of a CORS policy only forbids it
+    to read the response; the request is still executed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is the case for requests that the browser considers `GET`, `POST`, or
+    `HEAD` methods that don’t set custom headers or unusual content types. You can
+    learn more about simple requests and their conditions by going to the following
+    MDN page about CORS: [https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#simple_requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#simple_requests).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that, for simple requests, the same-origin policy is not enough to
+    protect us against CSRF attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may have noticed that our simple web application has a toggle for `GET`
+    and `POST` requests again. On your FastAPI terminal, you should have an output
+    similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.6 – Uvicorn output when receiving preflight requests](img/Figure_7.6_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.6 – Uvicorn output when receiving preflight requests
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, our server received two strange requests with the `OPTIONS`
+    method. This is what we call `Content-Type` header with a value of `application/json`,
+    which is against the conditions of simple requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By performing this preflight request, the browser expects the server to provide
+    information about what it is and isn’t allowed to do in terms of cross-origin
+    HTTP requests. Since we’ve not implemented anything here, our server can’t provide
+    a response to this preflight request. Hence, the browser stops there and doesn’t
+    proceed with the actual request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And that’s basically CORS: the server answers preflight queries with a set
+    of HTTP headers that provide information to the browser about whether it’s allowed
+    to make the request or not. In that sense, CORS doesn’t make your application
+    more secure, it’s quite the contrary: it allows the relaxation of some rules so
+    that a frontend application can make requests to a backend residing on another
+    domain. That’s why it’s crucial to configure CORS properly, so it doesn’t expose
+    you to dangerous attacks.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, it’s fairly easy to do this with FastAPI. All we need to do is
+    import and add the `CORSMiddleware` class provided by Starlette. You can see what
+    this looks like in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app_with_cors.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/cors/app_with_cors.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/cors/app_with_cors.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A middleware is a special class that adds global logic to an `add_middleware`
+    method for wiring such middleware into your application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, `CORSMiddleware` will catch preflight requests sent by the browser and
+    return the appropriate response with the CORS headers corresponding to your configuration.
+    You can see that there are options to finely tune the CORS policy to your needs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most important one is probably `allow_origins`, which is the list of origins
+    allowed to make requests to your API. Since our HTML application is served from
+    `http://localhost:9000`, this is what we put here in this argument. If the browser
+    tries to make requests from any other origin, it will stop as it’s not authorized
+    to do so by CORS headers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The other interesting argument is `allow_credentials`. By default, browsers
+    don’t send cookies for cross-origin HTTP requests. If we wish to make authenticated
+    requests to our API, we need to allow this via this option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also finely tune the allowed methods and headers that are sent in the
+    request. You can find a complete list of arguments for this middleware in the
+    official Starlette documentation: [https://www.starlette.io/middleware/#corsmiddleware](https://www.starlette.io/middleware/#corsmiddleware).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s quickly talk about the `max_age` parameter. This parameter allows you
+    to control the cache duration of the CORS responses. Having to perform a preflight
+    request before the actual one is an expensive operation. To improve performance,
+    browsers can cache the response so that they don’t have to do this every time.
+    Here, we are disabling caching with a value of `-1` to make sure you see the behavior
+    of the browser in this example. In your projects, you can remove this argument
+    so that you have a proper cache value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s see how our web application behaves with this CORS-enabled application.
+    Stop the previous FastAPI app and run this one using the usual command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if you try to perform the requests from the HTML application, you should
+    see a working response in each case, both with and without a JSON content type.
+    If you look at the FastAPI terminal, you should see an output similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.7 – Uvicorn output with CORS headers](img/Figure_7.7_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.7 – Uvicorn output with CORS headers
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The two first requests are the “simple requests,” which don’t need a preflight
+    request according to the browser rules. Then, we can see the requests that were
+    performed with the JSON content type enabled. Before the `GET` and `POST` requests,
+    an `OPTIONS` request was performed: the preflight request!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thanks to this configuration, you can now make cross-origin HTTP requests between
+    your frontend application and your backend living on another origin. Once again,
+    it’s not something that’ll improve the security of your application, but it allows
+    you to make this specific scenario work while keeping it secure from the rest
+    of the web.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even if those policies can be a first layer of defense against CSRF, this doesn’t
+    mitigate the risk completely. Indeed, the “simple requests” are still an issue:
+    `POST` requests are allowed and, even if the response cannot be read, it’s actually
+    executed on the server.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s learn how to implement a pattern so that we’re completely safe from
+    such attacks: the **double-submit cookie**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing double-submit cookies to prevent CSRF attacks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we mentioned previously, when relying on cookies to store user credentials,
+    we are exposed to CSRF attacks since browsers will automatically send the cookies
+    to your server. This is especially true for what the browser considers “simple
+    requests,” which don’t enforce the CORS policy before the request is executed.
+    There are also other attack vectors involving traditional HTML form submissions
+    or even the `src` attribute of the image tag.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For all these reasons, we need to have another layer of security to mitigate
+    this risk. Once again, this is only necessary if you plan to use your API from
+    a browser application and use cookies for authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To help you understand this, we’ve built a new example application that uses
+    a cookie to store the user access token. It’s very similar to the one we saw at
+    the beginning of this chapter; we only modified it so that it looks for the access
+    token in a cookie rather than in a header.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make this example work, you’ll have to install the `starlette-csrf` library.
+    We’ll explain what it does a bit later in this section. For now, just run the
+    following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example, you can see the login endpoint that sets a cookie
+    with the access token value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/csrf/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/csrf/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we used the `Secure` and `HttpOnly` flags for the resulting cookie.
+    This ensures that it’s sent only over HTTPS and that its value can’t be read from
+    JavaScript, respectively. While this is not enough to prevent every kind of attack,
+    it’s crucial for such sensitive information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides that, we also set the `SameSite` flag to `lax`. It’s a quite recent
+    flag that allows us to control how the cookie is sent in a cross-origin context.
+    `lax` is the default value in most browsers and allows the cookie to be sent to
+    subdomains of the cookie domain but prevents it for other sites. In a sense, it’s
+    designed to be the standard, built-in protection against CSRF. However, other
+    CSRF mitigation techniques, such as the one we’ll implement here, are still needed
+    currently. Indeed, older browsers that are not compatible with the `SameSite`
+    flag are still vulnerable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, when checking for the authenticated user, we’ll just have to retrieve
+    the token from the cookie that was sent in the request. Once again, FastAPI provides
+    a security dependency to help with this, called `APIKeyCookie`. You can see it
+    in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/csrf/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/csrf/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And that’s basically it! The rest of the code remains the same. Now, let’s
+    implement an endpoint that allows us to update the email address of the authenticated
+    user. You can see this in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/csrf/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/csrf/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The implementation is not very surprising and follows what we’ve seen so far.
+    However, it exposes us to a CSRF threat. As you can see, it uses the `POST` method.
+    If we make a request in the browser to this endpoint without any special header,
+    it will consider it as a simple request and execute it. Therefore, an attacker
+    could change the email of a currently authenticated user, which is a major threat.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is exactly why we need CSRF protection here. In the context of a REST
+    API, the most straightforward technique is the double-submit cookie pattern. Here
+    is how it works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The user makes a first request with a method that’s considered safe. Typically,
+    this is a `GET` request.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In response, it receives a cookie containing a secret random value – that is,
+    the CSRF token.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When making an unsafe request, such as `POST`, the user will read the CSRF token
+    in the cookies and put the exact same value in a header. Since the browser also
+    sends the cookies it has in memory, the request will contain the token both in
+    the cookie and the header. That’s why it’s called **double submit**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Before processing the request, the server will compare the CSRF token provided
+    in the header with the one present in the cookie. If they match, it will proceed
+    to process the request. Otherwise, it’ll throw an error.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'This is safe for two reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An attacker targeting a third-party website can’t read the cookies for a domain
+    they don’t own. Thus, they have no way of retrieving the CSRF token value.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adding a custom header is against the conditions of “simple requests.” Hence,
+    the browser will have to make a preflight request before sending the request,
+    enforcing the CORS policy.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This is a widely used pattern that works well to prevent such risks. This is
+    why we installed `starlette-csrf` at the beginning of this section: it provides
+    a piece of middleware for implementing it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use it just like any other middleware, as shown in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: app.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/csrf/app.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter07/csrf/app.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We set several important arguments here. First, we have the secret, which should
+    be a strong passphrase that’s used to sign the CSRF token. Then, we have `sensitive_cookies`,
+    which is a set of cookie names that should trigger the CSRF protection. If no
+    cookie is present or if the provided ones are not critical, we can bypass the
+    CSRF check. It’s also useful if you have other authentication methods available
+    that don’t rely on cookies, such as Authorization headers, which are not vulnerable
+    to CSRF. Finally, setting a cookie domain will allow you to retrieve the cookie
+    containing the CSRF token, even if you are on a different subdomain; this is necessary
+    in a cross-origin situation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s all you need to have the necessary protection ready. To ease the process
+    of getting a fresh CSRF token, we implemented a minimal GET endpoint called `/csrf`.
+    Its sole purpose is to provide us with a simple way to set the CSRF token cookie.
+    We can call it directly when we load our frontend application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s try it out in our situation. As we did in the previous section,
+    we’ll run the FastAPI application and the simple HTML application on two different
+    ports. To do this, just run the following commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will run the FastAPI application on port `8000`. Now, run the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The frontend application is now live on `http://localhost:9000`. Open it in
+    your browser. You should see an interface similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.8 – Simple application to try a CSRF-protected API](img/Figure_7.8_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.8 – Simple application to try a CSRF-protected API
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we’ve added forms to interact with our API endpoints: register, log in
+    get authenticated user, and update the endpoints. If you try them out, they should
+    work without any issue. If you have a look at the requests that were sent in the
+    `x-csrftoken`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the top, there is a toggle to prevent the application from sending the CSRF
+    token in the header. If you disable it, you’ll see that all `POST` operations
+    will result in an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Great! We are now safe from CSRF attacks! Most of the work here is done by
+    the middleware, but it’s interesting to understand how it works under the hood
+    and how it protects your application. Bear in mind, however, that it comes with
+    a drawback: it will break the interactive documentation. Indeed, it’s not designed
+    to retrieve the CSRF token from the cookie and put it in the headers in each request.
+    Unless you plan on authenticating in another way (through a token in a header,
+    for example), you won’t be able to directly call your endpoints in the documentation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'That’s all for this chapter, which covered authentication and security in FastAPI.
+    We saw that implementing a basic authentication system is quite easy thanks to
+    the tools provided by FastAPI. We’ve shown you one way to do this, but there are
+    plenty of other good patterns out there to tackle this challenge. However, when
+    working on this matter, always keep security in mind and be sure that you don’t
+    expose your application and your users’ data to dangerous threats. In particular,
+    you’ve seen that CSRF attacks have to be taken care of when designing a REST API
+    that will be used in a browser application. A good source to understand all the
+    security risks involved in a web application is the OWASP Cheat Sheet Series:
+    [https://cheatsheetseries.owasp.org](https://cheatsheetseries.owasp.org).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With that, we’ve covered most of the important subjects concerning FastAPI
+    application development. In the next chapter, we’ll learn how to work with a recent
+    technology that’s integrated with FastAPI and that allows real-time, two-way communication
+    between the client and the server: WebSockets.'
+  prefs: []
+  type: TYPE_NORMAL

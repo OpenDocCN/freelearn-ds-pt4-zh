@@ -1,0 +1,774 @@
+- en: '9'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Leveraging Databricks Asset Bundles to Streamline Data Pipeline Deployment
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter explores a relatively new **continuous integration and continuous
+    deployment** ( **CI/CD** ) tool called **Databricks Asset Bundles** ( **DABs**
+    ), which can be leveraged to streamline the development and deployment of data
+    analytical projects across various Databricks workspaces. In this chapter, we’ll
+    dive into the core concept of **DABs** . We’ll demonstrate the practical use of
+    DABs through several hands-on exercises so that you feel comfortable developing
+    your next data analytics projects as a DAB. Lastly, we’ll cover how DABs can be
+    used to increase cross-team collaboration through version control systems such
+    as GitHub, and how DABs can be used to simplify even the most complex data analytical
+    deployments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to Databricks Asset Bundles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Databricks Asset Bundles in action
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Simplifying cross-team collaboration
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Versioning and maintenance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow the examples in this chapter, it’s recommended that you have Databricks
+    workspace administrative privileges so that you can deploy DABs to target workspaces.
+    You’ll also need to download and install version 0.218.0 or higher of the Databricks
+    CLI. All the code samples can be downloaded from this chapter’s GitHub repository
+    at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter09](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter09)
+    . In this chapter, we will deploy several new workflows, DLT pipelines, notebooks,
+    and clusters. It’s estimated that this will consume around 5-10 **Databricks**
+    **Units** ( **DBUs** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to Databricks Asset Bundles
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: DABs provide an easy and convenient way to develop your data and **artificial
+    intelligence** ( **AI** ) projects together with YAML metadata for declaring the
+    infrastructure that goes along with it – just like a bundle. DABs provide data
+    engineers with a way to programmatically validate, deploy, and test Databricks
+    resources in target workspaces. This may include deploying workspace assets such
+    as **Delta Live Tables** ( **DLT** ) pipelines, workflows, notebooks, and more.
+    DABs also provide a convenient way to develop, package, and deploy machine learning
+    workloads using reusable templates (we’ll cover DAB templates later in the *Initializing
+    an asset bundle using templates* section), called MLOps Stacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DABs were designed around the principles of expressing **Infrastructure as Code**
+    ( **IaC** ) and benefit from using configuration to drive the deployment of architectural
+    components of your data applications. DABs provide a way to check in IaC configuration
+    along with data assets such as Python files, Notebooks, and other dependencies.
+    DABs can also be an alternative if you feel Terraform (covered in [*Chapter 8*](B22011_08.xhtml#_idTextAnchor185)
+    ) is too advanced for your organization’s needs within the context of the Databricks
+    Data Intelligence Platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'DABs share some similarities with Terraform in that both are IaC tools that
+    give users the ability to define cloud resources and deploy those resources in
+    a cloud-agnostic manner. However, there are many differences as well. Let’s compare
+    a few of the similarities and differences between DABs and Terraform to get a
+    better feeling of when to choose which tool over the other for your organization’s
+    needs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.1 – DABs and Terraform are both IaC tools, but they meet very different
+    needs](img/B22011_09_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.1 – DABs and Terraform are both IaC tools, but they meet very different
+    needs
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we start writing our very first DAB, let’s spend some time getting to
+    know the major building blocks of what makes up a DAB configuration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Elements of a DAB configuration file
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: At the center of a DAB is a YAML configuration file, named **databricks.yml**
+    . This configuration file provides engineers with an entry point for configuring
+    the deployment of their project’s resources. The file consists of many composable
+    building blocks that tell the Databricks **command-line interface** ( **CLI**
+    ) what to deploy to a target Databricks workspace and how to configure each resource.
+    Each building block accepts different parameters for configuring that component.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Later in this chapter, we’ll cover how to decompose the configuration file into
+    many YAML files, but for simplicity’s sake, we’ll start with a single YAML file.
+    Within this YAML configuration file, we’ll declare our Databricks resources, as
+    well as other metadata. These building blocks, or **mappings** , tell the DAB
+    tool what Databricks resource to create, and more importantly, what Databricks
+    REST API to manipulate to create and configure a Databricks resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These mappings can be a variety of Databricks resources. For example, a DAB
+    configuration file can contain any combination of the following mappings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Mapping Name** | **Required?** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **bundle** | Yes | Contains top-level information about the current asset
+    bundle, including the Databricks CLI version, existing cluster identifier, and
+    git settings. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **variables** | No | Contains global variables that will be dynamically populated
+    during the execution of a DAB deployment. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **workspace** | No | Used to specify non-default workspace locations, such
+    as the root storage, artifact storage, and file paths. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **permissions** | No | Contains information about what permissions to grant
+    to the deployed resources. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **resources** | Yes | Specifies what Databricks resources to deploy and how
+    to configure them. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **artifacts** | No | Specifies deployment artifacts, such as Python **.whl**
+    files, that will be generated during the deployment process. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **include** | No | Specifies a list of relative file path globs to additional
+    configuration files. This is a great way to separate a DAB configuration file
+    into several child configuration files. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **sync** | No | Specifies a list of relative file path globs to include or
+    exclude in the deployment process. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **targets** | Yes | Specifies information about the context in addition to
+    the Databricks workspace and details about the workflow, pipeline, and artifacts.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 9.1 – Mappings in a databricks.yml file
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at a simple DAB configuration file so that we’re familiar with some
+    of the basics. The following example will create a new Databricks workflow called
+    **Hello, World!** that will run a notebook that prints the simple yet popular
+    expression **Hello, World!** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this simple example, our DAB configuration file consists of three main sections:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**bundle** : This section contains high-level information about the current
+    DAB – in this case, its name.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**resources** : This defines a new Databricks workflow with a single notebook
+    task that should be run on an existing cluster.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**targets** : This specifies information about the target Databricks workspace
+    the workflow and notebook should be deployed to.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that we have a strong understanding of the basics of a DAB configuration
+    file, let’s look at how we can deploy our Databricks resources under different
+    deployment scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specifying a deployment mode
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One attribute that’s available from within a DAB configuration file is a deployment
+    mode, which allows us to specify an operating mode when we’re deploying resources.
+    There are two types of deployment modes available: development and production.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *development* mode, all resources are marked with a special prefix, **[dev
+    <username>]** , to indicate that the resources are in development. Furthermore,
+    all resources, when available, are deployed with the **dev** metadata tag, to
+    also indicate that the resources are in development. As you may recall from [*Chapter
+    2*](B22011_02.xhtml#_idTextAnchor052) , DLT also has a development mode available.
+    When DLT pipelines are deployed using DABs in development mode, all deployed DLT
+    pipelines will be deployed to the target workspace with this development mode
+    enabled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: During the development life cycle, it’s also expected that engineers will want
+    to experiment with changes and quickly iterate on design changes. As a result,
+    development mode will also pause all Databricks workflow schedules and enable
+    concurrent runs of the same workflow, allowing engineers to run the workflow in
+    an ad hoc fashion directly from the Databricks CLI. Similarly, development mode
+    gives you the option to specify an existing all-purpose cluster to use for the
+    deployment process, either by specifying the cluster ID as an argument from the
+    Databricks CLI via **--** **compute-id <cluster_id>** or by adding the cluster
+    ID to the top-level **bundle** mapping of the YAML configuration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at how we might be able to specify a target workspace so that it
+    can be used as a development environment and override all clusters with a default,
+    existing all-purpose cluster:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Conversely, you can also specify a production mode. In *production* mode, resources
+    won’t be prepended with a special naming prefix and no tags will be applied. However,
+    production mode will validate the resources before they’re deployed to the target
+    workspace. For example, it will be ensured that all DLT pipelines have been set
+    to production mode and resources that specify cloud storage locations or workspace
+    paths don’t point to user-specific locations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we’ll roll up our sleeves and dive into using the Databricks
+    CLI to experiment with asset bundles and see them in action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Databricks Asset Bundles in action
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'DABs depend entirely on the Databricks CLI tool (see [*Chapter 8*](B22011_08.xhtml#_idTextAnchor185)
+    for installation instructions) to create new bundles from templates, deploy bundles
+    to target workspaces, and even remove previously deployed resource bundles from
+    workspaces. For this section, you’ll need version 0.218.0 or higher of the Databricks
+    CLI. You can quickly check the version of your local Databricks CLI by passing
+    the **--** **version** argument:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You should get a similar output as shown in the following *Figure 9* *.2* :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 9.\uFEFF2 - Checking the version of a previously installed Databricks\
+    \ CLI](img/B22011_09_002.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.2 - Checking the version of a previously installed Databricks CLI
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you’ve successfully installed the recommended version of the Databricks
+    CLI, you can test that the installation was successful by displaying the manual
+    page for the **bundle** command. Enter the following command to display the available
+    arguments and descriptions from the CLI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We’ll get the following manual page:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 9.\uFEFF3 – The manual page for the bundle command in the Databricks\
+    \ CLI](img/B22011_09_003.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.3 – The manual page for the bundle command in the Databricks CLI
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we can begin authoring DABs and deploying resources to Databricks workspaces,
+    we will nee d to authenticate with the target Databricks workspaces so that we
+    can deploy resources. DABs leverage OAuth toke ns to authenticate with Databricks
+    workspaces. Two types of OAuth authentication can be used with DABs – **user-to-machine**
+    ( **U2M** ) authentication and **machine-to-machine** ( **M2M** ) authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: User-to-machine authentication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: U2M authentication involves a human in the loop generating an OAuth token that
+    can be used when you’re deploying new resources to a target workspace. This type
+    of authentication involves a user who will log in via a web browser when prompted
+    by the CLI tool. This type of authentication is good for development scenarios
+    where users want to experiment with DABs and deploy resources in non-critical
+    development workspaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'U2M is the easiest way to authenticate with your Databricks workspace and can
+    be done directly from the Databricks CLI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Workspace information such as the workspace’s URL, nickname, and authentication
+    details are stored in a hidden file under your user directory on your local machine.
+    For example, on Mac and Linux systems, this information will be written to a local
+    **~/.databrickscfg** file under the user’s home directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 9.\uFEFF4 – Example of multiple Databricks profiles saved to a local\
+    \ configuration file](img/B22011_09_004.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.4 – Example of multiple Databricks profiles saved to a local configuration
+    file
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can quickly switch between different Databricks workspaces by passing the
+    **--profile <profile_nickname>** argument using CLI commands. For example, the
+    following command will apply a DAB to a workspace saved under the **TEST_ENV**
+    profile:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: U2M authentication was designed strictly for development purposes. For production
+    scenarios, this type of authentication is not recommended as it can’t be automated
+    and doesn’t restrict access to the least set of privileges necessary. In these
+    cases, M2M authentication is recommended.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s take a look at this alternative authentication type for when you’re automating
+    your DAB deployment in production scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Machine-to-machine authentication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: M2M authentication doesn’t involve a human, per se. This type of authentication
+    was designed for fully automated CI/CD workflows. Furthermore, this type of authentication
+    pairs well with version control systems such as GitHub, Bitbucket, and Azure DevOps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: M2M requires the us e of service principals to abstract the generation of OAuth
+    tokens. Furthermore, service principals give automated tools and scripts API-only
+    access to Databricks resources, providing greater security than using users or
+    groups. For this reason, service principals are an ideal scenario for production
+    environments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: M2M requires a Databricks account admin to crea te a service principal and generate
+    an OAuth token from the Databricks account console. Once an OAuth token has been
+    generated under the service principal’s identity, the token can be used to populate
+    environment variables such as **DATABRICKS_HOST** , **DATABRICKS_CLIENT_ID** ,
+    and **DATABRICKS_CLIENT_SECRET** , which are used in automated build and deployment
+    tools such as GitHub Actions or Azure DevOps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Initializing an asset bundle using templates
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'DABs also come with project templates, which allow developers to quickly create
+    a new bundle using predefined settings. DAB templates contain predefined artifacts
+    and settings for commonly deployed Databricks projects. For example, the following
+    command will initialize a local DAB project:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the CLI, the user is prompted to choose a DAB template:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 9.\uFEFF5 – Initializing a new DAB project using templates from the\
+    \ Databricks CLI](img/B22011_09_005.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.5 – Initializing a new DAB project using templates from the Databricks
+    CLI
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At the time of writing, DABs come with four templates to choose from: **default-python**
+    , **default-sql** , **dbt-sql** , and **mlops-stacks** ( [https://docs.databricks.com/en/dev-tools/bundles/templates.html](https://docs.databricks.com/en/dev-tools/bundles/templates.html)
+    ). However, you also have the option to create organization templates and generate
+    artifacts as a reusable project bundle.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a good understanding of the basics of DABs, let’s put together
+    everything that we’ve learned so far and deploy a few resources to a Databricks
+    workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hands-on exercise – deploying your first DAB
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this hands-on exercise, we’re going to create a Python-based asset bundle
+    and deploy a simple Databricks workflow that runs a DLT pipeline in a target workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s begin by creating a local directory that we’ll be using to create the
+    project scaffolding for our DAB. For example, the following command will create
+    a new directory under the user’s home directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, navigate to the newly created project directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Generate a new OAuth token using U2M authentication by entering the following
+    command and completing the **single sign-on** ( **SSO** ) login when you’re redirected
+    to a browser window:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that our directory has been created and we’ve authenticated with our target
+    workspace, let’s use the Databricks CLI to initialize an empty DAB project. Enter
+    the following command to bring up the prompt for choosing a DAB template:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, choose **default-python** from the template chooser prompt. Enter a meaningful
+    name for your project, such as **my_first_dab** . When prompted to select a notebook
+    stub, select **No** . Select **Yes** when you’re prompted to include a sample
+    DLT pipeline. Finally, select **No** when you’re prompted to add a sample Python
+    library. The project scaffolding will be created, at which point you can list
+    the directory’s contents so that you can have a glance at the gene rated artifacts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To navigate to the newly created project files more easily, open the project
+    directory using your favorite code editor, such as VS Code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.6 – Generated DAB project scaffolding using the default-python template,
+    viewed from VS Code](img/B22011_09_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.6 – Generated DAB project scaffolding using the default-python template,
+    viewed from VS Code
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go ahead and explore the subdirectories of the generated DAB project for yourself.
+    You should notice a couple of important directories and files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**src** : This directory contains the DLT pipeline definition as a notebook
+    file.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**resources** : DABs can be decomposed into multiple YAML files that pertain
+    to a single resource or a subset of resources. This directory contains the resource
+    definitions for a DLT pipeline and a workflow definition for running the pipeline,
+    including the schedule, notebook task definition, and job cluster attributes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**databricks.yml** : This is the main entry point and definition of our DAB.
+    This tells the Databricks CLI what resources to deploy and how to deploy them,
+    and specifies target workspace information.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**README.md** : This is the project README file and contains helpful information
+    on the different sections of the project, as well as instructions on how to deploy
+    or undeploy the resources.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Open the **dlt_pipeline.ipynb** notebook contained under the **src** directory.
+    Notice that the notebook defines two datasets – a view that reads raw, unprocessed
+    JSON files from the NYC Taxi dataset and a table that filters the view based on
+    rows with a **fare_amount** value of less than 30.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, open the **databricks.yml** file. You’ll notice that this file has three
+    main sections: **bundle** , **include** , and **targets** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For simplicity’s sake, under the **targets** mapping, remove all sections except
+    for the **dev** section. We’ll only be deploying to a development environment
+    for this exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, ensure that the **dev** target is pointing to the correct development
+    workspace. Your **databricks.yml** file should look similar to this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Save the changes to the **databricks.yml** file and return to your Terminal
+    window. Let’s validate the changes to our DAB project by executing the **validate**
+    command from the Databricks CLI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that our project has been modified to our liking, it’s time to deploy the
+    bundle to our development workspace. Execute the following command from your Databricks
+    CLI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The Databricks CLI will parse our DAB definition and deploy the resources to
+    our development target. Log in to the development workspace and verify that a
+    new workflow titled **[dev <username>] my_first_dab_job** has been created and
+    your Databricks user is listed as the owner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Congratulations! You’ve just created your first DAB and deployed it to a development
+    workspace. You’re well on your way to automating the deployment of data pipelines
+    and other Databricks resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s test that the deployment was successful by executing a new run of the
+    deployed workflow. From the same Databricks CLI, enter the following command.
+    This will start an execution run of the newly created workflow and trigger an
+    update of the DLT pipeline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: You may be prompted to select which resource to run. For this, select **my_first_dab_job**
+    . If success ful, you should see a confirmation message from the CLI that the
+    workflow is currently running. Return to your Databricks workspace and verify
+    that an execution run has indeed been started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There may be certain scenarios where you need to undeploy resources from a
+    target workspace. To undeploy the workflow and DLT pipeline definitions that were
+    created earlier, we can use the **destroy** command in the Databricks CLI. Enter
+    the following command to revert all changes that were created in this hands-on
+    exercise. You’ll need to confirm that you would like to permanently delete all
+    resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: So far, we’ve created a simple workflow and DLT pipeline defined in a source
+    notebook in a target Databricks workspace. We’ve used a local code editor to author
+    the DAB project and deployed the changes from our local machine. However, in production
+    scenarios, you’ll be collaborating with teams within your organization to author
+    data pipelines and other Databricks resources that all work together to generate
+    data products for your organization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we’ll look at how we expand upon this simple exercise and
+    work with team members to deploy Databricks resources such as workflows, notebooks,
+    or DLT pipelines using automation tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hands-on exercise – simplifying cross-team collaboration with GitHub Actions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Often, you’ll be working across a team of data engineers working to deploy Databricks
+    assets such as DLT pipelines, all-purpose clusters, or workflows, to name a few.
+    In these scenarios, you’ll likely be using a version control system such as GitHub,
+    Bitbucket, or Azure DevOps to collaborate with members of a team.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DABs can be easily incorporated into your CI/CD pipelines. Let’s look at how
+    we can use GitHub Actions to automatically deploy changes made to our main branch
+    of the code repository and automatically deploy the resource changes to our production
+    Databricks workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: GitHub Actions is a feature in GitHub that allows users to implement a CI/CD
+    workflow directly from a GitHub repository, making it simple to declare a workflow
+    of actions to perform based on some triggering event, such as merging a feature
+    branch into a master branch. Together with DABs, we can implement a robust, fully
+    automated CI/CD pipeline that deploys changes that have been made to our Databricks
+    code base. This enables our teams to be more agile, deploying changes as soon
+    as they are available, allowing them to speed up the iterative development life
+    cycle and quickly test changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up the environment
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this hands-on exercise, we’ll be creating a GitHub Action to automatically
+    deploy changes to our Databricks workspace as soon as a branch is merged in our
+    GitHub repository. Let’s return to the example from earlier in this chapter. If
+    you haven’t already done so, you can clone the example from this chapter’s GitHub
+    repository: [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter09](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter09)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, let’s create a new private folder in the root of our repository – that
+    is, **.github** . Within this folder, let’s create another child folder called
+    **workflows** . This nested directory structure is a special pattern whose presence
+    will be automatically picked up by the GitHub repository and parsed as a GitHub
+    Actions workflow. Within this folder, we’ll define our GitHub Actions workflow,
+    which also uses a YAML configuration file to declare a CI/CD workflow. Create
+    a new YAML file called **dab_deployment_workflow.yml** within the **.** **github/workflows**
+    folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we’ll open the workflow file in our favorite code editor so that it’s
+    easier to manipulate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring the GitHub Action
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s begin by adding the basic structure to our GitHub Actions workflow file.
+    Within the YAML file, we’ll give the GitHub Actions workflow a user-friendly name,
+    such as **DABs in Action** . Within this file, we’ll also specify that whenever
+    an approved pull request is merged into the main branch of our code repository,
+    our CI/CD pipeline should be run. Copy and paste the following contents into the
+    newly created file, **dab_deployment_workflow** **.yml** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let’s define a job within our GitHub Actions YAML file that will clone
+    the GitHub repository, download the Databricks CLI, and deploy our DAB to our
+    target Databricks workspace. Add the following job definition to the workflow
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: You’ll also notice that we’ve used the same Databricks CLI **bundle** command
+    to deploy our Databricks resources as we did in the earlier example, using our
+    local installation to deploy resources. Furthermore, under the **working-directory**
+    parameter, we’ve specified that our DAB configuration file will be found at the
+    root of our GitHub repository under the **dabs** folder. We’ve also leveraged
+    GitHub Secrets ( [https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository)
+    ) to securely store the API token for authenticating with our target Databricks
+    workspace, as well as followed the best practice of using a service principal
+    (see the *User-to-machine authentication* section) to automate the deployment
+    of our resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You’ll recall that service principals are restricted to a subset of API calls
+    and follow the best practice of least privilege, whereas a user account would
+    provide more privileges than are necessary. Furthermore, our users can come and
+    go from our organization, making maintenance activities such as user deprovisioning
+    a headache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing the workflow
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now that we’ve defined when our CI/CD pipeline should be triggered and the workflow
+    job responsible for deploying our DAB to our target workspace, we can test the
+    GitHub Actions workflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s add a section to our existing GitHub Actions workflow file that will
+    trigger the **my_first_dab_job** Databricks workflow that we created in the previous
+    example. You’ll also notice that, under the **needs** parameter, we declare a
+    dependency on **DAB Deployment Job** , which must be completed before we can execute
+    a run of the Databricks workflow. In other words, we can’t test the changes without
+    deploying them first. Add the following job definition below the **bundle-and-deploy**
+    job in the workflow file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Save the GitHub Actions workflow file. Now, let’s test the changes by opening
+    a new pull request on our GitHub repository and merging the pull request into
+    the main branch of the repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, create a new feature branch using **git** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, open the DAB configuration file for the Databricks workflow in a code
+    editor. Update the autoscaling size of our job cluster from four worker nodes
+    to five. Save the file and commit the changes to the branch. Finally, push the
+    changes to the remote repository. Using a web browser, navigate to the GitHub
+    repository and create a new pull request in GitHub. Approve the changes and merge
+    the branch into the main branch. Ensure that the GitHub Actions workflow is triggered
+    and that the code changes have been deployed to the target Databricks workspac
+    e. You should also see that a new run of the **my_first_dab_job** Databricks workflow
+    has been executed by the GitHub Actions workflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we’ve seen how easy it is to incorporate our DABs into a CI/CD pipeline,
+    let’s expand on this example to see how DABs can assist us when we want to deploy
+    different versions of our code base to a Databricks workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Versioning and maintenance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'DABs make it simple to deploy changes to different environments iteratively.
+    There may be scenarios where you might want to experiment with different changes
+    and document that those changes come from a particular version of your repository.
+    The top-level **bundle** mapping permits users to specify a repository URL and
+    branch name to annotate different versions of your code base that are deployed
+    to target Databricks workspaces. This is a great way to document that a bundle
+    deployment comes from a particular repository and feature branch. For example,
+    the following code annotates that an asset bundle uses an experimental feature
+    branch as the project source:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: As another example, DABs make it simple to automate and document regular maintenance
+    activities such as upgrading Databricks runtimes to the latest release. This is
+    a great way to experiment with beta versions of the runtime and test compatibility
+    with existing Databricks workflows. DABs can be used to automate the manual deployment
+    and testing process, and even roll back changes if workflows begin to fail, for
+    example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered how to automate the deployment of your Databricks
+    resources u sing DABs. We saw how integral the Databricks CLI was in creating
+    new bundles from preconfigured templates, authenticating the CLI tool with target
+    Databricks workspaces, triggering Databricks workflow runs, and managing the end-to-end
+    bundle life cycle. We also saw how we can quickly iterate on design and testing
+    by using a development mode inside of our DAB configuration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll conclude with the skills necessary to monitor your
+    data applications in a production environment. We’ll touch on key features in
+    the Databricks Data Intelligence Platform, including alerting, viewing the pipeline
+    event log, and measuring statistical metrics using L akehouse M onitoring.
+  prefs: []
+  type: TYPE_NORMAL

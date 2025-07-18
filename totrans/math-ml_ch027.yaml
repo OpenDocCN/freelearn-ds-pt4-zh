@@ -1,0 +1,584 @@
+- en: '17'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Optimization in Multiple Variables
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hey! We are at the last checkpoint of our calculus study. What’s missing? Gradient
+    descent, of course.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the previous eight chapters, we lined up all of our ducks in a row, and now
+    it’s time to take that shot. First, we’ll put multivariable functions to code.
+    Previously, we built a convenient interface in the form of our Function class
+    to represent differentiable functions. After the lengthy setup in the previous
+    chapter, we can easily extend it, and with the power of vectorization, we don’t
+    even have to change that much. Let’s go!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 17.1 Multivariable functions in code
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It’s been a long time since we put theory into code. So, let’s take a look at
+    multivariable functions!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Last time, we built a Function base class with two main methods: one for computing
+    the derivative (Function.prime) and one for getting the dictionary of parameters
+    (Function.parameters).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This won’t be much of a surprise: the multivariate function base class is not
+    much different. For clarity, we’ll appropriately rename the prime method to grad.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s see a few examples right away. The simplest one is the squared Euclidean
+    norm f(x) = ∥x∥², a close relative to the mean squared error function. Its gradient
+    is given by
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![∇f (x) = 2x, ](img/file1575.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: thus everything is ready to implement it. As we’ve used NumPy arrays to represent
+    vectors, we’ll use them as the input as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that SquaredNorm is different from f(x) = ∥x∥² in a mathematical sense,
+    as it accepts any NumPy array, not just an n-dimensional vector. This is not a
+    problem now, but will be later, so keep that in mind.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another example can be given with the parametric linear function
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![g(x,y) = ax + by, ](img/file1578.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: where a,b ∈ℝ are arbitrary parameters. Let’s see how g(x,y) is implemented!
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: To check if our implementation works correctly, we can quickly test it out on
+    a simple example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Perhaps we might have overlooked this question until now, but trust me, specifying
+    the input and output shapes is of crucial importance. When doing mathematics,
+    we can be flexible in our notation and treat any vector x ∈ℝ^n as a column or
+    row vector, but painfully, this is not the case in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Correctly keeping track of array shapes is of utmost importance and can save
+    you hundreds of hours. No joke.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 17.2 Minima and maxima, revisited
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In a single variable, we have successfully used the derivatives to find the
+    local optima of differentiable functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Recall that if f : ℝ →ℝ is differentiable everywhere, then Theorem [87](ch021.xhtml#x1-214004r87)
+    gives that'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (a) f^′(a) = 0 and f^(′′)(a)/span>0 implies a local minimum. (b) f^′(a) = 0
+    and f^(′′)(a)/span>0 implies a local maximum.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (A simple f^′(a) = 0 is not enough, as the example f(x) = x³ shows at 0.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Can we do something similar in multiple variables?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Right from the start, there seems to be an issue: the derivative is not a scalar
+    (thus, we can’t equate it to 0).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is easy to solve: the analogue of the condition f^′(a) = 0 is ∇f(a) =
+    (0,0,…,0). For simplicity, the zero vector (0,0,…,0) will also be denoted by 0\.
+    Don’t worry, this won’t be confusing; it’s all clear from the context. Introducing
+    a new notation for the zero vector would just add more complexity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can visualize what happens with the tangent plane at critical points. In
+    a single variable, we have already seen this: as Figure [17.1](#) illustrates,
+    f^′(a) = 0 implies that the tangent line is horizontal.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1579.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 17.1: Local extrema in a single variable'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In multiple variables, the situation is similar: ∇f(a) = 0 implies that the
+    best local linear approximation ([16.3](ch026.xhtml#x1-257003r68)) is constant;
+    that is, the tangent plane is horizontal. (As visualized by Figure [17.2](#).)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1580.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 17.2: Local extrema in multiple variables'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, what does ∇f(a) = 0 imply? Similarly to the single-variable case, an a
+    ∈ℝ^n is called a critical point of f if ∇f(a) = 0 holds. The similarity doesn’t
+    stop at the level of terminologies. We also have three options in multiple variables
+    as well: a is'
+  prefs: []
+  type: TYPE_NORMAL
+- en: a local minimum,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a local maximum,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: or neither.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In multiple variables, a non-extremal critical point is called a saddle point,
+    because the two-dimensional case bears a striking resemblance to an actual horse
+    saddle, as you are about to see. Saddle points are the high-dimensional analogues
+    of the one-dimensional inflection points. The functions
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ 2 2 f (x,y) = x + y , 2 2 g(x,y) = − (x + y ), h (x,y) = x2 − y2 ](img/file1581.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: at (0,0) provide an example for all three, as Figure [17.3](#), Figure [17.4](#),
+    and Figure [17.5](#) show. (Keep in mind that a local extremum might be global.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1582.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 17.3: A (local) maximum'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1583.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 17.4: A (local) minima'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1584.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 17.5: A saddle point'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To put things into order, let’s start formulating definitions and theorems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition 73\. (Critical points)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let f : ℝ^n →ℝ be an arbitrary vector-scalar function. We say that a ∈ℝ^n is
+    a critical point of f if either'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![∇f (a) = 0 ](img/file1585.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: holds, or f is not partially differentiable at a in at least one variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second case (where f is not differentiable at a) is there to handle situations
+    like f(x,y) = jxj + jyj.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the sake of precision, let’s define local extrema in multiple dimensions
+    as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition 74\. (Local minima and maxima)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let f : ℝ^n →ℝ be an arbitrary vector-scalar function and let a ∈ℝ^n be an
+    arbitrary point.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (a) a is a local minimum if there exists an 𝜀/span>0 such that
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![f(a) ≤ f(x), x ∈ B(𝜀,a). ](img/file1586.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: (b) a is a strict local minimum if there exists an 𝜀/span>0 such that
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![f(a) <f(x), x ∈ B(𝜀,a). ](img/file1587.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: (c) a is a local maximum if there exists an 𝜀/span>0 such that
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![f(a) ≥ f(x), x ∈ B (𝜀,a) ∖{a}. ](img/file1588.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: (d) a is a strict local maximum if there exists an 𝜀/span>0 such that
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![f(a) >f(x), x ∈ B (𝜀,a) ∖{a}. ](img/file1589.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As the example of x² −y² shows, a critical point is not necessarily a local
+    extremum, but a local extremum is always a critical point. The next result, which
+    is the analogue of Definition [73](ch027.xhtml#x1-270018r73), makes this mathematically
+    precise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Theorem 106\.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let f : ℝ^n →ℝ be an arbitrary vector-scalar function, and suppose that f is
+    partially differentiable with respect to all variables at some a ∈ℝ^n.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If f has a local extremum at a, then ∇f(a) = 0.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Proof. This is a direct consequence of Theorem [86](ch021.xhtml#x1-213005r86),
+    as if a = (a[1],…,a[n]) is a local extremum of the vector-scalar function f, then
+    it is a local extremum of the single-variable functions h→f(a + he[i]), where
+    e[i] is the vector whose i-th component is 1, while the others are 0.
+  prefs: []
+  type: TYPE_NORMAL
+- en: According to the very definition of the partial derivative given by Definition [66](ch026.xhtml#x1-254009r66),
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![-d-f(a + hei) =-∂f-(a). dh ∂xi ](img/file1591.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Thus, Theorem [86](ch021.xhtml#x1-213005r86) gives that
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ∂f ∂x--(a ) = 0 i ](img/file1592.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: for all i = 1,…,n, giving that ∇f(a) = 0.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, how can we find the local extrema with the derivative? As we have already
+    suggested, studying the second derivative will help us pinpoint the extrema among
+    critical points. Unfortunately, things are much more complicated in n variables,
+    so let’s focus on the two-variable case first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Theorem 107\. (The two-variable second derivative test)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let f : ℝ² →ℝ be an arbitrary vector-scalar function, and suppose that f is
+    partially differentiable at some a ∈ℝ². Also suppose that a is a critical point,
+    that is, ∇f(a) = 0.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (a) If detH[f](a)/span>0 and ![∂2f- ∂x22](img/file1593.png)/span>0, then a is
+    a local minimum.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (b) If detH[f](a)/span>0 and ![∂2f- ∂x22](img/file1594.png)/span>0, then a is
+    a local maximum.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (c) If detH[f](a)/span>0, then a is a saddle point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will not prove this, but some remarks are in order. First, as the determinant
+    of the Hessian can be 0, Theorem [107](ch027.xhtml#x1-270025r107) does not cover
+    all possible cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s probably best to see a few examples, so let’s revisit the previously seen
+    functions
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![f (x,y) = x2 + y2, g(x,y) = − (x2 + y2), 2 2 h (x,y) = x − y . ](img/file1595.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: All three have a critical point at 0, so the Hessians can provide a clearer
+    picture. The Hessians are given by the matrices
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ ⌋ ⌊ ⌋ ⌊ ⌋ ⌈2 0⌉ ⌈− 2 0 ⌉ ⌈2 0 ⌉ Hf (x,y) = 0 2 , Hg(x,y) = 0 − 2 , Hh
+    (x,y) = 0 − 2 . ](img/file1596.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: For functions of two variables, Theorem [107](ch027.xhtml#x1-270025r107) says
+    that it is enough to study detH[f](a) and ![∂2f ∂y2](img/file1597.png)(a).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of f(x,y) = x² + y², we have H[f](0,0) = 4 and ![∂2f ∂y2](img/file1598.png)(0,0)
+    = 2, giving that 0 is a local minimum of f(x,y) = x² + y².
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similarly, we can conclude that 0 is a local maximum of g(x,y) = −(x² + y²)
+    (which shouldn’t surprise you, as g = −f).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, for h(x,y) = x² −y², the second derivative test confirms that 0 is
+    indeed a saddle point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, what’s up with the general case? Unfortunately, just studying the determinant
+    of the Hessian matrix is not enough. We need to bring in the heavy-hitters: eigenvalues.
+    (See Definition [23](ch012.xhtml#x1-105003r23).) Here is the second derivative
+    test in its full glory.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Theorem 108\. (The multivariable second derivative test)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let f : ℝ^n →ℝ be an arbitrary vector-scalar function, and suppose that f is
+    partially differentiable with respect to all variables at some a ∈ℝ^n. Also suppose
+    that a is a critical point, that is, ∇f(a) = 0.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (a) If all the eigenvalues of H[f](a) are positive, then a is a local minimum.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (b) If all the eigenvalues of H[f](a) are negative, then a is a local maximum.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (c) If all the eigenvalues of H[f](a) are either positive or negative, then
+    a is a saddle point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That’s right: if any of the eigenvalues are 0, then the test is inconclusive.
+    You might recall from linear algebra that in practice, computing the eigenvalues
+    is not as fast as computing the second-order derivatives, but there are plenty
+    of numerical methods (like the QR-algorithm, as we saw in Section [7.5](ch013.xhtml#computing-eigenvalues)).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To sum it up, the method of optimizing (differentiable) multivariable functions
+    is a simple two-step process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: find the critical points by solving the equation ∇f(x) = 0,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: then use the second derivative test to determine which critical points are extrema.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Do we use this method in practice to optimize functions? No. Why? Most importantly,
+    because computing the eigenvalues of the Hessian for a vector-scalar function
+    with millions of variables is extremely hard. Why is the second derivative test
+    so important? Because understanding the behavior of functions around their extremal
+    points is essential to truly understand gradient descent. Believe it or not, this
+    is the key behind the theoretical guarantees for convergence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Speaking of gradient descent, now is the time to dig deep into the algorithm
+    that powers neural networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 17.3 Gradient descent in its full form
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Gradient descent is one of the most important algorithms in machine learning.
+    We have talked about this a lot, although up until this point, we have only seen
+    it for single-variable functions (which is, I admit, not the most practical use
+    case).
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, now we have all the tools we need to talk about gradient descent in
+    its general form. Let’s get to it!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Suppose that we have a differentiable vector-scalar function f : ℝ^n →ℝ that
+    we want to maximize. This can describe the return on investment of an investing
+    strategy, or any other quantity. Calculating the gradient and finding the critical
+    points is often not an option, as solving the equation ∇f(x) = 0 can be computationally
+    unfeasible. Thus, we resort to an iterative solution.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The algorithm is the same as for single-variable functions (as seen in Section [13.2](ch021.xhtml#the-basics-of-gradient-descent)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Start from a random point.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate its gradient.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Take a step towards its direction.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat until convergence.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This is called gradient ascent. We can formalize it in the following way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (The gradient ascent algorithm) Step 1\. Initialize the starting point x[0]
+    ∈ℝ^n and select a learning rate h ∈ (0,∞). Step 2\. Let![xn+1 := xn + h∇f (xn
+    ). ](img/file1599.png)Step 3\. Repeat Step 2\. until convergence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we want to minimize f, we might as well maximize −f. The only effect of this
+    is a sign change for the gradient. In this form, the algorithm is called gradient
+    descent, and this is the version that’s widely used to train neural networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (The gradient descent algorithm) Step 1\. Initialize the starting point x[0]
+    ∈ℝ^n and select a learning rate h ∈ (0,∞). Step 2\. Let![xn+1 := xn − h∇f (xn
+    ). ](img/file1600.png)Step 3\. Repeat Step 2\. until convergence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After all of this setup, implementing gradient descent is straightforward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that it is almost identical to the single-variable version in Section [13.2](ch021.xhtml#the-basics-of-gradient-descent).
+    To see if it works correctly, let’s test it out on the squared Euclidean norm
+    function, implemented by SquaredNorm earlier!
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There is nothing special to it, really. The issues with multivariable gradient
+    descent are the same as what we discussed with the single-variable version: it
+    can get stuck in local minima, it is sensitive to our choice of learning rate,
+    and the gradient can be computationally hard to calculate in high dimensions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 17.4 Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Although this chapter was short and sweet, we took quite a big step by dissecting
+    the fine details of gradient descent in high dimensions. The chapter’s brevity
+    is a testament to the power of vectorization: same formulas, code, and supercharged
+    functionality. It’s quite unbelievable, but the simple algorithm'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![xn+1 = xn − h∇f (xn) ](img/file1601.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: is behind most of the neural network models. Yes, even state-of-the-art ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This lies on the same theoretical foundations as the univariate case, but instead
+    of checking the positivity of the second derivatives, we have to study the full
+    Hessian matrix H[f]. To be more precise, we have learned that a critical point
+    ∇f(a) = 0 is
+  prefs: []
+  type: TYPE_NORMAL
+- en: a local minimum if all the eigenvalues of H[f](a) are positive,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: and a local maximum if all the eigenvalues of H[f](a) are negative.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Deep down, this is the reason why gradient descent works. And with this, we
+    have finished our study of calculus, both in single and multiple variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Take a deep breath and relax a bit. We are approaching the final stretch of
+    our adventure: our last stop is the theory of probability, the thinking paradigm
+    that is behind predictive modeling. For instance, the most famous loss functions,
+    like the mean-squared error or the cross-entropy, are founded upon probabilistic
+    concepts. Understanding and taming uncertainty is one of the biggest intellectual
+    feats of science, and we are about to undertake this journey ourselves.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See you in the next chapter!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 17.5 Problems
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Problem 1\. Let y ∈ℝ^n be an arbitrary vector. The general version of the famous
+    mean-squared error is defined by
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ n MSE (x) = 1-∑ (x − y )2\. n i i i=1 ](img/file1602.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Compute its gradient and implement it using the MultivariateFunction base class!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Problem 2\. Let f : ℝ² →ℝ be the function defined by'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ 2 2 f(x,y) = (2x − y)(y − x ). ](img/file1603.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Does f have a local extremum in x = (0,0)?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Problem 3\. Use the previously implemented gradient_descent function to find
+    the minimum of
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ 2 2 f(x,y) = sin(x+ y)+ x y . ](img/file1604.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Experiment with various learning rates and initial values!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Problem 4\. In the problem section of Chapter 13, we saw the improved version
+    of gradient descent, called gradient descent with momentum. We can do the same
+    in multiple variables: define'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![dn+1 = αdn − hf ′(xn), xn+1 = xn + dn, ](img/file1605.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: where d[0] = 0 and x[0] is arbitrary. Implement it!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Join our community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read this book alongside other users, Machine Learning experts, and the author
+    himself. Ask questions, provide solutions to other readers, chat with the author
+    via Ask Me Anything sessions, and much more. Scan the QR code or visit the link
+    to join the community. [https://packt.link/math](https://packt.link/math)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

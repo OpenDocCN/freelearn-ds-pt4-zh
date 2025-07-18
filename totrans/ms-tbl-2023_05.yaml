@@ -1,0 +1,2173 @@
+- en: Introducing Table Calculations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The topic of table calculations in Tableau is so rich and deep that it alone
+    could legitimately be the subject of an entire book. Exploring the various options
+    that are available for each table calculation function and the various ways that
+    table calculations can be applied is an interesting and rewarding endeavor. As
+    you review the examples in this chapter, you will undoubtedly encounter techniques
+    that you can apply in your day-to-day work; however, you may struggle to understand
+    why some of these techniques work. This chapter was written to provide ways of
+    thinking about table calculations that will prove useful in your journey toward
+    mastering this fascinating topic. Along the way, some practical examples will
+    be considered as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of the dozens of blogs, forum posts, conference sessions, articles, and white
+    papers reviewed for this chapter, Jonathan Drummy’s blog post ([http://drawingwithnumbers.artisart.org/at-the-level-unlocking-the-mystery-part-1-ordinal-calcs/](http://drawingwithnumbers.artisart.org/at-the-level-unlocking-the-mystery-part-1-ordinal-calcs/)),
+    *At the Level – Unlocking the Mystery Part 1: Ordinal Calcs*, was the clearest
+    and most insightful for understanding the various nuances of partitioning and
+    addressing – the DNA of table calculations. In this chapter, we will discuss the
+    following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Partition and direction of addressing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Directional and non-directional addressing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploring each unique table calculation function
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Application of functions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s go into more detail and start this chapter off with a general definition
+    of table calculations and two resulting questions, which we will answer by the
+    end of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Partition and direction of addressing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As discussed in *Chapter 1*, *Reviewing the Basics*, calculated fields can be
+    categorized as either row-level, aggregate-level, or table-level. For row- and
+    aggregate-level calculations, the underlying data source engine does most (if
+    not all) of the computational work and Tableau merely visualizes the results.
+    For table calculations, Tableau also relies on the underlying data source engine
+    and the available RAM on your machine to execute computational tasks; however,
+    after that work is completed and a dataset is returned, Tableau performs additional
+    processing before rendering the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let us look at the definition of table calculations, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A table calculation is a function performed on a cached dataset that has been
+    generated as a result of a query from Tableau to the data source.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let us consider a couple of points regarding the dataset in the cache mentioned
+    in the preceding definition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This cache is not simply the returned results of a query. Tableau may adjust
+    the returned results. We will consider this in *Chapter 6*, *Utilizing OData,
+    Data Densification, Big Data, and Google BigQuery*; Tableau may expand the cache
+    through data densification but usually, it is user-driven. In table calculation
+    terms, the cache is called a **partition**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important to consider how the cache is structured. The dataset in the
+    cache is the table used in your worksheet and, like all tables, is made up of
+    rows and columns. This is particularly important for table calculations since
+    a table calculation may be computed as it moves along the cache. The `previous_value()`
+    table calculation will change whenever the cache structure changes because it
+    will retrieve the value prior to the current one and this is very subjective.
+    Is it prior in terms of date, value, or alphabetical order? It is up to you to
+    tell Tableau how to structure the cache by using addressing and partitioning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most table calculations need to consider the cache structure. Such a table calculation
+    is called **directional**. Alternatively, a table calculation may be computed
+    based on the entire cache with no consideration for addressing and partitioning.
+    The table calculation `total()`,for example, will calculate the total value, which
+    does not change when the cache order changes. Another one is `size()`, the `script_`
+    and `model` functions. This type of table calculation is called **non-directional**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that in the Tableau documentation, the dataset in the cache is typically
+    referred to as a partition. The structure of this chapter was designed with the
+    intent of providing a simple schema for understanding table calculations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The *Introducing functions* section explores each unique table calculation function.
+    The *Application of functions* section explores how table calculations are applied
+    to the view via partitioning and addressing dimensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Directional and non-directional addressing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will begin this section by listing the different table calculation functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Tableau offers a wide range of table calculations, but if we narrow our consideration
+    to unique groups of table calculation functions, we will discover that there are
+    only 11:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Table Calculations** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `LOOKUP` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `PREVIOUS VALUE` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `RUNNING` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `WINDOW` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `FIRST` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `INDEX` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `LAST` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `RANK` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `SIZE` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `TOTAL` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `SCRIPT & MODEL` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'As mentioned in *Partition and direction of addressing*, table calculation
+    functions operate on the cache and thus might change if the cache data changes,
+    depending on the type of table calculation: directional or non-directional. In
+    the following exercises, we will see directional and non-directional table calculation
+    functions in action.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let us have a closer look at directional and non-directional table calculations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to [https://public.tableau.com/profile/marleen.meier](https://public.tableau.com/profile/marleen.meier)
+    to locate and download the workbook associated with this chapter.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Navigate to the **Directional/Non-Directional** worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create the calculated fields, as shown in the following table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '| **Name** | **Calculation** | **Notes** |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| `Lookup` | `LOOKUP(SUM([Sales]),-1)` | Notice the `-1` included in this calculation.
+    This instructs Tableau to retrieve the value from the previous row. |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| `Size` | `SIZE()` | The `SIZE` function returns the number of rows in the
+    partition. Therefore, as can be seen in the following screenshot, the size equals
+    the total number of rows. |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| `Window Sum` | `WINDOW_SUM(SUM([Sales]))` | The `Window` `sum` functions
+    (`WINDOW_SUM(expression, [start, end]`) can operate either directionally or non-directionally.
+    Since this example does not include the `[start, end]` option, it operates non-directionally.
+    |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| `Window Sum w/ Start&End` | `WINDOW_SUM(SUM([Sales]),0,1)` | This example
+    of a window function is operating directionally, as can be seen by the inclusion
+    of the `[start, end]` option. |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| `Running Sum` | `RUNNING_SUM(SUM([Sales]))` | By their nature, `RUNNING`
+    functions operate directionally since they consider previous rows in order to
+    compute. |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: Place **Category** and **Ship Mode** on the **Rows** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Double-click on **Sales**, **Lookup, Size**, **Window Sum**, **Window Sum w/
+    Start&End**, and **Running Sum** to populate the view as shown in the following
+    screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.1: Table calculation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The table in *Figure 5.1* shows you that the `Size` function and the `Window
+    Sum` function are the only two non-directional functions. All others present a
+    number depending on the direction. For example, `Lookup` moves down and prints
+    the value prior to the actual field. You can change the direction by clicking
+    on the triangle of any table calculation field and selecting **Edit Table Calculation**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'This first exercise was an example of two table calculation categories: directional
+    and non-directional. Now, we will move on to considering the table calculation
+    functions individually. Regretfully, space does not allow us to explore all table
+    calculations; however, to gain a working understanding, it should suffice to consider
+    all but one of the unique groups of options. The four table calculations that
+    begin with `Script_`, as well as the six `Model_` functions, will be covered in
+    *Chapter 15*, *Integrating Programming Languages*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although I added a real-world scenario at the end of each section in writing,
+    the follow-along exercises focus on demonstrating table calculation functionality
+    and considering how each interacts **directionally** or **non-directionally**
+    with the dataset in the cache (also known as the **partition**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring each unique table calculation function
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The following exercises will show us each table calculation individually; at
+    the end of each section, you will find my thoughts on a real-world scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lookup and Total
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The objectives of the following worksheet are to display those customers who
+    made purchases in the last two days of 2013 and the associated absolute, as well
+    as relative sales for the month of December.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following table, `LOOKUP` behaves directionally whereas `TOTAL` is non-directional.
+    This behavior is easy to notice in the results. Follow these steps in order to
+    do so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **Lookup/Total**
+    worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Drag **Customer Name** and **Order Date** onto the **Rows** shelf. Set **Order
+    Date** to **Month/Day/Year** discrete by right-clicking and selecting **Day**
+    as well as **Discrete**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Place **Order Date** on the **Filters** shelf, choose to view only December
+    2013, and select **Month/Year** as the date format.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create the following calculated fields:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '| **Name** | **Calculation** |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| `Lookup Intervening Time` | `DATEDIFF(''day'',LOOKUP(Max([Order Date]),0),
+    MAKEDATE(2013,12,31))` |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| `% Total Sales` | `SUM(Sales)/TOTAL(SUM([Sales]))` |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: Right-click on **% Total Sales** and select **Default Properties** | **Number
+    format** to set the number format to percentages with two decimal places.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Place **Lookup Intervening Time** on the **Filters** shelf and choose a range
+    from 0 to 1.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Double-click on **Sales** and **% Total Sales** to place both fields on the
+    view.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Format as desired:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.2: Total Sales'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s consider how the preceding worksheet functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The filter on **Order Date** ensures that the dataset returned to Tableau only
+    includes data from the month of December 2013.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **% Total Sales** `SUM(Sales)/TOTAL(SUM([Sales]))` includes the `TOTAL(SUM([Sales]))`
+    calculated field, which returns the total sales for the entire dataset. Dividing
+    `SUM([Sales])` by this total returns the percentage of the total.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Lookup** **Intervening** **Time**: `DATEDIFF(''day`, `LOOKUP(Max([Order`
+    `Date])`,`0)`, `MAKEDATE (2013,12,31))` will return an integer that reflects the
+    difference between the date returned by the `LOOKUP` function and **12/31/2013**.
+    Note that the `LOOKUP` function has an offset of zero. This results in each row
+    returning the date associated with that row. This differs from directional and
+    non-directional table calculations, which include a `LOOKUP` function with an
+    offset of -1, which causes each row in the view to return data associated with
+    the previous row.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: At first glance, you might think that you could simplify this workbook by removing
+    **Lookup Intervening Time** from the **Filters** shelf and adjusting the filter
+    on `[Order Date]` to display only the last two days of December. However, if you
+    do this, **% Total Sales** will add up to 100% across all rows in the view, which
+    would not satisfy the workbook’s objectives. Think of **Lookup Intervening Time**
+    as not filtering but hiding all but the last two days in December. This hiding
+    ensures that the data necessary to calculate **% Total Sales** is in the dataset
+    in cache/partition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Real-world scenario: I use **Lookup** more often than **Total**. And both are
+    invaluable when working with Tableau. We already saw that you use lookup for changes;
+    you can think of a month-to-month comparison of profits, the number of employees
+    today versus today last year, website click differences per day of the week, and
+    so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the table calculation total, you can use it every time you want to show
+    the total number of something while still showing some level of aggregation in
+    your dashboard. The percentage of **Total** in *Figure 5.2* is actually the perfect
+    example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Previous Value
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The objectives of the following worksheet are to return the aggregate value
+    of sales for each year and set next year’s sales goal. Note that two options have
+    been provided for determining next year’s sales goal in order to demonstrate how
+    `PREVIOUS_VALUE` differs from `LOOKUP`. Also, note that `PREVIOUS_VALUE` behaves
+    directionally.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let us have a look at the steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **Previous Value**
+    worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create the following calculated fields:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '| **Name** | **Calculation** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Next Year Goal Prv_Val` | `PREVIOUS_VALUE(SUM([Sales])) * 1.05` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Next Year Goal Lkup` | `LOOKUP(SUM([Sales]),0) * 1.05` |'
+  prefs: []
+  type: TYPE_TB
+- en: Place **Order Date** on the **Rows** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Double-click **Sales** and **Next Year Goal Prv_Val** to place each on the view.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Format as desired, or as seen in the following screenshot (by dragging the
+    piles in **Measure Values**, the order will change accordingly in the view, as
+    seen in the following screenshot):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated with medium confidence](img/B18435_05_03.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.3: Next year'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s consider how the preceding worksheet functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Next Year Goal Prv_Val**: `PREVIOUS_VALUE(SUM([Sales])) *1.05` is applied
+    in this worksheet, which retrieves the results from each previous row and adds
+    5%. In other words, the goal is a steady-state growth rate of 5% per year over
+    all years.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Next Year Goal Lkup**: `LOOKUP(SUM([Sales]),0) * 1.05` is also applied to
+    this worksheet; this calculation adds 5% to the current year’s sales. In other
+    words, the goal for next year is for sales that are 5% greater than this year.
+    Previous years are not considered.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To better understand this exercise, consider the values associated with **2014**
+    in the preceding screenshot. **Next Year Goal Prv_Val** is calculated via **2013
+    Next Year Goal Prv_Val**; that is, **$560,577 * 1.05**. On the other hand, **Next
+    Year Goal Lkup** is calculated via the **2014** sales; that is, **$733,947 * 1.05**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Real-world scenario: imagine you want to extrapolate a data point and keep
+    extrapolating from that new value; for this, you use **Previous_Value**. One example
+    is a bond that pays a frequent coupon. If your bond has a face value of 100 and
+    it pays a 4% semi-annual coupon, you can calculate the final worth of the bond
+    by using **Previous_Value**, just like we did with the **Next Year Goal Prv_Val**
+    in the last exercise.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The objective of the following worksheet is to display the running minimum profit,
+    running average profit, and running maximum profit compared with **SUM(Profit)**
+    for each month in the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following example demonstrates how the `Running` functions behave directionally:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **Running** worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create the following calculated fields:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '| **Name** | **Calculation** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Running Min` | `RUNNING_MIN(SUM([Profit]))` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Running Max` | `RUNNING_MAX(SUM([Profit]))` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Running Avg` | `RUNNING_AVG(SUM([Profit]))` |'
+  prefs: []
+  type: TYPE_TB
+- en: Place **Order Date** on the **Columns** shelf and set it to **Month/Year** continuous.
+    Place **Measure Values** on the **Rows** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Remove all instances of measures from the **Measure Values** shelf except for
+    **Running Min**, **Running Max**, **Running Avg**, and **Profit**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Move **SUM(Profit)** from the **Measure Values** shelf to the **Rows** shelf.
+    Right-click on **SUM(Profit)** and select **Dual Axis**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Format as desired.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let’s consider how the preceding worksheet functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Running Min**: `RUNNING_MIN(SUM([Profit]))` is visible in the preceding screenshot,
+    which compares the current **SUM(Profit)** with the least **SUM(Profit)** recorded
+    to that point in time. If the current **SUM(Profit)** is less than the least **SUM(Profit)**
+    recorded to date, the current **SUM(Profit)** replaces the least **SUM(Profit)**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Running Max**: `RUNNING_MAX(SUM([Profit]))` operates similarly to **Running
+    Min**, except of course it looks for maximum values.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Running Avg**: `RUNNING_AVG(SUM([Profit]))` calculates the average **SUM(Profit)**
+    based on every month to the current month.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Real-world scenario: again, there are plenty of examples for this table calculation.
+    Think about year-to-date profits, population numbers based on childbirth (do not
+    forget to subtract the deaths), the current number of open support tickets, and
+    many more.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Window
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The objective of the following worksheet is to display a directional instance
+    of a `WINDOW` function and a non-directional instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Please follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **Window** worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create the following calculated fields:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '| **Name** | **Calculation** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Win Avg Directional` | `WINDOW_AVG(SUM([Profit]),-2,0)` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Win Avg Non-Directional` | `WINDOW_AVG(SUM([Profit]))` |'
+  prefs: []
+  type: TYPE_TB
+- en: Place **Order Date** on the **Columns** shelf and set it to **Month/Year** continuous.
+    Place **Measure Values** on the **Rows** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Remove all instances of measures from the **Measure Values** shelf except **Win
+    Avg Directional**, **Win Avg Non-Directional**, and **Profit**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: From the **Data** pane, drag another instance of **Profit** onto the **Rows**
+    shelf. Right-click on the instance of **Profit** on the **Rows** shelf and select
+    **Quick Table Calculation** | **Moving Average**. Right-click on the instance
+    of **Profit** on the **Rows** shelf and select **Dual Axis**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Right-click on the axis labeled **Moving Average of Profit** and select **Synchronize
+    Axis**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Format as desired, or as seen in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.4: Window'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s consider how the preceding worksheet functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Win Avg Directional**: `Window_AVG(SUM([Profit]),-2,0)` has a start point
+    of -2 and an endpoint of 0, which signifies that Tableau will create a point based
+    on the average of the `SUM([Profit])` calculated on the current month and the
+    previous two months. Changing the `0` to `2` would cause the average of each point
+    to be calculated on the previous 2 months, the current month, and the next 2 months.
+    Double-click on the instance of **Profit** on the **Rows** shelf to view the underlying
+    code. (This is the instance of **Profit** that was changed into a table calculation
+    by right-clicking and selecting **Quick Table Calculation** | **Moving Average**.)
+    Note that the calculation is identical to the code created for **Win Avg Directional**.
+    However, if you right-click on both pills and select **Edit Table Calculation**,
+    you will notice that the resulting dialog boxes differ. The dialog box associated
+    with **Profit** has more options, including the ability to change the previous
+    and next values. Changing the previous and next values for **Win Avg Directional**
+    requires adjusting the calculated field.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Win Avg Non-Directional**: `WINDOW_AVG(SUM([Profit]))` is associated with
+    the horizontal line across the view. Note that it is not dependent on direction.
+    Instead, it is a single value generated by the average of all aggregated **Profit**
+    values in the dataset in the cache/partition and will therefore be the same no
+    matter the order of the data points.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Real-world scenario: why would you want to use a window average? Because you
+    want to smoothen the outliers, for example. A window average provides a steady
+    representation of your data. Single highs or lows will be removed. If you analyze
+    stock prices, you will notice that prices can differ throughout the year! By using
+    the window averages or rather window standard deviations as an early warning indicator,
+    you will be able to see price jumps more clearly and can, as an investor, act
+    upon it. Steady growth or decline will, however, fall into the moving bands. This
+    is not achievable by using fixed bands.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First and Last
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The objective of the following worksheet is to display the first and last instance
+    of the best-selling item in the `Superstore` dataset. Notice how the following
+    example demonstrates that the `FIRST` and `LAST` functions behave directionally.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Take the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **First/Last**
+    worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create the following calculated fields:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '| **Name** | **Calculation** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `First` | `FIRST()` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Last` | `LAST()` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `First or Last` | `FIRST() = 0 OR LAST() = 0` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Place **Product Name** on the **Filters** shelf, select the **Top** tab, and
+    choose **Top** **1** by **Sum** of **Sales**, as shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.5: Top filter'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Place **First or Last** on the **Filters** shelf and select **True** in the
+    resulting dialog box.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Drag **Product Name**, **Order Date**, and **Row ID** onto the **Rows** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Order Date** to **Month/Day/Year** discrete.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Double-click on **Sales**, **First**, and **Last** to place each on the view.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Right-click on **First**, **Last**, and **First or Last** and select **Compute
+    Using** | **Table (down)**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Format as desired:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.6: First and Last'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s consider how the preceding worksheet functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**First**: `FIRST()` starts at **0** and counts down to the last row of the
+    dataset in the cache. In the preceding screenshot, note that the first instance
+    of **Canon imageCLASS** occurs on **05/24/13**. The fact that `FIRST()` ranges
+    from **0** to **-4** communicates that there are five instances of **Canon imageCLASS**
+    in the dataset in the cache or within the window cache.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Last**: `LAST()` starts at the last row of the dataset in the cache and counts
+    down to 0\. In the preceding screenshot, note that the last instance of **Canon
+    imageCLASS** occurs on **11/18/14**. The fact that `LAST()` ranges from **4**
+    to **0** communicates that there are five instances of **Canon imageCLASS** in
+    the dataset in the cache.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**First or Last**: `FIRST() = 0 OR LAST() = 0`, when placed on the **Filters**
+    shelf and set to **True**, hides all instances of matching rows except the first
+    and last.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **Row ID** field is included in the view to make sure that the very first
+    and last instances of **Canon imageCLASS** display. Otherwise, if there are multiple
+    instances of **Canon imageCLASS** on the first or last date, the sales numbers
+    will reflect multiple values. It’s important to set **Compute Using** to **Table
+    (down)** for each table calculation in the view. **Compute Using** is the same
+    as **Addressing**, which will be discussed in detail in the *Application of functions*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Real-world scenario: you could use this type of calculation for the time between
+    the last 5 orders per quarter, to see whether the time between orders is increasing
+    or decreasing during the day. This can then help to improve marketing or schedule
+    help desk hours more efficiently.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Index
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The objective of the following worksheet is to list those states in the USA
+    with over 50 postal codes represented in the underlying dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice how the following example demonstrates that the `INDEX` function behaves
+    directionally and can be seen as a count of rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **Index** worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set the **Marks** card to **Circle**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Place **State** on the **Rows** shelf and **Postal Code** on the **Detail**
+    shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a calculated field named **Index** with the code: `INDEX()`. Drag **Index**
+    onto the **Filters** shelf and select the **Range of values** filter. Choose to
+    view only values that are 50 or greater by moving the slider to a minimum value
+    of **50**.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Right-click on **Index** and select **Edit Table Calculation**. Select**Specific
+    Dimensions** and check **Postal Code**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.7: Index'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Select **Analysis** | **Stack Marks** | **Off**, then review:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.8: Final index'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s consider how the preceding worksheet functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Index**: `INDEX()` counts from 1 to *n*. As such, it behaves directionally.
+    In this case, as a result of the partitioning and addressing settings, **Index**
+    is counting postal codes. (Partitioning and addressing will be discussed in detail
+    in the *Application of functions* section.) Setting the **Index** filter to display
+    only values of 50 or more ensures that only those states with 50 or more postal
+    codes are in the partition/dataset in the cache display.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Real-world scenarios: most often, I use **Index** interchangeably with **First**
+    and **Last**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rank
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The objective of the following worksheet is to display the top three selling
+    items in each region. This example will demonstrate how `RANK` interacts directionally
+    with the dataset in the cache:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **Rank** worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Place **Product Name** on the **Filters** shelf, select the **Top** tab, and
+    choose **Top 3** by **Sum**of **Sales**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_09.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.9: Filter'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Place **Region** and **Product Name** on the **Rows** shelf and **Sales** on
+    the **Columns** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Note that only two items display for each region:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_10.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.10: Reviewing the top two items'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a calculated field named **Rank** with the code `Rank(SUM(Sales))`. Drag
+    **Rank** between **Region** and **Product Name** onto the **Rows** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note that before you can place **Rank** between the two pills on the **Rows**
+    shelf, you have to cast it as discrete. One way to accomplish this is by placing
+    **Rank** on the **Detail** shelf, right-clicking on the pill, and selecting **Discrete**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Right-click on **Rank** and select **Compute Using** | **Product Name**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Remove **Product Name** from the **Filters** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Press *Ctrl* (or press *Option* on Mac), and right-click and drag **Rank** from
+    the **Rows** shelf onto the **Filters** shelf. Pressing the *Ctrl* key while dragging
+    a pill from one shelf to another will create a copy of that pill. Failing to press
+    the *Ctrl* key will, of course, simply result in moving the pill. In the resulting
+    dialog box, select **1**, **2**, and **3**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Format as desired:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_11.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.11: Rank'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s consider how the preceding worksheet functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you followed the step-by-step instructions for this exercise, you will have
+    noticed that after placing **Region** and **Product Name** on the **Rows** shelf
+    and filtering to show only the top three product names, the resulting visualization
+    only showed two products in each region. This is because the filter on **Product
+    Name** showed the top three products overall, but it so happened that two out
+    of the three were always present in each region. But we actually wanted to show
+    the top three per region rather than overall. To fix this issue, we employed the
+    `Rank` table calculation function.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s understand how this works. Instead of writing the `Rank(Sum(Sales))` function,
+    the same code will be automatically generated by right-clicking on an instance
+    of **Sales** on any shelf and selecting **Quick Table Calculation** | **Rank**.
+    Note that **Rank** is counting the product names within each region. This demonstrates
+    that the **Rank** table calculation operates directionally on the dataset in the
+    cache/partition.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Real-world scenario: I use **Rank** when I want to filter a continuously changing
+    view, divided into subsections – for example, the last three comments on each
+    of my blog posts. Or when I want to show behavior over time, for example, the
+    top 10 ranked products over the course of 2 years. This will result in a bump
+    chart.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Size
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The objective of the following worksheet is to display all states with five
+    or fewer cities in the **Superstore** dataset. This example will demonstrate how
+    `SIZE` utilizes the entire partition/dataset in the cache and is thus non-directional.
+    We will also use the `FIRST` table calculation function, which is directional,
+    in order to clean up the view.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Please follow along with the steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **Size** worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Analysis** | **Stack Marks** to **Off**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create the following calculated fields:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '| **Name** | **Calculation** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Size` | `SIZE()` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `City Count` | `IF FIRST() = 0 THEN [Size] ELSE NULL``END` |'
+  prefs: []
+  type: TYPE_TB
+- en: Drag **State** onto the **Rows** shelf, **City** onto the **Detail** shelf,
+    **City Count** onto the **Text**/**Label** shelf, and **Size** onto the **Detail**
+    shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Right-click on the **Size** filter and select **Compute Using** | **City**.
+    Move **Size** from the **Marks** card to the **Filters** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the resulting dialog box, select an **At most**value of **5**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_12.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.12: At most'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Marks**card, right-click on **City Count** and select **Edit Table
+    Calculation**. Under **Nested Calculations**, select **City Count**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Select **Compute Using** | **Specific Dimensions** and check **City**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_13.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.13: Specific Dimensions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now use the dropdown under **Nested Calculations** again and select **Size**.
+    Then, select **Compute Using** | **Specific Dimensions** and check **City**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Observe the final view:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_14.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.14: Final worksheet'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s consider how the preceding worksheet functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Size**: `Size()` generates a single number, for example, 3 for Delaware,
+    based on the partition/dataset in the cache. That number can change depending
+    on the partitioning and addressing settings but does not change based on movement
+    across the partition. As such, it behaves non-directionally.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**City Count**: The `IF FIRST() = 0 THEN LOOKUP([Size],0) ELSE NULLEND` field
+    is not strictly necessary. You could, instead, simply place **Size** on the **Text**/**Label**
+    shelf. However, if you do so, you will note that the numbers in the view will
+    look bold. This occurs because the numbers are actually repeated and then layered
+    on top of each other. Utilizing `FIRST() = 0` causes only one set of numbers to
+    display.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note that the preceding exercise had an option for **Nested Calculations**,
+    which is because the `Size` calculated field was referenced within the `City Count`
+    calculated field.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Real-world scenario: **Size** is probably the least used. I honestly do not
+    think I ever used it other than explaining and showcasing it. But what I saw others
+    do with **Size** is the following; by turning on the grand total column view,
+    **Size** can generate a non-default aggregation like standard deviation. Simply
+    use this formula: `if size()=1 then sum({STDEV([Sales])}) else sum([Sales]) end`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you cannot get enough of table calculation, here are some more scenarios:
+    [https://www.tableau.com/blog/top-10-tableau-table-calculations](https://www.tableau.com/blog/top-10-tableau-table-calculations).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have presented the different table calculations, we will see how
+    they can be manipulated in the partitioning (scope) and addressing (direction)
+    of calculations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Application of functions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'So far, we have covered the first of our two major questions: *What is the
+    function?* Now we will proceed to the next question: *How is the function applied?*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s try to understand that question via the following three options, which
+    are all applications of the `INDEX` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application, Teams  Description automatically generated](img/B18435_05_15.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.15: Applications'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `INDEX` function is used in each of these three screenshots; however, it
+    is applied differently in each. The first and second screenshots both display
+    **1**, **2**, and **3**, but differ directionally. The third screenshot ranges
+    from **1** to **9**. So, how is `INDEX` being applied in each case?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Answering this question can be confusing because Tableau uses different terminology.
+    Within Tableau itself, the way a table calculation is applied may be referred
+    to as running along, moving along, compute using, or **partitioning (scoping)**
+    and **addressing (direction)**. For our purposes, we will utilize the terms partitioning
+    and addressing, which we will define here according to the Tableau documentation
+    ([https://help.tableau.com/current/pro/desktop/en-us/calculations_tablecalculations.htm](https://help.tableau.com/current/pro/desktop/en-us/calculations_tablecalculations.htm)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dimensions that define how to group the calculation, that is, define the
+    scope of data it is performed on, are called partitioning fields. The table calculation
+    is performed separately within each partition. The remaining dimensions, upon
+    which the table calculation is performed, are called addressing fields, and determine
+    the direction of the calculation.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: This basically means that the partition defines which fields are being used,
+    for example, `Segment`. If you have three segments divided over three categories,
+    you could look at each combination separately, all categories within one segment,
+    or all segments within one category. The way you look at it is what Tableau calls
+    addressing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If a table calculation is utilized in the view, you can right-click on it and
+    select **Edit Table Calculation**. Upon doing so, you will see a dialog box that
+    will allow you to choose specific dimensions. If a dimension is checked, it is
+    addressed. If it is unchecked, it is partitioned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'See an example in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_16.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.16: Addressing and partitioning'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Tableau provides many out-of-the-box partitioning and addressing settings,
+    including **Table (down)**, **Table (across)**, **Pane (down)**, and **Cell**.
+    We will reference these options occasionally but will not give a detailed review.
+    This leads us to our first partitioning and addressing guideline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do not use the out-of-the-box partitioning and addressing settings provided
+    by Tableau, including **Table** (across) and **Pane** (down). Force yourself to
+    click **Specific Dimensions** and manually define the partitioning and addressing
+    so that you clearly understand how every table calculation is applied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are a couple of caveats to the preceding guideline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is an exception, which is **Cell**. It is not possible to address individual
+    cells in a view using partitioning and addressing. Instead, it is necessary to
+    use **Compute Using** as **Cell** or, within the **Table Calculation** dialog
+    box, to select **Cell**. Surprisingly, addressing a table calculation along each
+    cell can be useful. An example is provided in the workbook associated with this
+    chapter, on the worksheet **Percent of Total**. There it is used to show 100%
+    for each cell divided into two categories.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If you set partitioning and addressing for a given table calculation and then
+    add dimensions to the view, usually, Tableau will not automatically adjust the
+    partitioning and addressing settings; they are locked down. However, when using
+    **Table (down)**, **Pane (across)**, and the like, Tableau will make automatic
+    adjustments as dimensions are added to the view.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This leads us to our next guideline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Place all needed dimensions on the desired shelves *before* setting partitioning
+    and addressing for table calculations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Following these guidelines will help ensure that you are always clear about
+    how your table calculations are being applied. It might take longer in the first
+    place, but ultimately, you’ll be more in control of table calculations and can
+    develop faster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building a playground
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let us set up a simple playground environment to quickly and efficiently explore
+    partitioning and addressing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the workbook associated with this chapter, navigate to the **Playground**
+    worksheet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Place **Category** on the **Rows** shelf and the **Index** calculation on the
+    **Label** shelf.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The **Index** calculation is simply `Index()`. Click on the drop-down menu associated
+    with **Index** and select **Edit Table Calculation**. In the resulting dialog
+    box, click **Specific Dimensions**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Position the screen components optimally. See the following screenshot for
+    one possible setup:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B18435_05_17.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.17: Building a playground'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see in *Figure 5.17* that we created a worksheet displaying the three
+    categories **Furniture**, **Office Supplies**, and **Technology**. By adding the
+    **Index** field to the **Text** shelf, we have the minimum requirement to use
+    a table calculation, which is one dimension and one table calculation. Now we
+    can change the compute used in the table calculation and can spot what changes
+    in the visualization. Later on, we will explore more complex examples; however,
+    always start easy and increase the level of complexity slowly to fully understand
+    what is happening.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following pages, we will utilize our playground extensively and modify
+    it as necessary. However, for the sake of efficiency, we will need to keep the
+    focus on the playground and the accompanying discussion narrow. The discussion
+    will be confined to dimensions on the **Rows** and **Columns** shelves and the
+    `INDEX` function on the **Text** shelf.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We could explore different functions on various shelves and the different options
+    that they afford. For instance, placing a date field on the **Pages** shelf will
+    cause a table calculation that uses the `TOTAL` function to display an option
+    to compute the total across all pages. Regretfully, exploring every possible nuance
+    is simply not possible in one chapter, but if you are interested in this topic,
+    feel free to check out the Tableau help page for more content and examples: [https://help.tableau.com/current/pro/desktop/en-us/functions_functions_tablecalculation.htm](https://help.tableau.com/current/pro/desktop/en-us/functions_functions_tablecalculation.htm).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Partitioning and addressing with one dimension
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let us use our playground to start exploring partitioning and addressing with
+    the simplest possible example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_18.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.18: Compute Using | Category'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this simple example, addressing **Category** causes each member of the **Category**
+    dimension to be counted. This demonstrates that addressing a dimension determines
+    the direction of the calculation. In our example, we have the **Table Calculation**
+    **Index**, but **Index** depends on partitioning and addressing as we learned
+    before. **Category** serves as a partition in the **Rows** shelf. We split the
+    data into three: **Furniture**, **Office** **Supplies**, and **Technology**. Now
+    we also say address **Category** for the **Table Calculation**. We did that by
+    selecting **Category** from **Compute Using** (*Figure 5.18*). Now the **Table
+    Calculation** will be applied to the categories and hence counts 1, 2, 3 categories.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you were to select **Compute Using** | **Cell**, the partition into three
+    categories would still remain in the view—you would still see **Furniture**, **Office
+    Supplies**, and **Technology**—but the counting would happen per cell and not
+    for the whole **Category** dimension. Hence, the **Index** will count 1, then
+    move to the next cell and count 1, then the next cell and again count 1:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_19.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.19: Compute Using | Cell'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let us consider partitioning and addressing with not one but two dimensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Partitioning and addressing with two dimensions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Two additional options are made available when partitioning and addressing
+    two or more dimensions: **At the level** and **Restarting every**. You can compare
+    this scenario to the task of counting all countries per continent. In this scenario,
+    **At the level** will be countries since you are not counting streets or trees
+    but countries. **Restarting** will be continents. After you are done counting
+    countries for one continent, you start at 1 again for the next continent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_20.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.20: Two dimensions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both **At the level** and **Restarting every** allow the author to choose dimensions
+    from a drop-down menu. **At the level** allows the author to choose what level
+    to increment at, and as the name suggests, **Restarting every** allows the author
+    to choose which dimensions to restart on. The examples here will provide context
+    for your understanding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that **At the level** has one additional choice: **Deepest**. In this
+    case, setting **At the level** to **Deepest** is the same as selecting **Ship
+    Mode**. This leads us to our next guideline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is not necessary to choose the bottom dimension in the **At the level** drop-down
+    menu. It is always identical to **Deepest**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To recreate the iterations listed here, you will need to make some changes to
+    the playground environment. In addition to **Category** on the **Rows** shelf
+    and **Index** on the **Label** shelf, also place **Ship Mode** on the **Rows**
+    shelf. We will not cover iterations that include one or more dimensions on the
+    **Columns** shelf since the behavior of these possibilities is much the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you consider and/or reproduce the following options, note that the **Addressing**
+    order is important. For examples 3-5, **Category** is first on the addressing
+    list. For options 6-8, **Ship Mode** is first on the list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the first example, configure the partitioning and addressing settings thus:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_21.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.21: Example 1'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we count the **Ship Mode** per **Category**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the second example, configure the partitioning and addressing settings thus:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_22.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.22: Example 2'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, we count the **Category** per **Ship Mode**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the third example, configure the partitioning and addressing settings thus:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Category**, **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_23.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.23: Example 3'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This time, we count the **Category** and **Ship Mode** combination.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the fourth example, configure the partitioning and addressing settings thus:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Category**, **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_24.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.24: Example 4'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we count the combination **Category** and **Ship Mode** and restart counting
+    at every new **Category**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the fifth example, configure the partitioning and addressing settings thus:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Category**, **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_25.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.25: Example 5'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We count the combination **Category** and **Ship Mode** that appears at the
+    **Category** level. Since the **Category** level is higher in the hierarchy than
+    **Ship Mode**, we end up counting only one value per **Category**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the sixth example, configure the partitioning and addressing settings thus:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**, **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_26.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.26: Example 6'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We count the combination **Ship Mode** and **Category** at the **Ship Mode**
+    level; hence, we count **First Class** and all the **Category** combinations with
+    it before **Same Day** and its combinations with **Category**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the seventh example, configure the partitioning and addressing settings
+    thus:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**, **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_27.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.27: Example 7'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We count the **Ship Mode** and **Category** combinations at the deepest level
+    but we restart at every **Ship Mode**; therefore, we count **First Class** and
+    **Furniture**, **First Class** and **Office Supplies**, then **First Class** and
+    **Technology**. Then, we move on to **Same Day** and its combinations, restarting
+    at 1 again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the eighth example, configure the partitioning and addressing settings thus:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**, **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_28.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.28: Example 8'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We count the **Ship Mode** and **Category** combinations at the **Ship Mode**
+    level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s consider some of the possibilities presented here in more detail.
+    Some of the options are identical. In fact, out of the nine options, only four
+    are unique. Let’s consider examples 1, 4, and 8, all of which have identical end
+    results. Does this mean that each is truly identical? Options 1 and 4 are identical.
+    Option 8, however, is slightly different. To understand this, note the description
+    within the table calculation dialog box for option 8:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application  Description automatically generated](img/B18435_05_29.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.29: Index'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The description in example 8 reads **Results are computed along Ship Mode,
+    Category** (see *Figure 5.29*). The text in the description box for example 1
+    is identical to that for example 4: **Results are computed along Ship Mode for
+    Category**, which can be translated as partitioning **Category** and addressing
+    **Ship Mode**. This translation is identical to the actual partitioning/addressing
+    setup accomplished in example 1\. Therefore, examples 1 and 4 are identical. But
+    does the slight difference to example 8 mean there are practical differences?
+    No!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Example 6 may seem confusing at first. Why has the odd numbering sequence occurred?
+    Because the order in which the dimensions are addressed differs from the order
+    of dimensions on the **Rows** shelf. The addressing order is **Ship Mode**, **Category**.
+    The order on the **Rows** shelf is **Category**, **Ship Mode**. Simply reversing
+    the position of **Category** and **Ship Mode** on the **Rows** shelf and noting
+    the change in the number sequence should help dispel any confusion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B18435_05_30.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.30: Switch dimensions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Is there any practical use for example 6? Yes. From time to time, it may be
+    necessary to address dimensions in a different order than they are listed on a
+    shelf. But this is not usually the case. This leads us to our next guideline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When addressing multiple dimensions for a table calculation, the order of addressing
+    will usually reflect the order of dimensions on the **Rows** and/or **Columns**
+    shelves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Partitioning and addressing with three dimensions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let us add another dimension to our playground and reorder things slightly.
+    Place **Category** and **Region** on the **Rows** shelf and **Ship Mode** on the
+    **Columns** shelf. **Index** should remain on **Text** in the **Marks** shelf.
+    Also, add two filters. Filter **Region** to **East**, **South**, and **West**.
+    Filter **Ship Mode** to **First Class**, **Second Class**, and **Standard Class**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When partitioning and addressing three dimensions, the number of possible iterations
+    jumps to 57; however, only 14 of these are unique. Here is a listing of those
+    unique possibilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember, addressing means selecting the dimensions in the table calculation
+    settings while partitioning is the de-selection of dimensions, as described in
+    *Figure 5.17*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the first example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Category**, **Region**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_31.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.31: Example 1'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we count the different **Ship Modes** per **Category** and **Region**
+    combinations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the second example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Category**, **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Region**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_32.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.32: Example 2'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the different **Regions** per **Category** and **Ship Mode** combinations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the third example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Region**, **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_33.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.33: Example 3'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the different **Category** options per **Region** and **Ship Mode**
+    combinations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the fourth example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Region**, **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_34.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.34: Example 4'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the different **Category** options per **Region** and **Ship Mode**
+    combinations at the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the fifth example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**, **Region**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_35.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.35: Example 5'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we count the different **Category** options per **Ship Mode** and **Region**
+    combinations at the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the sixth example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Region**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Category**, **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_36.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.36: Example 6'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we count the different **Regions** per **Category** and **Ship Mode**
+    combinations at the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the seventh example, configure the partitioning and addressing settings
+    as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Category**, **Region**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_37.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.37: Example 7'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the different **Ship Modes** per **Category** and **Region** combinations
+    at the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the eighth example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Region**, **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_38.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.38: Example 8'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the different **Ship Modes** per **Region** and **Category** combinations
+    at the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the ninth example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Category**, **Ship Mode**, **Region**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_39.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.39: Example 9'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the **Category**, **Ship Mode**, and **Region** combinations at
+    the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the tenth example, configure the partitioning and addressing settings as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**, **Category**, **Region**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_40.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.40: Example 10'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the **Ship Mode**, **Category**, and **Region** combinations at
+    the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the eleventh example, configure the partitioning and addressing settings
+    as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**, **Category**, **Region**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_41.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.41: Example 11'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the **Ship Mode**, **Category**, and **Region** combinations at
+    the **Category** level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the twelfth example, configure the partitioning and addressing settings
+    as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**, **Region**, **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_42.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.42: Example 12'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the **Ship Mode**, **Region**, and **Category** combinations at
+    the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the thirteenth example, configure the partitioning and addressing settings
+    as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Ship Mode**, **Region**, **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **Ship Mode**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_43.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.43: Example 13'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here we count the **Ship Mode**, **Region**, and **Category** combinations at
+    the deepest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the fourteenth example, configure the partitioning and addressing settings
+    as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Partitioning**: -'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Addressing**: **Region**, **Ship Mode**, **Category**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**At the level**: **Deepest**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restarting every**: **None**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This will produce the following visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B18435_05_44.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.44: Example 14'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will not address the various instances of these possibilities. Instead, the
+    reader is encouraged to recreate these 14 possibilities in Tableau to solidify
+    their understanding of partitioning and addressing. Even better, consider recreating
+    all 57 possible iterations and working to understand how Tableau produces each
+    result. The process may be tedious, but the resulting understanding is invaluable,
+    allowing the user to understand the things that Tableau is doing in the background
+    when computing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Guidelines: a reminder'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Throughout this chapter, I laid out a series of partitioning and addressing
+    guidelines. Here they are again as a quick reminder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do not use the out-of-the-box partitioning and addressing settings provided
+    by Tableau, including **Table** (across) and **Pane** (down). Force yourself to
+    click **Specific Dimensions** and manually define the partitioning and addressing
+    so that you clearly understand how every table calculation is applied.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Place all needed dimensions on the desired shelves *before* setting partitioning
+    and addressing for table calculations.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is not necessary to choose the bottom dimension in the **At the level** drop-down
+    menu. It is always identical to **Deepest**.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When addressing multiple dimensions for a table calculation, the order of addressing
+    will usually reflect the order of dimensions on the **Rows** and/or **Columns**
+    shelves.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we explored the inner workings of table calculations. We began
+    by considering what the partition and direction of a table calculation are. In
+    the thereafter following sections, we distinguished directional and non-directional
+    addressing of table calculations, which eventually lead us to the **Edit Table
+    Calculation** interface, and we identified it as the place to change partition
+    and addressing (also called the scope and direction). As we explored, we surveyed
+    each unique group of table calculation functions except for the `Script_` and
+    `Model_` functions, which will be covered in more detail in *Chapter 15*, *Integrating
+    Programming Languages*. We learned how to apply these functions to a view through
+    partitioning and addressing, where partitioning can be seen as the scope and addressing
+    as the direction of the calculation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have seen examples where we compared measures over different time periods,
+    like weekly profit numbers, or comparing a part to the whole. We continued by
+    considering standard deviation bands for stock price alerts, as well as the **Rank**
+    function to produce a bump chart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the knowledge of partitioning and addressing we gained in this chapter,
+    in the next chapter, we will go on to explore data densification and big data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learn more on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To join the Discord community for this book – where you can share feedback,
+    ask questions to the author, and learn about new releases – follow the QR code
+    below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/tableau](https://packt.link/tableau)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/QR_Code2044012316175764640.png)'
+  prefs: []
+  type: TYPE_IMG

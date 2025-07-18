@@ -1,0 +1,1410 @@
+- en: Convolutional Neural Networks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we will cover one of the most popular and widely used deep
+    neural networks—the **convolutional neural network** (**CNN**, also known as **ConvNet**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is this class of neural networks that is largely responsible for the incredible
+    feats that have been accomplished in computer vision over the last few years,
+    starting with AlexNet, created by Alex Krizhevsky, Geoffrey Hinton, and Ilya Sutskever, which
+    outperformed all the other models in the 2012 **ImageNet Large Scale Visual Recognition
+    Challenge** (**ILSVRC**), thus beginning the deep learning revolution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ConvNets are a very powerful type of neural network for processing data. They
+    have a grid-like topology (that is, there is a spatial correlation between neighboring
+    points) and are tremendously useful in a variety of applications, such as facial
+    recognition, self-driving cars, surveillance, natural language processing, time-series
+    forecasting, and much more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start by introducing the basic building blocks of ConvNets and introduce
+    some of the architectures used in practice, such as AlexNet, VGGNet, and Inception-v1,
+    as well as exploring what makes them so powerful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following topics will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The inspiration behind ConvNets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Types of data used in ConvNets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Convolutions and pooling
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with the ConvNet architecture
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Training and optimization
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploring popular ConvNet architectures
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The inspiration behind ConvNets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: CNNs are a type of **artificial neural network** (**ANN**); they are loosely
+    inspired by the concept that the human visual cortex processes images and allows
+    our brains to recognize objects in the world and interact with them, which allows
+    us to do a number of things, such as drive, play sports, read, watch movies, and
+    so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It has been found that computations that somewhat resemble convolutions take
+    place in our brains. Additionally, our brains possess both simple and complex
+    cells. The simple cells pick up basic features, such as edges and curves, while
+    the complex cells show spatial invariance, while also responding to the same cues
+    as the simple cells.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Types of data used in ConvNets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: CNNs work exceptionally well on visual tasks, such as object classification
+    and object recognition in images and videos and pattern recognition in music,
+    sound clips, and so on. They work effectively in these areas because they are
+    able to exploit the structure of the data to learn about it. This means that we
+    cannot alter the properties of the data. For example, images have a fixed structure
+    and if we were to alter this, the image would no longer make sense. This differs
+    from ANNs, where the ordering of feature vectors does not matter. Therefore, the
+    data for CNNs is stored in multidimensional arrays.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In computers, images are in grayscale (black and white) or are colored (RGB),
+    and videos (RGB-D) are made of up pixels. A pixel is the smallest unit of a digitized
+    image that can be shown on a computer and holds values in the form of [0, 255].
+    The pixel value represents its intensity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the pixel value is `0`, then it is black, if it is `128`, then it is gray,
+    and if it is `255`, then it is white. We can see this in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/1da385c7-7e21-4267-8850-fd52ccd2d275.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As we can see, grayscale images only require 1 byte of data, but colored images,
+    on the other hand, are made up of three different values—red, blue, and green—since
+    any color can be shown using a combination of these three colors. We can see the
+    colorspace in the following diagram (refer to the color diagram from the graphic
+    bundle):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/10f3ac5f-ca77-4c5b-8ef9-bf25960f2553.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Depending on where in the cube we are, we clearly get a different color.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of looking at it as a cube or varying color intensities, we can look
+    at it as having three separate channels—red, blue, and green. Then, each pixel
+    requires 3 bytes of storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, we cannot see the individual pixels in the images and videos that
+    we see on our monitors because they have a very high resolution. This can vary
+    greatly, but the pixels are usually between several hundred to several thousands
+    of **dots** (pixels) **per inch** (**dpi**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: A bit (binary unit) is the fundamental unit of a computer and each bit can take
+    on one of two values—0 or 1\. A single byte consists of 8 bits. In case you're
+    wondering, the [0, 255] range comes from the pixel value being stored in 8 bits,
+    (2⁸ – 1 = 255). However, we could also have a 16-bit data value. In colored images,
+    we can have either 8-bit, 16-bit, 24-bit, or 30-bit values, but we usually use
+    24-bit values since we have three colored pixels, RGB, and each has an 8-bit data
+    value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Suppose we have a grayscale image with a size of 512 × 512 × 1 (height × width
+    × channel). We can store it in a two-dimensional tensor (matrix), [![](img/24029c06-3619-459a-a965-f4cd772d2ec1.png)],
+    where each *i* and *j* value is a pixel with some intensity. To store this image
+    on our disk, we need 512 × 512 = 262,144 bytes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, suppose we have a colored image with a size of 512 × 512 × 3 (height ×
+    width × channel). We can store it in a three-dimensional tensor, [![](img/b5ede4c4-93bb-41b5-9258-8274e0c9d967.png)], where
+    each *i, j,* and *k* value is a colored pixel with some intensity. To store this
+    image on our disk, we would need 512 × 512 × 3 = 786,432 bytes, which tells us
+    that storing a colored image requires a lot more space and so a longer time to
+    process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A colored video can be represented as a sequence of frames (images). We start
+    by making the time discrete so that each frame is a fixed time step apart from
+    the other. We can store a regular video (grayscale) in a three-dimensional array,
+    where one axis represents the height of the frame, another represents the width,
+    and the third represents the length of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will learn, later in this chapter, that CNNs also work quite well for audio
+    and time-series data because they are resistant to noise. We represent time-series
+    data as a one-dimensional array, where the length of the array is time, which
+    is what we convolve over.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convolutions and pooling
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 7](e1f37008-1ad5-49f6-a229-4d6249c2d7e3.xhtml), *Feedforward Neural
+    Networks*, we saw how deep neural networks are built and how weights connect neurons
+    in one layer to neurons in the previous or following layer. The layers in CNNs,
+    however, are connected through a linear operation known as **convolution**, which
+    is where their name comes from and what makes it such a powerful architecture
+    for images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we will go over the various kinds of convolution and pooling operations
+    used in practice and what the effect of each is. But first, let's see what convolution
+    actually is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two-dimensional convolutions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In mathematics, we write convolutions as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6f3cc0d7-eb91-47f5-a207-58f7836505e3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: What this means is that we have a function, *f*, which is our input and a function, *g*,
+    which is our kernel. By convolving them, we receive an output (sometimes referred
+    to as a feature map).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, in CNNs, we usually use discrete convolutions, which are written as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f90baffb-72db-4880-ba59-908c8c5c4ebf.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s suppose we have a two-dimensional array with a height of 5 and a width
+    of 5, and a two-dimensional kernel with a height of 3 and a width of 3\. Then,
+    the convolution and its output will look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6836f4cf-1327-431e-aef8-dd2804d3bd61.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Some of the values in the output matrix are left empty as an exercise for us
+    to try the convolution by hand and get a better idea of how this operation works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, the kernel slides over the input and produces a feature map
+    with a height of 3 and a width of 3\. This feature map tells us the degree to
+    which the functions *f* and *g* overlap as one passes over the other. We can think
+    of this as scanning the input for a certain pattern; in other words, the feature
+    map is looking for the same pattern in different places of the input.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get a better understanding of how the kernel moves over the input, think
+    of a typewriter. The convolution starts at the top left, applies element-wise
+    multiplication and addition, then moves a step to the right and repeats until
+    it reaches the rightmost position without going beyond the bounds of the input.
+    It then moves down one row and repeats this process until it reaches the bottom-right
+    position.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Suppose that we now have a 3 × 3 two-dimensional tensor as input and apply
+    to it a 2 × 2 kernel. It will look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/1320d8f2-aa05-4358-a6ed-d5d6b17eb917.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can mathematically write the individual outputs in the feature map as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/64ed160e-a6a9-4109-a7db-4df26903c1dc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, we can rewrite the preceding discrete convolution equation as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c871a72c-972f-4146-ade9-88a00429107b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This gives us a much clearer idea of what is happening.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the preceding operation, we can tell that if we keep applying convolutions
+    to feature maps, the height and width of each layer will decrease subsequently.
+    So, sometimes, we may want to preserve the size of *I* after the convolution operation
+    (especially if we are building a very deep CNN), in which case, we pad the outside
+    of the matrix with zeros. What this does is it increases the size of the matrix
+    before applying the convolution operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, if *I* is an n × n array and our kernel is a k × k array and we want our
+    feature map to be n × n as well, then we pad *I* once, turning it into an (n+2) ×
+    (n+2) array. Now, after we convolve the two, the resulting feature map will have
+    an n × n size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The padding operation looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5ef9913a-17ea-49e3-a233-af91c053c7a4.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In practice, this is referred to as full padding. When we do not pad, we refer
+    to it as zero padding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Should we want to reduce the size of the feature map, we can use a larger kernel
+    or we can increase the stride size—each will give a different result. When the
+    stride is 1, we slide our kernel as normal, one at a time. However, when we increase
+    the stride to 2, the kernel hops two positions each time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s use the preceding matrix we convolved and see what happens when we change
+    the stride to 2:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6bfff6f5-8d59-48ad-a167-f482188a0c83.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Armed with this knowledge, we can calculate the resulting shape of the feature
+    map using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ee958e51-e175-4ebb-a789-e692c1a338ca.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *I* is an n × n array, *K* is a k × k array, *p* is the padding, and *s* is
+    the stride.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, we can repeat this process as many times as we like, using different
+    kernels and producing multiple feature maps. We then stack these outputs together
+    and form a three-dimensional array of feature maps, which we call a layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, say we have an image with a size of 52 × 52 and a kernel with a
+    size of 12 × 12 and a stride of 2\. We apply this to our input 15 times and stack
+    the outputs together. We get a three-dimensional tensor with a size of [![](img/157eb44b-4df3-4910-820c-d2370dde3dbe.png)].
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we are building CNNs for real-world applications, it is more than likely
+    that we will want to work with colored images. We saw previously that grayscale
+    images can be expressed as two-dimensional tensors (matrices) and so the convolutions
+    were two-dimensional as well. However, colored images, as we know, are made up
+    of three channels stacked on top of each other—red, blue, and green. The image
+    then has the [![](img/c3738393-3ec5-419c-a2c1-d9a3a4353195.png)] shape and so
+    the associated convolution will also have the same shape. But interestingly, convolving
+    a colored image with a three-dimensional convolution gives us a two-dimensional
+    feature map.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the preceding example, we went over how to perform a convolution on a two-dimensional
+    tensor, but colored images have three channels. So, what we are going to do is
+    split the three channels and convolve over them individually, then sum their respective
+    outputs together using an element-wise addition to produce a two-dimensional tensor.
+    To get a better understanding of this, let''s assume we have an input with a size
+    of 3 × 3 × 3, which we can split into three channels, as so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/23e495bd-09a5-4138-ba52-1c74fea82d3e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This tells us that *I[i,j] = R[i,j] + B[i,j] + G[i,j]*. Now that we have the
+    channels separated, let''s convolve them with our 2 × 2 kernel. After convolving
+    each channel with our kernel, we get the following outputs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The result after convolving the red channel is as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/c8f232b3-e6e4-4c5c-a4df-4db05de55c05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The result after convolving the blue channel is as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/ba7f6281-88c3-43dc-8333-e6c09a8a5910.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The result after convolving the green channel is as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/dcb251d7-d738-4461-92e7-65405cce8844.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Should we want to go deeper, we can mathematically write out how each element
+    of the output was calculated. This looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6c806956-9ece-4590-addb-542f10016a1f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can think of this as applying a three-dimensional convolution to the input.
+    It is important to make a note here that the depth of the kernel is the same as
+    that of the image and so it moves just as the two-dimensional convolution operation
+    does.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of applying a kernel separately to each channel, we apply a single three-dimensional
+    kernel to the input at once and use element-wise multiplication and addition.
+    We do so because this allows us to convolve over volumetric data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we applied 15 kernels with a size of 12 × 12 and a stride of 2 to an input
+    with a size of 52 × 52, and the resulting output had a size of 21 × 21 × 15\.
+    Now, to this output, we can apply a convolution with a size of 8 × 8 × 15\. So,
+    the output from this operation will have a size of 14 × 14\. Of course, as before,
+    we can stack multiple outputs together to form a layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One-dimensional convolutions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we know how convolutions work in two dimensions, it is time for us
+    to see how they work in one dimension. We use these for time-series data, such
+    as those associated with stock prices or audio data. In the preceding section, the
+    kernel moved from the top left along the axis to the top right, then dropped one
+    or more rows (depending on the stride). This process was repeated until it reached
+    the bottom right of the grid.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we only convolve along the time axis—that is, the temporal dimension (from
+    left to right). However, the effects of padding and stride still apply here as
+    well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s suppose we have the following data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4cb3d150-2f51-46c7-a762-3fc9f7ba4d33.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We also have the following kernel with a size of 1 × 3 that we want to apply
+    to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/518e3c4f-a8c9-444f-8afa-81137b3c97ce.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, after convolving it with a stride of 2, we get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9fa27b86-9a7c-4d90-b737-6e13fb18657a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Interestingly, we can also apply one-dimensional convolutions to matrices (images).
+    Let''s see how this works. Say we have a 4 × 4 input matrix and a 4 × 1 kernel.
+    Then, the convolution will be carried out as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2e4f2a72-d175-4863-9fee-76a21df36236.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s take a look under the hood and see how each of the outputs is calculated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/39508250-614a-443b-83db-0a6cfd6398b1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: However, our kernel size could be larger as well, just as in the earlier case
+    of two-dimensional convolutions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1 × 1 convolutions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we covered two-dimensional convolutions on volumetric
+    data and these convolutions were performed depth-wise (the depth of each convolution
+    is the same as the depth of the input). This is essentially the same as multiplying
+    the values along the depth of the channel with those of the kernel and then summing
+    them together to get a single value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we take the same input as previously with a shape of 21 × 21 × 15 and apply
+    our 1 × 1 kernel, which has a 1 × 1 × 15 shape, our output will have a shape of
+    21\. If we apply this operation 12 times, our output will then be 21 × 21 × 12\.
+    We use these shapes because they can reduce the dimensionality of our data because
+    applying kernels of a larger size is computationally more expensive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Three-dimensional convolutions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have a good idea of how two-dimensional convolutions work, it is
+    time to move on to three-dimensional convolutions. But wait—didn't we just learn
+    about three-dimensional convolutions? Kind of, but not really because, if you
+    remember, they had the same depth as the volume we were convolving over and moved
+    the same as the two-dimensional convolutions did—along the height and the width
+    of the image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Three-dimensional convolutions work a bit differently in that they convolve
+    over the depth as well as the height and the width. This tells us that the depth
+    of the kernel is smaller than the depth of the volume we want to convolve over,
+    and at each step, it performs element-wise multiplication and addition, resulting
+    in a single scalar value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we have volumetric data with a size of 21 × 21 × 15 (as we did in the preceding
+    section) and a three-dimensional kernel with a size of 5 × 5 × 5 that takes a
+    stride of 1, then the output will have a size of 16 × 16 × 11.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Visually, this looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/26a7aa41-7e10-41df-81f6-6a83ca82ce97.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can calculate the output shape of the three-dimensional convolution in a
+    similar way to as we did earlier in the two-dimensional case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This type of convolution is used frequently in tasks that require us to find
+    relationships in 3D. This is particularly used in the task of three-dimensional
+    object segmentation and detecting actions/motion in videos.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Separable convolutions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Separable convolutions are a rather interesting type of convolution. They work
+    on two-dimensional inputs and can be applied spatially or depthwise. The way this
+    works is we decompose our k × k sized kernel into two smaller kernels with sizes
+    of k × 1 and 1 × k. Instead of applying the k × k kernel, we would first apply
+    the k × 1 kernel and then, to its output, the 1 × k kernel. The reason this is
+    used is that it reduces the number of parameters in our network. With the original
+    kernel, we would have had to carry out k² multiplications at each step, but with
+    separable convolution, we only have to carry out 2,000 multiplications, which
+    is a lot less.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Suppose we have a 3 × 3 kernel that we want to apply to a 6 × 6 input, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/12935ccd-895c-4c6b-aad6-a15e5998a486.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding convolution, our kernel will have to perform nine multiplications
+    at each of the 16 positions before it produces our output. This is a total of
+    144 multiplications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how the separable convolution differs and compare its results. We
+    will first decompose our kernel into k × 1 and 1 × k kernels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0f84a867-25e6-4fb6-9510-7cbf5a6bb5dc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We will apply the kernels to our input in two steps. This looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Step 1:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/033ba50e-e669-4506-a68e-6f6ecac8bf2d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 2:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/190cfd2b-7ce7-424d-9eca-f2a3ba8e241a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, [![](img/6f8912bd-31a5-40c1-a6ad-57f7115cfb6a.png)] is the output from
+    the first convolution operation and [![](img/be166d15-8da9-4fad-bff5-1313c7ff2c9b.png)] is
+    the output from the second. However, as you can see, we still get an output of
+    the same size as before, but the number of multiplications that had to be carried
+    out is fewer. The first convolution had to carry out three multiplications at
+    each of the 24 positions for a total of 72 multiplications, and the second convolution
+    also carried out three multiplications at each of the 16 positions for a total
+    of 48 multiplications. By summing the total multiplications from both convolutions,
+    we find that, together, they carried out 120 multiplications, which is fewer than
+    the 144 that the k × k kernel had to do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is important to clarify that not every kernel is separable. As an example,
+    let''s take a look at the Sobel filter and its decomposition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f884c661-29cb-44dd-8db0-d041e99e42ae.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: What we just learned was spatially separable convolution. Using what we have
+    learned so far, how do you think depth-wise convolution would work?
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should recall that when we went through two-dimensional convolutions, we
+    introduced a three-dimensional kernel for colored images, where the depth was
+    the same as the image. So, if we had an input of 8 × 8 × 3 and a kernel with a
+    size of 3 × 3 × 3, we would get an output of 6 × 6 × 1\. However, in depth-wise
+    separable convolutions, we split the 3 × 3 × 3 kernel into three kernels with
+    a size of 3 × 3 × 1 each, which convolves one of the channels. After applying
+    our kernels to our input, we have an output with a size of 6 × 6 × 3 and to this
+    output, we will apply a kernel with a size of 1 × 1 × 3, which produces an output
+    of 6 × 6 × 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we want to increase the depth of the output to, say, 72, instead of applying
+    72 3 × 3 × 3 kernels, we would apply 72 1 × 1 × 3 convolutions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's compare the two and see which is more computationally efficient. The number
+    of multiplications that had to take place in order to compute our 6 × 6 × 72 output
+    using the 3 × 3 × 3 kernel is (3×3×3) × (6×6) × 72 = 69,984, which is a lot! To
+    compute the same output using depth-wise separable convolution, the number of
+    multiplications required is (3×3×1) × 3 × (6×6) + (1×1×3) × (6×6) × 72 = 8,748, which
+    is a whole lot less and therefore a lot more efficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transposed convolutions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We know that applying a convolution repeatedly to an image reduces its size,
+    but what if we would like to go in the opposite direction; that is, go from the
+    shape of the output to the shape of the input while still maintaining local connectivity.
+    To do this, we use transposed convolution, which draws its name from matrix transposition
+    (which you should remember from [Chapter 1](3ce71171-c5fc-46c8-8124-4cb71c9dd92e.xhtml),
+    *Vector Calculus*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s suppose we have a 4 × 4 input and a 3 × 3 kernel. Then, we can rewrite
+    the kernel as a 4 × 16 matrix, which we can use for matrix multiplications to
+    carry out our convolutions. This looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/50b4e204-920b-482e-b971-b83636170cba.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: If you look closely, you will notice that each row represents one convolution
+    operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use this matrix, we rewrite our input as a 16 × 1 column vector, which looks
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5d3796da-764b-4f47-80fd-c0168f14f008.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, we can multiply our convolution matrix and column vector to get a 4 ×
+    1 column vector, which looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e064da92-100c-4165-9409-d19f95f0687b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can rewrite this in the following form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/54bf255f-341a-4a62-a119-ac4c12a150c4.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This is the same as what we saw in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might now be wondering what this has to do with transposed convolution.
+    It's simple—we use the same concept as before, but now we use the transpose of
+    the convolution matrix to work our way backward from the output to the input.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take the preceding convolution matrix and transpose it so that it becomes
+    a matrix with a size of 16 × 4:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4aff7146-5d39-46b0-810c-0fcfd787e8a6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This time, the input vector we multiply with will be a 4 × 1 column vector:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/baf87720-d222-4e41-9ce1-e0782f5bc099.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can multiply them and get a 16 × 1 output vector, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f51138f2-763a-4e12-96d6-bb63271a7e5c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can rewrite our output vector into a 4 × 4 matrix, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0c0d08a3-38e4-444a-9c39-9b0193e8adf0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Just like that, we can go from lower dimensional space to a higher dimensional
+    space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important to note that the padding and stride that were applied to the
+    convolution operation can be used in transposed convolution as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can then calculate the size of the output using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/aede1fa8-2a1c-4af3-9286-0791d334eb78.png).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, the input is n × n, the kernel is k × k, *p* is the pooling, and *s* is
+    the stride.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pooling
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another often-used operation in CNNs is known as **pooling** (**subsampling**
+    or **downsampling**). This works somewhat like the convolution operation, except
+    it reduces the size of the feature map by sliding a window across the feature
+    map and either averages all the values inside each window at each step or outputs
+    the maximum value. The pooling operation differs from convolution in that it does
+    not have any parameters and so cannot be learned or tuned. We can calculate the
+    size of the feature map after pooling, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b6adcfe2-2156-430a-af6c-6ab89adffc93.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *I* is an n × n-shaped two-dimensional tensor, the pooling operation is
+    an r × r-shaped two-dimensional tensor, and *s* is the stride.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example of maximum pooling with a stride of 1:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/78461336-cf4f-4e84-902b-19c927bf5be2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here is an example of average pooling with a stride of 2:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/79a9a2f3-1ade-40b6-a9ad-b402405f7f61.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As a rule of thumb, it has been found that the maximum pooling operation performs
+    better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this, you will probably notice that the output is quite different from
+    the original and doesn't fully represent all the information. In fact, a lot of
+    information has been lost. It is because of this that the pooling operation is
+    used increasingly less in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Global average pooling
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Global average pooling** is a variant of the pooling operation that we saw
+    previously, where instead of sliding a subsampling kernel over the feature map,
+    we just take the average of the entire feature map and output a single real value.
+    Suppose we have a feature map with a size of 6 × 6 × 72. After applying this pooling
+    operation, our output would have a size of 1 × 1 × 72.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is generally used at the last layer, where, normally, we would apply the
+    subsampling and feed the output into a fully connected layer; instead, this allows
+    us to skip the fully connected layer and feed the output of the global average
+    pool directly into our softmax for prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The advantage of using this is that it significantly removes the number of parameters
+    we have to train in our network. Had we flattened the preceding feature map and
+    fed it into a layer of 500 nodes, it would have 1.296 million parameters. This
+    also has the added benefit of reducing overfitting to the training data and improving
+    our classification prediction because the output is closer to the classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convolution and pooling size
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we know the various types of convolution and pooling, it is time to
+    talk about a very important topic associated with them—their size. As you have
+    seen, when we applied a convolution to an image, the output was of a smaller size
+    than the input. The output size is determined by the size of the kernel, the stride,
+    and whether or not we have padding. These are very important things to keep in
+    mind when architecting CNNs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are several sizes of convolutions that are used in practice, the most
+    commonly used ones being 7 × 7, 5 × 5, and 3 × 3\. However, we can use other sizes
+    as well, including—but not limited to—11 × 11, 13 × 13, 9 × 9, 17 × 17, and so
+    on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In practice, we generally use larger convolutions with a larger stride to generate
+    a feature map of a smaller size to reduce the computational constraint and default
+    to using 3 × 3 and 5 × 5 kernels the most. This is because they are computationally
+    more feasible. Generally, having a larger kernel will allow us to look at a larger
+    space in the image and capture more relationships, but having multiple 3 × 3 kernels
+    has proven to have a similar performance while being less computationally intensive,
+    which we prefer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with the ConvNet architecture
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that we know all the different components that make up a ConvNet, we can
+    put it all together and see how to construct a deep CNN. In this section, we will
+    build a full architecture and observe how forward propagation works and how we
+    decide the depth of the network, the number of kernels to apply, when and why
+    to use pooling, and so on. But before we dive in, let''s explore some of the ways
+    in which CNNs differ from FNNs. They are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The neurons in CNNs have local connectivity, which means that each neuron in
+    a successive layer receives input from a small local group of pixels from an image,
+    instead of receiving the entire image, as a **feedforward neural network** (**FNN**)
+    would.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each neuron in the layer of a CNN has the same weight parameters.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The layers in CNNs can be normalized.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CNNs are translation invariant, which allows us to detect the same object regardless
+    of its position in the image.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CNNs have fewer parameters because the convolution operation weighs the surrounding
+    neurons and sums them into the neuron at the next layer, thereby smoothing the
+    image.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The activation functions typically used in CNNs are ReLU, PReLU, and ELU.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The CNN architecture isn't entirely dissimilar to the FNN architecture we saw
+    earlier in this book, except instead of having fully connected layers, we have
+    convolution layers that extract spatial relationships from the inputs and previous
+    layers and learn features from the input at each layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In general, what the architecture learns can be demonstrated with the following
+    flow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3c0e85e6-9b65-4a93-833a-138c34cb6d23.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see from the preceding flow, the features grow in complexity in the
+    latter layers. What this means is that the earliest layers (those closest to the
+    input layer) learn very basic features, such as edges and lines, textures, or
+    how certain colors differentiate. The latter layers take in the feature map from
+    the previous layer as input and learn more complex patterns from it. For example,
+    if we create a facial recognition model, the earliest layer would learn the simplest possible lines,
+    curves, and gradients. The next layer would take in the feature maps from the
+    previous layer and use it to learn more complex features, such as hair and eyebrows.
+    The layer after that would learn even more complex features, such as eyes, noses,
+    ears, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can see what a neural network learns in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c92639ed-dc49-4fbf-8c7a-ffd204e13fcd.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'CNNs, like FNNs, have a structure that we can use as a guide when we build
+    our own applications. It typically looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f9bdcf87-5029-4b57-9328-a9e5edc6d4d0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We are now going to break down one of the most popular CNN architectures, called
+    AlexNet, which outperformed all other models in the ILSVRC in 2012 with 10% greater
+    accuracy and kickstarted the deep learning revolution. It was created by Alex
+    Krizhevsky, Ilya Sutskever, and Geoffrey Hinton. We can see its architecture in
+    the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/aee0ec8d-6d45-4d04-8920-11bfd4b53da6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see, the architecture contains eight trainable layers—five of which
+    are convolutional layers and three of which are fully connected. The ImageNet
+    dataset contains more than 15 million labeled images, but for ILSVRC, we have approximately
+    1.2 million images in the training set, 50,000 images in the validation set, 150,000 images
+    in the testing set, and nearly 1,000 images for each of the 1,000 classes that
+    the images belong to. Each of the images was rescaled to 256 × 256 × 3 because
+    they all varied in size, and from these rescaled images, the authors generated
+    random crops with a size of 256 × 256 × 3. Additionally, the creators of AlexNet
+    used ReLU activations instead of **tanh** because they found that it sped up the
+    training by as much as six times without sacrificing accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The operations applied to the image at each layer and their sizes are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Convolution layer 1**: 96 kernels of size 11 × 11 × 3 with a stride of 4\.
+    This results in a layer with a size of 55 × 55 × 96.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 1**: ReLU activation applied to the output from convolution
+    layer 1.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Subsampling layer 1**: Maximum pool with a size of 3 × 3 and a stride of
+    2. This results in a layer with a size of 27 × 27 × 96.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 2**: 256 kernels with a size of 5 × 5, a padding of 2,
+    and a stride of 1\. This results in a layer with a size of 27 × 27 × 256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 2**: ReLU activation applied to the output from convolution
+    layer 2.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Subsampling layer 2**: Maximum pool with a size of 3 × 3 and a stride of
+    2\. This results in a layer with a size of 13 × 13 × 256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 3**: 384 kernels with a size of 3 × 3, a padding of 1,
+    and a stride of 1\. This results in a layer of size 13 × 13 × 384.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 3**: ReLU activation applied to the output from convolution
+    layer 3.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 4**: 384 kernels of size 3 × 3 with a padding of 1 and
+    a stride of 1\. This results in a layer with a size of 13 × 13 × 384.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 4**: ReLU activation applied to the output from convolution
+    layer 4.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 5**: 256 kernels with a size of 3 × 3, a padding of 1, and
+    a stride of 1\. This results in a layer with a size of 13 × 13 × 256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 5**: ReLU activation applied to the output from convolution
+    layer 5.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Subsampling layer 3**: Maximum pool with a size of 3 × 3 and a stride of
+    2\. This results in a layer with a size of 6 × 6 × 256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully connected layer 1**: A fully connected layer with 4,096 neurons.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 6**: ReLU activation applied to the output from fully connected
+    layer 1.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully connected layer 2**: A fully connected layer with 4,096 neurons.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 7**: ReLU activation applied to the output from fully connected
+    layer 2.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully connected layer 3**: A fully connected layer with 1,000 neurons.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 8**: ReLU activation applied to the output from fully connected
+    layer 3.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Output layer**: Softmax applied to the 1,000 neurons to calculate the probability
+    of it being one of the classes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'When building architectures, it is important to have an understanding of how
+    many parameters are in the model. The formula we use to calculate the number of
+    parameters at each layer is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/93c029a3-1d12-4f7d-ba43-c300f4ec02e9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s calculate the parameters of AlexNet. They are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Convolution layer 1**:11 x 11 x 3 x 96 = 34,848'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 2**: 5 x 5 x 96 x 256 = 614,400'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 3**: 3 x 3 x 256 x 384 = 884,736'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 4**:3 x 3 x 384 x 384 = 1,327,104'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 5**:3 x 3 x 384 x 256 = 884,736'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully connected layer 1**: 256 x 6 x 6 x 4096 = 37,748,736'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully connected layer 2**: 4096 x 4096 = 16,777,216'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully connected layer 3**: 4096 x 1000 = 4,096,000'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now, if we sum the parameters together, we find that AlexNet has a total of
+    62.3 million parameters. Roughly 6% of these parameters are from the convolution
+    layers and the remaining 94% are from the fully connected layers. This should
+    give you an idea of why CNNs are so effective and why we like them so much.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may be wondering why we would use a CNN at all and why we wouldn't just
+    use an FNN instead. Couldn't we just flatten the image into a fully connected
+    layer and input every pixel into a single node? We could, but if we did, then
+    our first layer would have 154,587 neurons and our overall network could have
+    well over 1 million neurons and 500 million trainable parameters. This is massive
+    and our network would likely underfit from not having enough training data. Additionally,
+    FNNs do not have the translation-invariant property that CNNs have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the preceding parameters, let's see whether we can generalize the architecture
+    so that we have a framework to follow for future CNNs that we want to build or
+    to understand how other architectures we come across work. The first thing you
+    should have realized in the preceding architecture is that the size of each successive
+    feature map reduces while its depth increases. Also, you may have noticed that
+    the depth is always divisible by 2, many times over, and usually, we use 32, 64,
+    128, 256, 512, and so on in layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just as we saw with FNNs previously, the deeper we go, the better our accuracy
+    is, but this doesn't come without its own problems. Larger networks are much harder
+    to train and can either overfit or underfit to the training data. This could be
+    a result of a combination of being too small, being too large, having too much
+    training data, or having too little training data. There is still no fixed recipe
+    for exactly how many layers to use in our CNN; it is very much down to trial and
+    error and building up some intuition after building and training several architectures
+    for a variety of tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training and optimization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we've got that sorted, it's time for us to dive into the really fun
+    stuff. How do we train these fantastic architectures? Do we need a completely
+    new algorithm to facilitate our training and optimization? No! We can still use
+    backpropagation and gradient descent to calculate the error, differentiate it
+    with respect to the previous layers, and update the weights to get us as close
+    to the global optima as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But before we go further, let''s go through how backpropagation works in CNNs,
+    particularly with kernels. Let''s revisit the example we used earlier on in this
+    chapter, where we convolved a 3 × 3 input with a 2 × 2 kernel, which looked as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/552a9b5d-cb02-4941-85b3-546e048d2dfc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We expressed each element in the output matrix as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5221fee2-31c8-4d34-917b-6cb88b9695e8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We should remember from [Chapter 7](e1f37008-1ad5-49f6-a229-4d6249c2d7e3.xhtml),
+    *Feedforward Networks*, where we introduced backpropagation, that we take derivatives
+    of the loss (error) with respect to the weights and biases at the layers and then
+    use this as a guide to update the parameters to reduce the error of prediction
+    from our network. In CNNs, however, we find the gradient of the error with respect
+    to the kernel. Since our kernel has four elements, the derivatives look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0f8dd364-0e83-40c5-b695-b2e41e0f663b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If we observe these equations carefully, which represent the output from the
+    feedforward computation, we can see that by taking the partial derivative with
+    respect to each kernel element, we get the respective input element, *I*[*i,j*],
+    that it depends on. If we substitute this value back into the derivatives, we
+    can simplify them to get the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2bb73d1c-c3a5-49f0-8b28-150aaca071a3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can simplify this further by rewriting it as a convolution operation. This
+    looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/48db5231-90e5-4c4e-9004-0459790d4e6f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'But what if we wanted to find the derivative with respect to the input? Well,
+    our Jacobian matrix would certainly look a bit different. We would have a 3 ×
+    3 matrix since there are nine elements in the input matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6dc2a10a-0689-4fac-97dd-9b6e7024cd8f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can verify this if we derive it ourselves by hand through the preceding equations,
+    and I encourage you to try this out to get a good understanding of what's happening
+    and why. However, let's now pay particular attention to the kernel we used. If
+    we look carefully, it almost looks like the determinant, but that's not what it
+    is. We just rotated (that is, transposed) the kernel by 180° so that we can compute
+    the gradients.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a much-simplified view of how backpropagation works in CNNs; we have
+    left it simple because the rest works exactly as it did in FNNs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring popular ConvNet architectures
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we know how CNNs are built and trained, it is time to explore some
+    of the popular architectures that are used and understand what makes them so powerful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: VGG-16
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The **VGG network** is a derivation of AlexNet that was created by Andrew Zisserman
+    and Karen Simonyan at the **Visual Geometry Group** (**VGG**) at the University
+    of Oxford in 2015\. This architecture is simpler than the one we saw earlier,
+    but it gives us a much better framework to work with. VGGNet was also trained
+    on the ImageNet dataset, except it takes images with a size of 224 × 224 × 3 that are
+    sampled from the rescaled images in the dataset as input. You may have noticed
+    that we have headed this section *VGG-16*—this is because the VGG network has
+    16 layers. There are variants of this architecture that have 11, 13, and 19 layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will first explore the basic building blocks of the network, known as VGG
+    blocks. These blocks are made up of two to three convolutions, followed by a pooling
+    layer. Each of the convolution layers throughout the network uses kernels with
+    a size of 3 × 3 and a stride of 1; however, the number of kernels used in each
+    block is the same but can vary from block to block. In the subsampling layer,
+    we use a pooling with a size of 2 × 2, the same padding size, and a stride of
+    2.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The entire network can be broken down into the following operations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Convolution layer 1**: 64 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 224 × 224 × 64.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 1**: ReLU activation applied to the output from convolution
+    layer 1.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 2**: 64 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 224 × 224 × 64.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 2**: ReLU activation applied to the output from convolution
+    layer 2.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Subsampling layer 1**: Maximum pool with a size of 2 × 2 and a stride of
+    2\. This results in a layer with a size of 112 × 112 × 64.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 3**: 128 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 112 × 112 × 128.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 3**: ReLU activation applied to the output from convolution
+    layer 3.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 4**: 128 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 112 × 112 × 128.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 4**: ReLU activation applied to the output from convolution
+    layer 4.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Subsampling layer 2**: Maximum pool with a size of 2 × 2 and a stride of
+    2\. This results in a layer with a size of 56 × 56 × 128.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 5**: 256 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 56 × 56 × 256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 5**: ReLU activation applied to the output from convolution
+    layer 5.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 6**: 256 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 56 × 56 × 256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 6**: ReLU activation applied to the output from convolution
+    layer 6.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 7**: 256 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 56 × 56 × 256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 7**: ReLU activation applied to the output from convolution
+    layer 7.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Subsampling layer 3**: Maximum pool with a size of 2 × 2 and a stride of
+    2. This results in a layer with a size of 28 × 28 × 256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 8**: 512 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 28 × 28 × 512.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 8**: ReLU activation applied to the output from convolution
+    layer 8.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 9**: 512 kernels with a size of 3 × 3, a stride of 1, and
+    the same padding. This results in a layer with a size of 28 × 28 × 512.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 9**: ReLU activation applied to the output from convolution
+    layer 9.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 10**: 512 kernels with a size of 3 × 3, a stride of 1,
+    and the same padding. This results in a layer with a size of 28 × 28 × 512.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 10**: ReLU activation applied to the output from convolution
+    layer 10.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Subsampling layer 4**: Maximum pool with a size of 2 × 2 and a stride of
+    2\. This results in a layer with a size of 14 × 14 × 512.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 11**: 512 kernels with a size of 3×3, a stride of 1, and
+    the same padding. This results in a layer with a size of 14 × 14 × 512.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 11**: ReLU activation applied to the output from convolution
+    layer 11.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 12**: 512 kernels with a size of 3 × 3, a stride of 1,
+    and the same padding. This results in a layer with a size of 14 × 14 × 512.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 12**: ReLU activation applied to the output from convolution
+    layer 12.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Convolution layer 13**: 512 kernels with a size of 3 × 3, a stride of 1,
+    and the same padding. This results in a layer with a size of 14 × 14 × 512.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 13**: ReLU activation applied to the output from convolution
+    layer 13.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Subsampling layer 5**: Maximum pool with a size of 2 × 2 and a stride of
+    2\. This results in a layer with a size of 7 × 7 × 512.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully connected layer 1**: A fully connected layer with 4,096 neurons.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 14**: ReLU activation applied to the output from fully connected
+    layer 1.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully connected layer 2**: A fully connected layer with 4,096 neurons.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Nonlinearity 15**: ReLU activation applied to the output from fully connected
+    layer 2.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Output layer**: Softmax applied to the 1,000 neurons to calculate the probability
+    of it being one of the classes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This network placed runner up in the 2014 ILSVRC and has approximately 138 million
+    trainable parameters. So, it is very difficult to train.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inception-v1
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The InceptionNet architecture (often referred to as **GoogLeNet**) placed first
+    in the 2014 ILSVRC and achieved near-human performance at 93.3% accuracy. The
+    name **inception** is a reference to the movie *Inception*, particularly to the
+    need to go deeper (in terms of layers). This architecture is a little different
+    from the ones we saw earlier in that it makes use of Inception modules instead
+    of layers. Each Inception block contains filters of three different sizes—1 ×
+    1, 3 × 3, and 5 × 5\. What this does is allow our network to capture sparse patterns
+    through spatial information and variances at different scales, thereby allowing
+    our network to learn even more complex information. However, previously, our networks
+    consistently had a kernel of one size throughout the layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Inception module looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/09c99a97-16fa-4ba3-83dd-44c8fb973957.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see, each block contains four parallel channels. The first channel
+    contains a 1 × 1 kernel, the second channel contains a 1 × 1 kernel followed by
+    a 3 × 3 kernel, the third channel contains a 1 × 1 kernel followed by a 5 × 5 kernel,
+    and the fourth channel contains a 3 × 3 maximum pooling followed by a 1 × 1 kernel.
+    The resulting feature maps are then concatenated and fed as input into the next
+    block. The reason behind applying a 1 × 1 kernel before the larger kernels—such
+    as the 3 × 3 and 5 × 5 kernels—is to reduce the dimensionality because larger
+    kernels are more computationally expensive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This network takes in images with a size of 224 × 224, mean subtraction, and
+    22 layers with trainable parameters (27 if you count the pooling layers).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The details of the architecture are displayed in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/adc875f6-8f3d-41a8-9f25-ea716173ebd9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The network looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/11606bdc-5356-48e3-a5e9-88e0ba694bb9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Interestingly, despite this being a much deeper network than AlexNet and VGG-16,
+    there are a lot fewer parameters that we need to train because it uses kernels
+    with smaller sizes, as well as depth reduction. Larger networks, as we know, do
+    tend to perform better than shallower ones. The significance of this architecture
+    is that despite being deep, it is relatively more simple to train that if it had
+    many more parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Congratulations! We have just finished learning about a powerful variant of
+    neural networks known as CNNs, which are very effective in tasks relating to computer
+    vision and time-series prediction. We will revisit CNNs later on in this book,
+    but in the meantime, let's move on to the next chapter and learn about recurrent
+    and recursive neural networks.
+  prefs: []
+  type: TYPE_NORMAL

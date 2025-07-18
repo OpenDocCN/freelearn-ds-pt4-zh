@@ -1,0 +1,1402 @@
+- en: '7'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Model Deployment Approaches
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at how we can utilize Databricks MLflow Model
+    Registry to manage our ML model versioning and life cycle. We also learned how
+    we could use the integrated access control to manage access to the models registered
+    in Model Registry. We also understood how we could use the available webhook support
+    with Model Registry to trigger automatic Slack notifications or jobs to validate
+    the registered model in the registry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will take the registered models from Model Registry and
+    understand how to deploy them using the various model deployment options available
+    in Databricks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding ML deployments and paradigms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying ML models for batch and streaming inference
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying ML models for real-time inference
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Incorporating custom Python libraries into MLflow models for Databricks deployment
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying custom models with MLflow and Model Serving
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Packaging dependencies with MLflow models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s go through the technical requirements for this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We’ll need the following before diving into this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Access to a Databricks workspace
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A running cluster with **Databricks Runtime for Machine Learning** (**Databricks
+    Runtime ML**) with a version of 13 or above
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All the previous notebooks, executed as described
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A basic knowledge of Apache Spark, including DataFrames and SparkUDF
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s take a look at what exactly ML deployment is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding ML deployments and paradigms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Data science** is not the same as **data engineering**. Data science is more
+    geared toward taking a business problem that we convert into data problems using
+    scientific methods. We develop mathematical models and then optimize their performance.
+    Data engineers are mainly concerned with the reliability of the data in the data
+    lake. They are more focused on the tools to make the data pipelines scalable and
+    maintainable while meeting the **service-level** **agreements** (**SLAs**).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we talk about ML deployments, we want to bridge the gap between data science
+    and data engineering.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure visualizes the entire process of ML deployment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.1 – Displaying the ML deployment process](img/B17875_07_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.1 – Displaying the ML deployment process
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the right-hand side, we have the process of data science, which is very interactive
+    and iterative. We understand the business problem and discover the datasets that
+    can add value to our analysis. Then, we build data pipelines to wrangle the data
+    and analyze it. We develop our models, and the chain continues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The left-hand side of this diagram showcases the integration of the best practices
+    from the software development world into the data science world. It’s mostly automated.
+    Once our candidate model is ready, we do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we register it with the Model Registry.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we integrate the model with our applications.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, we test the integrated model with our application.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, we deploy it to production, where we monitor the model’s performance
+    and improve it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Some of these processes may look very similar to DevOps, but there are some
+    critical differences between **DevOps** and **ModelOps**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DevOps, in essence, combines software development and IT operations such as
+    **continuous integration** (**CI**), **continuous deployment** (**CD**), updating
+    or rolling back features, and pushing a patch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ModelOps combines the principles of DevOps, such as CI/CD, with specific requirements
+    tailored to the world of ML. It introduces the need for continuous training and
+    monitoring of ML models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Continuous training is a vital aspect of ModelOps. Unlike traditional software,
+    where once a module is deployed, it rarely changes, ML models require ongoing
+    updates. With the influx of new data, models must be periodically retrained to
+    ensure their accuracy and relevance. This means that even if the core model code
+    remains unchanged, the model itself evolves to adapt to the changing data landscape.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Continuous monitoring in ModelOps encompasses two key areas: model performance
+    monitoring and infrastructure monitoring. Model performance monitoring involves
+    tracking how well the model is performing in real-world scenarios. This includes
+    metrics such as accuracy, precision, and recall, among others. Infrastructure
+    monitoring, on the other hand, focuses on the health and performance of the computing
+    infrastructure supporting the model. This dual monitoring approach ensures that
+    both the model and the underlying systems are operating optimally.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This approach differs from traditional software engineering, where once a software
+    module is tested and deployed to production, it typically remains stable without
+    the need for continuous monitoring and adaptation. In ModelOps, the ever-evolving
+    nature of data and the importance of maintaining model performance make continuous
+    training and monitoring integral components of the process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the initial days of MLOps, most companies used Java and custom-built in-house
+    tools for managing ML deployments, continuous training, and monitoring. However,
+    today, most of the tools and frameworks have become open source, and we have seen
+    Python is the de facto standard when implementing the entire model development
+    life cycle in production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a look at the most common ML deployment paradigms. Most ML use cases
+    can be categorized into four buckets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Batch deployments** (run ad hoc or at a scheduled time):'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These are the most common deployments and are relatively easy to implement and
+    are most efficient in terms of cost and productionization effort.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Models make predictions that are stored in fast-access data repositories such
+    as DynamoDB, Cassandra, Cosmos DB, or Delta tables within data lakehouses. These
+    storage solutions are chosen for their efficiency in serving predictions. However,
+    it’s important to note that these choices are tailored to use cases with low-latency
+    retrieval requirements, and batch use cases with less stringent retrieval time
+    constraints may have different considerations. Additionally, Databricks SQL offers
+    a serverless, high-performance data warehousing solution that seamlessly integrates
+    with data lakehouses, simplifying data management and analytics for enhanced productivity
+    and reliability in leveraging predictive models. It’s worth mentioning that Delta
+    tables also incorporate write optimizations, ensuring efficient data storage and
+    processing.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Streaming deployments** (run continuously on the data):'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These deployments become essential when you don’t have access to your entire
+    dataset before the inference starts, and you need to process new data relatively
+    quickly as soon as it arrives.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Spark Structured Streaming is excellent for processing streaming data. It also
+    has an inbuilt queuing mechanism, making it very useful when processing extensive
+    image data.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Real time** (REST endpoint):'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These deployments become important when the use cases require near real-time
+    requests and responses from a model deployed as part of an application.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: At the time of writing this book, Databricks boasts a production-grade model
+    serving offering that’s seamlessly integrated into its platform. This offering
+    harnesses the power of serverless computing for optimal performance. Although
+    delving into exhaustive details about the multitude of deployment architectures
+    is not within the purview of this book, you can access comprehensive information
+    on this subject in the Databricks documentation ([https://docs.databricks.com/en/serverless-compute/index.html](https://docs.databricks.com/en/serverless-compute/index.html)).
+    Alternatively, you can seamlessly deploy your ML models as REST endpoints following
+    their development and testing phases on Databricks with various cloud services
+    such as Azure ML (leveraging Azure Kubernetes Service), AWS Sagemaker, and Google
+    Vertex AI. The ML model is packaged into a container image and subsequently registered
+    with the managed services offered by the respective cloud providers.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can also use your own Kubernetes clusters for model deployments using the
+    same paradigm.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On-device** (edge):'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These are very specific use cases in which we want to deploy models on devices
+    such as Raspberry Pis or other IoT use cases. We will not be covering these in
+    this chapter.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As a best practice, it’s advisable to initially consider batch deployment as
+    your go-to ML deployment paradigm. Transition to alternative paradigms only after
+    thoroughly validating that batch deployment is inadequate for your specific use
+    case. Keep in mind that the long-term maintenance costs associated with a real-time
+    ML deployment system are generally higher than those for a batch system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It’s also crucial to factor in response latency requirements when selecting
+    the most appropriate ML deployment paradigm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Batch deployment**: Ideally suited for scenarios where the expected response
+    time for inference ranges from hours to days:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case recommendation**: This is particularly useful for data analytics
+    and reporting tasks that are not time-sensitive, such as generating monthly sales
+    forecasts or risk assessments.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Structured streaming deployment**: Optimal for use cases requiring inference
+    on new data within a time frame of a few minutes up to an hour:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case recommendation**: Real-time analytics or fraud detection systems
+    often benefit from this deployment type, where the data stream needs to be analyzed
+    continuously but an instant response is not critical.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Near real-time or REST endpoint deployments**: These are suitable when the
+    expected latency lies between hundreds of milliseconds to a minute:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case recommendation**: This deployment paradigm is best suited for applications
+    such as real-time recommendation systems or automated customer service bots, which
+    require fairly quick responses but not immediate action.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Edge deployments**: These are geared toward scenarios demanding sub-100 ms
+    SLAs:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case recommendation**: This is crucial for **Internet of Things** (**IoT**)
+    applications, autonomous vehicles, or any use case that requires lightning-fast
+    decision-making capabilities.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'There are just broad guidelines. The following figure summarizes all the points
+    we discussed here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.2 – The response latency requirements for various ML deployments](img/B17875_07_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.2 – The response latency requirements for various ML deployments
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s look at the various deployment options when using Databricks. Apart
+    from the deployment approaches discussed here, some open source projects may interest
+    you for serving models as REST. The links to these can be found in the *Further
+    reading* section at the end of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying ML models for batch and streaming inference
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This section will cover examples of deploying ML models in a batch and streaming
+    manner using Databricks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In both **batch** and **streaming** inference deployments, we use the model
+    to make the predictions and then store them at a location for later use. The final
+    storage area for the prediction results can be a database with low latency read
+    access, cloud storage such as S3 to be exported to another system, or even a Delta
+    table that can easily be queried by business analysts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When working with large amounts of data, Spark offers an efficient framework
+    for processing and analyzing it, making it an ideal candidate to leverage our
+    trained machine learning models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: One important note to remember is that we can use any non-distributed ML library
+    to train our models. So long as it uses the MLflow model abstractions, you can
+    utilize all the benefits of MLflow’s Model Registry and the code presented in
+    this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We should always consider the access pattern of the results generated by the
+    model. Depending on where we store our prediction results, we can perform the
+    following optimizations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Partitioning, which can speed up data reads if your data is stored as static
+    files or in a data warehouse
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building indexes in databases on the relevant query, which generally improves
+    performance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s look at an example of how to perform batch and stream inference deployment
+    using the Databricks environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Batch inference on Databricks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Batch inference is the most common type of model deployment paradigm. Running
+    inference in batch infers running predictions using a model and storing them for
+    later use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this, we will use the model available to us in MLflow’s Model Registry.
+    We must ensure that we have at least one model version in staging for the notebook
+    provided as part of this chapter to execute it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go into the **Models** tab and select the **Churn Prediction Bank** registered
+    model. There should be a model version that is in the **Staging** state:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.3 – The registered model in the Staging stage of Model Registry](img/B17875_07_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.3 – The registered model in the Staging stage of Model Registry
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open the notebook associated with `Chapter-07` named *Batch and Streaming*.
+    We will simply load the model from the registry as a Python function, as shown
+    in the following code block:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The rest of the notebook reads the same `raw_data` that we used to train our
+    model in a Spark DataFrame and then after selecting the columns that we used to
+    train our classification model using AutoML:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Let’s take a look at how we can utilize the same model loaded as a Spark UDF
+    in a streaming inference deployment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We won’t get into the details about how Structured Streaming in Spark works
+    in this chapter as it is a large topic in itself. *Spark: The Definitive Guide:
+    Big Data Processing Made Simple* is a great book for learning in-depth about Apache
+    Spark and Structured Streaming. A streaming DataFrame can be conceptualized as
+    an unbounded table that continuously updates as new data arrives. Links have been
+    provided in the *Further reading* section to different resources for you to learn
+    more about Structured Streaming.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Streaming inference on Databricks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s look at the sample code to demonstrate how you can deploy the model we
+    used in the previous section to perform streaming inference:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In `Cmd 15`, we must define `raw_data` from the Delta table to be read as a
+    stream instead of a batch:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The rest of the flow will look similar to batch inference.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Once we have defined our streaming Dataframe, we call upon the same model that
+    we loaded from the model registry that is available in the staging environment:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Once we have predictions ready, we can write the data out as a Delta table or
+    format that is efficient for our use case.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Now, let’s take a look at how easy it is to use the same model if we want to
+    perform real-time inference.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying ML models for real-time inference
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Real-time inferences include generating predictions on a small number of records
+    using a model deployed as a REST endpoint. The expectation is to receive the predictions
+    in a few milliseconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Real-time deployments are needed in use cases when the features are only available
+    when serving the model and cannot be pre-computed. These deployments are more
+    complex to manage than batch or streaming deployments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Databricks offers integrated model serving endpoints, enabling you to prototype,
+    develop, and deploy real-time inference models on production-grade, fully managed
+    infrastructure within the Databricks environment. At the time of writing this
+    book, there are two additional methods you can utilize to deploy your models for
+    real-time inference:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Managed solutions provided by the following cloud providers:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Azure ML**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**AWS SageMaker**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**GCP VertexAI**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Custom solutions that use Docker and Kubernetes or a similar set of technologies
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you’re considering a robust solution for deploying and managing ML models
+    in a production setting, Databricks Model Serving offers a host of compelling
+    features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Effortless endpoint creation**: With just a click, Databricks takes care
+    of setting up a fully equipped environment suitable for your model, complete with
+    options for serverless computing.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Adaptive scalability and reliability**: Built for the rigors of production,
+    Databricks Model Serving is engineered to manage a high throughput of over 25,000
+    queries every second. The service dynamically scales to meet fluctuating demand
+    and even allows the accommodation of multiple models on a single access point.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Robust security measures**: Every deployed model operates within a secure
+    digital perimeter and is allocated dedicated computing resources that are decommissioned
+    once the model is no longer in use.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Smooth integration with MLflow**: The platform easily hooks into MLflow’s
+    Model Registry, streamlining the deployment process of your ML models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Comprehensive monitoring and debugging**: Databricks captures all request
+    and response interactions in a specialized Delta table, facilitating real-time
+    monitoring. Metrics such as query speed, latency, and error metrics are updated
+    dynamically and are exportable to your choice of monitoring solution.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Real-time feature incorporation**: If you’ve trained your model using Databricks’
+    Feature Store, those features are seamlessly bundled with the model. Furthermore,
+    these can be updated in real time if you’ve configured your online feature store.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s understand some of the important technical details around the model serving
+    endpoint feature grouped into various categories.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In-depth analysis of the constraints and capabilities of Databricks Model Serving
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this section, we will provide a comprehensive overview of the key technical
+    aspects surrounding the use of Databricks Model Serving. From the payload size
+    and query throughput limitations to latency and concurrency metrics, this section
+    aims to equip you with essential insights that will guide your utilization of
+    Databricks Model Serving effectively. Additionally, we will delve into system
+    resource allocation details and discuss compliance and regional limitations that
+    may impact your operations. Finally, we will touch upon miscellaneous factors
+    and operational insights that could influence your decision-making when deploying
+    ML models on this platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Payload constraints and** **query throughput**:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Payload size**: It’s worth noting that the payload size for each request
+    is capped at 16 MB. For most standard use cases, this is sufficient, but for more
+    complex models, optimizations may be required.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Queries per second** (**QPS**): The system comes with a default limit of
+    200 QPS per workspace. Although adequate for experimentation and low-traffic services,
+    this can be scaled up to 25,000 QPS for high-demand scenarios by consulting Databricks
+    support.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Latency and** **concurrency metrics**:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Evaluation latency**: Those of us who work with computationally intensive
+    models need to be mindful that Databricks imposes a 120-second upper limit for
+    evaluation latency.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Concurrent requests**: Concurrency is capped at 200 queries per second across
+    all serving endpoints in a workspace.. While this is often more than adequate,
+    custom adjustments can be made through Databricks support for higher-demand services.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**System resources** **and overhead**:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Memory**: The environment allocates a default of 4 GB per model. This is
+    generally sufficient for most traditional ML models, but deep learning models
+    may require an extension of up to 16 GB.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Latency overhead**: The architecture aims for a sub-50 ms additional latency,
+    which is a best-effort approximation rather than a guarantee.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Compliance and** **regional restrictions**:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**HIPAA compliance**: For those in the healthcare domain, it’s critical to
+    note that Databricks Model Serving isn’t currently HIPAA compliant.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Regional limitations**: There are instances where workspace location can
+    disrupt Model Serving capabilities. This is an essential factor to consider during
+    the planning stage. For a list of supported regions, go to [https://docs.databricks.com/en/resources/supported-regions.html](https://docs.databricks.com/en/resources/supported-regions.html).'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.core.indexes.numeric`''" can occur due to incompatible pandas versions.
+    To fix it:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Run '`add-pandas-dependency.py`' ([https://learn.microsoft.com/en-us/azure/databricks/_extras/documents/add-pandas-dependency.py](https://learn.microsoft.com/en-us/azure/databricks/_extras/documents/add-pandas-dependency.py))
+    script with the MLflow `run_id`.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Re-register the model in the MLflow model registry.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Serve the updated MLflow model.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Operational insights**:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Endpoint creation time**: The time it takes to provision a new model endpoint
+    is around 10 minutes.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Zero-downtime updates**: The system is designed to perform endpoint updates
+    with zero downtime, minimizing operational risk.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Dynamic scaling**: Databricks Model Serving employs intelligent scaling algorithms
+    that adapt to fluctuating traffic patterns and provisioned concurrency, ensuring
+    optimal resource allocation.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s take a look at an example of how you can use Databricks’ inbuilt Model
+    Serving endpoints to develop, prototype, and deploy models to generate real-time
+    inference:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go to the **Models** section in your workspace and select the **Churn Prediction**
+    **Bank** model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.4 – The registered model in the Staging stage of Model Registry](img/B17875_07_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.4 – The registered model in the Staging stage of Model Registry
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click on the **Use model for** **inference** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.5 – The Use model for inference button, which gives you the option
+    to either use the model for batch/streaming inference or as a real-time REST endpoint](img/B17875_07_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.5 – The Use model for inference button, which gives you the option
+    to either use the model for batch/streaming inference or as a real-time REST endpoint
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Select **Real-time** and click on **Enable Serving**. Here, we can select what
+    model version we want to serve and also the name of the serving endpoint. There
+    are also options to automatically generate code for batch and streaming inference
+    from the UI:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.6 – How to enable real-time serving from the UI](img/B17875_07_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.6 – How to enable real-time serving from the UI
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also specify the type of compute resources you’d like to allocate for
+    your model deployment. This is determined by the volume of concurrent requests
+    that your endpoint is expected to handle. For our example, we will select **Small**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.7 – The various compute options](img/B17875_07_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.7 – The various compute options
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, you can also select the **Scale to zero** option to make sure that your
+    endpoint is not costing you when there is no load on it. Now, click **Create Endpoint**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'You will be redirected to the **Status** page, where you can see the current
+    state of your model deployment, including what versions of the models are being
+    deployed:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.8 – The status page of the deployed Model Serving endpoint](img/B17875_07_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.8 – The status page of the deployed Model Serving endpoint
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also check the events associated with the model deployments:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.9 – The Status page of the deployed Model Serving endpoint](img/B17875_07_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.9 – The Status page of the deployed Model Serving endpoint
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can do the same for the metrics associated with the endpoint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.10 – The metrics associated with the Model Serving endpoint](img/B17875_07_010.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.10 – The metrics associated with the Model Serving endpoint
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another important thing to note here is that access to the REST endpoint is
+    inherited from the permissions you set in Model Registry:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.11 – The permissions inherited by the Model Serving endpoint](img/B17875_07_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.11 – The permissions inherited by the Model Serving endpoint
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s take a look at how you can query your model. In the UI, once you
+    see your model endpoint in the **Ready** state, you can click the **Query endpoint**
+    button at the top-right corner of the serving endpoint status page:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.12 – The Query endpoint button](img/B17875_07_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.12 – The Query endpoint button
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are code snippets that explain how to query a particular version of your
+    deployed model either in Python, cURL, or SQL. There is another option to mimic
+    a browser request and the following steps describe how you can utilize it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click on the **Show Example** button. This will only work when we have input
+    examples logged in MLflow alongside the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.13 – The automatically logged sample input records from AutoML](img/B17875_07_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.13 – The automatically logged sample input records from AutoML
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To send the JSON request to our model for real-time inference, simply click
+    **Send request**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.14 – The response that was received from the deployed model](img/B17875_07_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.14 – The response that was received from the deployed model
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we trained our Churn prediction model, AutoML logged example inputs that
+    our model expects when deployed as a REST endpoint. If you are not using AutoML
+    and training the model yourself, the MLflow API can be used to log sample inputs
+    to your model at the time of a model run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at how we can use Python to query the model endpoints with the help
+    of the example notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open the `Real-Time` notebook in the `Chapter-07` folder.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To query the model endpoint, we need each REST call to be accompanied by a
+    Databricks `Cmd 4`, we must extract the PAT token from our notebook instance and
+    programmatically extract our workspace domain name. This helps keep our code workspace-agnostic:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '`Cmd 6` contains a method score that takes as input sample records for inference
+    as a Python dictionary, converts it into JSON, and sends a request to the deployed
+    model. The model then responds with the predictions that are returned in JSON
+    format:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To engage with the serving endpoint APIs effectively, you should assemble your
+    JSON request payload according to one of the recognized formats. Each format offers
+    distinct advantages and limitations. In our specific scenario, our ML model anticipates
+    input in the form of a pandas DataFrame. Therefore, we have two optimal orientation
+    options to structure our API query to the endpoint:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`dataframe_split` method, serialized in JSON in a split orientation. This format
+    is more bandwidth-efficient compared to records orientation but is a bit harder
+    to read:'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '`records` layout is another available choice for representing DataFrame data.
+    It comes as a JSON object with each entry presenting a row in the DataFrame. This
+    record is easy to read and is human-friendly, but it consumes more bandwidth as
+    the column names are repeated for each record:'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Lastly, you can simply call inference on these records:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When dealing with ML models such as those built in TensorFlow or PyTorch, which
+    expect tensor inputs, you generally have two primary formatting options to consider
+    for API requests: instances and input. Both the instances and input formats offer
+    unique advantages and limitations that can significantly impact the design and
+    performance of your ML solution.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s delve into each format’s specifics to better understand how they can
+    be optimally utilized:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Instances format for tensors**: The **instances** format is tailored for
+    tensor data, accommodating tensors in a row-wise manner. This is an ideal choice
+    when all input tensors share the same dimension at index 0\. Essentially, each
+    tensor in an instances list can be conceptually combined with other tensors with
+    the same name across the list to form the complete input tensor for the model.
+    This merging is only seamless if all tensors conform to the same 0-th dimension:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Single tensor:'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Multiple named tensors:'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_PRE
+- en: '**Input format for tensors**: The **input** format is another option that structures
+    tensor data in a column-oriented manner. This format differs from instances in
+    a crucial way: it allows for varying tensor instances across different tensor
+    types. This is in contrast to the instances format, which requires a consistent
+    number of tensor instances for each type.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Databricks’ serving functionality provides the flexibility to deploy multiple
+    models behind a single endpoint, a feature that’s particularly useful for conducting
+    A/B tests. Furthermore, you can allocate a specific percentage of total traffic
+    among the various models housed behind the same endpoint. For more details on
+    this, you can consult the official documentation ([https://dpe-azure.docs.databricks.com/machine-learning/model-serving/serve-multiple-models-to-serving-endpoint.html#serve-multiple-models-to-a-model-serving-endpoint](https://dpe-azure.docs.databricks.com/machine-learning/model-serving/serve-multiple-models-to-serving-endpoint.html#serve-multiple-models-to-a-model-serving-endpoint)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Adding another model to an existing endpoint is a straightforward process via
+    the user interface. Simply navigate to the **Edit Configuration** section and
+    select the **Add served model** option. From there, you’ll be able to choose which
+    model from the registry to deploy, specify its version, define the compute resources,
+    and set the desired traffic allocation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.15 – How to add multiple models behind the same endpoint](img/B17875_07_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.15 – How to add multiple models behind the same endpoint
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is a notebook in the `Chapter-07` folder called `real-time-additional`
+    that contains code that demonstrates how we can set these endpoints using the
+    API using Python programmatically. You can go through it at your own pace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s delve into other prevalent scenarios related to model deployment.
+    First on the list is incorporating custom user-defined functions and libraries
+    when deploying models with MLflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Incorporating custom Python libraries into MLflow models for Databricks deployment
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If your projects necessitate the integration of bespoke Python libraries or
+    packages hosted on a secure private repository, MLflow provides a useful utility
+    function, `add_libraries_to_model`. This feature allows you to seamlessly incorporate
+    these custom dependencies into your models during the logging process, before
+    deploying them via Databricks Model Serving. While the subsequent code examples
+    demonstrate this functionality using scikit-learn models, the same methodology
+    can be applied to any model type supported by MLflow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Upload dependencies and install them in the notebook**: The recommended location
+    for uploading dependency files is **Databricks File** **System** (**DBFS**):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '`mlflow.sklearn.log_model()` with the `pip_requirements` or `conda_env` parameters
+    to specify your dependencies:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '`add_libraries_to_model()` function for embedding custom libraries alongside
+    the model to ensure consistent environments:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '**Model deployment**: Once the new model version, including the custom libraries,
+    has been registered, you can proceed to deploy it with Databricks Model Serving.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You can read more about this on the MLflow website ([https://www.mlflow.org/docs/latest/python_api/mlflow.models.html?highlight=add_libraries#mlflow.models.add_libraries_to_model](https://www.mlflow.org/docs/latest/python_api/mlflow.models.html?highlight=add_libraries#mlflow.models.add_libraries_to_model)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is another end-to-end example. You can find the entire code in the `custom-python-libraries`
+    notebook in the `Chapter-07` folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Moving on, in the following section, we’ll delve into the intricacies of custom
+    model development, exploring how specialized algorithms, unique data processing
+    techniques, and enterprise-specific requirements can be seamlessly integrated
+    into your MLflow deployments for enhanced performance and compliance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying custom models with MLflow and Model Serving
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Deploying ML models often requires more than just making predictions. Many use
+    cases demand additional capabilities, such as preprocessing inputs, post-processing
+    outputs, or even executing custom logic for each request. Custom models in MLflow
+    offer this level of flexibility, making it possible to integrate specialized logic
+    directly alongside your models. This section will walk you through how to deploy
+    such custom models with Model Serving.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'MLflow custom models are particularly beneficial in the following scenarios:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Preprocessing needs**: When your model requires specific preprocessing steps
+    before inputs can be fed into the prediction function.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Post-processing requirements**: When the raw outputs of your model need to
+    be transformed or formatted for end user consumption.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Conditional logic**: If the model itself has per-request branching logic,
+    such as choosing between different models or algorithms based on the input.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fully custom code**: When you need to deploy an entirely custom code base
+    alongside your model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To create a custom model in MLflow, you need to write a `PythonModel` class
+    that implements two essential functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`load_context`: The `load_context` method is responsible for initializing components
+    like model parameters or third-party modules that are crucial for the model but
+    only need to be loaded once. This step enhances the performance during the model''s
+    prediction phase.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`predict`: This function contains all the logic that executes each time an
+    input request is made.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here is some example code that defines a custom MLflow model class called `CustomModel`
+    that was built using the `PythonModel` base class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s understand this code in more detail as it can easily be modified in the
+    future for your use cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`load_context(self, context)`: The load_context method initializes essential
+    resources for our model to execute. The resources are loaded only once to optimize
+    the inference phase. Let''s understand the code inside this method in more detail.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`self.model = torch.load(context.artifacts["model-weights"])`: This line loads
+    a PyTorch model from the artifacts and assigns it to the `self.model` attribute.
+    The model weights are expected to be part of the artifacts under the `model-weights`
+    key.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`from preprocessing_utils.my_custom_tokenizer import CustomTokenizer`: This
+    line imports a custom tokenizer class.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`self.tokenizer = CustomTokenizer(context.artifacts["tokenizer_cache"])`: This
+    line creates an instance of the imported `CustomTokenizer` class and initializes
+    it using an artifact labeled `tokenizer_cache`. It is stored in the `self.tokenizer`
+    attribute.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`format_inputs(self, model_input)`: This method is designed to handle the formatting
+    or preprocessing of model inputs. As of now, this function''s code has not been
+    implemented and is indicated by pass.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As of now, this function's code has not been implemented and is indicated by
+    pass.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`format_outputs(self, outputs)`: This function is responsible for post-processing
+    or formatting the raw outputs from the model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`predictions = (torch.sigmoid(outputs)).data.numpy()`: This line applies the
+    sigmoid activation function to the raw outputs and then converts the resulting
+    tensor into a NumPy array'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This function formats or post-processes the model’s raw outputs
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`predict(self, context, model_input)`: Finally, we have the predict method
+    that performs the following steps:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`model_input = self.format_inputs(model_input)`: This line calls the `format_inputs`
+    function to format or preprocess the inputs'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`outputs = self.model.predict(model_input)`: This line uses the pre-loaded
+    PyTorch model to generate predictions'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`return self.format_outputs(outputs)`: This line calls `format_outputs` to
+    post-process the raw outputs before returning them'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'MLflow allows you to log custom models, complete with shared code modules from
+    your organization. For instance, you can use the `code_path` parameter to log
+    entire code bases that the model requires:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `mlflow.pyfunc.log_model(CustomModel(), "model", code_path = ["preprocessing_utils/"])`
+    line uses MLflow’s `log_model` method to log a custom Python model for later use,
+    such as serving or sharing it with team members. Let’s break down the function
+    arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`CustomModel()`: This is an instance of the custom Python model class you’ve
+    defined (such as the `CustomModel` class we saw earlier). This model will be logged
+    and can be later retrieved from MLflow’s Model Registry.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`"model"`: This is the name you are giving to the logged model. It serves as
+    an identifier that can be used when you are referring to this model in MLflow.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`code_path = ["preprocessing_utils/"]`: This is a list of local file paths
+    to Python files that the custom model depends on. In this case, it indicates that
+    the code in the `preprocessing_utils` folder is necessary for the custom model
+    to function correctly. This is especially useful when you want to include some
+    preprocessing or utility code that is required to run the model. When you log
+    the model, the code in this directory will be packaged alongside it. This ensures
+    that you’ll have all the necessary code when you load the model later.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So, when this function is executed, it logs your `CustomModel` class instance
+    as a model with the name “model” in MLflow. It also packages any dependent code
+    located in the `preprocessing_utils/` directory along with it. The resulting artifact
+    can then be loaded and executed anywhere MLflow is available, and it will include
+    both the model and its dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you log your custom model, it can be registered with MLflow Model Registry
+    and then deployed to a Model Serving endpoint, just like any other model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s look at an end-to-end example showcasing the use of custom models. The
+    code uses the wine dataset, which is a classic and straightforward multi-class
+    classification problem. Specifically, the dataset contains 178 wine samples from
+    three different cultivars (types of grapes) in Italy. Each sample has 13 different
+    features, such as Alcohol, Malic acid, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The aim is to predict which cultivar a particular wine sample belongs to based
+    on these 13 features. In other words, given a new wine sample, the model will
+    predict whether it belongs to `class_0`, `class_1`, or `class_2`, each representing
+    one of the three cultivars. It also provides the probabilities of the sample belonging
+    to each of these classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code utilizes a decision tree classifier trained on a subset of the wine
+    dataset (the training set). Once the model has been trained, it’s wrapped in a
+    custom Python class (`CustomModelWrapper`) to facilitate logging via MLflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, the model is used to make predictions on new, unseen data (the test
+    set). This code is available in the `custom-model` notebook in the `Chapter-07`
+    folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code defines a `CustomModelWrapper` class that inherits from
+    `mlflow.pyfunc.PythonModel`. This class serves as a wrapper for a given classifier
+    model. The `__init__` method initializes the classifier, while the `predict` method
+    computes probabilities and class predictions. These are then returned as a pandas
+    DataFrame, which includes both the probability scores for each class and the final
+    predicted labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Continuing from the custom model wrapper, this code takes additional steps to
+    prepare for model deployment. First, it loads the wine dataset and divides it
+    into training and test sets. `DecisionTreeClassifier` is then initialized and
+    trained on the training set. Subsequently, an instance of `CustomModelWrapper`
+    is created to encompass the trained classifier, adding an extra layer for output
+    formatting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next phase involves defining the input and output schemas by specifying
+    the data types and names of the features and target variables. These schemas serve
+    as a blueprint for the model’s expected input and output, which is crucial for
+    later deployment stages. An example input is also crafted using a single row from
+    the training set to illustrate how the model will receive data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the model is logged into MLflow, incorporating not just the custom
+    wrapper, but also the input example and the predefined schemas. This comprehensive
+    logging ensures that the model is ready for future tracking and deployment with
+    all its nuances intact.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In an ML deployment pipeline, ensuring that all model dependencies are correctly
+    packaged is critical for stable, scalable, and efficient operation. The following
+    section elaborates on the best practices for packaging these dependencies alongside
+    your model using MLflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Packaging dependencies with MLflow models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In a Databricks environment, files commonly reside in DBFS. However, for enhanced
+    performance, it’s recommended to bundle these artifacts directly within the model
+    artifact. This ensures that all dependencies are statically captured at deployment
+    time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `log_model()` method allows you to not only log the model but also its
+    dependent files and artifacts. This function takes an `artifacts` parameter where
+    you can specify paths to these additional files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In custom Python models logged with MLflow, you can access these dependencies
+    within the model’s code using the `context.artifacts` attribute:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: At the time of serving the custom models from model endpoints, all the artifacts
+    are copied over to the deployment container. They can be accessed as shown in
+    the example using the context object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLflow allows you to specify a Conda environment for your model. You can provide
+    a `conda.yaml` file that lists all the dependencies required by your model. When
+    you serve the model, MLflow uses this Conda environment to ensure that all dependencies
+    are correctly installed. This file is created automatically if you don’t specify
+    it manually at the time of logging the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s an example of how to specify a Conda environment in Python:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This brings us to the end of this chapter. Let’s summarize what we’ve learned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter covered the various deployment options in Databricks for your ML
+    models. We also learned about the multiple deployment paradigms and how you can
+    implement them using the Databricks workspace. The book’s subsequent editions
+    will detail the many new features that Databricks is working on to simplify the
+    MLOps journey for its users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will dive deeper into Databricks Workflows to schedule
+    and automate ML workflows. We will go over how to set up ML training using the
+    Jobs API. We will also take a look at the Jobs API’s integration with webhooks
+    to trigger automated testing for your models when a model is transitioned from
+    one registry stage to another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Here are some more links for further reading:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*MLeap* ([https://combust.github.io/mleap-docs)](https://combust.github.io/mleap-docs)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Databricks*, *Introduction to DataFrames –* *Python* ([https://docs.databricks.com/spark/latest/dataframes-datasets/introduction-to-dataframes-python.html](https://docs.databricks.com/spark/latest/dataframes-datasets/introduction-to-dataframes-python.html))'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Structured Streaming Programming* *Guide* ([https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html))'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Docker ([https://docs.docker.com/](https://docs.docker.com/))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Kubernetes* ([https://kubernetes.io/docs/home/](https://kubernetes.io/docs/home/))'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Pickle – Python object* *serialization* ([https://docs.python.org/3/library/pickle.html](https://docs.python.org/3/library/pickle.html))'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

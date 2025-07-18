@@ -1,0 +1,2023 @@
+- en: '3'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Transforming Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have the basics of KNIME at hand, we can move to the next level.
+    In this chapter, we will learn how to transform data to make the best out of it
+    systematically. The following pages will show how to work with multiple tables,
+    aggregate data points, apply expressions, and iterate through your workflows to
+    automating their execution. All these new skills will make you an autonomous user
+    of KNIME when manipulating real-world data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will answer the following questions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is a data model, and how can I visualize it?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How can I combine several data tables?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How can I aggregate data points and calculate formulas?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How can KNIME automate the creation of summary reports?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What do variables and loops look like in KNIME?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This chapter will end with a full tutorial based on real data and a very realistic
+    business case: it will be an opportunity to put into practice all you''ve learned
+    so far about KNIME while confronting the complexity of data you will face in your
+    work. Before diving into the concrete ways to transform data, let''s invest a
+    few minutes in the fundamentals of relational databases and data models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Modeling your data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Data tables are hardly useful when they lie apart. In fact, by organizing them
+    together in a database, we amplify their overall value as we unveil patterns and
+    connections across data points. That is why data is typically stored in an ensemble
+    of different tables connected with each other to virtually form a single body
+    called a **Data Model**. When you work with multiple tables, it is beneficial
+    to "visualize" what the underlying data model looks like: this gives you the ability
+    to anticipate ways to leverage the data and interpret it correctly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We shall bring the concept of a data model to life by going through a business
+    example. Let''s imagine that we own a small store selling musical instruments.
+    Our business model is pretty simple: we order instruments from manufacturers and
+    store them in a warehouse. Customers call at our shop and get the chance to try
+    a few instruments before deciding whether to purchase or not. Our most loyal customers
+    sign up and get a membership card: occasionally, they receive a newsletter with
+    new arrivals and special offers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To manage our store''s activities, we use a simple information system that
+    keeps track of products, sales, inventory, and customers. Data is organized in
+    a simple database, made of four different tables, each having multiple columns,
+    whose names are—fortunately—self-explanatory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Product Master Data**: This stores the list of products we buy and sell.
+    For each product, we have a unique *Product_ID*, a *Category* (like Guitars, Violins,
+    and Pianos), a short *Description* (which includes the model of the instrument),
+    the *Brand*, and the *List_price*.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Sales Transactions**: This records all sales. Every row includes the *Date*
+    of purchase, the *Receipt_ID* (counting the number of receipts created during
+    each day), the *Product_ID*, the *Quantity* (number of items purchased), the *Discount_rate*
+    that was applied (if any), the overall *Amount* paid, and—if the customers are
+    members of our loyalty card program—their *Customer_ID*.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Customer Master Data**: This carries preferences and contact details related
+    to our loyalty card members. It includes the unique *Customer_ID*, *Full_Name*,
+    *ZIP_Code* of where they live, *Email_Address*, *Telephone* number, and their
+    primary *Instrument*.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Inventory Transactions**: This accounts for all product movements in our
+    warehouse, such as the loading of the items as they arrive and transferring them
+    to the shop floor. Its columns are *Date* (which includes the time when it happened),
+    *Product_ID*, and *Quantity* (this will be positive when items are loaded in and
+    negative when they leave the warehouse).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'By looking at this simple example, we can observe a few features that are worth
+    elaborating on as they apply to most databases we would encounter in our work:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We see two different types of tables fulfilling two different needs: **Master
+    Data** and **Transactional** tables. Master data tables aim at describing entities
+    of business relevance, such as products, customers, suppliers, employees, and
+    so on. In these kinds of tables, each row corresponds to an instance of the entity
+    (for example, a specific product, or an individual customer), while every column
+    describes a different aspect of the entity (like its name or description). On
+    the other hand, transactional tables record events (like a monetary transaction,
+    a sale, an order) occurring at a specific point in time. Every row corresponds
+    to an event, while columns describe the event''s features and the entities that
+    took part in it. Master data and transactional data tend to be updated and used
+    in different fashions: master data tables are touched more rarely than transactional
+    tables. Think about the frequency of adding a new product to the catalog or hiring
+    an employee: these events occur much less often than regular sales or inventory
+    movements do.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The tables are clearly connected to each other. In fact, many of their columns
+    represent the same thing. For instance, *Product_ID*s of sold items are the same
+    *Product_ID*s we find in the product master data. The two tables are related and,
+    indeed, databases of this kind—omnipresent in firms—are called **Relational Databases**.
+    The columns used to connect multiple tables are called **Keys**: when the rows
+    of two tables have matching values in their keys, it means that these rows are
+    connected and refer to the same event or entity. This means that all rows in the
+    sales transactional table having a specific value in the column *Product_ID* (let''s
+    say *PS012*) refer to sales of the same product. Thanks to the relationship occurring
+    across the tables, you can then find the product''s description by looking up
+    the value of *Product_ID* in the product master data (where you will find that
+    *PS012* refers to—in this case—a *Steinway piano*).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A simple and effective way of describing the underlying data model of a relational
+    database is through the **Entity-Relationship** (**ER**) **Diagram**. The ER diagram
+    looks like a series of boxes connected with each other: each box is a table and
+    displays its columns while the connections show the existing relationships across
+    keys. *Figure 3.1* represents a simplified rendering of the ER diagram of our
+    music store database: keys are highlighted with a bold font and a little icon:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.1: The Entity-Relationship diagram of the music store database'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will encounter diagrams of this kind throughout this book. I suggest you
+    make the effort to sketch the ER diagrams of those tables you use at work the
+    most, as it will simplify your thinking on how to best leverage them. In fact,
+    mapping all the data available in the various systems of a firm is a tough but
+    worthwhile exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Keeping this mapping up to date and—in general—managing data assets in a firm
+    requires discipline and a set of formal roles, processes, and standards called
+    **Data Governance**. A good (and often underestimated) practice of data governance
+    is, indeed, to create a **Data Inventory**: this is a systematic description of
+    all information assets in a company. As you build an inventory, you are forced
+    to map master data and transactional tables correctly, spotting duplications and
+    missing keys.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A data inventory includes information about the data stored in tables, such
+    as content, source, owners, and licensing: these are all examples of **Metadata**,
+    a word that literally means "data about data."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Combining tables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Data models show us how data points within separate tables are logically connected
+    with each other. In the practice of data analytics, we often need to combine data
+    together by leveraging the logic relationships which the data model describes.
+    The most common operation for combining two tables into a third one is called
+    **Join**. By combining two tables together, we cross-enrich them as we merge all
+    the information we have on a specific event or entity. The join operation will
+    take the two tables and match the rows that have the same values in the columns
+    we specify (**Matching Columns**). Let''s imagine we have the following two tables,
+    which refer to sales transactions and to the product master data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Sales |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Date | Amount |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | 21-Dec | 1040 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 21-Dec | 249 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | 22-Dec | 1499 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 22-Dec | 249 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.1: Sales table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Products |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | Pianos |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.2: Products table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What if we need to calculate the overall sales generated by each product category?
+    The first table tells us the amount of sales for each transaction but misses the
+    category information so we cannot aggregate those sales accordingly. The second
+    table has the category bit but doesn''t tell us anything about sales. Each table
+    is missing something, so we need to combine them by means of a join. The good
+    news is that the two tables share a column (*Product*), which could serve for
+    doing the matching. Let''s join them together using *Product* as a matching column:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Join of the two tables above |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Date | Amount | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | 21-Dec | 1040 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 21-Dec | 449 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | 22-Dec | 1499 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 22-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.3: Joining the Products table and the Sales table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See what happens? By joining the two tables, we obtain a third one as an output
+    where we have, for each transaction, not only the product name, date, and amount
+    (which would only be available in the first table) but also the category of each
+    product (which is only available in the second table). This table can now be used
+    for calculating how much sales are generated by each product category by just
+    running the right aggregations (which we'll learn how to do in a few pages).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To complete our introduction to joins, let''s consider one last aspect. Even
+    if two tables have some columns in common (which could be leveraged for our matching),
+    they will not necessarily have a correspondence between every row of their own
+    and a row in the other table. In the earlier example, we might have, for instance,
+    some transactions that refer to instruments not included in the product master
+    data (maybe they are new arrivals and haven''t been categorized yet) or the other
+    way around (products available in the master data that haven''t sold yet). If
+    we combine tables without a perfect matching of the rows, the output might carry
+    some blanks (the famous NULL values we met in the previous chapter) since we don''t
+    have a corresponding value to use. Depending on our strategy to manage such missing
+    matches (and the resulting incomplete rows in the output), we can implement different
+    types of joins. Let''s imagine that we want to join the following two tables (by
+    convention, the two tables combined in a join operation are called **Left** and
+    **Right** table, hence the name of the headers in the following tables):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Left table: Sales |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Date | Amount |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | 21-Dec | 1040 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 21-Dec | 249 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Korg B2 | 21-Dec | 499 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | 22-Dec | 1274 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 22-Dec | 249 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Didgeridoo Black 2 | 22-Dec | 459 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.4: Left table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Right table: Products |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | Pianos |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Korg B2 | Pianos |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Steinway B-211 | Pianos |'
+  prefs: []
+  type: TYPE_TB
+- en: '| American Jazz-5 | Basses |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.5: Right table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that some products have no corresponding matches in the other table,
+    as the following Venn diagram intuitively displays:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Diagram, venn diagram'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_02.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.2: Venn diagram of Sales and Product tables: not all instruments are
+    present in both tables'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Depending on how we prefer to manage the "non-matching" rows in the resulting
+    output table, we have four different types of joins:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Inner Join**: In this case, we only keep the rows with a match in both tables.
+    We focus on the intersection of the keys across the two columns. By doing so,
+    we avoid generating any NULL value due to non-matching keys. On the other side,
+    we might be neglecting some rows which—even if incomplete—carry some valuable
+    information, like sales of products not yet categorized.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Left Outer Join**: This type of join will keep all the rows existing in the
+    left table, even those that have no match in the right table. In this way, we
+    might incur some NULL values in the output, but we "preserve" the information
+    stored in the left table.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Right Outer Join**: This one is just the opposite of the previous one and
+    will preserve all the rows in the right table, including the ones without a match
+    in the left one.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Full Outer Join**: We go for this option when we cannot afford to lose anything!
+    All rows in the two tables will be kept, even if they don''t have a match. This
+    is the option that could potentially create most NULL values: it''s the price
+    to pay to conserve all data.![](img/B17125_03_03.png)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Figure 3.3: The four types of join: decide which rows you want to keep in the
+    output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Table 3.6*, you will find the results of applying the four types of joins:
+    the NULL values are displayed as a question mark, as you would find in KNIME.
+    The Inner Join has no NULL values, as anticipated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Inner Join |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Date | Amount | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | 21-Dec | 1040 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 21-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Korg B2 | 21-Dec | 499 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | 22-Dec | 1274 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 22-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.6: Inner Join'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Left Outer Join, we will have a row referring to the Didgeridoo sales,
+    even if it is yet uncategorized. What probably happened with this peculiar Aboriginal
+    instrument is that it is a new shiny arrival that attracted the attention of a
+    customer quickly, before we had the time to update the product master table by
+    adding it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Left Outer Join |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Date | Amount | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | 21-Dec | 1040 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 21-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Korg B2 | 21-Dec | 499 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | 22-Dec | 1499 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 22-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Didgeridoo Black 2 | 22-Dec | 459 | ? |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.7: Left Outer Join'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Right Outer Join, we are also forcing a row for those instruments that,
+    given their price, have not sold yet. This view can be beneficial to discover
+    products that might require some more advertisement in our next newsletters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Right Outer Join |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Date | Amount | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | 21-Dec | 1040 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 21-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Korg B2 | 21-Dec | 499 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | 22-Dec | 1499 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 22-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Steinway B-211 | ? | ? | Pianos |'
+  prefs: []
+  type: TYPE_TB
+- en: '| American Jazz-5 | ? | ? | Basses |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.8: Right Outer Join'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Full Outer Join will contain not only the products that never sold but
+    also the ones that haven''t been categorized yet. Creating such a table can help
+    us summarize sales by category and spot uncategorized and unsold products all
+    at once:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Full Outer Join |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Product | Date | Amount | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gibson Explorer B-2 | 21-Dec | 1040 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 21-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Korg B2 | 21-Dec | 499 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Yamaha YDP-164 | 22-Dec | 1499 | Piano |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Squier Affinity | 22-Dec | 249 | Guitars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Didgeridoo Black 2 | 22-Dec | 459 | ? |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Steinway B-211 | ? | ? | Pianos |'
+  prefs: []
+  type: TYPE_TB
+- en: '| American Jazz-5 | ? | ? | Basses |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.9: Full Outer Join'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As this simple example unveiled for us, there might be value in any type of
+    join. As data practitioners, we want to know what options we have available so
+    that we can select which one to use, depending on the business case we face.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To perform joins in KNIME, we can leverage a very useful node which is called—unsurprisingly,
+    we shall admit—**Joiner**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/NEW-Joiner_node.png) *Joiner*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The node (available in **Manipulation > Column > Split & Combine**) joins the
+    two tables connected at its input ports according to the user-provided matching
+    criteria. To con-figure it (*Figure 3.4*), you first need to specify the criteria
+    for the join by choosing the couple of columns in the two tables that are related
+    and should match. To add the first couple of columns, click on the button labeled
+    **Add matching criterion**. You will find two drop-down menus with the available
+    columns of the tables connected with the upper and the lower input ports (by convention,
+    they refer, to the **left** and the **right** tables of the join operation, respectively).
+    You can add or remove columns to be matched by clicking on the + and the – buttons
+    on the right. By default, all the couples of columns you enter here need to have
+    matching values for rows to be matched. They also need to be of the same type
+    (integers matching with integers, string match-ing with strings, and so on).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To solve unmatching data types, the node allows you to convert the data types
+    of the columns before assessing the matching criteria. For example, from the selector
+    labeled as **Compare value in join columns by**, you can pick **string representation**
+    to convert all values to strings before checking if they match.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After clarifying the matching criteria, you need to decide the type of join
+    operation you would like to perform (**Inner**, **Left outer**, **Right outer**,
+    or **Full outer**). To do so, use the Venn diagrams you find in *Figure 3.3* as
+    a guide. If you want an inner join, only the **Matching rows** box needs to stay
+    selected. For the left or right outer joins, you have to tick also the Left or
+    the **Right unmatched rows**, respectively. For the full outer, all box-es should
+    be selected. As you noticed from its icon, the node has three outputs. The first
+    output port on the top carries the result of the join. You can also decide to
+    review the rows that did not find any match in the other table and place them
+    in the second and third output ports. If you are interested in viewing the unmatched
+    rows as well (it might be useful sometimes to understand why not all rows match),
+    you need to tick the **Route unmatched rows to separate ports** box: this will
+    activate the second and third ports which would—otherwise—stay inactive and marked
+    with a red cross.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One last option that you would select in most cases is **Merge joining columns**:
+    by doing so, you keep only one "copy" of the pair of columns used to assess the
+    matching. If you leave it unticked, you will keep both the two columns which were
+    coming from the left and the right input tables: in most cases you don''t want
+    that so this box should be al-ways selected.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application, email'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_04.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.4: Configuration dialog of Joiner: select which columns should match'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the second tab of the configuration dialog (**Column Selection**), you can
+    specify which columns resulting from the join operation should be kept at the
+    output port of the node. This might be handy when you know you will not need some
+    of the columns in the subsequent steps of your workflow: in this case, just go
+    through the columns in the boxes on the right and double-click on the ones to
+    remove:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_05.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.5: Configuration dialog of Joiner: select which columns should match'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For those of you using Microsoft Excel, you will notice that you can implement
+    a Left Outer Join in Excel with functions such as `vlookup()`. By using KNIME
+    instead of Excel, you can run all types of join (not just the left outer) and
+    easily define matching criteria on multiple columns (which in Excel would require
+    some workarounds).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For completeness, there are a couple of other ways to combine tables beyond
+    the join operator. If you don''t need to take care of any matching criteria and
+    you just want to "stitch together" tables that have the same size in one dimension,
+    you can:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Append columns across two tables that have the same number of rows. You will
+    obtain the columns of the first table just beside the second table columns, in
+    whatever order they have in the original table. You can do so in KNIME by using
+    the **Column** **Appender** node.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Concatenate rows of two tables having the same columns, putting the rows of
+    the first table on top of the ones coming from the second table. The node for
+    this is called just **Concatenate**.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Figure 3.6* give you an idea of how these two nodes would work:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.6: Combining tables without matching criteria: you can append columns
+    or concatenate rows with these two nodes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we are clear on the many ways available to us to combine several tables
+    into one. Let''s move to the other omnipresent data transformation need: aggregating
+    values to create summary views of a table.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Aggregating values
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The information contained in a raw data table lies dispersed across all its
+    rows. Often, we need to condense a large table into a smaller and more readable
+    one where its values get aggregated or summarized following a given logic. For
+    instance, if we have a table including all orders received in the last year and
+    want to make sense of our sales' evolution over time, we might prefer to calculate
+    a simpler table that shows the total number of orders generated every month. Instead
+    of having a long table with as many rows as orders, we prefer scanning through
+    its aggregation showing only twelve rows, one for each month.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The simpler way of aggregating data is by using a rather popular database operation
+    called **Group By**: it combines rows in various groups and aggregates their values
+    within each group. To perform a Group By, you will need to decide two things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, you must declare which columns define a **group**. All the rows showing
+    the same values in the columns defining the group will be combined together into
+    a single row in the output. Let''s take *Table 3.6* as an example. If you defined
+    our group using column *Category*, the result of the Group By will have only two
+    rows: one with the total sales of guitars and the other one with the total sales
+    of pianos. You can define groups by multiple columns: in this case, you will get
+    an aggregated row for each combination of unique values in the group columns.
+    For example, if you selected both *Date* and *Category* as group definition, you
+    will obtain multiple output rows for each category, one for each different day
+    of sales.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Second, you need to decide how to summarize rows across, meaning which **aggregation
+    function** to use. For instance, you could simply count all rows appearing in
+    a group, summing up their values or calculating their average. In the case of
+    the sales summary table, we decided to count the number of sales transactions,
+    but we could have calculated the overall income generated each month by using
+    the sum as an aggregation function instead.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'It''s time to see the Group By operation in action on our music store example.
+    Let''s use as input the result of the Inner Join in *Table 3.6*. We want to summarize
+    our sales by product category, calculating the income generated by each category
+    and the number of items sold in total:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Sales, group by Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Category | Sales | Quantity |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Guitars | 1538 | 3 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Pianos | 1773 | 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.10: Summary of sales by category'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we would expect, the resulting table has just two rows, one for each category
+    present in the original table. Let's meet the node that can perform aggregation
+    of this kind in KNIME.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image015.png) *GroupBy*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**Manipulation > Row > Transform**) aggregates rows of a table by
+    groups, defined by means of a subset of columns. Its basic configuration requires
+    two steps. In the **Groups** panel, you need to select which columns define the
+    groups by moving them to the list on the right, bordered in green. You can choose
+    multiple columns: the output table will have one row for each unique combination
+    of different values in all of the columns you specify here. If you don''t select
+    a column, you will aggregate all rows at the input into one single grand total
+    row at the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_07.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.7: Group settings for a Group By: decide what columns define a group'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second step is to declare which columns should be summarized and using
+    which aggregation function. You can define the columns to aggregate upon by double-clicking
+    on their name from the left list. Then, you can specify the aggregation function
+    by selecting it from the drop-down menu under **Aggregation**. You can select
+    the same column multiple times and aggregate it with different functions. In the
+    drop-down menu at the bottom (**Column naming**), you can specify the naming convention
+    to be used for the aggregate columns. The default option is **Aggregation method
+    (column name)**, which will create headers like *Sum(Quantity)*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_08.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.8: Aggregation settings for a Group By: decide how to summarize your
+    rows within each group'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Table 3.11*, you find the most popular functions you can use for summarizing
+    your rows within each group. For some of these functions, like Count or First,
+    you need to decide whether to consider NULLs as values like all others or ignore
+    them. If you want them to be ignored (focusing the aggregation on actual values
+    only), tick the **Missing** checkbox on the right:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Aggregation Function | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Sum | Sums all values in a group, returning the total. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Count/Unique Count | Counts all rows within each group. Unique Count ignores
+    duplicates and counts only distinct values. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Mean/Median | Calculates averages and the median value within each group.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Mode | Takes the value with the highest number of occurrences in a group.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| First/Last | Takes the first/last value appearing in each group, depending
+    on their sorting when input. Make sure you sort rows accordingly before. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Minimum/Maximum | Takes the minimum and the maximum values within the group.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Concatenate/Unique Concatenate | Joins all values in a single string, using
+    the delimiter indicated in the text box at the bottom. Unique Concatenate ignores
+    duplicates. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Correlation | Calculates correlation with another column (you can select
+    it by clicking on the **Edit** button), across elements of each group. |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.11: Summarizing functions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another way of aggregating data is by using the **Pivot** operation. While the
+    Group By groups up being rows in the output table, with this operation, we can
+    "rotate" some groups (that we call pivots) to appear vertically, as columns, in
+    the output table. You can think of a pivot as a 2-dimensional matrix showing aggregations
+    across horizontal groups (which will ultimately appear as rows of the pivot) and
+    pivoted vertical groups (appearing as columns in the output matrix).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see the Pivot operation in use on our music store example. Starting
+    again from the Inner Join result, we would like to summarize our sales in a single
+    table showing sums for each combination of categories (horizontal groups) and
+    dates (vertical groups, or pivots):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Sales, pivot by Category and Dates |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Date | 21-Dec | 22-Dec |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Category | Sales | Quantity | Sales | Quantity |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Guitars | 1289 | 2 | 249 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Pianos | 499 | 1 | 1274 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3.12: Sales pivot by category and dates'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The resulting pivot table has two rows, one for each of the categories (like
+    with Group By), and multiple columns showing the aggregations for each available
+    date. In KNIME, we can use the **Pivoting** node to create such summaries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image021.png) *Pivoting*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**Manipulation > Row > Transform**) aggregates values by creating
+    a pivot table. Its configuration dialog is similar to that of **GroupBy**, but
+    contains an additional **Pivots** panel, as the following shows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Groups** panel, you specify the input columns that define the horizontal
+    groups, which will show as rows in the output pivot table.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the **Pivots** panel, you specify instead which input columns to use for
+    creating the vertical groups, appearing as columns in the resulting table.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finally, in the **Aggregation** panel, you can select the input columns to summarize
+    and the aggregation method to use.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Similar to what we have seen for the **GroupBy** node, the two drop-down menus
+    at the bottom (**Column name** and **Aggregation name**) can be used to specify
+    the naming convention for the columns of the resulting pivot. By default, you
+    will have headers concatenating the name of each pivot with the aggregation method,
+    like *21-Dec+Sum(Amount)*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application, email'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_09.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.9: Pivot setting: select the columns to use for the vertical groups
+    (pivots)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **Pivoting** node has not one but three output ports: you can view them
+    by selecting one of the last three magnifying lens icons at the bottom of the
+    pop-up menu after right-clicking on the node. The first output is the pivot matrix
+    (most of the time, you will only need this one), the second one is the total aggregation
+    of the horizontal groups only (pivots are ignored), while the third one is the
+    grand total across all rows of the pivot (groups are ignored).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concept of pivot tables has been popularized in Microsoft Excel. Knowing
+    how to build a pivot in KNIME, you now have access to a broader range of aggregation
+    methods, and you will be able to make the pivot operation part of a more extended,
+    automated workflow of steps, removing all manual interventions such as refreshes
+    and copy/paste.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In some cases, you want to run the reverse operation, called **Unpivoting**:
+    this will place the columns of a table to appear as multiple rows in the output
+    table. If you want to perform this transformation in KNIME, check out the **Unpivoting**
+    node.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Figure 3.10*, you see a summary of the three table aggregations and disaggregation
+    methods we have seen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_10.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.10: Transforming tables by aggregating and disaggregating: a summary
+    of the most useful operations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Combining tables and aggregating values are the fundamental data transformations
+    you can do. Let's see them in action in a full tutorial, which will be an opportunity
+    to learn a few more tricks about KNIME, like calculating formulas, visualizing
+    data, and using loops and variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Tutorial: Sales report automation'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this tutorial, you will impersonate the role of a business analyst working
+    for a UK-based online retailer, selling all-occasion gifts. You are intrigued
+    by data analytics and are reading a few (good) books about its potential. You
+    have set for yourself the ambition of progressively amplifying the role of data
+    analytics in the company by leveraging your new skills. You decide to start from
+    something relatively simple: automate and improve the reporting of sales data.
+    By doing so, you want to make a quick and visible impact and instill an *appetite*
+    for more advanced analytics in your colleagues and managers, unlocking interest
+    and investments.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The company you work for has grown quickly and didn't have the opportunity to
+    adopt a sustainable business intelligence solution. The regular reporting is managed
+    manually using Excel. The poor finance analyst responsible for it pulls data from
+    the company website every Friday and, after a couple of hours of boring manual
+    steps, sends an email with the latest status. Due to the manual nature of the
+    activity, the reports are prone to human error, and almost every week this causes
+    several *back and forth* emails, which leave no time for identifying business-meaningful
+    patterns in the data and creating real value. You empathize with the finance analyst
+    and decide to set aside a few hours to automate the full reporting process in
+    KNIME.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First of all, you manage to retrieve a list of the most important business
+    questions people ask about sales evolution. This initial list will be a good base
+    for your initial endeavor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What are the top ten products in our assortment, meaning the ones that generate
+    the most significant number of sales?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: What are the top three products within each subcategory?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To which country do we sell the most?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: During the current calendar year to date, how much revenue was generated within
+    each product category?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: What's the relative footprint of each category out of the total portfolio of
+    products for the current year?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In which months should we expect a peak in sales for our seasonal categories?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You decide that your first automated report shall include a tabular view answering
+    the first five business questions appearing above. For the last one, since the
+    seasonal behavior of the business is not going to change significantly on a weekly
+    basis, it will be enough to build a chart that depicts the patterns of sales by
+    month as a one-off exercise. Having defined the minimum set of deliverables that
+    your work should cover, you are ready to go to the next step and assess what data
+    is required to make it happen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Always start any data work by clarifying the business questions you are after.
+    Many analytics initiatives fail because there is a lack of understanding of what
+    the ultimate objective looks like. Make sure you always "visualize" what you want
+    to obtain from your data analytics capabilities and how you expect it to practically
+    affect your business. If possible, put it in writing, as we just did with the
+    six questions above.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the help of the finance analyst (who is already getting very excited about
+    your initiative), you retrieve the latest data required for the regular sales
+    reporting and discover that it is scattered across three different tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Product Master Data**: This includes a unique alphanumeric code (column *StockCode*),
+    which serves as a product ID, a short *Description*, and two columns to locate
+    each item within the two-level product hierarchy used in the company, namely *Category*
+    and *Subcategory*. For example, within the category "Stationery," we find the
+    subcategories "Notebooks" and "Stickers," while within "Home," we have "Clocks"
+    and "Furniture."'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Customer Master Data**: For each customer who has signed up to the website,
+    it includes an identifier (*Customer_ID*) and the *Country* of residence.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Sales Transactions**: This is the biggest table as it records all sales.
+    For every invoice (identified with column *Invoice_ID*), this table can host multiple
+    rows, one for each product (described through its *StockCode*) included within
+    the transaction. For each row, we also have the number of purchased items (*Quantity*),
+    the unit *Price*, the *Customer_ID* (which can be empty, if the customer hasn''t
+    signed up), and a string describing the date and time of the purchase (*Invoice_time*).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The product and customer master data tables are available in two text files(named`productMD.csv`
+    and`customerMD.csv`) extracted from the ordermanagement system. Transactions are
+    stored, instead, in two separate Excel files(`TransactionL3M.xlsx`and`TransactionsHistory.xlsx`):
+    the first one contains only the most recent sales, covering the latest three months
+    of transactions, while the second one has the remainder of the transactions''
+    history:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_11.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.11: An Entity-Relationship diagram of the online retailer database'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We now have enough knowledge to get started: should we realize we need more
+    info on the data and the business needs, we can always go back to our finance
+    analyst and ask for extra help. By looking at the list of business questions,
+    we notice that we will need to aggregate our transactions using fields (such as
+    *Category***,** *Country*),which **are** in different master data tables, so we
+    will need to load all of them and combine them. Let''s open KNIME, create a new
+    workflow (**File** | **New...** and **New KNIME Workflow**), and begin to build
+    it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a first step, we load the transactional data, which is contained in two separate
+    Excel files. Let's start from the history, dragging`TransactionsHistory.xlsx`on
+    the blank workflow or implementing the **Excel Reader** node. In the configuration
+    window, we notice that the preview includes all the columns we anticipated being
+    there, so we can close it, leaving the options unchanged. We repeat the same for
+    the other file (`TransactionsL3M.xlsx`) and run both nodes.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The two tables we have loaded so far refer to transactions and share exactly
+    the same columns. We can combine them and stack one on top of the other by using
+    the **Concatenate** node.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![](img/image029.png) *Concatenate*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The node (**Manipulation > Row > Transform**) concatenates two tables by adding
+    the rows of the second table at the bottom of the rows of the first table. The
+    node will combine the columns if they have the same header. You can use its configuration
+    window to decide how to handle the columns that do not appear in both input tables.
+    By default, all columns will be kept (the **Use union of columns** option from
+    the **Column handling** section): this means that, if a column only exists in
+    one table, it will show in the output as NULL values for all the rows coming from
+    the other table. If instead, you go for the alternative option (**Use intersection
+    of columns**), all non-matching columns will be discarded at the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application, email'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_12.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.12: Configuration window of the Concatenate node: choose how to manage
+    duplicate and non-matching columns'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can combine the two transaction tables and connect the outputs of the two
+    **Excel Readers** as inputs to a **Concatenate** node. Since the two input tables
+    share precisely the same columns (having identical names), we don't need to care
+    about the configuration of the node and stick with its default behavior. As we
+    run the node, we obtain at the output the full **Sales Transactions** table with
+    more than 600,000 rows.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s now load the **Customer Master Data** table, stored in the `customerMD.csv`file.
+    We can either drag and drop the file on the editor or implement a **CSV Reader**
+    node and configure it by specifying the file''s path. Double-check in the configuration
+    window that the node has rightly captured the column delimiter (in this case,
+    a semicolon): you can always click on **Autodetect format** to get KNIME to guess
+    it.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We can now combine the sales table with the customer master data to enrich each
+    transaction with the information on the *Country* where it was generated. Let's
+    connect the outputs of the **Concatenate** and **CSV Reader** nodes as inputs
+    to a **Joiner** node. By double-clicking on the latter, we can configure it. First,
+    we need to set the conditions for matching rows. We click on the **Add matching
+    criterion** button and select *Customer_ID* from both tables. The second configuration
+    step is to specify the type of join to make. We want to maintain all transactions
+    (left table) even if they don't have a corresponding match on the customer master
+    data (right table), so we decide to go for a left outer join. In fact, our colleague
+    (who is starting to admire our agility in KNIME) confirms that, although not all
+    customers are included in the customer master data, we should consider transactions
+    coming from all product sales. To obtain a left outer join, we need to tick both
+    the **Matching rows** and the **Left unmatched rows**. The Left outer join title
+    on top of the white and yellow Venn diagram confirms that we did well. The last
+    configuration step is to select **Merge joining columns** option so that we don't
+    carry two copies of the *Customer_ID* columns.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'When we close the configuration window and run the node, we notice that none
+    of the rows got matched: in fact, the output table has got null values (the ''**?**''
+    cells) in all rows. by reopening the configuration of the Joiner (*Figure 3.13*)
+    we realize what happened: the *Customer_ID* columns in the two tables we are joining
+    refer to the same attribute but have a different data type (string in transactions
+    and integer in the customer master data). These things happen: given the different
+    formats of the files carrying the tables, data types might have been interpreted
+    differently.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Graphical user interface'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_13.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.13: Non-matching joining columns: same content but different data
+    types'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image035.png) *Number To String*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**Manipulation > Column > Convert & Replace**) converts numeric
+    columns (like integers and decimal numbers) intro strings of text. Its configuration
+    is trivial: you just need to select which numeric columns should be converted
+    by keeping or removing them from the right selection panel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application, email'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_14.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.14: Number To String configuration: which numbers do you want to convert
+    into text?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To convert the *Customer_ID* column from the master data into a string, we add
+    a **Number To String** node between **CSV Reader** and **Joiner**. The fastest
+    way to do that is to drag the node from the repository and, by clicking the mouse
+    button pressed, drop it on the connector which already exists between the two
+    nodes (which will turn red when selected). We can now execute the **Joiner** node
+    and notice that at its output (*Shift*+*F6* to open the view) we do not have any
+    more NULL value. Instead, we read all transactions, enriched with an additional
+    column (*Country*) at the right end, which is exactly what we were aiming at.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It's now time to load the **Product Master Data** table by loading the `productMD.csv`
+    file through the usual CSV Reader node.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can now add an additional **Joiner** downstream: the first input port should
+    be connected with the first output of the previous **Joiner''s** node while the
+    second port should get the product master data from the latest **CSV Reader**.
+    In its configuration, we first select *StockCode* as matching columns from both
+    the left and right tables: the data types nicely match so no conversion is needed.
+    This time we want to run an inner join because we don''t want to carry sales from
+    products that are not included in the product master data as they would not belong
+    to any product category, making the reporting less readable. Thus, in the **Joiner''s**
+    configuration window, we only keep the **Matching rows** box selected. Lastly,
+    tick the **Merge joining columns** box so that we don''t carry two copies of the
+    *StockCode* column. When we execute the node, we obtain a table indicating for
+    each row the description of the product being sold and its classification within
+    the hierarchy.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'All the data has now been loaded and combined in a single table: we can proceed
+    in preparing this table, generating the reports we need. We notice that all the
+    business questions require aggregating sales in terms of generated income, while
+    our table displays *Quantity* and *Price* for each line item in an invoice. To
+    calculate the resulting income generated by each transaction, we need to implement
+    a simple mathematical formula, which is what the next node is all about.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image039.png) *Math Formula*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**Manipulation > Column > Convert & Replace**) evaluates an expression
+    for each row of a table, returning its result in a given column. The configuration
+    dialog looks very familiar: indeed, it is structured in the same way as for the
+    **String Manipulation** node we met in *Chapter 2*, *Getting Started with KNIME*.
+    The only difference is that here, you can use functions working on numbers, like
+    `ceil()` or `floor()` to round up or down a decimal number to the nearest integer
+    or `sqrt()` to calculate the square root. You find all the available functions
+    in the list in the middle and, by selecting them, you will read their description
+    and an example appearing in the text box on the right.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The easiest way to build an expression is to double-click on the available
+    columns on the right (only the numeric ones will show up) and create your expression
+    using the central text box. In here, you can add all math operators you need,
+    like `+`, `-`, `*`, `/`, and parentheses. The result of the expression for each
+    row will be saved either in a new column (**Append Column**) or will substitute
+    the content of an existing one (**Replace Column**), as you can select with the
+    radio button at the bottom:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_15.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.15: Math Formula dialog: build your numeric expression by combining
+    the columns you need'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To calculate the revenues generated by each transaction, we implement a Math
+    Formula and create a connection between this and the previous node (the **Joiner''s**
+    upper output port). In the configuration window, we build the expression: `$Quantity$*$Price$`,
+    select the option Append Column and give it the name `Sales`.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: By looking at the resulting table, we observe a couple of opportunities for
+    cleaning it up. First, we notice that the column *Country* has some missing values
+    because some customers were missing in the master data. We should substitute it
+    with the default value we use when a country is missing, which is the `Unspecified`
+    string. Second, we find the category "Others" doesn't refer to actual product
+    sales as it describes additional fees (like postage and bank commissions) and
+    manual adjustments. The finance analyst confirms that all sales generated within
+    "Others" should be excluded from any reporting.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: To manage the missing countries, add the **Missing** **Value** node and configure
+    it by using its second tab (**Column Settings**). Double-click on the column *Country*,
+    which you find on the left, and select **Fix Value** in the dropdown that appears.
+    Then, type `Unspecified` in the text box and click on **OK** to close the window.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To remove the rows referring to the "Others" category, we can use a **Row Filter**
+    node. To configure it, select **Exclude rows by attribute value** on the right,
+    then *Category* in the **Column to test** selector and, lastly, "Others" from
+    the **use pattern matching** drop-down menu:![Graphical user interface, application
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_16.png)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 3.16: Row Filter dialog: exclude the rows having a specific value in
+    a given column'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Having the table cleaned up (you should by now have 672,104 rows and 11 columns
+    at the output port of the last node), we are finally able to generate the tables
+    that answer each of our business questions. The first one asks for a list of the
+    products that have generated the most significant amount of sales. At this point,
+    the sales related to a product are scattered across multiple rows, one for each
+    invoice that included the product. Hence, we will need to aggregate sales by product.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: To obtain the total sales generated by each product, we implement a **GroupBy**
+    node. In the configuration window, we select the columns that define the unique
+    groups at the output. Since we want to have one row for each product and we also
+    want to carry in the report the columns that describe it, in the **Groups** tab,
+    we select the columns *StockCode*, *Description*, *Category*, and *Subcategory*,
+    making sure they all end up in the green-bordered list on the right. The **GroupBy**
+    node will create a row for each combination of values in the group columns but,
+    since we know that for each *StockCode*, we have one single *Description*, *Category*,
+    and *Subcategory*, we can safely keep all of them in the group description, to
+    keep them in our output table, which will result in them being more informative.
+    In the **Manual Aggregation** tab, we double-click on the columns *Sales* and
+    *Quantity* and specify for both of them the option **Sum** as **Aggregation function**.
+    To make our report more readable and avoid bulky column names, we select **Keep
+    original name(s)** in the bottom dropdown labeled as **Column naming**. We can
+    then click on **OK** and move to the next step.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Since we want to show only the products generating the most sales, we need to
+    sort the table by decreasing *Sales*, using the **Sorter** node. After implementing
+    the node and making a connection with the previous one, we can select *Sales*
+    in the drop-down menu and pick the **Descending** order.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The last step for answering this business question is to limit our ranked list
+    of products to the top ten entries. Using the **Row** **Filter** node, we **select
+    Include rows by number** on the left and then input `1` as **First** **row** **number**
+    and `10` as **Last row number**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'After executing the last node and checking the resulting table, we are positively
+    impressed as the screen displays the ten biggest selling products. This positive
+    intermediate result encourages us to move ahead in our challenge:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_17.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.17: Top ten products by sales: who would have thought that a cake
+    stand could make so much money?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next question asks us to report the top-selling products within each subcategory.
+    Similar to what we already did for the previous question, we apply a filter to
+    the products list, keeping only the ones appearing on top of the sorted list.
+    However, this time, we need to repeat the filtering multiple times, once for each
+    subcategory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In KNIME, you can *repeat* the execution of a portion of a workflow by creating
+    a **Loop**. Implementing a loop in KNIME is quite simple: you have a set of start
+    and end loop nodes (you find them in **Workflow Control > Loop Support**), which
+    you can use to define the segment of the workflow to be repeated (the **Loop Body**).
+    Depending on the type of **Loop** **Start** node you pick, you can decide the
+    logic to follow for the repetition. Once the loop is executed, you will find the
+    concatenated results of your loops at the output port of the **Loop** **End**
+    node, with an extra column telling you the loop number each row refers to. It
+    looks simple, and it actually is!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will find a graphical summary of the most popular loop nodes below. More
+    specifically:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Counting Loop Start**: Use this if you want to repeat a portion of a workflow
+    a given number of times (which you can specify in the configuration dialog).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Chunk Loop Start**: The loop will be repeated once for every fixed-size chunk
+    of consecutive rows in the input table. You can decide the number of total loops
+    or chunk size per loop to use. If you select a chunk size of 1, you will repeat
+    a portion of the workflow for each individual row of the input table.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Group Loop Start**: The loop will be repeated for every group of rows, defined
+    by each combination of unique values in the columns you decide. Remember the **GroupBy**
+    node? In that case, you obtained an aggregated row for each group: in this case,
+    you will repeat a portion of the workflow for each group. We''ll use this node
+    shortly, which will make its behavior clearer.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There are other nodes for starting and ending loops, which would extend the
+    flexibility you have for repeating some sets of operations in your workflows.
+    Have a look at the **Recursive Loop** nodes:with these you can*bring back* **t**he
+    output of a loop to the start node, to repeat it over and over on the same rows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure 3.18* shows a summary of possible loop setups for your workflow. Remember:
+    you can only have a single **Loop** **Start** and a **Loop** **End** node working
+    together on the same loop body. The dashed lines in the figure show you three
+    plausible options for **Loop** **Start** nodes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_18.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.18: Loop nodes in KNIME: repeat a portion of the workflow as many
+    times as you need'
+  prefs: []
+  type: TYPE_NORMAL
+- en: After this short digression on creating loops in KNIME, let's go back to our
+    business case. We want to repeat the filtering of the top products for each subcategory,
+    so we should implement a group loop, where the group is simply defined by the
+    column *Subcategory*. Here's how the **Group Loop Start** node works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image049.png) *Group Loop Start*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (available in **Workflow Control > Loop Support**) marks the starting
+    point of the portion of workflow which will be repeated for each group. All the
+    input rows showing the same values in the columns defining the group will be returned
+    to the downstream loop for execution, one group at a time. Its configuration requires
+    you to specify the columns that define each group. Using this node will require
+    the implementation of a **Loop End** node, which will mark the end of the segment
+    of nodes for which to repeat the execution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_19.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.19: Configuration window of the Group Loop Start node: decide which
+    columns define the group through which you want to iterate'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's create our first loop in KNIME to answer our current business question.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can reuse the sorted list of products we created for the previous question
+    as a base for our grouped filtering. Drag and drop the **Group Loop Start** node
+    and connect it downstream to the **Sorter** node. In its configuration window,
+    select only *Subcategory* to appear in the **Include** panel on the right.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The loop will only have to select the top three products appearing in each group.
+    To do so, we can replicate what we did for the overall top list of products. Let's
+    implement a **Row Filter** node, select **Include rows by number**, and then input
+    `1` as **First row number** and, in this case, `3` as **Last row number**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To close a loop in a workflow, we need to indicate its end point by using the
+    appropriate node.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![](img/image053.png) *Loop End*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**Workflow Control > Loop Support**) marks the end of a workflow
+    loop. At each execution of a loop, it collects the intermediate results by storing
+    the rows arriving at the input port. At the end of the last loop execution, it
+    will return the intermediate results'' full concatenation. In its configuration
+    window, you can decide whether or not to add an extra column that counts the loop
+    number in which each intermediate row was generated (**Add iteration column**).
+    In this node''s pop-up menu (right-click on the node once implemented), you will
+    find additional options for executing it. If you click on **Step Loop Execution**,
+    you will ask KNIME to run only one single iteration of the loop so you can check
+    intermediate results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The coders among you will recognize that this step execution acts as a *breakpoint*
+    that can be used to investigate and debug the way your loop is working. You can
+    also set individual breakpoints at any point within your loop: check out the **Breakpoint**
+    node for doing this.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_20.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.20: Loop End node dialog: do you want to add an iteration column?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes, you need to collect multiple tables (with different columns) for
+    each iteration of your loop. In this case, you can use the 2-port version of the
+    **Loop End** node, which you will find in the same repository folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s implement a **Loop** **End** node, after the **Row** **Filter**, and
+    untick the **Add iteration column** option: we don''t need it, as we keep the
+    name of the *Subcategory* to indicate what we are referring to. The node''s output
+    shows three rows for each subcategory, which is exactly what we needed to answer
+    the business question:![Table'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_21.png)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 3.21: Top products for each subcategory: each iteration of the loop
+    returned three rows, which have been stitched together by the Loop End node to
+    appear in the same table'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The next question asks us to report sales by country, identifying the ones we
+    ship the most to. It will be enough to aggregate, once again, the sales table,
+    this time grouping by country instead of grouping by product as we've done so
+    far. We can reuse the **Row Filter's** output (which excluded the "Others" category)
+    as a starting point for this new branch of the workflow.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We need to implement a new **GroupBy** node, having a similar configuration
+    to the first **GroupBy** we used earlier to aggregate by product but with a different
+    definition of groups. Time is money, so let''s copy and paste the previous **GroupBy**
+    and connect it with the first **Row Filter**, as anticipated above. In its configuration,
+    let''s just work on the **Groups** panel: this time, we want *Country* to be the
+    only column defining groups. We can leave the **Manual** **aggregation** tab unaltered,
+    as we still want to sum revenues and quantities.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To make our output clearer, let's use the **Sorter** node to order rows by decreasing
+    *Sales*, similar to what we did in the earlier branch.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'As shown in *Figure 3.22*, we ascertain that most sales are made by UK-based
+    customers, which makes sense, considering that we are talking about a British
+    company:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Table'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_22.png)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 3.22: Top products for each subcategory: each iteration of the loop
+    returned three rows, which have been stitched together by the Loop End node to
+    appear in the same table'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As we move to the next business questions, we notice that they all make reference
+    to a dimension that, so far, we've ignored—time. To proceed in the creation of
+    our reports, we will need to filter by date (two questions ask us to focus on
+    the calendar year to date time frame) and reaggregate by month (to spot seasonal
+    patterns). Managing time-related data in KNIME is relatively easy thanks to a
+    set of nodes that are specifically designed for doing that. We have nodes that
+    convert text to Date&Time data types (**String to Date&Time**), nodes that extract
+    specific elements from a Date&Time data point like hour, month, or day of the
+    week (**Extract Date&Time Fields**), and nodes that will filter rows according
+    to some *temporal* logic (**Date&Time-based Row Filter**). In the next few pages,
+    we will learn how to use such handy nodes one by one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image061.png) *String to Date&Time*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This node (**Other Data Types > Time Series > Transform**) converts text columns
+    into Date&Time values so that they can be used in time-related nodes. The node
+    attempts to automatically recognize the format of Date&Time fields within strings,
+    leaving the user the possibility to input the text field's expected format manually.
+    In its configuration window, you can first specify which string columns should
+    be converted (ensure you keep on the right only the ones that include Date&Time).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Replace/Append Selection** panel, you can decide whether to replace
+    columns with their converted version or to add them, adding a fixed suffix to
+    their headers. In the last panel, you can enter a string that explains the expected
+    **Date format**: for instance, strings like `16/02/2023` will be correctly parsed
+    using the format string `dd/MM/yyyy`. By clicking on the button **Guess data type
+    and format**, KNIME will try to recognize the format by analyzing the first cell''s
+    content, which you can read in the label below. If the automatic guess doesn''t
+    work, you can enter your own string using characters like `d`, `M`, `y`, `h`,
+    `m`, and `s`, which stand for day, month, year, hour, minutes, and seconds (check
+    out the node description for the full list of format placeholders). You can also
+    select a regional setting (called **Locale**, like **en-US** or **it-CH**) to
+    determine the language expected for fields such as month or weekday names:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application, email'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_23.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.23: String to Date&Time configuration windows: convert a string of
+    text into a Date&Time value'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's implement a **String** **to** **Date&Time** node and plug inside it the
+    output of the first **Row** **Filter** (we can still reuse that one as it carries
+    a cleaned version of the table). Let's keep only the column *Invoice_time* on
+    the right selection panel and click on **Guess data type and format** to let KNIME
+    find a way to interpret the string. We obtain the format string `'D'dd/M/yy'T'HH:mm:ss`,
+    which perfectly matches the content of the first value in our table (`D01/12/17T07:45:00`).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'After we run the node, we notice in the output table that the icon on top of
+    the *Invoice_time* column is not an "S" any longer but a calendar picture: KNIME
+    is now going to treat that column as a Date&Time field and we can use all the
+    other time-related nodes for its manipulation. Since the business question focuses
+    on the calendar year to date, we need to find a way to filter rows by dates, exactly
+    what our next node is specialized in.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![](img/image065.png) *Date&Time-based Row Filter*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**Other Data Types > Time Series > Transform**) applies row-level
+    filtering based on a specified time range. To configure it, you first need to
+    select the column that shall be used for the filtering (it must be of Date&Time
+    type). Then you can declare the interval of the rows to keep: you do so by specifying
+    a lower bound (including all values happening later than the point in time you
+    declare in the **Start** panel), an upper bound (keeping everything that occurs
+    before what is declared in the **End** panel), or both (making it a closed interval).
+    The upper bound can be defined either by inputting a specific point in time (option
+    **Date&Time**), a composite interval from the start time (option **Duration**,
+    which can be like `2y 1M`, meaning two years and one month from the start), or
+    a specific number of time periods from the start (option **Numerical**, like plus
+    or minus 10 hours from the start). By ticking the **Inclusive** checkbox, every
+    value that is equal to the start (or the end) date will be kept in the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_24.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.24: Configuration of Date&Time-based Row Filter node: keep only the
+    rows referring to a specific time range'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the business question refers to the latest calendar year only (which in
+    our dataset is 2019), we need to implement a **Date&Time-based Row Filter** node
+    to remove all earlier rows. For its configuration, we can untick the **End** box
+    (we know that the date doesn't go beyond 2019) and input `2019-01-01` as **Date**
+    and `00:00:00` as **Time** in the **Start** box.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Since the question asks how much revenue was generated within each product category,
+    we just need to group the resulting rows (now referring to 2019 only) by *Category*.
+    Implement a **GroupBy** node, keep only *Category* in the definition of **Groups**,
+    and the usual sum of *Sales* and *Quantity* in the **Manual Aggregation** panel.
+    Also, this time, we want to keep the naming simple and select **Keep original
+    name(s)** in the dropdown at the bottom:![](img/B17125_03_25.png)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Figure 3.25: Sales by Category in 2019'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Another question is answered! We managed to limit our sales to the time frame
+    of interest and summarize sales at the granularity we need. For the next question,
+    we have to deal with a slight complication: we are asked to compute each category''s
+    relative footprint out of the total revenues. This means that we should divide
+    the sales generated in the various categories by the grand total of sales. We
+    can use the **Math** **Formula** node to implement this division: the numerator
+    of the division is readily available (it''s the **Sales** column obtained after
+    the **GroupBy** summarization we already did to answer the previous question).
+    However, the denominator should be calculated separately and somehow included
+    in the formula. This is where **variables** come in handy. Although not every
+    user will need to use variables in KNIME, let''s go through the fundamentals.
+    You can consider the next couple of pages as optional in your path to becoming
+    an autonomous KNIME user.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Variables in KNIME can be used to control the configuration of any node dynamically.
+    So far, we've always customized a node's behavior by manually operating on its
+    configuration window. In most cases, this will be enough. However, sometimes we
+    want to configure a node's parameter through a variable that might be, in turn,
+    the output of some calculation executed in another node. For instance, in the
+    case of our sales footprint calculation, we want to use the aggregation of total
+    sales as a variable in our formula.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, any configuration parameter of a node can be controlled by a variable.
+    If you open the configuration window of any node and go to the tab called **Flow
+    Variables** (which we have not used so far), you find a list of the parameters
+    needed by that node, and you can select which variables (if available at that
+    point in the workflow) should be used to control them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make variables available, you need to inject them into the workflow. The
+    easiest way to do so is to transform the values of a data table into variables,
+    using a special node called **Table Row to Variable**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image071.png) *Table Row to Variable*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**Workflow Control > Variables**) takes all the values in the first
+    row of the input table and transforms them into individual variables, each one
+    named after the corresponding input column. Its configuration window lets you
+    select the columns whose first row''s value should be transformed into variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_26.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.26: Configuration of Table Row to Variable node: select the values
+    to be transformed into variables'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The output port of this node is a red circle, which indicates flow variables.
+    You can inject the variables into any node by just connecting this output port
+    with the receiving node's body.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every node in KNIME has flow variable ports available. They are hidden by default.
+    To unhide them, just right-click on the node and then click on **Show Flow Variable
+    Ports**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's important to clarify that this node will only transform the *values in
+    the first row* of a table into variables. If you need to iterate through different
+    values, you can use **Table Row To Variable Loop Start**. Using this node (for
+    example, in conjunction with a **Loop** **End** node, which you have already seen),
+    you can create a loop where, at every iteration, the variables assume the value
+    included in each of the input rows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know how to implement variables in KNIME, we can create a variable
+    that contains the total aggregation of sales, which we will then use in the **Math**
+    **Formula** node, to calculate the sales footprint. Let's use **GroupBy** to aggregate
+    total sales and then a **Table** **Row** **to** **Variable** node to transform
+    that number into a variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need to aggregate all the sales that happened in 2019 into one single row,
+    holding the grand total of generated revenues. Let''s implement **GroupBy** and
+    connect it to the output port of the **Date&Time-based Row Filter** node. Since
+    we only need a row with the grand total, we can leave the **Group** panel empty:
+    this will generate a warning on our node, but we know why we are doing this, so
+    we can ignore it. On the **Manual Aggregation** panel, let''s add the usual *Sales*
+    column and aggregate through the **Sum** function. To avoid any confusion with
+    the variable name, let''s select **Aggregation method (column name)** as the naming
+    convention this time (the menu at the bottom). Once we run the node, we obtain
+    a simple output, which is exactly what we were after: a table with one row and
+    one column, displaying the grand total of sales in 2019.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We are now ready to transform this value into a variable by implementing the
+    **Table Row to Variable** node right after the **GroupBy**. No configuration is
+    needed for this node, as we can transform all columns (just one in our case) into
+    variables.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It's finally time to make the footprint calculation. Let's implement a **Math
+    Formula** node and make the two connections we need. First, this node should receive
+    as an input table the result of the **GroupBy** that we used a few steps ago to
+    calculate the total sales by category. Second, we should inject the variable with
+    the grand total of sales, by creating a connection between the red port of the
+    **Table Row to Variable** node and the **Math Formula** node. To do so, you can
+    click on the red circle, keep the button pressed, and release it on the **Math
+    Formula** node icon.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Although this is not needed, if you want to view any node's variable ports,
+    just open the pop-up menu (right-click on the node) and then click on **Show Flow
+    Variable Ports**.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The node configuration dialog now allows us to use the flow variable we have
+    just injected. You will notice the variable (called *Sum(Sales)*) on the right
+    within the **Flow Variable List**. We can calculate the footprint by using the
+    mouse and keyboard and obtaining the expression: `$Sales$/$${DSum(Sales)}$$*100`.
+    We can append the resulting column, assigning it the name *Footprint* and, for
+    simplicity, converting it to an integer number by ticking the last checkbox at
+    the bottom:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_27.png)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: 'Figure 3.27: Configuration of the Math Formula node for the footprint calculation:
+    we found both columns and variables on the left, ready to be used in the expression'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Also, this business question has now found a proper answer: the output of Math
+    Formula includes both the footprint of each category and its total sales, answering
+    two questions at once. We have one last question to manage, which will require
+    producing a chart. For all the previous ones, we have produced some tables: it
+    would be nice to collect all these tables in a single Excel file with multiple
+    tabs so we can disseminate our report easily and in a compact form.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s implement an **Excel Writer** node. Since this time we need to save
+    four different tables in a single Excel file, we need to add three input ports
+    to the node. To do so, click on the three dots appearing at the bottom left of
+    the node icon and then **Add ports** | **Sheet Input Ports**. Repeat this, two
+    more times, to obtain four input ports in total. Connect the output ports of the
+    nodes providing the *answers* to the five questions we have managed so far (the
+    overall top ten products, the top three by subcategory, the sales by country,
+    and the output of the last Math Formula having both footprint and sales by category
+    in 2019). In the **Excel Writer**''s configuration, this time we find four textboxes
+    in the **Sheets** panel: we can use them to assign a meaningful name to guide
+    whoever is reading the report. After declaring the full path and the name of the
+    output file (click on the **Browse...** button to select it), we are ready to
+    close the configuration and execute the node:![Graphical user interface, text,
+    application, email'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_28.png)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 3.28: Configuration of the Excel Writer: you can name each sheet differently'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The resulting Excel file looks exactly as we expected: we have four tabs, each
+    looking after a different aspect of our business, providing straightforward answers
+    to the common questions we had:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_29.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.29: The output file in Excel has four sheets to answer five business
+    questions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's time to move on to the last and final business question, which is about
+    monthly peaks of sales across our seasonal subcategories, which are "Christmas",
+    "Summer", and "Easter". To show seasonal patterns across the year, we decide to
+    aggregate sales by month/subcategory combinations. A pivot table will enable such
+    bidimensional aggregation, which will be easy to display on a line chart. The
+    only outstanding intricacy to solve is related to the aggregation by month. At
+    this point, in fact, we do not have months indicated in a separate column, so
+    we cannot perform the aggregation straightaway. Fortunately, there is a node that
+    enables us the extraction of any temporal field from a Date&Time column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image081.png) *Extract Date&Time Fields*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**Other Data Types > Time Series > Transform**) creates a separate
+    column for each date or time field (such as Year, Month, Day of week, Hour, Minute,
+    and so on), extracting it from a given Date&Time input column. Its configuration
+    requires us to select the Date&Time source column and then tick the boxes of the
+    fields to extract. Since some fields are prone to regional and language differences,
+    you can specify the **Locale** you prefer to use. For instance, if you extract
+    Month (name) for a date in December, with the **es-ES** locale (Spanish), you
+    will get `diciembre`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_30.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.30: Configuration of Extract Date&Time Fields node: select the fields
+    you want to appear as a separate column'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s implement an **Extract Date&Time Fields** node and connect the **String
+    to Date&Time** output port to it (we want to consider the full dataset—not just
+    2019—so we want to build a separate branch). The configuration is straightforward:
+    we only have one Data&Time field in the input table so we find it already selected
+    in the drop-down selection at the top. We only need to extract **Month (number)**,
+    so this will be the only box to tick.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can now summarize sales by month and subcategory: add a **Pivoting** node
+    and configure it so that **Groups** are defined by the newly created column (*Month
+    (number)*), **Pivots** are defined by the column *Subcategory*, and the **Manual
+    Aggregation** is on **Sum** of *Sales*. To keep the headers clean, let''s select
+    **Pivot name** as **Column name** and **Keep original name(s)** as **Aggregation
+    name** in the drop-down menus at the bottom.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Seasonality can be explained better through a nice chart instead of a table.
+    To build a chart in KNIME, you can use one of the visualization nodes (check them
+    out in the repository in **View > JavaScript**), like the one we will use for
+    our line chart.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![](img/image085.png) *Line Plot*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**View > JavaScript**) generates a line plot based on the data given
+    at the input port. When configuring the node, you need to specify what column
+    to use for the horizontal axis (**x-axis**) and what columns to visualize as separate
+    lines (**y-axis**). Additionally, you can generate a static vectorial image (in
+    SVG format) at the node''s output port: to enable this, tick the **Create image
+    at outport** box at the top:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_31.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.31: Configuration of Line Plot node: select which columns to use on
+    the horizontal and vertical axes of your chart'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Axis Configuration** panel, you can specify the titles of the horizontal
+    and vertical axes, while in the **General Plot Options**, you can set **Chart**
+    **title**, **Chart** **subtitle**, and the size of the output image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's implement a Line Plot chart (pick the JavaScript version from the node
+    repository) and connect the first output of the **Pivoting** node with it. For
+    its configuration, let's choose *Month (number)* for the **x-axis** and the columns
+    related to the seasonal subcategories (*Christmas*, *Easter*, and *Garden*) for
+    the **y-axis**. Let's also check the first option box so we generate the vectorial
+    image at the outport. To make the chart more readable, we can add also the names
+    of the axis (`Sales` and `Month` will do) using the **Axis Configuration** panel.
+    To execute the node and open its output straightaway, right-click on the node
+    and then select **Execute and Open Views** (or *Shift* + *F10*):![](img/B17125_03_32.png)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Figure 3.32: Output of the Line Plot node: our seasonal subcategories display
+    an unsurprising monthly pattern'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The chart''s output confirms to us the seasonality patterns that we would expect
+    from our subcategories: the shape of the lines can help us to best plan for the
+    demand that we will encounter in the coming years. It would be nice to export
+    this chart as a vectorial file so that we can include it in shiny presentations
+    and—most importantly, as we will learn—build an engaging story out of it!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/image091.png) *Image Writer (Port)*'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This node (**IO > Write**) saves an image as a separate file. The only configuration
+    needed is to specify the **Output** **location**. You can select it in your file
+    system by clicking on the **Browse...** button:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Graphical user interface, text, application, email'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/B17125_03_33.png)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 3.33: Configuration of the Image Writer (Port) node: where do you want
+    your image file to be?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's implement the **Image** **Writer** **(Port)** node; connect the output
+    of the **Line** **Plot** node with it (the green square connectors indicate that
+    we are transferring images here), and configure it by specifying the location
+    of the output file (make sure you indicate the full file name, including the `.svg`
+    extension at the end).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'You made it! It took some time, but the investment was entirely worth it: your
+    workflow is now able to generate a multi-page report (and, when needed, visual
+    proof of the seasonal patterns) in a matter of seconds. Every time new data becomes
+    available, the full workflow can be reset (select the initial nodes and press
+    *F8*) and re-run by just executing the final nodes (or *Shift* + *F7* to execute
+    all nodes at once): no more human error or tedious manual steps with Excel. The
+    finance analyst is very thankful, as she can now reinvest the time she used to
+    spend every Friday pulling together the reports in something more value adding,
+    like analyzing the numbers in depth, offering a relevant interpretation of data
+    evidence, and providing some recommendations for improving the business results
+    moving forward.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17125_03_35.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.34: It looks like a fish, but it''s a workflow that automates sales
+    reporting'
+  prefs: []
+  type: TYPE_NORMAL
+- en: After admiring you in action, she is now intrigued by KNIME and wants to learn
+    how to automate her data work by herself in the future. You have successfully
+    planted a seed of enthusiasm for data analytics in your workplace, and it seems
+    it is contagiously propagating further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'By completing this chapter, you have made decisive progress in becoming a confident
+    user of data analytics. You have learned how to provide some logic structure to
+    your database by creating a simple entity-relationship model. You have also experienced
+    the essential operations for transforming data assets, such as combining tables
+    and aggregating values as needed. Your analytics toolbox is getting fatter: with
+    fourteen more KNIME nodes at your disposal, you can now build some simple descriptive
+    analytics workflows and automate their executions through loops and variables.
+    The full tutorial has allowed you to gather first-person experience in building
+    a machine that provides systemic answers to recurring needs, starting from a set
+    of business questions and delivering a repeatable process to answer them.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next chapter, we will get all of this to the next level by introducing
+    the fundamental concepts of artificial intelligence: we will soon discover how
+    to build machines that can autonomously learn from data and support our work.'
+  prefs: []
+  type: TYPE_NORMAL

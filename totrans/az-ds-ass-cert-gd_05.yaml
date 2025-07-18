@@ -1,0 +1,1970 @@
+- en: '*Chapter 4*: Configuring the Workspace'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will work inside the **Azure Machine Learning** (**ML**)
+    Studio web interface and learn how to configure the infrastructure needed to run
+    an experiment inside its workspace. Then, you will learn how to provision or attach
+    to existing compute resources and establish the connection between the Azure ML
+    workspace and the various datastores that host your data. With these resources
+    configured, you will be able to register a dataset and explore the capabilities
+    offered in Azure ML to monitor those datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provisioning compute resources
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Connecting to datastores
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with datasets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need to have access to an Azure subscription. Within that subscription,
+    you will need a `packt-azureml-rg`. You will need to have either a `Contributor`
+    or `Owner` `packt-learning-mlw`, as described in [*Chapter 2*](B16777_02_Final_VK_ePub.xhtml#_idTextAnchor026),
+    *Deploying Azure Machine Learning Workspace Resources*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provisioning compute resources
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Compute resources allow you to execute code scripts during your data exploratory
+    analysis, the training phase, and when operationalizing ML models. The **Azure
+    ML** workspace offers the following types of compute resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Compute instances**: These are virtual machines dedicated to each data scientist
+    that is working in the **Azure ML workspace**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Compute clusters**: These are scalable computer clusters that can run multiple
+    training or inference steps in parallel.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Inference clusters**: These are **Azure Kubernetes Service** (**AKS**) clusters
+    that can operationalize Docker images, which expose your models through a REST
+    API.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Attached compute**: These are existing compute resources, such as Ubuntu
+    **Virtual Machines** (**VMs**) or **Synapse Spark pools**, that can be attached
+    to the workspace to execute some of the steps of your training or inference pipelines.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'When you visit the **Manage** | **Compute** section of Azure ML Studio, you
+    will see and be able to manage each of these types by selecting the corresponding
+    tab, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.1 – Compute types in Azure ML Studio'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.1 – Compute types in Azure ML Studio
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following sections, you will discover each of these compute types and
+    understand the important configuration parameters that you must be aware of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provisioning and attaching compute resources can also be done through the Azure
+    ML CLI and the Azure ML Python SDK. You will see examples of provisioning the
+    same resources via the Python SDK in [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The Azure ML Python SDK*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compute instances
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A compute instance is a VM that will facilitate your daily work as a data scientist.
+    This is a managed, Ubuntu-based workstation that comes preconfigured with data
+    science tools such as Jupyter Labs, RStudio, and various deep learning frameworks
+    such as **PyTorch** and **TensorFlow**. *Managed* means that you won't have to
+    manually update the operating system or ensure that it is patched against the
+    latest security vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compute instances are ideal for corporate users who may not be able to install
+    Python on their corporate computers. Compute instances only require you to have
+    a modern web browser and internet access. Once you are connected to a compute
+    instance, you have access to all the software packages you will need to work with
+    your Azure ML workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All your files and preferences are securely stored within the `/home/<username>/cloudfiles/code/`
+    folder of the VM. This folder is not part of the VM''s disk, but it is mounted
+    from a remote file share located in your Azure ML storage account, as shown in
+    the following diagram. This file share allows you to share code files and notebooks
+    across multiple compute instances, and you can even mount that folder locally
+    on your own computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.2 – Remote file share mounted on multiple compute instances'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_002.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.2 – Remote file share mounted on multiple compute instances
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compute instances primarily enable the **Notebooks** experience of the studio
+    web interface, but they can also be used for training and inferencing at a small
+    scale. In fact, compute instances provide job queuing capabilities and allow you
+    to run up to two jobs per core, something that's very useful for testing and debugging
+    scenarios. You will use your compute instance to perform data drift analysis in
+    the *Data drift detection* section, later in this chapter. In the next section,
+    you will learn how to provision your first compute instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provisioning a compute instance
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s learn how to provision an instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the studio web interface, navigate to the **Manage** | **Compute** section
+    and select the **Compute instances** tab. If no compute instances have been provisioned,
+    you will see a short introduction to compute instances: you can click the **New**
+    button to start the compute provisioning wizard, as shown on the left-hand side
+    of *Figure 4.3*. If other compute instances have already been provisioned in the
+    workspace, you can start the same wizard by clicking on the **New** button from
+    the top menu, as shown on the right-hand side of the following screenshot:![Figure
+    4.3 – Starting the compute instance provisioning wizard'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_003.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.3 – Starting the compute instance provisioning wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The first thing you will need to select is the virtual machine's size. You can
+    specify whether you need GPU-enabled machines or normal CPU machines. If you plan
+    to run computer vision experiments or deep neural network training, a GPU machine
+    can accelerate the training and inference process if the framework supports GPUs.
+    Moreover, you can add filters to limit the list based on the minimum requirements
+    you have for your workspace. In our case, we will select a CPU-only compute instance
+    that has at least 14 GB of RAM and at least 4 cores, as shown in the following
+    screenshot:![Figure 4.4 – The first page of the compute instance provisioning
+    wizard
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_004.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.4 – The first page of the compute instance provisioning wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In the results table, you can review the characteristics of each VM and get
+    an estimation of how much it will cost per hour.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Virtual machines' costs depend on their size, but also on the region where they
+    are provisioned. For example, while authoring this book, East US 2 had the lowest
+    average price in USD per hour, while West Europe was among the most expensive
+    regions.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The following table contains a bit more information about the first three virtual
+    machine sizes that appear in the result list. The main difference between the
+    **Standard_D3_v2** and **Standard_DS3_v2** virtual machines is the premium storage
+    disk. This provides disk caching capabilities, something that allows the VM to
+    achieve performance levels that exceed the underlying disk performance. Therefore,
+    by default, the wizard suggests that you select the **Standard_DS3_v2** virtual
+    machine size:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.5 – Comparison of compute sizes based on the docs.microsoft.com
+    site'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_005.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.5 – Comparison of compute sizes based on the docs.microsoft.com site
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Leave the **Standard_DS3_v2** size selected and click **Next** to configure
+    the advanced settings for the compute instance:![Figure 4.6 – The second page
+    of the compute instance provisioning wizard
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_006.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.6 – The second page of the compute instance provisioning wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: If you are on a free trial, then you have a fixed core quota, which you cannot
+    change unless you switch to a pay-as-you-go subscription. You may need to select
+    **Standard_DS2_v2** to reduce the number of cores your compute instance will be
+    using. You will need at least two more cores for the computer cluster you will
+    be provisioning in [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The Azure ML Python SDK*.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Now, you need to provide a computer name. This is the name you will be using
+    to reference the specific computer. The compute name should be unique within the
+    Azure region. This means that you may need to change the name to something unique,
+    potentially by adding some numbers in the name; for example, `ds-021-workstation`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally, enable the SSH access flag. This option allows you to specify the
+    public portion of the SSH key, which will give you remote access to the compute
+    instance. The wizard allows you to generate that key directly within the wizard.
+    Alternatively, you can generate one by following the instructions provided in
+    the *Generating an SSH key pair* section. This option is not needed if you only
+    plan to use the studio experience to conduct your data science experiments:![Figure
+    4.7 – Enabling SSH access to the compute instance
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_007.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.7 – Enabling SSH access to the compute instance
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Click on the **Create** button to provision the compute instance. This will
+    complete the wizard. At this point, the compute instance will be created and then
+    start:![Figure 4.8 – Waiting for the compute instance to be created and transition
+    to the Running state
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_008.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.8 – Waiting for the compute instance to be created and transition to
+    the Running state
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following sections, you will be given a brief introduction to SSH key-based
+    authentication and how to generate an SSH key if you are not familiar with the
+    process. Moreover, you will explore the advanced options of the wizard, options
+    we will not need for the purposes of this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating an SSH key pair
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'An SSH key pair consists of two files – a private key and a public key. This
+    key pair allows end users to encrypt text using the public portion of the key.
+    The encrypted text can only be decrypted by the private portion of the SSH key,
+    as shown in the following diagram. The private portion of the SSH key needs to
+    be stored in a secure place, while the public portion of the key can be freely
+    distributed to anyone:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.9 – A private key can decrypt information that''s been encrypted
+    with a public key'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_009.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.9 – A private key can decrypt information that's been encrypted with
+    a public key
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using this property of the SSH key pair, you can configure your public key with
+    a server so that it can use it for authentication. In a nutshell, when you try
+    to connect to the server, the server will create a random challenge and encrypt
+    it using the public portion of your key – the one you configured while provisioning
+    the compute instance. You will have to decrypt that challenge using the private
+    portion of the key, and then respond with an answer that will validate that you
+    managed to decrypt the server's message. This flow will grant you access to the
+    remote server over SSH.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are multiple open source tools that can help you generate an SSH key
+    pair on your local machine. Azure offers a very easy way to generate an SSH key
+    pair on your browser, and then store the public portion of the key as a resource
+    in the Azure portal. Let''s take a look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to [https://portal.azure.com](https://portal.azure.com) and click on
+    the `SSH Key` resource and click on **Create**:![Figure 4.10 – SSH key resource
+    in the marketplace
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_010.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.10 – SSH key resource in the marketplace
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Select the `packt-azureml-rg` resource group and provide a key-pair name, such
+    as `azureml-compute`. Click on **Review + create** to navigate to the last step
+    of the wizard:![Figure 4.11 – Generating an SSH key pair
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_011.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.11 – Generating an SSH key pair
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Select `azureml-compute.pem`. Make sure you store the file in a secure location:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.12 – Storing the private portion of the SSH key'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_012.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.12 – Storing the private portion of the SSH key
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once this process is done, an SSH key resource will appear in the resource
+    group you selected on the wizard:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.13 – The SSH key resource you deployed'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_013.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.13 – The SSH key resource you deployed
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In that resource, you can find the public portion of the SSH key, which you
+    can copy and then paste into the compute instance provision wizard step you saw
+    in the *Provisioning a compute instance* section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.14 – The public portion of the generated key pair. At the top,'
+  prefs: []
+  type: TYPE_NORMAL
+- en: you can see the downloaded private portion
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_014.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.14 – The public portion of the generated key pair. At the top, you
+    can see the downloaded private portion
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The SSH key resource requires the `Microsoft.Compute` provider to be registered
+    in the Azure subscription that you are planning to use. If you are the owner of
+    the subscription, Azure will automatically register the providers for you when
+    you deploy the resources; otherwise, you will need to request the subscription
+    owner to register this provider for you while following the instructions provided
+    in [*Chapter 2*](B16777_02_Final_VK_ePub.xhtml#_idTextAnchor026), *Deploying Azure
+    Machine Learning Workspace Resources*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have learned how to provision a compute instance and configure an
+    SSH key, which will allow you to remote connect to that compute. You can also
+    use this SSH key to connect to remote clusters, which you will provision in the
+    next section, *Compute clusters*. In the following subsection, you will learn
+    about the advanced configuration options of the compute instance provisioning
+    wizard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Advanced compute instance settings
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the compute provisioning wizard, you can optionally configure some advanced
+    settings. One of them, is the **Enable virtual network** option, which allows
+    you to attach the provisioned compute within a virtual network and to a specific
+    subnet of that network, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.15 – Attaching the compute instance to a specific subnet'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_015.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.15 – Attaching the compute instance to a specific subnet
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This feature unlocks multiple advanced networking topologies. The most common
+    one is when you are planning to access data sources that are not accessible over
+    the internet. For example, if you have a storage account that you have firewall-protected
+    to deny access over the internet, you normally deploy a **private endpoint** in
+    a specific subnet to allow access to that specific storage account. When you provision
+    your compute instance and configure it to be on the same subnet using the preceding
+    option, the compute instance will be able to access the protected storage account,
+    as shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.16 – Accessing a storage account that is only accessible through
+    a private endpoint'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_016.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.16 – Accessing a storage account that is only accessible through a
+    private endpoint
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another advanced option shown in the wizard is **Assign to another user**.
+    This option ties back to the *Creating custom roles* section of [*Chapter 2*](B16777_02_Final_VK_ePub.xhtml#_idTextAnchor026),
+    *Deploying Azure Machine Learning Workspace Resources*, where you learned how
+    to create custom roles for your Azure ML workspace. In enterprise environments,
+    it is common to not allow end users to deploy whatever compute instance they want.
+    This is done by creating a custom role and allowing only the following operations
+    for the virtual machines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Microsoft.Compute/virtualMachines/start/action**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Microsoft.Compute/virtualMachines/restart/action**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Microsoft.Compute/virtualMachines/deallocate/action**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In those environments, an administrator (or someone who has the **Microsoft.Compute/virtualMachines/write**
+    permission) can provision compute instances and assign them to a specific person
+    who may not be able to provision the compute instance on their own, as shown in
+    the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.17 – Assigning the provisioned compute instance to a fellow data
+    scientist'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_017.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.17 – Assigning the provisioned compute instance to a fellow data scientist
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although this is a nice feature that the web interface wizard provides, it doesn't
+    scale well when you need to provision multiple compute instances for multiple
+    data scientists. Therefore, most of the time, administrators prefer to deploy
+    compute instances through **ARM template** deployment. They can generate and download
+    the template through this wizard and then deploy it for multiple users using the
+    **Azure CLI** and pass the user ID as a parameter, as you saw in [*Chapter 2*](B16777_02_Final_VK_ePub.xhtml#_idTextAnchor026),
+    *Deploying Azure Machine Learning Workspace Resources*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have seen how to provision a compute instance. In the next section,
+    you will learn how to manage compute instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managing your compute instances
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Once you have provisioned at least a single compute instance, the **Manage**
+    | **Compute** | **Compute instances** interface changes to a list that shows the
+    available instances in the workspace. By default, the list is filtered to show
+    only the instances that you can use, meaning those that you provisioned on your
+    own or someone else provisioned on your behalf:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.18 – Compute instances list'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_018.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.18 – Compute instances list
+  prefs: []
+  type: TYPE_NORMAL
+- en: From here, you can start, stop, restart, and delete the compute instances. When
+    you start a compute instance, the resource's status changes to **Running** and
+    the **Applications** column offers links to open a Terminal on the compute instance
+    or open the Jupyter, JupyterLab, RStudio, and VS Code third-party authoring experiences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before you open any of those three editing experiences, you will have to accept
+    an important notice regarding the code you can execute in those environments,
+    as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.19 – Warning message about the code you execute within Azure ML
+    Studio'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_019.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.19 – Warning message about the code you execute within Azure ML Studio
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important for you to understand that if you download a random script from
+    the internet, it may contain malicious code, which may enable others to steal
+    data or even access tokens from your account, something that may enable them to
+    access Azure resources on your behalf.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JupyterLab and Jupyter are very popular authoring experiences for Jupyter notebooks,
+    Python script editing, and accessing the terminal to execute various commands,
+    as shown in the following screenshot. When you click to open these editing experiences,
+    a new browser tab will open. If you take a look at the URL on the new browser
+    tab, you will notice that it consists of the compute instance's name, the region
+    where this compute instance is located, and the suffix **instances.azureml.ms**.
+    This is the reason why, in the previous section, *Provisioning a compute instance*,
+    when you were provisioning a compute instance, you had to select a name that had
+    to be unique within the Azure region where you are deploying the specific compute
+    instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All these third-party authoring experiences have a strong community around
+    them, and you can use them if you are already familiar with them. However, note
+    that Azure ML offers the **Author** | **Notebooks** experience, an augmented editing
+    experience on top of JupyterLab that adds capabilities such as IntelliSense, something
+    you will be using from [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The Azure ML Python SDK*, onward:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.20 – The JupyterLab editing experience'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_020.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.20 – The JupyterLab editing experience
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clicking on the **Terminal** link in the **Applications** columns will open
+    a new browser tab. You will be transferred to the **Author** | **Notebooks** section.
+    Here, a web-based terminal will open, allowing you to issue commands to the compute
+    instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.21 – Getting access to a terminal through the browser'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_021.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.21 – Getting access to a terminal through the browser
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you don't need the compute instance, such as during the weekend, you can
+    stop it to avoid incurring costs. The compute instance will transition to the
+    **Stopped** status and the **Applications** links will be disabled. Starting a
+    stopped compute instance takes some time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you have finished working with a compute instance, such as when the research
+    phase of the project has been completed, you can **Delete** it to deallocate the
+    reserved CPU cores that count against your subscription's quota. You can view
+    the current quota by clicking on the corresponding **View quota** option from
+    the menu shown in *Figure 4.18*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For now, you can stop your compute instance. You will start it again in the
+    *Data drift detection* section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.22 – Stopped compute instance'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_022.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.22 – Stopped compute instance
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you learned how to provision and manage a compute instance
+    that will provide you with the necessary computational power to author notebooks
+    and scripts, as well as potentially execute small-scale training and inference
+    pipelines. In the next section, you will learn how to provision a compute cluster,
+    a compute resource that will be able to scale up and down to accommodate multiple
+    training and inference pipelines in parallel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compute clusters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A compute cluster is a group of interconnected virtual machines that scale out
+    and in to accommodate a queue of tasks. This means that the cluster can have only
+    a few or even zero nodes in it to avoid incurring costs when it's not needed,
+    and it can also scale out to multiple nodes when you want to run a lot of tasks
+    in parallel or perform a distributed ML training process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The creation process is very similar to provisioning a compute instance. Let''s
+    take a look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Start by clicking the **New** button in the corresponding **Compute clusters**
+    tab, as shown in *Figure 4.23*.![Figure 4.23 – Creating a new compute cluster
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_023.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.23 – Creating a new compute cluster
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You will notice that the compute cluster provisioning wizard offers one additional
+    option in comparison to the compute instances called **Virtual machine priority**,
+    as shown in the following screenshot. Low-priority virtual machines take advantage
+    of the surplus capacity in the Azure region where you want to provision a compute
+    cluster. These virtual machines offer a significantly reduced price compared to
+    dedicated VMs, but the compute nodes are not guaranteed to be available when you
+    need them, or even if they will remain in your possession until the scheduled
+    job is completed. This means that you may need to wait a long time until you can
+    allocate such a VM, and a step in your training process may stop in the middle
+    of its execution. Given these characteristics of low-priority VMs, you normally
+    use this type of cluster when you have jobs that are not time-sensitive and consist
+    of small running steps, or steps that automatically persist their state and can
+    resume execution if they are evicted. For the purposes of this book, you can select
+    the **Dedicated** option to avoid unexpected long waiting times when allocating
+    compute nodes.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Virtual machine type** option, select **GPU** and select the cheapest
+    VM size available from the **Select from recommended options** list seen in *Figure
+    4.24*.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: By default, free trial subscriptions do not allow you to provision GPU computes.
+    Even if you change to a pay-as-you-go subscription, you will need to make a request
+    through the Azure portal to increase your quota. If you run into a lack of quota
+    issue, you can select CPU-based computes instead of GPU-based ones. For the purposes
+    of this book, you do not need GPU-based clusters.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.24 – The first page of the compute cluster provisioning wizard'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_024.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.24 – The first page of the compute cluster provisioning wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Click **Next** to continue to the second page of the wizard:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the second page of the wizard, you will need to specify a cluster name. This
+    name is going to be how you reference this cluster in the web experience and through
+    code, so make sure it's something that represents what this cluster is meant for,
+    such as `gpu-cluster`:![Figure 4.25 – The second page of the compute cluster provisioning
+    wizard
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_025.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.25 – The second page of the compute cluster provisioning wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You can also tweak the minimum and maximum number of nodes and the idle seconds
+    before the cluster scales down. Every time you request the cluster to perform
+    a job, the tasks of the job are added to the cluster's scheduler. If the cluster
+    doesn't have enough nodes to execute the scheduled tasks, it will scale out by
+    adding a compute node to the cluster. Adding a node to the cluster takes some
+    time, as you need to allocate the VM. Therefore, instead of deallocating the VM
+    immediately once the scheduled tasks have completed, the cluster can wait for
+    the defined idle period, just in case a new task gets scheduled.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Similar to the compute instances, you can **Enable SSH access** if you want
+    to remotely connect to the compute cluster nodes to troubleshoot job executions.
+    Due to the ephemeral nature of the cluster nodes, the wizard allows you to specify
+    an **Admin password** if you want, instead of a **SSH public key**, as shown in
+    the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.26 – Compute clusters allow you to use an Admin password instead
+    of an SSH public key'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_026.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.26 – Compute clusters allow you to use an Admin password instead of
+    an SSH public key
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Under **Advanced settings**, you can find the **Enable virtual network** option,
+    which you saw when we looked at compute instances in the previous section. In
+    addition to that option, you have the option to **Assign a managed identity**
+    to the compute cluster:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.27 – Assigning a managed identity to the compute cluster'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_027.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.27 – Assigning a managed identity to the compute cluster
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Azure allows you to attach an **Azure Active Directory** (**AAD**) identity
+    to the compute cluster nodes, allowing the code that executes in those VMs to
+    access Azure resources using that identity. **Managed identities** eliminate the
+    need to have credentials stored within your scripts. The identity is attached
+    to the specific VM, and your code can request AAD access tokens through the Azure
+    Instance Metadata Service or through the Python SDK without a password, as long
+    as the code is executed within that specific VM.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'For the purposes of this book, you will not modify any option here. Name the
+    cluster `gpu-cluster` and click on **Create** to create your first zero node,
+    GPU-based compute cluster:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.28 – Your first GPU-based compute cluster is ready to use'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_028.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.28 – Your first GPU-based compute cluster is ready to use
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that in the preceding screenshot, the compute cluster has been provisioned
+    successfully but that there are 0 nodes in it, which means that it doesn''t incur
+    any cost. You can also see the following metrics in this list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Idle nodes**: These are the nodes waiting for a task to be scheduled or to
+    be de-allocated once the idle time has passed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Busy nodes**: These are the nodes that are currently executing a task.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Unprovisioned nodes**: These are the nodes that haven''t been allocated yet
+    but can potentially be allocated if the number of scheduled tasks increases.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: From this list, you can delete the cluster if you don't want it anymore.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If you click on the compute cluster''s name, you will be able to see the cluster''s
+    details, as shown in the following screenshot. From this view, you can edit the
+    minimum and maximum number of nodes, the idle seconds before the cluster scales
+    down, and change how the managed identity that you configured previously is assigned.
+    In fact, it is common for data science teams to modify their predefined compute
+    clusters in the morning so that they have at least one node in them. It helps
+    them avoid waiting for the first node to be allocated. When the day is over, they
+    change the setting down to zero to save on costs:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.29 – Compute cluster''s details about where you can edit its configuration'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_029.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.29 – Compute cluster's details about where you can edit its configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you learned how to provision a compute cluster. These clusters
+    are used to perform training jobs and batch inferences. In the next section, you
+    will learn how to provision an **Azure Kubernetes Service** (**AKS**), which allows
+    you to perform real-time inferences at a large scale.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inference clusters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Kubernetes is a portable, extensible, open source platform for managing containerized
+    workloads and services. It has been widely used to operationalize various forms
+    of applications, from web applications to model inference REST APIs, due to its
+    ability to auto scale and auto recover from failures. **Azure Kubernetes Service**
+    (**AKS**) is the managed version of the Kubernetes cluster in Azure, a service
+    that lets you focus on your workload and let Azure manage the operating bits of
+    the cluster, such as its master nodes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you are not familiar with AKS, then don''t worry – the following diagram
+    provides a high-level overview of the components involved. In a nutshell, you
+    can configure **Node pools**, a group of virtual machines that have the same configuration;
+    for example, virtual machines with GPU cards on them. These pools can have one
+    **node** (or more), which is a virtual machine. Within each node, you can host
+    one or more **pods**. Each pod consists of a couple of **Docker images**, which
+    form an application unit, one of which may be the model you want to operationalize.
+    Each pod can be replicated into multiple nodes, either to accommodate increased
+    load or for resiliency reasons in the case a node goes down:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.30 – High-level overview of AKS concepts showing Pod X being replicated
+    in two nodes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_030.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.30 – High-level overview of AKS concepts showing Pod X being replicated
+    in two nodes
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From within Azure ML Studio, you can create or attach an existing AKS cluster
+    to your workspace. You do *not* need to create an AKS cluster for the purposes
+    of this book. Let''s get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The creation wizard can be invoked by clicking on the **New** button in the
+    **Inference clusters** tab, seen in *Figure 4.31*:![Figure 4.31 – Create or attach
+    an AKS cluster to the Azure ML workspace
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_031.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.31 – Create or attach an AKS cluster to the Azure ML workspace
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: When you provision an AKS cluster, a new resource group is created within your
+    Azure subscription that hosts all the components needed for AKS to work. This
+    requires additional permissions at the subscription level. If you can't create
+    resource groups, AKS cluster provisioning will fail.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In the first step of the wizard, you can either attach an existing AKS cluster
+    or create a new one. If you choose to create one, you will have to specify the
+    Azure region where you want the AKS cluster to be deployed. You will also need
+    to specify the node pool's VM size, similar to what you did when you deployed
+    a compute instance:![Figure 4.32 – Step 1 of provisioning an inference AKS cluster
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_032.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.32 – Step 1 of provisioning an inference AKS cluster
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Clicking **Next** will bring you to the **Settings** page, where you need to
+    specify the name of the AKS cluster. You also need to specify the purpose of the
+    cluster. If this is a production cluster, the number of virtual CPUs in the cluster
+    must be more than 12; this means that if you selected a 4 core VM size, you will
+    need at least three nodes to be able to provision a production-ready AKS cluster.
+    If this cluster is for development and testing, you can provision just one node.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Besides the name and the number of nodes in the node pool, you can configure
+    the networking options of the cluster and the SSL certificate that will be used
+    to secure the connection to the applications, if you want to expose them through
+    an HTTPS endpoint. For the purposes of this book, you do not need to modify any
+    of those options:![Figure 4.33 – Step 2 of provisioning an inference AKS cluster
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_033.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.33 – Step 2 of provisioning an inference AKS cluster
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Once your cluster has been created, you will be able to delete it or detach
+    it from the workspace through the list shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.34 – List of AKS inference clusters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_034.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.34 – List of AKS inference clusters
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: AKS is the production-ready way of deploying real-time endpoints. In the exam,
+    when you are asked where you would deploy a production load, AKS should be the
+    right answer. Nonetheless, because an AKS cluster is an expensive resource, this
+    book will not use it in its examples. If you are using a free subscription, you
+    will probably not have enough cores quota to be able to provision one. If you
+    did provision one, make sure you keep an eye on the cost to avoid running out
+    of credit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you learned about how Azure ML can help you attach to or provision
+    an AKS cluster so that you can host your production real-time inference endpoints.
+    In the next section, you will learn how to attach existing compute resources to
+    your workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attached compute
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you already have compute resources provisioned, not necessarily in the subscription
+    you have deployed your Azure ML workspace, you can attach them to your workspace.
+    Attaching those resources allows you to reuse them, especially in cases where
+    they are underutilized. A common scenario is for a department to have an Ubuntu-based
+    **Data Science Virtual Machine** (**DSVM**), which may be running 24 hours, 7
+    days of the week, to serve a legacy web application. You can reuse this resource
+    in your experiments by attaching it to your workspace and then referencing it
+    to execute various tasks, the same way you would reference a compute cluster to
+    perform a task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The studio experience allows you to attach multiple types of computes, including
+    the following popular targets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Virtual machines**: You can attach existing Ubuntu-based virtual machines
+    that are publicly accessible over the internet. This option includes potential
+    DSVMs you may already have.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Azure Databricks** and **HDInsights**: These options allow you to attach
+    existing **Apache Spark**-based computes to your workspace.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Azure Data Factory**: The Azure Data Factory resource allows you to perform
+    copy activities from one data source to another. For example, you can copy from
+    a storage account to a SQL database using that resource. Azure Data Factory is
+    currently only supported through the Azure ML SDK and not from the studio experience.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For the purposes of the DP100 exam, you will not need to attach any resources.
+    The following screenshot shows how you can initiate the attach wizard from within
+    the studio experience:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.35 – Attaching existing compute resources to your workspace'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_035.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.35 – Attaching existing compute resources to your workspace
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you learned how to provision and attach compute resources to
+    your Azure ML workspace. This allows you to execute code during the data exploration,
+    model training, and model inference phases of your data science projects. In the
+    next section, you will learn how to configure connectivity to various data sources,
+    something that will enable you to access data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connecting to datastores
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Datastores are the engines where your data resides and provide access to anyone
+    authorized to do so. In most Python examples you see on the internet, there is
+    a connection string that contains the credentials to connect to a database or
+    a blob store. There are a couple of drawbacks associated with this technique:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The credentials stored within these scripts are considered a security violation,
+    and you can accidentally expose your protected datasets by publishing a script
+    in a public repository such as GitHub.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You need to manually update all the scripts when the credentials change.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Azure ML allows you to have a single centralized location where you define the
+    connection properties to various stores. Your credentials are securely stored
+    as **secrets** within the workspace's associated **key vault**. In your scripts,
+    you reference the datastore using its name and you can access its data without
+    having to specify the credentials. If, at some point in time, the credentials
+    of a datastore change, you can centrally update them, and all your scripts and
+    pipelines will continue to work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can view all the registered datastores by navigating to the **Manage**
+    | **Datastores** section of the studio:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.36 – List of registered datastores in the workspace'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_036.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.36 – List of registered datastores in the workspace
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that, by default, you already have two datastores registered. The default
+    one, named `workspaceblobstore`, is the default blob storage where all the pipeline
+    metrics and artifacts are stored. Your workspace needs to have a default datastore.
+    As you will see in [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The Azure ML Python SDK*, you can even reference that store very easily through
+    the Python SDK. The other store, named `workspacefilestore`, is a file share datastore
+    that you can mount on your local machine and upload files to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From this list, you can do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Update the credentials of a datastore: You need to click on the name of the
+    datastore, which will get you its registration details. From there, you can click
+    on **Update credentials** to specify the updated value or change the type of authentication,
+    something you will see in the next section.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Unregister** a datastore: You can unregister any datastore that is not marked
+    as the default datastore.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Set as default datastore**: Change the default datastore to the one you selected
+    from the list.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Finally, from this list, you can create a **New datastore** registration, an
+    action that activates the new datastore wizard shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.37 – New datastore wizard'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_037.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.37 – New datastore wizard
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, you need to specify a unique datastore name within the Azure ML workspace.
+    You must do this to reference this store in your scripts and the various components
+    of the studio experience. The next thing you need to select is the datastore type.
+    There are a couple of Azure-native datastores that are supported by the Azure
+    ML workspace, something you will explore in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Types of datastores
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Azure ML supports two categories of datastores: the ones based on files, such
+    as blob storage, file shares, and data lake stores, and relational databases,
+    such as Azure SQL and Azure PostgreSQL.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The currently supported datastores are shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.38 – Azure ML supported datastores'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_038.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.38 – Azure ML supported datastores
+  prefs: []
+  type: TYPE_NORMAL
+- en: The recommendation is to use **Azure Blob Storage**-based datastores. These
+    stores are the most cost-effective ones. They provide multiple tiers, such as
+    the more expensive premium one, which provides you with increased throughput speeds,
+    something that can reduce your training times if you are processing large volumes
+    of data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, **Azure Data Lake Storage Gen 2** builds on top of **Azure
+    Blob Storage** by adding hierarchical namespaces. This feature allows data lakes
+    to assign access permissions at a folder level. Large enterprises usually structure
+    their data lakes with various zones where they store their data. Each zone has
+    its own **Access Control List** (**ACL**), which gives permissions to specific
+    groups of people. This means that you may be able to see the contents of one folder
+    and not the contents of another, while in **Azure Blob Storage**, once you get
+    access to a container, you can see all the data within it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If your data resides in a datastore that is not supported out of the box by
+    Azure ML, you can copy the data over to an **Azure Blob Storage** or **Azure Data
+    Lake Storage Gen 2** easily using the copy tool from **Azure Data Factory**. **Azure
+    Data Factory** allows you to copy data from almost anywhere, even if it resides
+    within on-premises databases, as shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.39 – Copying on-premises data to an Azure ML supported datastore
+    using Azure Data Factory and the Self-Hosted Integration Runtime'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_039.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.39 – Copying on-premises data to an Azure ML supported datastore using
+    Azure Data Factory and the Self-Hosted Integration Runtime
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the *Attached compute* section, you saw that you can attach an `DataTransferStep`.
+    Copying data from the on-premises network can be done in the same ADF, but you
+    will have to author, execute, and monitor the data pulling pipeline from within
+    ADF.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you look at the types of datastores supported by Azure ML.
+    In the next section, you will learn about the various authentication methods supported
+    by those datastores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Datastore security considerations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Depending on the datastore, you will have to specify different type of credentials
+    to register it in the Azure ML workspace. For the Azure Blob and Azure File Share
+    datastores, you can use the following credentials:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Account key**: This gives access to the entire Azure Storage Account.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Shared Access Signature** (**SAS**) **token**: This is a more granular way
+    to assign permissions to the various services of the storage account. Using the
+    **Account key**, you can generate an SAS token that allows access to only a specific
+    blob container and only for a limited amount of time.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For Azure Data Lake Storage datastores, due to their advanced security features,
+    you will need to provide an `tenant_id`) where this entity is registered and has
+    a unique ID (referred to as `client_id`). This identity has a password (referred
+    to as `client_secret`) that enables your code to access the datastores impersonating
+    that identity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the relational database datastores, you will need to specify the database's
+    name, the server's name, and the server port to connect to. For credentials, you
+    can either provide a **service principal**, if the datastore supports it, or provide
+    the necessary **SQL authentication** credentials, which consist of a database
+    user ID and a password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some of the datastores allow you to use the workspace''s managed identity for
+    data preview and profiling. This option adds the system assigned managed identity
+    that has been assigned to the workspace as a Reader to the specific resource,
+    allowing the workspace to load a preview of the data within the studio experience.
+    This option is available on the datastore registration page, as shown in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.40 – Granting access to the workspace''s managed identity'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_040.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.40 – Granting access to the workspace's managed identity
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have learned how to register various datastores in an Azure ML workspace.
+    In the next section, you will learn how to use these registrations to define datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with datasets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous sections, you were configuring compute and datastore resources
+    under the **Manage** section of the studio. With this infrastructure configured,
+    you can start pulling data into your registered datastores and register datasets
+    in the **Assets** section of the studio:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.41 – Datasets in the Assets section of the Azure ML Studio experience'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_041.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.41 – Datasets in the Assets section of the Azure ML Studio experience
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Datasets** is an abstraction layer on top of the data that you are using
+    for training and inference. It contains a reference to the physical data''s location
+    and provides a series of metadata that can help you understand their shape and
+    statistical properties. When you want to access the dataset, you can reference
+    it via its name, and you don''t have to worry about credentials or exact file
+    paths. Moreover, all the data scientists working on the same workspace can access
+    the same datasets, allowing them to experiment on the same data in parallel.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are two types of datasets – file-based ones and tabular ones. File datasets
+    reference a list of files in a datastore. For example, if you are building a computer
+    vision model, you will need images that can be downloaded or mounted to your compute
+    as a `FileDataset`. The Tabular dataset represents tabular data residing in either
+    file-based datastores or relational database datastores. For example, you can
+    reference a couple of folders containing `TabularDataset` construct, without having
+    to parse the physical files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another feature of datasets is that you can snapshot their properties and metadata
+    using versions. Imagine that you have a folder structure that follows the `weather/<year>/<month>/`
+    pattern. For example, you would find the weather measurements for January 2021
+    stored under `weather/2021/01/measurements.parquet`. As time flies, you will be
+    getting more and more folders, each containing a single file under them. To reproduce
+    your training results, you will want to reference the dataset that only contains
+    files up to January 2021\. This is exactly where dataset versioning comes in handy.
+    While training a model, you register a version of the dataset that contains all
+    the files you used for training. Later, you can refer to the dataset and request
+    a specific version of it, which will give you a reference to all the files that
+    used to be available back then.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dataset versions do *not* copy the underlying data. They only store a reference
+    to the actual files and the dataset metadata you will read about in the upcoming
+    sections. This means that if you change the contents of a file instead of adding
+    a new file, the dataset version will not load the same data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Registering datasets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can register datasets from various sources, as shown in the following screenshot,
+    including from the datastore you learned how to register in the *Connecting to
+    datastores* section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.42 – Possible options for registering datasets'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_042.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.42 – Possible options for registering datasets
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get a better understanding of how the dataset registration process works,
+    we are going to register two tabular datasets that are hosted on the web. These
+    datasets consist of a single **parquet** file each. We will use these two datasets
+    later in this chapter to understand the data drift detection feature. Let''s get
+    started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select **From web files** from the menu shown in the preceding screenshot to
+    start the **Create dataset from web files** wizard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'On the first page of the wizard, provide the following information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`survey-drift-base`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Tabular`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Click **Next**:![Figure 4.43 – The first step of the dataset registration wizard
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_043.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.43 – The first step of the dataset registration wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The wizard will parse the file and figure out the file type and the schema of
+    your dataset. You will need to validate the selection by clicking **Next**. Note
+    that the wizard supports multiple file formats, as shown in the following screenshot:![Figure
+    4.44 – The second step of the dataset registration wizard
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_044.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.44 – The second step of the dataset registration wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In the next step, you can define advanced options regarding the schema. For
+    the baseline dataset, leave the default options as-is. Click **Next**, which will
+    lead you to the confirmation step.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In this step, you can review your selections in the previous steps, and you
+    can also schedule your first data science analysis task – profiling the dataset.
+    This process generates the profile that you will explore in the next section.
+    Enable the option and select `gpu-cluster`, which you provisioned in the previous
+    section, as shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Within the **Select compute for profiling** option, you can select from both
+    the compute instances and the compute clusters you provisioned in the *Compute
+    instances* and *Compute clusters* sections. Selecting the compute cluster will
+    force the cluster to scale from zero nodes to one node, analyze the dataset, and
+    then scale down to zero nodes again. If you want, you can navigate to the **Manage**
+    | **Compute** section and observe this scale out by clicking on the compute cluster's
+    name. If you select the compute instance instead of the compute cluster, the job
+    will be scheduled, and it will be executed when the compute instance starts.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.45 – Last step of the dataset registration process'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_045.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.45 – Last step of the dataset registration process
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will need to register one more dataset. The process here is almost identical,
+    only this time, you will mark the dataset as a time series one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Create dataset** and select **From web files**, as shown in the following
+    screenshot:![Figure 4.46 – Create dataset menu in the dataset list
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_046.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.46 – Create dataset menu in the dataset list
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Follow the same steps as you did previously and input the following information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`survey-drift-target`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: During the schema step, make sure that you select **Timestamp** from the **Properties**
+    section of the **inference_date** column, as shown in the following screenshot.
+    This option flags this tabular dataset as a **time series** dataset, something
+    that allows you to perform additional analysis, as you will see in the *Data drift
+    detection* section:![Figure 4.47 – Configuring a tabular dataset so that it becomes
+    a time series dataset
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_047.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.47 – Configuring a tabular dataset so that it becomes a time series
+    dataset
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Schedule data profile analysis and complete the dataset registration process.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: If you are following along, you may notice that for the `year=2021/month=05/day=01/data.parquet`,
+    you can create a virtual column through that path pattern and define that as your
+    **Partition timestamp**. This improves the importance of time series functionality
+    and allows you to load specific dates by selectively reading the required files
+    only.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'You should be able to see two registered datasets, as shown in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.48 – List of registered datasets in the Azure ML workspace'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_048.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.48 – List of registered datasets in the Azure ML workspace
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this view, you can select a dataset and then click on the **Unregister**
+    button to remove the registration. Upon clicking on a dataset, you can view more
+    details about it, including the profile analysis you performed on top of the datasets,
+    something you will see in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring the dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the dataset list, click on the **survey-drift-target** dataset to open its
+    details. In the first tab, **Details**, you can modify the description of the
+    dataset and specify tags that are associated with the dataset. Tags are name-value
+    pairs. In the following screenshot, you can see that we specified **survey** as
+    the value of the **experiment** tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.49 – Dataset details showing all the metadata associated with the
+    specific dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_049.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.49 – Dataset details showing all the metadata associated with the specific
+    dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Consume** tab, you can copy the Python SDK code that you are going
+    to use in [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102), *The
+    Azure ML Python SDK*, to get access to the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.50 – Consuming a snippet that gives access to the dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_050.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.50 – Consuming a snippet that gives access to the dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Explore** tab, you will be able to preview a sample of the data that
+    is included in the dataset, exactly as you saw during the registration process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.51 – Previewing a sample of the dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_051.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.51 – Previewing a sample of the dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you click on the **Profile** tab, you will be able to see the statistical
+    analysis of the dataset, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.52 – Statistical analysis of the dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_052.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.52 – Statistical analysis of the dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If your dataset contains fewer than 10,000 rows, profiling is done automatically
+    for you, without you having to schedule the processing aspect for the dataset.
+    If the dataset contains more than 10,000 rows, then Azure ML performs an analysis
+    on the first 10,000 rows and shows a warning message that prompts you to schedule
+    a complete profiling analysis, something you can do by clicking on the **Generate
+    profile** button from the menu.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, on the **Models** tab, you can see the models that relate to this dataset,
+    something that you will do in [*Chapter 5*](B16777_05_Final_VK_ePub.xhtml#_idTextAnchor072),
+    *Letting Machines do the Model Training*, when you will be registering the best
+    model that you will be deploying as a web service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having registered a dataset, you can configure periodic monitoring for the dataset
+    for data drifting, something you will learn about in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data drift detection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Data drift detection is a technique that allows you to compare a time series
+    dataset with a reference dataset, and then check whether the statistical properties
+    of the features you are comparing have changed significantly. For example, let''s
+    assume that you trained an ML model that predicts if someone is going to participate
+    in a survey based on their age. You used the `survey-drift-base` dataset to train
+    that model. The following graph shows a density curve, which shows the distribution
+    of age in the training dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.53 – Negative skewed unimodal distribution of the age feature in
+    the training dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_053.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.53 – Negative skewed unimodal distribution of the age feature in the
+    training dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you operationalized the model, you kept track of the inferences that it
+    made on a weekly basis, and you logged this information in the `survey-drift-target`
+    dataset, which you registered previously. This dataset contains the inferences
+    that you did during the first 2 weeks of 2020\. Data drift detection enables you
+    to detect if the distribution of the input features changed over time. Let''s
+    take a look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to **Assets** | **Datasets** | **Dataset monitors** and click on the
+    **Create** button to start the dataset monitor wizard:![Figure 4.54 – Creating
+    a new dataset monitor
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_054.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.54 – Creating a new dataset monitor
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: On the target dataset, you will see all the registered time series datasets
+    you want to monitor for data drift. This is the inference that your model has
+    been doing in production. Select `survey-drift-target (Version:1)` and click **Next**:![Figure
+    4.55 – The first step in data drift monitor configuration
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_055.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.55 – The first step in data drift monitor configuration
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: On the next page, you need to select your reference point. This can either be
+    a specific point in time from within the time series tabular dataset or a specific
+    dataset. In your case, select the `survey-drift-base (Version:1)` dataset, which
+    is the dataset that was used to train the ML model:![Figure 4.56 – Selecting the
+    baseline dataset during the data drift monitor configuration
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_056.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.56 – Selecting the baseline dataset during the data drift monitor configuration
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In the last step of the wizard, you need to define the following information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`survey-drift-monitor`.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Features**: Select one or more common features between the two datasets to
+    monitor their distributions and whether there is data drift. In this case, the
+    only common feature between the two datasets is the age feature.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Compute target**: The cluster that will be spinning up and down to perform
+    the analysis.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Frequency**: The frequency specifies the time interval for the target data
+    to be examined for drift. This property cannot be changed once the monitor has
+    been created. You can choose between day, week, or month. Keep in mind that you
+    need at fewer 50 samples per time interval to perform data drift analysis. This
+    means that if you have less than 50 rows per day, you cannot use that as your
+    frequency and you should opt for week, or even month, instead.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Latency**: It is common to have a delay between the actual scoring of a row
+    and refreshing the target dataset. In this field, you specify how long to wait
+    before assuming that the target dataset got the latest records; then, the monitor
+    can perform data drift analysis.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Email address**: This is where to send an email if the dataset has drifted
+    more than what''s been specified for the **Threshold** parameter.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For the purposes of this book, you can disable the schedule, as shown in the
+    following screenshot. You will manually run the data drift analysis.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Create** button to create the monitor:![Figure 4.57 – Data drift
+    monitor settings
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_057.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.57 – Data drift monitor settings
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Click on the name of the new monitor you created from the monitor list:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.58 – Data drift monitors list'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_058.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.58 – Data drift monitors list
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The data drift monitor is meant to run on a schedule for new data. In your
+    case, you want to analyze the existing data in the target dataset. Let''s take
+    a look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on the **Analyze existing data** button, which will bring up the backfill
+    wizard shown in the following screenshot:![Figure 4.59 – Manually starting an
+    analysis of past dates
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_059.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 4.59 – Manually starting an analysis of past dates
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Select from December 31, 2019 to January 15, 2020\. This is the time range that
+    contains all the records from the target dataset.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the compute cluster that will do the analysis.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Submit**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Once the analysis is complete, a process that will take some time, you will
+    be able to see the data drift results, which indicate that a big data drift has
+    been observed in our dataset. Note that the summary is referring to the latest
+    inferences, which were done on January 5, 2020\. You can manually select previous
+    periods by clicking on the graphs for the corresponding dates:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.60 – Data drift detected between the base dataset and the target
+    one'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_060.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.60 – Data drift detected between the base dataset and the target one
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you scroll down to the feature distribution, you will be able to clearly
+    see the distribution drift on the age feature. This indicates that the model is
+    making inferences on a population that has different characteristics from the
+    one it was trained on. This is a good indication that you may need to retrain
+    the model, to bring it up to date with the new feature distribution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.61 – The baseline is a negative skewed distribution, while the latest
+    inferences follow a positive skewed distribution'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_04_061.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 4.61 – The baseline is a negative skewed distribution, while the latest
+    inferences follow a positive skewed distribution
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you learned how to configure data drift detection, which you
+    did by comparing the data that your model was observing in production against
+    the dataset that was used to train the model. This is a powerful feature that
+    allows you to determine whether you need to retrain the model with newer data,
+    especially if the feature distribution has changed/drifted over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned how to provision and attach compute resources to
+    your Azure ML workspace. You also learned how you can register various datastores
+    so that you can access data in a secure manner. Finally, you explored the dataset
+    registration capabilities of Azure ML Studio, something that allows you to easily
+    access the data for your experiments. Having registered the datasets, you can
+    configure data drift monitors, which warn you if the features' distribution changes
+    over time, something that could indicate that the ML model that was trained on
+    that dataset needs to be retrained. You should now feel comfortable configuring
+    your Azure ML workspace, one of the key skills that's measured in the DP-100 certification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will learn how to leverage the datasets that you registered
+    in the workspace to perform **Auto ML** analysis, a process that will run multiple
+    ML experiments on top of the compute clusters you provisioned to detect the best
+    algorithm for your dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Questions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In each chapter, you will find a couple of questions so that you can test your
+    knowledge regarding what was covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How many data scientists can work on a single compute instance that has 8 cores
+    and 56 GB of RAM?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. Only one.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. Up to two.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. Up to five.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: d. As many as they want, as long as they don't deplete the compute resources.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: What type of credentials do you need to provide to access a data lake store
+    that's either Gen 1 or Gen 2?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. A **Personal Access Token** (**PAT**)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. A service principal's client ID and secret
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. Your own AAD user credentials
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: d. No credentials are needed
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Which of the following Azure tools can help you orchestrate data moving from
+    an on-premises environment?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. Blob storage
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. Azure Active Directory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. Azure Data Factory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: d. Azure ML workspace
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This section offers a list of useful web resources that will help you augment
+    your knowledge and understanding of the topics discussed in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can learn more about how to use managed identity from within a compute
+    cluster at the following link: [https://docs.microsoft.com/azure/machine-learning/how-to-create-attach-compute-cluster?tabs=python#managed-identity-usage](https://docs.microsoft.com/azure/machine-learning/how-to-create-attach-compute-cluster?tabs=python#managed-identity-usage).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The instance metadata service allows you to request tokens for Azure resources
+    using the attached managed identity. You can learn more about this at [https://docs.microsoft.com/azure/virtual-machines/linux/instance-metadata-service](https://docs.microsoft.com/azure/virtual-machines/linux/instance-metadata-service).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can learn more about the access control model of Azure Data Lake Storage
+    Gen2 at [https://docs.microsoft.com/azure/storage/blobs/data-lake-storage-access-control-model](https://docs.microsoft.com/azure/storage/blobs/data-lake-storage-access-control-model).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can learn how to easily copy data and configure regular data ingestions
+    using Azure Data Factory's copy data tool at [https://docs.microsoft.com/azure/data-factory/quickstart-create-data-factory-copy-data-tool](https://docs.microsoft.com/azure/data-factory/quickstart-create-data-factory-copy-data-tool).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can learn how to grant limited access to Azure Storage Accounts using SAS
+    tokens at [https://docs.microsoft.com/azure/storage/common/storage-sas-overview](https://docs.microsoft.com/azure/storage/common/storage-sas-overview).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can learn more about service principals, which can be used to access Azure
+    Data Lake datastores, at [https://docs.microsoft.com/azure/active-directory/develop/app-objects-and-service-principals](https://docs.microsoft.com/azure/active-directory/develop/app-objects-and-service-principals).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

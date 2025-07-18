@@ -1,0 +1,650 @@
+- en: '7'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Viewing Data Lineage Using Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we’ll dive into the critical role that data lineage plays within
+    the Databricks Data Intelligence Platform. You’ll learn how to trace data origins,
+    visualize dataset transformations, identify upstream and downstream dependencies,
+    and document lineage using the lineage graph capabilities of the Catalog Explorer.
+    By the end of the chapter, you’ll be equipped with the skills needed to ensure
+    data is coming from trusted sources, and spot breaking changes before they happen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing data lineage in Unity Catalog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tracing data origins using the Data Lineage REST API
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualizing upstream and downstream data transformations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Identifying dependencies and impacts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hands-on lab – documenting data lineage across an organization
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with the examples provided in this chapter, you’ll need Databricks
+    workspace permissions to create and start an all-purpose cluster so that you can
+    import and execute the chapter’s accompanying notebooks. All code samples can
+    be downloaded from this chapter’s GitHub repository, located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter07](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter07)
+    . This chapter will create and run several new notebooks using an all-purpose
+    cluster and is estimated to consume around 5-10 **Databricks** **units** ( **DBUs**
+    ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing data lineage in Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Data lineage** refers to the ability to trace relationships across securable
+    objects, such as tables, in **Unity Catalog** ( **UC** ) so that users can view
+    how data assets are formed from upstream sources and verify downstream dependencies.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.1 – Data lineage traces the flow of data and how it gets transformed
+    over time by internal processes](img/B22011_07_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.1 – Data lineage traces the flow of data and how it gets transformed
+    over time by internal processes
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Databricks, users can trace the lineage of data assets in near real time
+    so that data stewards can ensure that they are working with the latest assets.
+    Furthermore, data lineage in Unity Catalog spans across multiple workspaces that
+    are attached to the same Unity Catalog metastore, allowing data professionals
+    to get a *complete* , holistic view into how datasets are transformed and are
+    related to one another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Data lineage can be traced across a variety of securable objects in the Databricks
+    Data Intelligence Platform, including the following objects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Queries
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Table columns
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Notebooks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Workflows
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Machine learning models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Delta Live Tables** ( **DLT** ) pipelines'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Dashboards
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Like many objects within the Databricks Data Intelligence Platform, you can
+    trace the lineage through a variety of mechanisms, including the Databricks UI,
+    using Catalog Explorer, or by consuming the Data Lineage REST API. In fact, data
+    lineage is automatically captured by the Databricks Data Intelligence Platform
+    and recorded in the system tables (covered in [*Chapter 5*](B22011_05.xhtml#_idTextAnchor126)
+    ). Like other system information that gets preserved in the Databricks system
+    tables, lineage information can accumulate quite a bit. To preserve storage costs,
+    this information is retained for one year by default. For longer lineage storage
+    requirements, it’s recommended to set up an alternate process that will append
+    the lineage information to longer-term archival storage. For example, say that
+    an organization needs to retain system auditing information on the order of years,
+    then a long-term archival ETL pipeline would be needed to copy the lineage data
+    into archival storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the coming sections, we’ll cover all varieties for viewing lineage across
+    data assets in Databricks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tracing data origins using the Data Lineage REST API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Like many securable objects in the Databricks Data Intelligence Platform, there
+    are a variety of ways to retrieve detailed lineage information pertaining to the
+    object. One common pattern for retrieving lineage information about a particular
+    object in Databricks is through the Data Lineage REST API. At the moment, the
+    Data Lineage REST API is limited to retrieving a read-only view of table lineage
+    information as well as column lineage information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **UC Object** | **HTTP Verb** | **Endpoint** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Table | **GET** | **/** **api/2.0/lineage-tracking/table-lineage** | Given
+    a UC table name, retrieves a list of upstream and downstream table connections,
+    as well as information about their related notebook connections |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Column | **GET** | **/** **api/2.0/lineage-tracking/column-lineage** | Given
+    a UC table name and column name, retrieves a list of upstream and downstream column
+    connections |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 7.1 – Data Lineage REST API fetches information pertaining to upstream
+    and downstream connections for UC table and column objects
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, it’s expected that the Data Lineage REST API will evolve over time,
+    adding additional capabilities for data stewards to retrieve information and even
+    manipulate the end-to-end lineage of data assets within the platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s look at how we might use the Lineage Tracking API to retrieve information
+    about the upstream and downstream connections for a table created by the dataset
+    generator notebook in this chapter’s accompanying GitHub repository, located at
+    [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter07](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter07)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we’ll begin by creating a brand-new notebook in our Databricks workspace
+    and importing the **requests** Python library. We’ll be exclusively using the
+    Python **requests** library to send data lineage requests to the Databricks REST
+    API and parse the response from the Databricks control plane:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Create and start an all-purpose cluster to attach the notebook to and run the
+    notebook cells. You’ll need to generate a **personal access token** ( **PAT**
+    ) to authenticate with the Databricks REST endpoints and send Data Lineage API
+    requests. It’s strongly recommended to store the PAT in a Databricks secret object
+    ( [https://docs.databricks.com/en/security/secrets/secrets.html](https://docs.databricks.com/en/security/secrets/secrets.html)
+    ) to avoid accidentally leaking the authentication details to your Databricks
+    workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following code snippets are for illustration purposes only. You’ll need
+    to update the workspace name to match the name of your Databricks workspace, as
+    well as the value for the API token.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s use the **requests** library to send a request to the Data Lineage API
+    by specifying the fully qualified endpoint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let’s include a few helper functions for parsing the response from the
+    Data Lineage API and printing the connection information in a nicely formatted
+    manner that’s easy to understand. Add a new cell to your notebook and paste the
+    following helper functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let’s update the response section of our previous code snippet for fetching
+    table lineage information, but this time, we’ll invoke these helper functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output should now be a much more legible response from our Data Lineage
+    API, allowing us to clearly view the upstream and downstream table connections
+    from our table in Unity Catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.2 – Table lineage response output from the Databricks Data Lineage
+    REST API](img/B22011_07_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.2 – Table lineage response output from the Databricks Data Lineage
+    REST API
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Data Lineage API is great for tracing connections between datasets in Unity
+    Catalog. However, we can also retrieve finer-grained lineage information about
+    the *columns* of our table as well. In the next example, let’s retrieve information
+    about the **description** column of our table. Let’s also define another helper
+    function to nicely display the column connection information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this scenario, the **description** column in our table is particularly interesting,
+    as it’s the result of a concatenation of a text string with two different columns.
+    If you update the previous column lineage requests with a different column name,
+    you’ll notice that the number of upstream sources will change to reflect the number
+    of connections specific to that column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.3 – Column lineage response output from the Databricks Lineage API](img/B22011_07_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.3 – Column lineage response output from the Databricks Lineage API
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, you should feel comfortable working with the Databricks Data Lineage
+    API to trace connections between datasets and even fine-grained data transformations,
+    such as column connections. As you’ve seen, the requests and responses from the
+    Data Lineage API require experience working with JSON payloads. For some responses,
+    we needed to create helper functions to parse the response into a more readable
+    form.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we’ll look at using the Databricks UI for tracing dataset
+    relationships, allowing non-technical data stewards the ability to view upstream
+    and downstream sources with just the click of a button.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing upstream and downstream transformations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll be leveraging the dataset generator notebook to create
+    several datasets in Unity Catalog for working with the Databricks UI to trace
+    dataset lineage. If you haven’t done so already, clone this chapter’s accompanying
+    GitHub repository, which is located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter07](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter07)
+    . Next, either start an existing all-purpose cluster or create a new cluster and
+    begin by attaching the data generator notebook to the cluster. Click the **Run
+    all** button in the top-right corner of the Databricks workspace to execute all
+    the notebook cells, verifying that all cells execute successfully. If you encounter
+    runtime errors, verify that you have the correct metastore permissions to create
+    new catalogs, schemas, and tables in your Unity Catalog metastore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need to be granted permission to create a new catalog and schema in
+    your Unity Catalog metastore. If this isn’t possible, feel free to reuse an existing
+    catalog and schema to generate the sample tables. You will need to update the
+    DDL and DML statements accordingly to match the value within your own Databricks
+    workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The result of the data generator notebook should be three tables in total:
+    **youtube_channels** , **youtube_channel_artists** , and **combined_table** .
+    Data lineage can easily be traced in the Databricks Data Intelligence Platform
+    in a variety of ways. In this example, let’s trace the data lineage of a data
+    asset, the **combined_table** table, using the Databricks UI. From your Databricks
+    workspace, click on the **Catalog Explorer** menu tab from the left-hand side
+    navigation menu of the Databricks Data Intelligence Platform. Next, either drill
+    down to the catalog and schema to locate the **combined_table** table, or simply
+    type **combined_table** into the search box at the top of the Catalog Explorer,
+    which will filter the list of data assets matching the text string. Click on the
+    **combined_table** table, which will open the data asset **Overview** details
+    in a separate pane on the right-hand side of the UI.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.4 – The data lineage can be traced directly from the Catalog Explorer
+    in Databricks](img/B22011_07_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.4 – The data lineage can be traced directly from the Catalog Explorer
+    in Databricks
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the UI pane, click on the **Lineage** tab to expose the details of the
+    data lineage for our table. After navigating to the **Lineage** tab, you should
+    see a summary of all connections related to the **combined_table** dataset, clearly
+    identifying all the upstream sources that are used to construct this table, as
+    well as any downstream dependencies that leverage this table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.5 – The Lineage tab in the Catalog Explorer contains lineage information
+    about a table](img/B22011_07_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.5 – The Lineage tab in the Catalog Explorer contains lineage information
+    about a table
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, there should be two rows containing information about the upstream
+    sources – the **youtube_channels** parent table and the **youtube_channel_artists**
+    table. Since we’ve only recently created this table using our data generator notebook,
+    there shouldn’t be any rows with downstream dependencies. As you can imagine,
+    this table will be updated in near real time with a list of all objects that use
+    the dataset in some fashion, clearly identifying any downstream dependents of
+    the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, let’s visualize what our table lineage relationships look like. Click
+    on the blue button labeled **See lineage graph** to open the lineage visualization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should now clearly see that two upstream tables join to form the **combined_table**
+    table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.6 – Lineage connection information can be generated by clicking
+    on connection links on a lineage graph](img/B22011_07_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.6 – Lineage connection information can be generated by clicking on
+    connection links on a lineage graph
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, click on the arrow connecting the upstream table with the downstream table,
+    **combined_table** , to reveal more details about the lineage connection. You
+    will notice that a side pane will open displaying information about the lineage
+    connection, such as the source and target tables, but it will also display how
+    these data assets are used across various other objects in the Databricks Data
+    Intelligence Platform. For instance, the UI pane will list how these datasets
+    are currently being leveraged across notebooks, workflows, DLT pipelines, and
+    DBSQL queries. In this case, we’ve only generated these tables using our data
+    generator notebook, so it is the only object listed in the lineage connection
+    information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.7 – Connection details between datasets can be viewed from the lineage
+    graph](img/B22011_07_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.7 – Connection details between datasets can be viewed from the lineage
+    graph
+  prefs: []
+  type: TYPE_NORMAL
+- en: Column lineage can also be traced using the Catalog Explorer. In the same lineage
+    graph, click on various columns in the **combined_table** table to reveal lineage
+    information. For example, by clicking on the **description** table column, the
+    lineage graph will be updated to clearly visualize how the **description** column
+    is calculated. In this case, the column is calculated by concatenating a string
+    of text with the category column from our parent table as well as the artist’s
+    name from the child table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.8 – Column lineage can be traced by clicking the column to expose
+    upstream lineage connections](img/B22011_07_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.8 – Column lineage can be traced by clicking the column to expose upstream
+    lineage connections
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, generating a lineage graph from the Catalog Explorer provides
+    an accurate snapshot of the latest relationships between datasets in Unity Catalog.
+    These relationships can help us identify the impact data changes have on downstream
+    dependencies, such as changing the data type of a column or dropping a dataset,
+    for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we’ll look at how data lineage can help us identify relationships
+    between our datasets, spot dependent notebooks that leverage these datasets, and
+    avoid introducing breaking changes across our organization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identifying dependencies and impacts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll leverage the lineage graph UI from the Catalog Explorer
+    again to better understand how changing the data type and value of a particular
+    column will impact downstream datasets and downstream processes, such as notebooks
+    and workflows, across our Databricks workspaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s first begin by creating a new notebook in our Databricks workspace that
+    will contain the definition of a new DLT pipeline. The first dataset in our DLT
+    pipeline will ingest raw CSV files containing commercial airline flight information
+    stored in the default **Databricks Filesystem** ( **DBFS** ) under the **/databricks-datasets**
+    directory. Every Databricks workspace will have access to this dataset. Create
+    a new notebook cell and add the following code snippet for the definition of a
+    bronze table in our dat a pipeline:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We’d like to augment the flight data with information about the commercial
+    airliner jet. Create a new notebook cell and add the following code snippet, which
+    defines a static reference table with information about popular commercial airline
+    jets, including the manufacturer name, airplane model, country of origin, and
+    fuel capacity, to name a few:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we’ll save the airline jet reference table to the schema created earlier
+    in Unity Catalog:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s add another step to our data pipeline, which will join our static, commercial
+    jet airline reference table with our stream of airline flight data. In a new notebook
+    cell, create the following **user-defined function** ( **UDF** ), which will generate
+    a tail number for each entry in the commercial airline dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, create one more notebook cell and add the following DLT dataset defin
+    ition for our silver table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: When prompted, let’s create a new DLT pipeline by clicking on the blue button
+    at the bottom of the notebook cell output titled **Create pipeline** . Give the
+    pipeline a meaningful name, such as **Commercial Airliner Flights Pipeline** .
+    Select **Triggered** as the execution mode and **Core** for the product edition.
+    Next, select the target catalog and schema in the previous code sample as a target
+    dataset location for our DLT pipeline. Finally, click the **Start** button to
+    trigger a pipeline update.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.9 – The DLT pipeline created for ingesting commercial airline flight
+    data](img/B22011_07_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.9 – The DLT pipeline created for ingesting commercial airline flight
+    data
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s imagine for a second that there’s an external process that aims to calculate
+    the carbon footprint for each commercial flight. In this example, the process
+    is another Databricks notebook that reads the output of our silver table and calculates
+    the carbon dioxide emission for each flight taken across the United States.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create another notebook within your Databricks workspace and give the notebook
+    a meaningful name, such as **Calculating Commercial Airliner Carbon Footprint**
+    . Next, let’s add a new notebook cell that reads the silver table and calculates
+    the carbon dioxide output using a simple formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Carbon footprint = amount of fuel burned * coefficient / number* *of passengers*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this case, we are only interested in calculating the carbon footprint per
+    airliner jet; so, we will avoid dividing by the number of passengers. Add the
+    following code snippet to the newly created notebook, which will assign a calculated
+    carbon footprint per flight entry:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s imagine again that the fuel capacity amount in the silver table of our
+    DLT pipeline is currently measured in gallons. However, our European business
+    partners want to work with the dataset using liters instead. Let’s use the Catalog
+    Explorer to explore the lineage graph of our silver table to better understand
+    what type of impact, converting the unit of measure for the **fuel_capacity**
+    column, would have on the consumers of the dataset. Navigate to the lineage graph
+    by clicking on the Catalog Explorer in the left-hand side navigation bar, filtering
+    the catalogs by entering the name of the catalog in the search text field, and
+    finally clicking on the silver table, **commercial_airliner_flights_silver** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.10 – Column lineage can help us understand how changing columns
+    will impact downstream dependencies – an overview](img/B22011_07_010.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.10 – Column lineage can help us understand how changing columns will
+    impact downstream dependencies – an overview
+  prefs: []
+  type: TYPE_NORMAL
+- en: By generating the lineage graph, we were able to see in near real time all the
+    downstream columns that might depend on this column. Furthermore, we can also
+    see a real-time list of all the Unity Catalog objects that depend on this column,
+    such as notebooks, workflows, DLT pipelines, and machine-learning models. So,
+    in effect, we can quickly understand what type of impact changing the unit of
+    measure could have across our organization sharing this dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we’ll continue with this example to determine an alternative
+    way for updating this dataset to include fuel capacity, distance travel, and arrival
+    times to be European-friendly without impacting any existing consumers of our
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hands-on lab – documenting data lineage across an organization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll look at how the system tables in Databricks automatically
+    document how the relationships between our datasets and other data assets change
+    over time. As previously mentioned, Unity Catalog will preserve data lineage across
+    all workspaces that attach to the same Unity Catalog metastore. This is particularly
+    useful in scenarios when organizations need to have strong end-to-end auditing
+    of their data assets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s again begin by creating a new notebook within our Databricks workspace
+    and giving it a meaningful title, such as **Viewing Documented Data Lineage**
+    . Next, let’s create a new all-purpose cluster or attach the notebook to an already
+    running cluster to begin executing notebook cells.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like the Data Lineage API, there are two system tables that provide a read-only
+    view of lineage information in Unity Catalog – the **system.access.table_lineage**
+    table and the **system.access.column_lineage** table. Data lineage system tables
+    automatically document information pertaining to upstream and downstream connections
+    for UC table and column objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **UC Object** | **Table Name** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Table | **system.access.table_lineage** | Contains a list of upstream and
+    downstream table connections, as well as information about their related notebook
+    connections |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Column | **system.access.column_lineage** | Contains a list of upstream and
+    downstream column connections |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 7.2 – Data lineage system tables capture connections info about tables
+    and columns
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s query the upstream and downstream lineage information in the previous
+    example. In a new notebook cell, add the following query and execute the cell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.11 – Lineage information can be queried from the system tables](img/B22011_07_011.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.11 – Lineage information can be queried from the system tables
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see from the output, the system table automatically documents connection
+    information about the upstream and downstream sources. In addition, the system
+    tables will automatically capture auditing information, including information
+    about the dataset’s creator and the event timestamp of the object creation. This
+    is a great way to document, review, or even report on data lineage across your
+    organization’s datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered the various ways that data lineage can be traced
+    across datasets in the Databricks Data Intelligence Platform. We saw how the Data
+    Lineage REST API allowed us to quickly view the upstream and downstream connections
+    of a particular table or column in Unity Catalog. Next, we look at how easy it
+    was to generate a lineage graph using the Catalog Explorer in Unity Catalog. The
+    lineage graph was essential for enabling greater insight into how changes to datasets
+    could impact downstream consumers of the dataset. Lastly, we looked at how the
+    system tables in Unity Catalog provided a way for our organization to document
+    the evolving flow of data asset relationships.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll turn our attention to deploying our data pipelines
+    and all their dependencies in an automated fashion using tools such as Terraform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Part 3:Continuous Integration, Continuous Deployment, and Continuous Monitoring
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the final part of this book, we’ll look at how we can automate the deployment
+    of pipeline changes using popular automation tools such as **Terraform** and **Databricks
+    Asset Bundles** ( **DABs** ). We conclude the book with a lesson on how you can
+    continuously monitor your DLT pipelines using a variety of tools in the Databricks
+    Data Intelligence Platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This part contains the following chapters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[*Chapter 8*](B22011_08.xhtml#_idTextAnchor185) , *Deploying, Maintaining,
+    and Administrating* *DLT* *Pipelines Using Terraform*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[*Chapter 9*](B22011_09.xhtml#_idTextAnchor222) , *Leveraging Databricks Asset
+    Bundles to Streamline Data Pipeline Deployment*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[*Chapter 10*](B22011_10.xhtml#_idTextAnchor249) *,* *Monitoring Data Pipelines
+    in Production*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

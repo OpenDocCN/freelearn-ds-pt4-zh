@@ -1,0 +1,534 @@
+- en: '12'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Creating an Efficient Prediction API Endpoint with FastAPI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we introduced the most common data science techniques
+    and libraries largely used in the Python community. Thanks to those tools, we
+    can now build machine learning models that can make efficient predictions and
+    classify data. Of course, we now have to think about a convenient interface so
+    that we can take advantage of their intelligence. This way, microservices or frontend
+    applications can ask our model to make predictions to improve the user experience
+    or business operations. In this chapter, we’ll learn how to do that with FastAPI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we’ve seen throughout this book, FastAPI allows us to implement very efficient
+    REST APIs with a clear and lightweight syntax. In this chapter, you’ll learn how
+    to use them as efficiently as possible in order to serve thousands of prediction
+    requests. To help us with this task, we’ll introduce another library, Joblib,
+    which provides tools to help us serialize a trained model and cache predicted
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Persisting a trained model with Joblib
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing an efficient prediction endpoint
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Caching results with Joblib
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this chapter, you’ll require a Python virtual environment, just as we set
+    up in [*Chapter 1*](B19528_01.xhtml#_idTextAnchor024), *Python Development* *Environment
+    Setup*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You’ll find all the code examples for this chapter in the dedicated GitHub repository
+    at [https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Persisting a trained model with Joblib
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, you learned how to train an estimator with scikit-learn.
+    When building such models, you’ll likely obtain a rather complex Python script
+    to load your training data, pre-process it, and train your model with the best
+    set of parameters. However, when deploying your model in a web application such
+    as FastAPI, you don’t want to repeat this script and run all those operations
+    when the server is starting. Instead, you need a ready-to-use representation of
+    your trained model that you can just load and use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is what Joblib does. This library aims to provide tools for efficiently
+    saving Python objects to disk, such as large arrays of data or function results:
+    this operation is generally called **dumping**. Joblib is already a dependency
+    of scikit-learn, so we don’t even need to install it. Actually, scikit-learn itself
+    uses it internally to load the bundled toy datasets.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we’ll see, dumping a trained model involves just one line of code with Joblib.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dumping a trained model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this example, we’re using the newsgroups example we saw in the *Chaining
+    preprocessors and estimators with pipelines* section of [*Chapter 11*](B19528_11.xhtml#_idTextAnchor797),
+    *Introduction to Data Science in Python*. As a reminder, we load 4 of the 20 categories
+    in the `newsgroups` dataset and build a model to automatically categorize news
+    articles into those categories. Once we’ve done this, we dump the model into a
+    file called `newsgroups_model.joblib`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter12_dump_joblib.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_dump_joblib.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_dump_joblib.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, Joblib exposes a function called `dump`, which simply expects
+    two arguments: the Python object to save and the path of the file.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that we don’t dump the `model` variable alone: instead, we wrap it in
+    a tuple, along with the name of the categories, `target_names`. This allows us
+    to retrieve the actual name of the category after the prediction has been made
+    without us having to reload the training dataset.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you run this script, you’ll see that the `newsgroups_model.joblib` file
+    was created:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice that this file is rather large: it’s more than 3 MB! It stores all the
+    probabilities of each word in each category, as computed by the multinomial Naive
+    Bayes model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s all we need to do. This file now contains a static representation of
+    our Python model, which will be easy to store, share, and load. Now, let’s learn
+    how to load it and check that we can run predictions on it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading a dumped model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now that we have our dumped model file, let’s learn how to load it again using
+    Joblib and check that everything is working. In the following example, we’re loading
+    the Joblib dump present in the `chapter12` directory of the examples repository
+    and running a prediction:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter12_load_joblib.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_load_joblib.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_load_joblib.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All we need to do here is call the `load` function from Joblib and pass it as
+    a valid path to a dump file. The result of this function is the very same Python
+    object we dumped. Here, it’s a tuple composed of the scikit-learn estimator and
+    a list of categories.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that we added some type hints: while not necessary, it helps mypy or
+    whichever IDE you use identify the nature of the objects you loaded and benefit
+    from type-checking and auto-completion.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we run a prediction on the model: it’s a true scikit-learn estimator,
+    with all the necessary training parameters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s it! As you’ve seen, Joblib is straightforward to use. Nevertheless, it’s
+    an essential tool for exporting your scikit-learn models and being able to use
+    them in external services without repeating the training phase. Now, we can use
+    those dump files in FastAPI projects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing an efficient prediction endpoint
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have a way to save and load our machine learning models, it’s time
+    to use them in a FastAPI project. As you’ll see, the implementation shouldn’t
+    be too much of a surprise if you’ve followed this book. The main part of the implementation
+    is the class dependency, which will take care of loading the model and making
+    predictions. If you need a refresher on class dependencies, check out [*Chapter
+    5*](B19528_05.xhtml#_idTextAnchor285), *Dependency Injection* *in FastAPI*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s go! Our example will be based on the `newgroups` model we dumped in the
+    previous section. We’ll start by showing you how to implement the class dependency,
+    which will take care of loading the model and making predictions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter12_prediction_endpoint.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_prediction_endpoint.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_prediction_endpoint.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we start by defining two Pydantic models: `PredictionInput` and `PredictionOutput`.
+    In a pure FastAPI philosophy, they will help us validate the request payload and
+    return a structured JSON response. Here, as input, we simply expect a `text` property
+    containing the text we want to classify. As output, we expect a `category` property
+    containing the predicted category.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The most interesting part of this extract is the `NewsgroupsModel` class. It
+    implements two methods: `load_model` and `predict`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `load_model` method loads the model using Joblib, as we saw in the previous
+    section, and stores the model and targets in class properties. Hence, they will
+    be available to use in the `predict` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, the `predict` method will be injected into the path operation
+    function. As you can see, it directly accepts `PredictionInput`, which will be
+    injected by FastAPI. Inside this method, we are making a prediction, as we usually
+    do with scikit-learn. We return a `PredictionOutput` object with the category
+    we predicted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may have noticed that, first, we check whether the model and its targets
+    have been assigned in the class properties before performing the prediction. Of
+    course, we need to ensure `load_model` was called at some point before making
+    a prediction. You may be wondering why we are not putting this logic in an initializer,
+    `__init__`, so that we can ensure the model is loaded at class instantiation.
+    This would work perfectly fine; however, it would cause some issues. As we’ll
+    see, we are instantiating a `NewsgroupsModel` instance right after FastAPI so
+    that we can use it in our routes. If the loading logic was in `__init__`, the
+    model would be loaded whenever we imported some variables (such as the `app` instance)
+    from this file, such as in unit tests. In most cases, this would incur unnecessary
+    I/O operations and memory consumption. As we’ll see, it’s better to use the lifespan
+    handler of FastAPI to load the model when the app is run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following extract shows the rest of the implementation, along with the
+    actual FastAPI route for handling predictions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter12_prediction_endpoint.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_prediction_endpoint.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_prediction_endpoint.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we mentioned previously, we are creating an instance of `NewsgroupsModel`
+    so that we can inject it into our path operation function. Moreover, we are implementing
+    a lifespan handler to call `load_model`. This way, we are making sure that the
+    model is loaded during application startup and is ready to use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The prediction endpoint is quite straightforward: as you can see, we directly
+    depend on the `predict` method, which will take care of injecting the payload
+    and validating it. We only have to return the output.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That’s it! Once again, FastAPI makes our life very easy by allowing us to write
+    very simple and readable code, even for complex tasks. We can run this application
+    using Uvicorn, as usual:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can try to run some predictions with HTTPie:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our machine learning classifier is alive! To push this further, let’s see how
+    we can implement a simple caching mechanism using Joblib.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching results with Joblib
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If your model takes time to make predictions, it may be interesting to cache
+    the results: if the prediction for a particular input has already been done, it
+    makes sense to return the same result we saved on disk rather than running the
+    computations again. In this section, we’ll learn how to do this with the help
+    of Joblib.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Joblib provides us with a very convenient and easy-to-use tool to do this, so
+    the implementation is quite straightforward. The main concern will be about whether
+    we should choose standard or async functions to implement the endpoints and dependencies.
+    This will allow us to explain some of the technical details of FastAPI in more
+    detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’ll build upon the example we provided in the previous section. The first
+    thing we must do is initialize a Joblib `Memory` class, which is the helper for
+    caching function results. Then, we can add a decorator to the functions we want
+    to cache. You can see this in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter12_caching.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_caching.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_caching.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When initializing `memory`, the main argument is `location`, which is the directory
+    path where Joblib will store the results. Joblib automatically saves cached results
+    on the hard disk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, you can see that we implemented a `predict` function, which accepts our
+    scikit-learn model and some text input and then returns the predicted category
+    index. This is the same prediction operation we’ve seen so far. Here, we extracted
+    it from the `NewsgroupsModel` dependency class because Joblib caching is primarily
+    designed to work with regular functions. Caching class methods is not recommended.
+    As you can see, we simply have to add a `@memory.cache` decorator on top of this
+    function to enable Joblib caching.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whenever this function is called, Joblib will check whether it has the result
+    on disk for the same arguments. If it does, it returns it directly. Otherwise,
+    it proceeds with the regular function call.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, we added an `ignore` argument to the decorator, which allows
+    us to tell Joblib to not take into account some arguments in the caching mechanism.
+    Here, we excluded the `model` argument. Joblib cannot dump complex objects, such
+    as scikit-learn estimators. This isn’t a problem, though: the model doesn’t change
+    between several predictions, so we don’t care about having it cached. If we make
+    improvements to our model and deploy a new one, all we have to do is clear the
+    whole cache so that older predictions are made again with the new model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can tweak the `NewsgroupsModel` dependency class so that it works with
+    this new `predict` function. You can see this in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter12_caching.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_caching.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_caching.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the `predict` method, we are calling the external `predict` function instead
+    of doing so directly inside the method, taking care to pass the model and the
+    input text as arguments. All we have to do after that is retrieve the corresponding
+    category name and build a `PredictionOutput` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we have the REST API endpoints. Here, we added a `delete/cache` route
+    so that we can clear the whole Joblib cache with an HTTP request. This can be
+    seen in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter12_caching.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_caching.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_caching.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `clear` method on the `memory` object removes all the Joblib cache files
+    on the disk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our FastAPI application is now caching prediction results. If you make a request
+    with the same input twice, the second response will show you the cached result.
+    In this example, our model is fast, so you won’t notice a difference in terms
+    of execution time; however, this could be interesting with more complex models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing between standard or async functions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You may have noticed that we changed the `predict` method and the `prediction`
+    and `delete_cache` path operation functions so that they’re *standard,* *non-async*
+    functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the beginning of this book, we’ve shown you how FastAPI completely embraces
+    asynchronous I/O and why it’s good for the performance of your applications. We’ve
+    also recommended libraries that work asynchronously, such as database drivers,
+    to leverage that power.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In some cases, however, that’s not always possible. In this case, Joblib is
+    implemented to work synchronously. Nevertheless, it’s performing long I/O operations:
+    it reads and writes cache files on the hard disk. Hence, it will block the process
+    and won’t be able to answer other requests while this is happening, as we explained
+    in the *Asynchronous I/O* section of [*Chapter 2*](B19528_02.xhtml#_idTextAnchor032),
+    *Python* *Programming Specificities*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To solve this, FastAPI implements a neat mechanism: *if you define a path operation
+    function or a dependency as a standard, non-async function, it’ll run it in a
+    separate thread*. This means that blocking operations, such as synchronous file
+    reading, won’t block the main process. In a sense, we could say that it mimics
+    an asynchronous operation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To understand this, we’ll perform a simple experiment. In the following example,
+    we are building a dummy FastAPI application with three endpoints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`/fast`, which directly returns a response'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`/slow-async`, a path operation defined as `async`, which creates a synchronous
+    blocking operation that takes 10 seconds to run'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`/slow-sync`, a path operation that’s defined as a standard method, which creates
+    a synchronous blocking operation that takes 10 seconds to run'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can read the corresponding code here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter12_async_not_async.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_async_not_async.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter12/chapter12_async_not_async.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With this simple application, the goal is to see how those blocking operations
+    block the main process. Let’s run this application with Uvicorn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, open two new terminals. In the first one, make a request to the `/``slow-async`
+    endpoint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Without waiting for the response, in the second terminal, make a request to
+    the `/``fast` endpoint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: You’ll see that you have to wait 10 seconds before you get the response for
+    the `/fast` endpoint. This means that `/slow-async` blocked the process and prevented
+    the server from answering the other request while this was happening.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s perform the same experiment with the `/``slow-sync` endpoint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And again, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: You’ll immediately get the response of `/fast` without having to wait for `/slow-sync`
+    to finish. Since it’s defined as a standard, non-async function, FastAPI will
+    run it in a thread to prevent blocking. However, bear in mind that sending the
+    task to a separate thread implies a small overhead, so it’s important to think
+    about the best approach to your current problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, when developing with FastAPI, how can you choose between standard or async
+    functions for path operations and dependencies? The rules of thumb for this are
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the functions don’t involve long I/O operations (file reading, network requests,
+    and so on), define them as `async`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If they involve I/O operations, see the following:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Try to choose libraries that are compatible with asynchronous I/O, as we saw
+    for databases or HTTP clients. In this case, your functions will be `async`.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If it’s not possible, which is the case for Joblib caching, define them as standard
+    functions. FastAPI will run them in a separate thread.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Since Joblib is completely synchronous at making I/O operations, we switched
+    the path operations and the dependency method so that they were synchronous, standard
+    methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, the difference is not very noticeable because the I/O operations
+    are small and fast. However, it’s good to keep this in mind if you have to implement
+    slower operations, such as for performing file uploads to cloud storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Congratulations! You’re now able to build a fast and efficient REST API to serve
+    your machine learning models. Thanks to Joblib, you learned how to dump a trained
+    scikit-learn estimator into a file that’s easy to load and use inside your application.
+    We also saw an approach to caching prediction results using Joblib. Finally, we
+    discussed how FastAPI handles synchronous operations by sending them to a separate
+    thread to prevent blocking. While this was a bit technical, it’s important to
+    bear this aspect in mind when dealing with blocking I/O operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’re near the end of our FastAPI journey. Before letting you build awesome
+    data science applications by yourself, we will provide three more chapters to
+    push this a bit further and study more complex use cases. We’ll start with an
+    application that can perform real-time object detection, thanks to WebSockets
+    and a computer vision model.
+  prefs: []
+  type: TYPE_NORMAL

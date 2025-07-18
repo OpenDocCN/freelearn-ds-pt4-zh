@@ -1,0 +1,692 @@
+- en: '6'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Managing Data Locations in Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’ll explore how to effectively manage data storage locations
+    using securable objects in **Unity Catalog** – objects that allow administrators
+    to grant fine-grained permissions to users, groups, and service principals . We’ll
+    cover six types of securable objects for storing data in Unity Catalog: catalogs,
+    schemas, tables, volumes, external locations, and connections. We’ll also look
+    at how you can effectively govern storage access across various roles and departments
+    within your organization, ensuring data security and auditability within the Databricks
+    Data Intelligence Platform. Lastly, we’ll outline how to organize and structure
+    data across different storage locations within Unity Catalog.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating and managing data catalogs in Unity Catalog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting default storage locations for data within Unity Catalog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating and managing external storage locations in Unity Catalog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hands-on lab – extracting document text for a generative AI pipeline
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with the examples provided in this chapter, you’ll need Databricks
+    workspace permissions to create and start an all-purpose cluster so that you can
+    import and execute the chapter’s accompanying notebooks. All code samples can
+    be downloaded from this chapter’s GitHub repository located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter06](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter06)
+    . It’s also recommended that your Databricks user be elevated to a metastore admin
+    (covered in [*Chapter 5*](B22011_05.xhtml#_idTextAnchor126) ) so that you can
+    add and remove external locations, security credentials, foreign connections,
+    and bind catalogs to a Databricks workspace. This chapter will create and run
+    several new notebooks, estimated to consume around 5-10 **Databricks** **Units**
+    ( **DBUs** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating and managing data catalogs in Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A **catalog** is the topmost container in the Unity Catalog object model hierarchy
+    for storing data assets. A catalog will contain one or more schemas (or databases),
+    which can contain one or many tables, views, models, functions, or volumes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.1 – Data is isolated in Unity Catalog using catalogs](img/B22011_06_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.1 – Data is isolated in Unity Catalog using catalogs
+  prefs: []
+  type: TYPE_NORMAL
+- en: A common question is “How many catalogs should my workspace have?” While there
+    is no right or wrong answer to the exact number of catalogs one should create
+    for their workspace, a good rule of thumb would be to break your workspace catalogs
+    up by natural dividing factors such as lines of business, logical work environments,
+    teams, or use cases, for example. Furthermore, you should consider the subset
+    of groups and users who will have permission to use the data assets as a factor
+    in deciding how to create your catalog isolation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is a best practice to not have too few catalogs where you cannot logically
+    divide datasets from one another. Similarly, it’s also a best practice to not
+    have too many catalogs within a workspace as it makes it difficult for users to
+    navigate and discover datasets. You should aim to find somewhere in between.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Metastore administrators, or privileged users within Unity Catalog, can grant
+    other users the entitlement to create additional catalogs within a metastore.
+    For example, the following grant statement executed by a metastore administrator
+    will grant the Databricks user, **jane.smith@example.com** , permission to create
+    new catalogs within the metastore attached to their Databricks workspace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Furthermore, for Databricks workspaces created after November 8th, 2023, a default
+    workspace catalog is created within the Unity Catalog metastore, **<workspace_name>_catalog**
+    . By default, all users in the workspace will have access to this catalog and
+    can create data assets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managed data versus external data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When you deploy a Unity Catalog metastore, part of the deployment process includes
+    setting up a new, default cloud storage container at the metastore level. This
+    cloud storage container serves as the *default* location for all data assets created
+    on the Databricks Data Intelligence Platform. For example, when a user creates
+    a new table and they do not specify a **LOCATION** attribute in the **data definition
+    language** ( **DDL** ) statement, then the Databricks Data Intelligence Platform
+    will store the table data in the default storage container. As a result, the platform
+    will take care of managing the life cycle of this table, including the data files,
+    metadata, and even characteristics of the table, such as tuning the table layout
+    and file sizes. This type of data asset is referred to as a *managed* table because
+    the Databricks Data Intelligence Platform will manage the life cycle. Furthermore,
+    if the table is dropped, the platform will take care of removing all the table
+    metadata and data files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, if the user provides a **LOCATION** attribute in the DDL statement,
+    they will override the default behavior. Instead, the user is explicitly directing
+    the Databricks Data Intelligence Platform to store the data in a location external
+    to the default storage container for Unity Catalog. As a result, this type of
+    data asset is referred to as an *external* table. Databricks will not manage the
+    performance characteristics of the table, such as the size of the files or the
+    layout of the files. Unlike managed tables, if an external table is dropped, only
+    the entry of the table is removed from Unity Catalog and none of the table metadata
+    and data files will be removed from their external location. Instead, the table
+    owner will need to take care of deleting the table files from the cloud location,
+    since they’ve taken over managing the table life cycle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally speaking, *managed* refers to the Databricks platform managing the
+    life cycle and data will be stored in the default storage container, while on
+    the other hand, *external* means that the object owner is taking control of the
+    object life cycle and the data should be stored in an external storage location.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, there may be good reasons when you wish to create data assets in a
+    different storage location than metastore default location. For example, for privileged
+    datasets containing sensitive data, such as **personally identifiable information**
+    ( **PII** ) / **protected health information** ( **PHI** ) data, you may wish
+    to store these datasets in a separate storage account. Or perhaps you have a contractual
+    obligation that requires data to be stored separately in an isolated storage account.
+    In any event, it’s quite common to have requirements for data isolation. In the
+    next section, let’s look at another securable object in Unity Catalog that allows
+    data admins to securely store arbitrary types of data while maintaining strong
+    isolation from traditional tables and views.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Saving data to storage volumes in Unity Catalog
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A **volume** , short for a **storage volume** , can be used to store files of
+    various format types. Furthermore, volumes can be stored alongside tables and
+    views in a schema in Unity Catalog. While tables and views are used to store structured
+    data, volumes can be used to store structured, semi-structured, or unstructured
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.2 – Storage volumes are stored alongside tables and views within
+    a schema in Unity Catalog](img/B22011_06_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.2 – Storage volumes are stored alongside tables and views within a
+    schema in Unity Catalog
+  prefs: []
+  type: TYPE_NORMAL
+- en: Volumes can be managed by the Databricks Data Intelligence Platform, where,
+    once dropped, the storage container, including the entire contents of the storage
+    container, is removed entirely. On the other hand, volumes can be external volumes,
+    meaning the volume owner manages the storage location of the storage volume, and
+    once dropped, the contents of the storage container are not removed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storage volumes simplify the storage of files in Unity Catalog by removing the
+    overhead of creating and managing external storage locations and storage credential
+    objects within Unity Catalog. Whereas, external locations would need to be created
+    with an accompanying storage credential, making provisioning and deprovisioning
+    slightly more complex.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storage volumes provide users of a particular schema the flexibility of storing
+    arbitrary files in a safe and secure storage location that is managed by the Databricks
+    Data Intelligence Platform. By default, storage volumes will persist data in the
+    default storage location of the parent schema. For example, if there was no storage
+    location provided at the time of the schema creation, then the data in a storage
+    volume will be stored in the default storage account for the Unity Catalog metastore.
+    Whereas if the schemas were created with an explicit storage location, then by
+    default the storage volume will store its contents in this cloud location.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A metastore administrator or a privileged user with explicit permission to
+    create a volume within a catalog can create or drop a volume. The following example
+    grants explicit permission for a Databricks user to create volumes on the development
+    catalog:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A fully qualified volume path is constructed using **/Volumes/** followed by
+    the catalog, schema, and volume names. For example, an arbitrary text file can
+    be referenced using the following path:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**/** **Volumes/catalog_name/schema_name/volume_name/subdirectory_name/arbitrary_file.txt**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the previous examples, we’ve let the Databricks Data Intelligence Platform
+    decide how data is stored using schemas, tables, views, and volumes. However,
+    we can set a prescribed cloud location for certain securable objects as well.
+    Let’s look at how we can control the storage location using several techniques
+    in Unity Catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting default locations for data within Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You can control the storage location of data using several techniques in Unity
+    Catalog:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Default location at the catalog level:** When creating a new catalog, data
+    administrators can prescribe a storage location. When creating a data asset, such
+    as a table, and no location is specified, then the data will be stored in the
+    catalog location.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Default location at the schema level** : Similarly, you can specify a default
+    location at the schema level. The schema location will override any default location
+    specified at the catalog level. When creating a data asset, such as a table, and
+    no location is specified, then the data will be stored in the schema location.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**An external location at the table level** : This is the finest-grained control
+    data stewards have over their datasets. The table location will override any default
+    location specified at either the catalog or the schema level.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Volume location** : Closely related to external locations (covered in the
+    *Creating and managing external storage locations in Unity Catalog* section),
+    volumes allow control over where the table data gets stored in your cloud storage
+    location.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Isolating catalogs to specific workspaces
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: By default, when you create a catalog in Unity Catalog, the catalog will be
+    available for metastore admins to grant permissions for users to access across
+    *all* Databricks workspaces using that metastore. However, in certain scenarios,
+    you may want to override this behavior and enforce stronger isolation of datasets
+    residing within a particular catalog. For example, sensitive datasets may only
+    be available for data pipeline processing in a production workspace but should
+    not be available in lower environments such as a development workspace. A feature
+    of Unity Catalog called **catalog binding** helps address this type of scenario.
+    With catalog binding, catalog administrators, such as a metastore administrator
+    or a catalog owner, can control which workspaces have access to a particular catalog.
+    For Databricks workspaces that are not bound to a particular catalog, the catalog
+    will not appear in the search results of the Catalog Explorer UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.3 – Catalog binding allows data administrators to control data isolation
+    and isolation levels per workspace](img/B22011_06_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.3 – Catalog binding allows data administrators to control data isolation
+    and isolation levels per workspace
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, data administrators can prescribe the type of actions that are
+    available to datasets bound to a particular workspace. For example, say that you
+    want to limit the access to read-only for datasets residing within a catalog for
+    a testing environment. Data administrators can change the binding settings of
+    a catalog either from the UI, using the Catalog Explorer in the Databricks Data
+    Intelligence Platform, or using automated tools such as Terraform or the REST
+    API. Let’s look at an example of how we could leverage the Databricks REST API
+    to bind our testing catalog, which contains PII data to our production workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s start off by updating the default settings of our catalog so that
+    the catalog is not accessible from all workspaces that use our Unity Catalog metastore.
+    By default, this attribute is set to **OPEN** , and we would like to isolate our
+    catalog to a prescribed workspace only:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can also use the Catalog Explorer to verify that the isolation mode of our
+    catalog has been updated with our previous request. From the Databricks workspace,
+    navigate to the Catalog Explorer from the left sidebar menu. Next, type in the
+    name of your catalog in the search box to filter the catalogs and click on the
+    name of your catalog. From the Catalog Explorer UI, verify in the details that
+    the checkbox titled **All workspaces have access** is no longer checked.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.4 – Catalog binding information can be configured from the Databricks
+    UI](img/B22011_06_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.4 – Catalog binding information can be configured from the Databricks
+    UI
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that our catalog is no longer open for metastore administrators to grant
+    access from all workspaces that use our Unity Catalog metastore, we want to bind
+    the catalog to only the workspaces that we’d like users to have access to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next example, we’ll again use the Databricks REST API to allow data
+    administrators in the production workspace to assign read-only access to the datasets
+    in our catalog:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding example, we provide the workspace identifier in the payload
+    request for binding a catalog to a workspace in Unity Catalog. If you aren’t sure
+    what your workspace identifier is, you can quickly find it by inspecting the URL
+    of your Databricks workspace. The workspace identifier can be found in the first
+    URI segment of the URL to your Databricks workspace and follows the **https://<workspace_name>.cloud.databricks.com/o=<workspace_id>**
+    pattern. The workspace identifier will be the numerical value immediately following
+    the **o=** URL parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, you should understand the impact that catalog binding has in allowing
+    data administrators the ability to control how our data is accessible and further
+    isolate datasets in the Databricks Data Intelligence Platform. However, there
+    may be certain scenarios in which data administrators need to control the cloud
+    storage location, such as meeting contractual obligations of no co-location of
+    datasets during pipeline processing. In the next section, let’s look at how data
+    administrators can assign specific cloud locations for datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating and managing external storage locations in Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'One of the strong suits of Databricks is the openness of data, meaning users
+    can connect to data stored in a variety of cloud-native storage systems. For example,
+    users can connect to data stored in Amazon’s S3 service and join that data with
+    another dataset stored in an **Azure Data Lake Storage** ( **ADLS** ) **Gen2**
+    storage container. However, one of the downsides is that integration with these
+    cloud-native storage services needs complex configuration settings to be set typically
+    at the beginning of a notebook execution, or perhaps in an initialization script
+    when a cluster starts up. These configuration settings are complex, and at the
+    very minimum need to be stored in a Databricks secret, and authentication tokens
+    would need to be rotated by cloud admins – a very complex maintenance life cycle
+    for an otherwise simple task – loading remote data using Spark’s **DataFrameReader**
+    . One of the key benefits that Unity Catalog brings is a securable object called
+    a **storage credential** , which aims to simplify this maintenance task, while
+    also allowing end users the ability to store and connect to datasets that are
+    external to the Databricks Data Intelligence Platform. Cloud admins or metastore
+    admins can store cloud service authentication details in a single place and save
+    end users, who may not be technical, from having to configure complex details
+    of cloud authentication, such as an IAM role identifier. As an example of how
+    complex these configuration details can be, the following code snippet can be
+    used to configure authentication to an ADLS Gen2 container using the configuration
+    that gets set during the code execution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Storing cloud service authentication using storage credentials
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A **storage credential** is a securable object within Unity Catalog that abstracts
+    away a cloud-native credential for access to a cloud storage account. For example,
+    a storage credential may represent an **Identity and Access Management** ( **IAM**
+    ) role on the **Amazon Web Services** ( **AWS** ) cloud. A storage credential
+    may also represent a **managed identity** or service principal in the Azure cloud.
+    Once a storage credential has been created, access to the storage credential can
+    be granted to users and groups in Unity Catalog using an explicit grant statement.
+    Like other securable objects in Unity Catalog, there are various methods for creating
+    a new security credential on the Databricks Data Intelligence Platform. For example,
+    a metastore admin may choose to use **American National Standards Institute Structured
+    Query Language** ( **ANSI SQL** ) to create the storage credential, or they might
+    use the Databricks UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.5 – Storage credentials can be created using Databricks UI](img/B22011_06_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.5 – Storage credentials can be created using Databricks UI
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storage credentials are paired with another securable object in Unity Catalog
+    called an **external location** , and the combination is used to store and access
+    data in a specific cloud storage account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.6 – A storage credential encapsulates a cloud identity and is used
+    by Unity Catalog to access an external storage location](img/B22011_06_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.6 – A storage credential encapsulates a cloud identity and is used
+    by Unity Catalog to access an external storage location
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You must be either a Databricks account administrator or a metastore administrator
+    for a Unity Catalog metastore, which will include the **CREATE STORAGE CREDENTIAL**
+    entitlement. The following example uses the Databricks **command-line interface**
+    ( **CLI** ) tool to create a new storage credential in Unity Catalog using an
+    IAM role in AWS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s use the SQL API this time to grant permission to the **data-science**
+    group to use the credential for accessing cloud storage:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, storage containers external to the Databricks Data Intelligence Platform
+    may not be the only source of data that you wish to connect to from your lakehouse.
+    For instance, there may be scenarios in which you may need to connect to an external
+    system, such as an existing data warehouse or a relational database, to cross-reference
+    data. Let’s turn our attention to **Lakehouse Federation** , which allows lakehouse
+    users to query datasets outside of the Databricks Data Intelligence Platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Querying external systems using Lakehouse Federation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Lakehouse Federation is a feature in the Databricks Data Intelligence Platform
+    that permits users to execute queries on storage systems external to Databricks
+    without needing to migrate the data to the lakehouse. Another securable object
+    in Unity Catalog, called a **connection** , can be used to federate queries to
+    external systems. A connection represents a *read-only* connection to an external
+    system, such as a **relational database management system** ( **RDBMS** ), such
+    as Postgres or MySQL, or a cloud data warehouse such as Amazon Redshift. This
+    is a great way to query external data to quickly prototype new pipelines in your
+    lakehouse. Perhaps, even, you need to cross-reference an external dataset and
+    don’t want to go through the lengthy process of creating another **extract, transform,
+    and load** ( **ETL** ) pipeline to ingest a new data source just yet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A list of all connections can be easily viewed in the Databricks Data Intelligence
+    Platform by navigating to the Catalog Explorer, expanding the **Connections**
+    pane, and clicking a **Foreign Connection** to view the details about a previously
+    created connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at an example of how we can use the SQL connection API in Databricks
+    to create a new foreign connection to the MySQL database. Databricks recommends
+    that all credential information be stored in a Databricks secret, which can be
+    easily retrieved from SQL using the **secret()** SQL function and providing the
+    secret scope and secret key:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, navigate to the **Connections** UI by clicking on the Catalog Explorer
+    in the left-hand side navigation bar, expanding the **External Data** pane, and
+    clicking on the **Connections** menu item. You should now see the newly created
+    connection to the MySQL database and clicking on it will reveal details about
+    the connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.7 – Connections to foreign storage systems can be viewed from the
+    Catalog Explorer](img/B22011_06_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.7 – Connections to foreign storage systems can be viewed from the Catalog
+    Explorer
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s connect everything we’ve learned in the previous sections to build a modern
+    data pipeline capable of powering generative AI use cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hands-on lab – extracting document text for a generative AI pipeline
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this example, we’ll look at a typical pipeline used to extract text from
+    documents for the purposes of generative AI. This is a very common architectural
+    pattern, especially for real-world use cases such as training a chatbot over a
+    text corpus. Along the way, we’ll see how storage volumes on the Databricks Data
+    Intelligence Platform are a great fit for processing arbitrary files from an external
+    cloud storage location. All code samples can be downloaded from this chapter’s
+    GitHub repository located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter06](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter06)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating mock documents
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first step in a data pipeline will be a process for generating arbitrary
+    text files to extract text from. Let’s begin by creating a new notebook in our
+    Databricks workspace which will be used to train our organization’s chatbot. The
+    following code example uses the popular **faker** Python library, to randomly
+    generate the content within our documents, and the **reportlab** Python library,
+    for generating PDF files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Begin by installing the library dependencies in the first notebook cell using
+    the **%pip** magic command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Defining helper functions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s define a few helper functions that will take a randomly generated paragraph
+    of text and save the text as a document. We’ll define three helper functions –
+    one helper function for each document format type – plain text, **Portable Document
+    Format** ( **PDF** ), and **comma-separated** **values** ( **CSV** ):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s define the helper function for a plain text file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we define the helper function for a PDF file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Lastly, we define the helper function for a CSV file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is a great way to simulate a variety of documents you might expect your
+    organization to accumulate over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing a file format randomly
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Next, we will need to randomly choose the file format to save the generated
+    documents. Let’s begin by importing the **faker** library and a few Python utility
+    libraries that we’ll use to create unpredictable behavior. We’ll also define a
+    few global variables that will be used to determine the characteristics of our
+    randomly generated documents, such as the number of documents to generate, the
+    number of sentences to generate per document, and the types of file formats to
+    store the documents in. Add the following code snippet to the notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let’s create a simple **for** loop that will serve as the backbone for
+    our random document generator. Within the **for** loop, we’ll use the **faker**
+    library to create a paragraph of random text having the number of sentences equal
+    to the number set by our **num_sentences_per_doc** global variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After the paragraph of random text has been generated, it’s time to choose
+    what file format to store the text in. We’ll leverage the **random** Python library
+    to randomly select a file format type from the list of file formats defined in
+    the **doc_types** global variable. Add the following code snippet to the body
+    of the for-loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, we’ll add a sleep timer to simulate unpredictable peaks and lulls in
+    the generation of text documents – something that you could expect in a typical
+    production environment. Add the following code snippet to the bottom of the for-loop
+    body:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You’ll also notice in the global variables section of the notebook, we’ve defined
+    a volume path for our process to save the randomly generated documents:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**volume_path =** **f"/Volumes/{catalog_name}/{schema_name}/{volume_name}"**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a convenient way to reference a cloud storage location as though it
+    were a local storage path. Plus, we have all the benefits of strong data governance
+    that come with a storage volume in Unity Catalog. For example, all the data is
+    secured by default, and other users or processes cannot read these documents until
+    we have permission to access the data in the storage volume. Finally, let’s attach
+    the new notebook to a running all-purpose cluster in the Databricks Data Intelligence
+    Platform and click the **Run all** button at the top of the notebook to begin
+    generating and saving new documents to our storage volume location.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating/assembling the DLT pipeline
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now that we’ve generated some text documents, let’s go ahead a create a new
+    DLT pipeline that will stream the randomly generated documents and perform a simple
+    text extraction. Import the notebook titled **Preprocess Text Documents.py** from
+    the chapter’s GitHub repository into your Databricks workspace. You’ll notice
+    that we define three new streaming tables, all of which are responsible for ingesting
+    the randomly generated text, PDF, and CSV documents. After doing minimal preprocessing,
+    the text field from each of these data sources is extracted and joined in a fourth
+    table, **text_docs_silver** . This fourth table will serve as the input into our
+    chatbot training:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: After attaching the notebook to a running cluster, you will be prompted to create
+    a new DLT pipeline. Go ahead and create a brand new DLT pipeline (covered in [*Chapter
+    2*](B22011_02.xhtml#_idTextAnchor052) ), titling the pipeline with a meaningful
+    name, such as **doc_ingestion_pipeline** . Select **Triggered** for the processing
+    mode and **Core** for the product edition, and accept the remaining defaults.
+    Finally, click **Start** to begin an update execution of the newly created DLT
+    pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.8 – An overview of a DLT pipeline extracting text from arbitrary
+    documents saved to a volume location in Unity Catalog](img/B22011_06_8_new.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.8 – An overview of a DLT pipeline extracting text from arbitrary documents
+    saved to a volume location in Unity Catalog
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should see the DLT pipeline incrementally processing the randomly generated
+    text documents, extracting the text from each of the different file types, and
+    merging them into a consolidated dataset downstream. This is a simple, yet powerful
+    example of how DLT can be combined with a storage volume in Unity Catalog to process
+    arbitrary file formats in a real-world use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered a variety of methods for storing data while also
+    maintaining fine-grained access control using different securable objects in Unity
+    Catalog. We covered how data could be stored using catalogs, schemas, tables,
+    views, volumes, and external locations in Unity Catalog. We also saw how organizations
+    could bind catalogs to individual Databricks workspaces to isolate datasets and
+    even set the level of access to read-only. We covered the differences between
+    managed datasets in the Databricks Data Intelligence Platform, as well as how
+    we could set prescribed storage locations for storing data using catalogs, schemas,
+    tables, volumes, and external locations. We covered how external data sources,
+    such as data warehouses, could be queried in place without having to migrate the
+    data using Lakehouse Federation. Lastly, we concluded with a hands-on exercise
+    implementing the start of a generative AI pipeline for extracting text from documents
+    using volumes in Unity Catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a solid foundation for storing our data and other assets, in
+    the next chapter, we’ll be covering tracking lineage across various objects in
+    the Databricks Data Intelligence Platform.
+  prefs: []
+  type: TYPE_NORMAL

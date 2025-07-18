@@ -1,0 +1,750 @@
+- en: Metagenomics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The use of high throughput sequencing has turbocharged metagenomics from a field
+    focused on studying variation in single sequences such as the 16S **ribosomal
+    RNA** (**rRNA**) sequence to studying entire genomes of the many species that
+    may be present in a sample. The task of identifying species or taxa and their
+    abundances in a sample is computationally challenging and requires the bioinformatician
+    to deal with the preparation of sequences, assignment to taxa, comparisons of
+    taxa, and quantifications. Packages for this have been developed by a wide range
+    of specialist laboratories that have created new tools and new visualizations
+    specific to working with sequences in metagenomics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''ll look at recipes to carry out some complex analyses
+    in metagenomics with R:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading in hierarchical taxonomic data using `phyloseq`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Rarefying counts to correct for sample differences using `metacoder`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reading amplicon data from raw reads with `dada2`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualizing taxonomic abundances with heat trees in `metacoder`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Computing sample diversity with `vegan`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Splitting sequence files into operational taxonomic units
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sample data you'll need is available from this book's GitHub repository
+    at [https://github.com/PacktPublishing/R-Bioinformatics-Cookbook](https://github.com/PacktPublishing/R-Bioinformatics-Cookbook)[.](https://github.com/danmaclean/R_Bioinformatics_Cookbook) If
+    you want to use the code examples as they are written, then you will need to make
+    sure that this data is in a sub-directory of whatever your working directory is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the R packages that you''ll need. Most of these will install with
+    `install.packages()`*;* others are a little more complicated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ape`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Bioconductor`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dada2`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`phyloseq`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`corrplot`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`cowplot`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dplyr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`kmer`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`magrittr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`metacoder`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`RColorBrewer`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`vegan`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Bioconductor is huge and has its own installation manager. You can install
+    it with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further information is available at the following link: [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, in R, a user will load a library and use the functions directly by
+    name. This is great in interactive sessions but it can cause confusion when many
+    packages are loaded. To clarify which package and function I'm using at a given
+    moment, I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, in the middle of a recipe, I''ll interrupt the code so you can see
+    some intermediate output or the structure of an object that''s important to understand.
+    Whenever that happens, you''ll see a code block where each line begins with `##` (double
+    hash) symbols. Consider the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`letters[1:5]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will give us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`## a b c d e`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the output lines are prefixed with `##`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading in hierarchical taxonomic data using phyloseq
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Metagenomics pipelines often start with large sequencing datasets that are processed
+    in powerful and fully featured programs such as QIIME and `mothur`. In these cases,
+    it is the results from these tools that we wish to prepare into reports or further
+    specific analysis with R. In this recipe, we'll look at how we can get the output
+    from QIIME and `mothur` into R.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this short recipe, we need the `phyloseq` package from `Bioconductor` and
+    files in the `datasets/ch5` folder of this book's data repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Loading in hierarchical taxonomic data using `phyloseq` can be done using the
+    following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Import the QIIME `.biom` file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Access different parts of the `phyloseq` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Import the `mothur` data files:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Access the `otu` object in the `phyloseq` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this straightforward recipe, we create objects and use accessor functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 1*, we load the `phyloseq` library as is customary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, in *Step 2*, we define a file and use it as the first argument to the
+    `import_biom()` function. This function can read the modern `biom` format output
+    from QIIME in uncompressed JSON and compressed HDF5 forms. The type is detected
+    automatically. We get back a fully populated `phyloseq` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we use the accessor functions to get the subsections of the object,
+    the taxonomies with `tax_table()`, the OTU with `otu_table()`, and the sample
+    data with `sample_data()`; these can all be used downstream easily as they are
+    matrix-like objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We change track in *Step 4* and work with the `mothur` output. We need a list
+    file and group file at least, which we specify as file paths in the `mothur_list_file`
+    and `mothur_group_file` arguments. Here, we also specify a Newick format tree
+    with the `mothur_tree_file` argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Again, we can use the `phyloseq accessor` function, `otu_table()`, to get the
+    OTU. With the minimal `mothur` data, we specify here that we can't get the sample
+    data or taxonomy table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you have data generated from an older version of QIIME in the proprietary
+    format, you can use the `import_qiime()` function. There is also an accessor function
+    for the tree object if you attach one—`phy_tree()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The websites and wiki pages of the QIIME and `mothur` programs do a great job
+    of showing how to work with the data from their pipelines in R, particularly `mothur`.
+    If you'd like analysis ideas for this data, try them out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rarefying counts and correcting for sample differences using metacoder
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In metagenomics, a common question is to ask which species are present in a
+    sample and what is the difference between two or more samples. Since samples can
+    be made up of different amounts of observations—which, in a metagenomic sense,
+    means the different amounts of reads that were generated—then the taxonomic richness
+    of the sample will increase with the depth of sequencing. To assess the diversity
+    of different taxa represented in samples fairly, metagenomicists will often perform
+    rarefaction on the counts to ensure the samples all have constant depths. Essentially,
+    this means reducing the sample depth down to whatever the lowest sample depth
+    is. We'll perform rarefaction on OTU counts from a `biom` file in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, you'll need the `metacoder` package and `datasets/ch5/rich_high_count_otu.biom`, which
+    is an example `biom` file with six samples (labeled `Sample1`–`Sample6`) and five
+    OTUs. This is, of course, a very small file, useful only to learn how the code
+    works. Real metagenomic datasets are much larger.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Rarefying counts and correcting for sample differences using `metacoder` can
+    be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library and files:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a histogram of counts in the samples:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Call the rarefaction function and filter out low OTUs that may be created:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The overall pattern here is to get the file loaded, check the distribution of
+    sample OTU counts, and apply rarefaction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step is to get the library loaded and the example file imported. We
+    do this by preparing the `rich_high_count_otu.biom` file, which we pass to the
+    `parse_qiime()` function. This `metacoder` function simply reads in biome files
+    and returns a `taxmap` object (another type of object for holding taxonomic data)
+    that we can use in the `metacoder` functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we wish to inspect the distribution of sample OTU counts, which we do
+    by preparing a histogram. We make a character vector of sample names with the
+    `paste()` function and use that to extract by named index the counts containing
+    columns from within `otu_table`. This subset of columns is passed into the `colSums()`
+    function, which gets the total counts for each sample in the `hist_data` vector.
+    We can now create a histogram of those counts with `hist()` and add the density
+    curve with `lines()` and the `density()` function on `hist_data`. Note that the
+    resulting plot (in the following histogram) looks sparse because of the small
+    number of samples in the small example file. The lowest numbers here give us an
+    idea of the lowest sequenced sample. If there are stand-out low samples, it may
+    be wise to remove those columns first:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bf69048e-291b-494e-8d88-a2f0db900a49.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now, we can perform rarefaction. We use the `rarefy_obs()` function on `taxdata`;
+    the second argument (with the `"otu_table"` value) is the name of the slot in
+    the `taxdata` object that contains the OTU counts. As rarefaction reduces counts,
+    we now need to remove any that have fallen too far across all samples. Hence,
+    we use the `rowSums()` function and indexing by sample name on the `taxdata$data$rarefied_otus`
+    object to get a logical vector indicating which OTUs have a total count lower
+    than 20\. Finally, we use the `filter_obs()` function on `taxdata`; the second
+    argument (with the `"rarefied_otus"` value) is the name of the slot in the `taxdata`
+    object that contains the rarefied OTU counts. The `!` character is used to invert
+    the logical vector of low OTUs because `filter_obs()` keeps the rows that pass
+    and we wish to remove them. The final output from this is a rarefied set of OTU
+    counts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note how, in the following output, OTU row 3 has been removed through low counts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We can estimate a useful count level with rarefaction curves. With these, the
+    counts are randomly sampled at varying sample sizes and the number of species
+    in the OTUs is counted. The point at which the number of species stops increasing
+    lets us know we have enough reads and aren''t getting any more value from dealing
+    with extra counts. The `rarecurve()` function in the `vegan` package will do this
+    for us. We provide an OTU table (note that this function needs the samples in
+    rows so we must rotate our `taxdata` OTU table with the `t()` function). Then,
+    we pass the minimum sample size for the `sample` argument. We use the `colSums()`
+    and `min()` functions to get the lowest sample OTU count for this. The output
+    looks like the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c1c83f1c-0ad4-4d48-9de7-319c2dc02658.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, we can clearly see that samples over 20,000 do not increase the richness
+    of species.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading amplicon data from raw reads with dada2
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A long-standing technique in metagenomics, particularly for those interested
+    in bacterial microbiome studies, uses the sequencing of cloned copies (amplicons)
+    of the 16S or 18S rRNA genes to create species profiles. These approaches can
+    take advantage of lower throughput sequencing and the knowledge of the target
+    sequence to classify each cloned sequence, simplifying the tricky task of assigning
+    taxa to reads. In this recipe, we'll make use of the `dada2` package to run an
+    amplicon analysis from raw `fastq` sequence reads. We'll perform quality control
+    and OTU assignment steps and use an interesting machine learning method to classify
+    sequences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we need the Bioconductor `dada2` package and the CRAN `cowplot`
+    package. We'll use some metagenomic sequence reads from the Short Read Archive
+    experiment *SRR9040914*, in which the water from a tidal marine lake at a tourist
+    center was examined for species composition because people were tossing coins
+    into it and making wishes. We will use twenty `fastq` files of 2,500 files each,
+    each compressed and available in this book's repository at `datasets/ch5/fq`.
+    This is a small subset of the full set of Illumina reads. We'll also need the
+    `datasets/ch5/rdp_train_set_14.fa` file, which is one of the sets of 16S sequences
+    maintained as training sets by the `dada` team. See more training sets at [http://benjjneb.github.io/dada2/training.html](http://benjjneb.github.io/dada2/training.html)*. *
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Reading amplicon data from raw reads with `dada2` can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries and prepare a plot for each `fastq` file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Quality trimming and dereplicating the files:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Estimate the `dada2` model from a subset of samples:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Infer the sequence composition of the samples using the parameters estimated
+    in *Step 3*:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Assign taxonomy to the sequences:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We first make a vector of file paths to all of the `fastq` files we wish to
+    use by passing the `fq_dir` variable containing the `fastq` directory to the `list.files()`
+    function. Then, we use the looping function, `lapply()`, to iterate over each
+    `fastq` file path and run the `dada` function, `plotQualityProfile()`, with each
+    file in turn. Each resulting plot object is saved into the list object, `quality_plots`.
+    The `cowplot` function, `plot_grid()`, will plot all these in a grid when a list
+    of plots is passed to the `plotlist` argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We get the plot in the following diagram. Note how the `fastq` quality scores
+    are poor in the first 10 or so nucleotides and after about 260 nucleotides in.
+    These will be the trimming points for the next step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2dd7cd9b-9132-4592-bb02-73eec82e7e6c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: To carry out trimming, we run a loop over the `fastq` files in `read_files`.
+    In each iteration of the loop, we create an output `fastq` filename, `out_fq`,
+    by pasting the text `"trimmed.filtered"` onto the filename (since we will save
+    the trimmed reads to a new file, rather than memory), then run the `fastqFilter()` trimming
+    function, passing it the input filename, `fq`; the `out_fq` filename; and the
+    trim parameters. At the end of this loop, we have a folder full of trimmed read
+    files. The names of these are loaded into a vector with the `list.files()` function
+    again—this time, matching only files with the `"trimmed.filtered"` pattern. All
+    of these files are loaded into memory and dereplicated using the `derepFaistq()`
+    function. We then calculate the parameters for the compositional inference step
+    using the `dada()` function on a proportion of the files. We pass the first five
+    sets of dereplicated files using indexing on the `derep_reads` object. By setting
+    `err` to `NULL` and `selfConsist` to `TRUE`, we force `dada()` to estimate parameters
+    from the data, saving the results in the `dd_model` variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We next run the `dada()` function on all of the data, setting the `err` parameter
+    to that estimated previously and stored in `dd_model`. This step calculates the
+    final sequence composition for the whole data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we can make the sequence table with the results of the `dada()` function
+    and use that to find OTUs using `assignTaxonomy()`. This function uses a naive
+    Bayes classifier to assign sequences to taxa, based on the classification in the
+    training set provided in the `rdp_train_set_14.fa` file*.* The output of this
+    function is the classification of each sequence. A single row of the resulting
+    table, `taxonomy_tb`, looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The functions used in this recipe, `fastqFilter()` and `derepFastQ()`, also
+    have variants for paired reads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing taxonomic abundances with heat trees in metacoder
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: However we arrive at estimates of taxonomic abundance, it is usually helpful
+    to create a visualization that summarizes the broad trends in the data in a single
+    figure. One expressive and easy to interpret visualization is a heat tree. These
+    are renderings of phylogenetic trees of the taxons of interest with data mapped
+    onto visual elements of the render. For example, the number of times a taxon is
+    seen may be expressed by changing the color or thickness of a tree branch. Different
+    datasets can be easily compared by examining trees of each for differences. In
+    this recipe, we'll construct a heat tree and customize it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We need the input `.biom` file in `datasets/ch5/rich_high_count_otu.biom` and
+    the `metacoder` and `RColorBrewer` packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Visualizing taxonomic abundances with heat trees in `metacoder` can be done
+    using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries and input files:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Pass customization options to the tree-drawing function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Initially, we load the libraries and use the `parse_qiime_biom()` function to
+    get a `metacoder taxmap` object from the `biom` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then use the `heat_tree()` function to render the tree. It''s enough to
+    pass just the `taxdata taxmap` object—this will give a default tree—all of the
+    other arguments specify customizations of the tree. `node_label` specifies the
+    column in the `taxdata` object to use for the node labels; here, we use `taxon_names`,
+    notably without enclosing quotes since the function uses non-standard evaluation
+    in the same way that you may be familiar with from the `tidyverse` and `ggplot`
+    functions. `node_size` controls node size based on the column given. Here, `n_obs`
+    and `node_color` give the parameter that affects the variation of the color of
+    the nodes (note that this isn''t the set of colors—it''s the things that should
+    be colored the same/differently). Next, the `layout` argument tells the function
+    how to spread the branches of the tree in the render. Of the next three argument
+    titles, `node_color_axis` and `node_size_axis_label` are simply labels for the
+    plot. Finally, `node_color_range` gets a vector of color identifiers that are
+    used to draw with. Here, we use the `RColorBrewer` package function, `brewer.pal()`,
+    which returns such things. Its first parameter is the number of colors to return,
+    and the second the name of the palette to choose from. With all of these set,
+    we get the following plot from our small input file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e5c0ea89-48c3-4989-965e-33a3ae341008.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Computing sample diversity with vegan
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A common task in ecological and metagenomics studies is to estimate the species
+    (or taxonomical) diversity within a sample or between samples to see which has
+    more or less. There are multiple measures for both within and between sample diversity,
+    including the Simpson and Bray indices. In this recipe, we'll look at functions
+    that can go from the common OTU table and return measures of diversity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll need the sample `.biom` input file, `datasets/ch5/rich_high_count_otu.biom`,
+    and the `vegan` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Computing sample diversity with `vegan` can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in the libraries and prepare an OTU table from the sample file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Calculate the alpha diversity:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Calculate the beta diversity:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first step is very straightforward. Here, we use the `metacoder parse_qiime_biom()`
+    function to load in our `biom` file and then use subsetting on the resulting `taxdata$data$otu_table`
+    slot to extract a simple OTU table into `otu_table`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now call the `diversity()` function from `vegan`. The `index` argument
+    is set to `"simpson"`, so the function will use the Simpson index for within-sample
+    diversity. The `MARGIN` argument tells the function whether the samples are in
+    rows or columns: 1 for rows and 2 for columns. The `diversity()` function returns
+    a named vector that is easy to visualize with the `barplot()` function, giving
+    us this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/48f8dc6b-3b3f-41a3-a48e-935484d9100e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can now run the between-sample diversity measure using the `vegdist()` function;
+    again, the `index` argument sets the index to use, and here, we choose the Bray
+    index. `vegdist()` expects the sample data to be rows, so we use the `t()` function
+    to rotate `otu_table`. The resulting object is stored in `between_sample`— it's
+    a pairwise correlation table and we can visualize it in `corrplot`. To do this,
+    we need to convert it into a matrix with `as.matrix()`; the `ncol` argument should
+    match the number of samples so that you get a column for each sample. The returned
+    matrix, `between_sample_m`, can be passed to the `corrplot()` function to render
+    it. By setting `method` to `circle`, `type` to `upper`, and `diag` to `false`,
+    we get a plot with only the upper diagonal of the matrix, without the self-versus-self
+    comparisons reducing redundancy in the plot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3789c397-ec25-4c32-b3e1-778e1a903158.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: See also...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The correlation plot in this recipe explicitly shows correlations for a few
+    samples but can become unwieldy on very large experiments. At this stage, you
+    may want to consider PCA or some other multidimensional scaling approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Splitting sequence files into OTUs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Perhaps the most common task with cleaned trimmed reads for a metagenomic shotgun
+    experiment is to divide the sequences into OTUs. This can be achieved in many
+    ways; in this recipe, we'll look at a method that splits sequences into subsequences
+    of a given length and performs a type of hierarchical clustering on them to create
+    groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The key package here is the `kmer` package and we'll use one of the sample `fastq`
+    sequence files in the `datasets/ch5/fq` folder. We'll also make use of the `dplyr`
+    and `magrittr` packages for convenience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Splitting sequence files into OTUs can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the data and compute the OTUs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Count the frequency of each OTU cluster:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: After loading the libraries, we use the `read.fastq()` function from `ape` to
+    get a `DNAbin` object representing the sequences. The key function, `otu()`, from
+    the `kmer` package can use the `DNAbin seqs` object directly to create k-mers
+    of the length, `k`, and perform hierarchical clustering on them. The threshold
+    argument sets the OTU identity cut-off. This function returns a named vector in
+    which the names are the sequence IDs and the value for each is the ID of the cluster
+    it belongs to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can then use `otu_vec` to build an intermediate data frame with `data.frame`,
+    using the names attribute to set a `seqid` column and putting the cluster membership
+    into a column called `cluster`. We drop row names by setting `row.names` to `NULL`.
+    We then use `magrittr` piping with the `%>%` operator to group the data frame
+    on clusters with `dplyr::group()` and create a summary data frame with `dplyr::summarize()`.
+    By setting the count to the result of the `dplyr::n()` function, we get the number
+    of times each cluster appeared in the named vector—or, how many reads were assigned
+    into each cluster.
+  prefs: []
+  type: TYPE_NORMAL

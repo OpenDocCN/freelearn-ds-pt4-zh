@@ -1,0 +1,1364 @@
+- en: '5'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Constraint Satisfaction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn how genetic algorithms can be utilized to solve
+    constraint satisfaction problems. We will start by describing the concept of constraint
+    satisfaction and how it applies to search problems and combinatorial optimization.
+    Then, we will look at several hands-on examples of constraint satisfaction problems
+    and their Python-based solutions using the DEAP framework. The problems we will
+    cover include the well-known **N-Queen** problem, followed by the **nurse scheduling**
+    problem, and finally the **graph coloring** problem. Along the way, we will learn
+    the difference between **hard and soft constraints**, as well as how they can
+    be incorporated into the solution process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the nature of constraint satisfaction problems
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Solving the N-Queens problem using a genetic algorithm coded with the DEAP framework
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Solving an example of the nurse scheduling problem using a genetic algorithm
+    coded with the DEAP framework
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Solving the graph coloring problem using a genetic algorithm coded with the
+    DEAP framework
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding the concepts of hard and soft constraints, as well as how to apply
+    them when solving a problem
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be using Python 3 with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**deap**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**numpy**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**matplotlib**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**seaborn**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**networkx** – introduced in this chapter'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you’re using the **requirements.txt** file we’ve provided (see [*Chapter
+    3*](B20851_03.xhtml#_idTextAnchor091)), these libraries will already be in your
+    environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The programs that will be used in this chapter can be found in this book’s GitHub
+    repository at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_05](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_05).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the Code in Action: [https://packt.link/OEBOd](https://packt.link/OEBOd).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Constraint satisfaction in search problems
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at solving search problems, which focused
+    on methodically evaluating states and transitions between states. Every state
+    transition typically involves a cost or gain, and the objective of the search
+    was to minimize the cost or maximize the gain. Constraint satisfaction problems
+    are a *variant* of search problems, where the states must satisfy several constraints
+    or limitations. If we can translate the various violations of constraints into
+    cost and then strive to minimize the cost, solving a constraint satisfaction problem
+    can resemble solving a general search problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like combinatorial optimization problems, constraint satisfaction problems have
+    important applications in fields such as artificial intelligence, operations research,
+    and pattern matching. A better understanding of these problems may help in solving
+    numerous types of problems that may seem unrelated at first glance. Constraint
+    satisfaction problems often exhibit high complexity, which makes genetic algorithms
+    a suitable candidate for solving them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **N-Queens** problem, which will be presented in the next section, illustrates
+    the concept of constraint satisfaction problems and demonstrates how they can
+    be solved in a very similar manner to the problems we looked at in the previous
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving the N-Queens problem
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Originally known as the *eight-queen puzzle*, the classic N-Queens problem originated
+    from the game of chess, and the *8x8* chessboard was its early playground. The
+    task was to place eight chess queens on the board without any two of them threatening
+    each other. In other words, no two queens can share the same row, same column,
+    or same diagonal. The N-Queens problem is similar, using an *N×N* chessboard and
+    *N* chess queens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The problem is known to have a solution for any natural number, *n*, except
+    for the cases of *n=2* and *n=3*. For the original eight-queen case, there are
+    92 solutions, or 12 unique solutions if we consider symmetrical solutions to be
+    identical. One of the solutions is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.1: One of the 92 possible solutions for the eight-queen puzzle](img/B20851_05_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.1: One of the 92 possible solutions for the eight-queen puzzle'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By applying combinatorics, the count of all possible ways to place eight pieces
+    on the *8×8* board yields 4,426,165,368 combinations. However, if we can create
+    our candidate solutions in a way that ensures that no two queens will be placed
+    on the same row or the same column, the number of possible combinations is dramatically
+    reduced to *8!* (factorial of 8), which amounts to 40,320\. We are going to take
+    advantage of this idea in the next subsection when we choose the way our solution
+    to this problem will be represented.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When solving the N-Queens problem, we can take advantage of the knowledge that
+    each row will host exactly one queen, and no two queens will share the same column.
+    This means we can represent any candidate solution as an ordered list of integers
+    – or a list of indices, with each index representing the column that one of the
+    queens occupies for the current row.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, in a four-queen problem over a 4×4 chessboard, we have the following
+    list of indices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This translates to the following positions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first row, the queen is placed in position 3 (fourth column)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the second row, the queen is placed in position 2 (third column).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the third row, the queen is placed in position 0 (first column)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the fourth row, the queen is placed in position 1 (second column)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This is depicted in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.2: Illustration of the queen arrangement represented by the list
+    [3, 2, 0, 1]](img/B20851_05_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.2: Illustration of the queen arrangement represented by the list [3,
+    2, 0, 1]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, another arrangement of the indices may look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This arrangement represents the candidate solution shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.3: Illustration of the queen arrangement represented by the list
+    [1, 3, 0, 2]](img/B20851_05_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.3: Illustration of the queen arrangement represented by the list [1,
+    3, 0, 2]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The only constraint violations that are possible in candidate solutions represented
+    this way are shared diagonals between pairs of queens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, the first candidate solution we discussed contains two violations,
+    as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.4: Illustration of the queen arrangement represented by the list
+    [3, 2, 0, 1], with constraint violations indicated](img/B20851_05_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.4: Illustration of the queen arrangement represented by the list [3,
+    2, 0, 1], with constraint violations indicated'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, the preceding one exhibited no violations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that, when evaluating the solutions that are represented in this
+    way, we only need to find and count the shared diagonals between the positions
+    they stand for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution representation we just discussed is a central part of the Python
+    class that we will describe in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python problem representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To encapsulate the N-Queens problem, we’ve created a Python class called `NQueensProblem`.
+    This class can be found in the `queens.py` file of this book’s GitHub repository:
+    [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/queens.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/queens.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The class is initialized with the desired size of the problem and provides
+    the following public methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**getViolationsCount(positions)**: This calculates the number of violations
+    in the given solution, which is represented by a list of indices, as discussed
+    in the previous subsection'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**plotBoard(positions)**: This plots the positions of the queens on the board
+    according to the given solution'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The `main` method of the class exercises the class methods by creating an eight-queen
+    problem and testing the following candidate solution for it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is followed by plotting the candidate solution and calculating the number
+    of constraint violations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The resulting output is shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The plot for this is as follows – can you spot all three violations?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.5: Illustration of the eight-queen arrangement represented by the
+    list [1, 2, 7, 5, 0, 3, 4, 6]](img/B20851_05_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.5: Illustration of the eight-queen arrangement represented by the
+    list [1, 2, 7, 5, 0, 3, 4, 6]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next subsection, we will apply the genetic algorithm approach to solving
+    the N- Queens problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Genetic algorithms solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To solve the N-Queens problem using a genetic algorithm, we’ve created a Python
+    program called `01-solve-n-queens.py`, which is located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/01_solve_n_queens.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/01_solve_n_queens.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the solution representation we chose for this problem is a list (or an
+    array) of indices, which is similar to the representation we used for the **traveling
+    salesman problem** (**TSP**) and the **vehicle routing problem** (**VRP**) in
+    [*Chapter 4*](B20851_04.xhtml#_idTextAnchor155), *Combinatorial Optimization*,
+    we can utilize a similar genetic approach to the one we used there. In addition,
+    we’ll take advantage of **elitism** once more by reusing the elitist version that
+    we created for DEAP’s simple genetic flow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe the main parts of our solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our program starts by creating an instance of the **NQueensProblem** class
+    using the size of the problem we would like to solve:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since our goal is to minimize the count of violations (hopefully to a value
+    of 0), we define a single objective, minimizing the fitness strategy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since the solution is represented by an ordered list of integers, where each
+    integer denotes the column location of a queen, we can use the following toolbox
+    definitions to create the initial population:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The actual fitness function is set to count the number of violations caused
+    by the placement of the queens on the chessboard, as represented by each solution:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As for the genetic operators, we use *tournament selection* with a tournament
+    size of **2**, as well as the *crossover* and *mutation* operators, which are
+    specialized for ordered lists:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In addition, we continue to use the **elitist** approach, where the **hall-of-fame**
+    (**HOF**) members – the current best individuals – are always passed untouched
+    to the next generation. As we found out in the previous chapter, this approach
+    works well with a tournament selection of size 2:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since each N-Queens problem can have multiple possible solutions, we print
+    out all HOF members, instead of just the top one, so that we can see how many
+    valid solutions we found:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As we saw earlier, our solution representation reduces the eight-queen case
+    to only about 40,000 possible combinations, which makes it a rather small problem.
+    To make things more interesting, let’s increase the size to 16 queens, where the
+    number of possible candidate solutions will be *16!*. This calculates to the colossal
+    value of 20,922,789,888,000\. The number of valid solutions to this problem is
+    quite large too, at just under 15 million. However, compared to the number of
+    possible combinations, searching for a valid solution is still like trying to
+    find a needle in a haystack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we run the program, let’s set the algorithm constants, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the program with these settings yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the printouts, we can see that a solution was first found in generation
+    24, where the fitness value shows as `0`, which means no violations. In addition,
+    the printout of the best solutions indicates that eight different solutions were
+    found during the run. These solutions are the entries of `0` to `7` in the HOF,
+    all of which have a fitness value of `0`. The next entry already has a fitness
+    value of `1`, denoting a violation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first plot that’s produced by the program depicts the placement of the
+    16 queens on the *16x16* chessboard, as defined by the first valid solution that
+    was found – `[7, 2, 8, 14, 9, 4, 0, 15, 6, 11, 13, 1, 3, 5,` `10, 12]`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.6: A plot of a valid 16-queen arrangement found by the program](img/B20851_05_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.6: A plot of a valid 16-queen arrangement found by the program'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second plot contains a graph of the max and average fitness values over
+    the generations. From this graph, we can see that even though the best fitness
+    value of zero was found early on – around generation 24 – the average fitness
+    value kept decreasing as more solutions were found:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.7: Stats of the program solving the 16-queen problem](img/B20851_05_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.7: Stats of the program solving the 16-queen problem'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Increasing the value of `MAX_GENERATIONS` to 400 without making any other changes
+    will result in us finding 38 valid solutions. If we increase `MAX_GENERATIONS`
+    to 500, all 50 members of the HOF will contain valid solutions. You are encouraged
+    to try out various combinations of the genetic algorithm’s settings, as well as
+    solve other sizes of the N-Queen problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will be transitioning from arranging game pieces on
+    a board to placing workers on a work schedule.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving the nurse scheduling problem
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Imagine that you are responsible for scheduling the shifts for the nurses in
+    your hospital department for this week. There are three shifts in a day – morning,
+    afternoon, and night – and for each shift, you need to assign one or more of the
+    eight nurses who work in your department. If this sounds like a simple task, take
+    a look at the list of relevant hospital rules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A nurse is not allowed to work two consecutive shifts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A nurse is not allowed to work more than five shifts per week
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The number of nurses per shift in your department should fall within the following
+    limits:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Morning shift: 2-3 nurses'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Afternoon shift: 2-4 nurses'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Night shift: 1-2 nurses'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In addition, each nurse can have shift preferences. For example, one nurse prefers
+    to only work morning shifts, another nurse prefers to not work afternoon shifts,
+    and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This task is an example of the **nurse scheduling problem** (**NSP**), which
+    can have many variants. Possible variations may include different specialties
+    for different nurses, the ability to work on cover shifts (overtime), or even
+    different types of shifts – such as 8-hour shifts and 12-hour shifts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, it probably seems like a good idea to write a program that will do the
+    scheduling for you. Why not apply our knowledge of genetic algorithms to implement
+    such a program? As usual, we will start by representing the solution to the problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To solve the nurse scheduling problem, we decided to use a binary list (or array)
+    to represent the schedule as it will be intuitive for us to interpret, and we’ve
+    seen that genetic algorithms can handle this representation naturally.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For each nurse, we can have a **binary string** representing the 21 shifts
+    of the week. A value of 1 represents a shift that the nurse is scheduled to work
+    on. For example, take a look at the following binary list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This list can be broken into the following groups of three values, representing
+    the shifts this nurse will be working each day of the week:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Sunday** | **Monday** | **Tuesday** | **Wednesday** | **Thursday** | **Friday**
+    | **Saturday** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| [0, 1, 0] | [1, 0, 1] | [0, 1, 1] | [0, 0, 0] | [0, 0, 1] | [1, 0, 0] | [0,
+    1, 0] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Afternoon | Morning and night | Afternoon and night | None | Night | Morning
+    | Afternoon |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 5.1: Converting the binary sequence into daily shifts'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The schedules of all nurses can be then concatenated together to create one
+    long binary list representing the entire solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When evaluating a solution, this long list can be broken down into the schedules
+    of the individual nurses, and violations of the constraints can be checked for.
+    The preceding sample nurse schedule, for instance, contains two occurrences of
+    consecutive 1 values that represent consecutive shifts being worked (afternoon
+    followed by night, and night followed by morning). The number of weekly shifts
+    for that same nurse can be calculated by totaling the binary values of the list,
+    which results in 8 shifts. We can also easily check for adherence to the shift
+    preferences by checking each day’s shifts against the given preferred shifts of
+    that nurse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, to check for the constraints of the number of nurses per shift, we
+    can sum the weekly schedules of all nurses and look for entries that are larger
+    than the maximum allowed or smaller than the minimum allowed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But before we continue with our implementation, we need to discuss the difference
+    between **hard constraints** and **soft constraints**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hard constraints versus soft constraints
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When solving the nurse scheduling problem, we should bear in mind that some
+    of the constraints represent hospital rules that cannot be broken. A schedule
+    that contains one or more violations of these rules will be considered invalid.
+    More generally, these are known as **hard constraints**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The nurses’ preferences, on the other hand, can be considered **soft constraints**.
+    We would like to adhere to them as much as possible, and a solution that contains
+    no violations or fewer violations of these constraints is considered better than
+    one that contains more violations. However, a violation of these constraints does
+    not invalidate the solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of the N-Queens problem, all the constraints – row, column, and
+    diagonal – were hard constraints. Had we not found a solution where the number
+    of violations was zero, we would not have a valid solution for the problem. Here,
+    on the other hand, we are looking for a solution that will not violate any of
+    the hospital rules while minimizing the number of breaches to the nurses’ preferences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While dealing with soft constraints is similar to what we do in any optimization
+    problem – that is, we strive to minimize them – how do we deal with the hard constraints
+    that accompany them? There are several possible strategies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Find a particular representation (coding) of the solution that **eliminates
+    the possibility** of a hard constraint violation. When solving the N-Queens problem,
+    we were able to represent a solution in a way that eliminated the possibility
+    for two of the three constraints – row and column – which considerably simplified
+    our solution. But generally, such coding may be difficult to find.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When evaluating the solutions, **discard** candidate solutions that violate
+    any hard constraint. The disadvantage of this approach is the loss of information
+    contained in these solutions, which may be valuable for the problem. This could
+    considerably slow down the optimization process.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When evaluating the solutions, **repair** candidate solutions that violate any
+    hard constraint. In other words, find a way to manipulate the solution and modify
+    it so that it will no longer violate the constraint(s). Creating such a repair
+    procedure can prove difficult or impossible for most problems, and at the same
+    time, the repair process may result in a significant loss of information.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When evaluating the solutions, **penalize** candidate solutions that violate
+    any hard constraint. This will degrade the solution’s score and make it less desirable,
+    but will not eliminate it completely, so the information contained in it is not
+    lost. Effectively, this leads to a hard constraint to be considered similar to
+    a soft constraint, but with a heavier penalty. When using this method, the challenge
+    may be to find the appropriate extent of the penalty. Too harsh a penalty may
+    lead to a de facto elimination of such solutions, while a penalty that’s too small
+    may lead to these solutions appearing as optimal.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In our case, we chose to apply the fourth approach and penalize the violations
+    of the hard constraints to a larger degree than those of the soft constraints.
+    We did this by creating a cost function, where the cost of a hard constraint violation
+    is greater than that of a soft constraint violation. The total cost is then used
+    as the fitness function to be minimized. This is implemented within the problem
+    representation that will be discussed in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python problem representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To encapsulate the nurse scheduling problem we described at the beginning of
+    this section, we’ve created a Python class called `NurseSchedulingProblem`. This
+    class is contained in the `nurses.py` file, which can be found at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/nurses.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/nurses.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The class constructor accepts the `hardConstraintPenalty` parameter, which
+    represents the penalty factor for a hard constraint violation (while the penalty
+    of a soft constraint violation is fixed to 1). Then, it continues to initialize
+    the various parameters, describing the scheduling problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The class uses the following method to convert the given schedule into a dictionary
+    with a separate schedule for each nurse:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**getNurseShifts(schedule)**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following methods are used to count the various types of violations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**countConsecutiveShiftViolations(nurseShiftsDict)**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**countShiftsPerWeekViolations(nurseShiftsDict)**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**countNursesPerShiftViolations(nurseShiftsDict)**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**countShiftPreferenceViolations(nurseShiftsDict)**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In addition, the class provides the following public methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**getCost(schedule)**: Calculates the total cost of the various violations
+    in the given schedule. This method uses the value of the **hardConstraintPenalty**
+    variable.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**printScheduleInfo(schedule)**: Prints the schedule and violation details.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The main method of the class exercises the class’ methods by creating an instance
+    of the nurse scheduling problem and testing a randomly generated solution for
+    it. The resulting output may look as follows, with the value of `hardConstraintPenalty`
+    set to `10`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: As is evident from these results, a randomly generated solution is likely to
+    yield a large number of violations, and consequently a large cost value. In the
+    next subsection, we’ll attempt to minimize the cost and eliminate all hard constraint
+    violations using a genetic algorithm-based solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Genetic algorithms solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To solve the nurse scheduling problem using a genetic algorithm, we’ve created
+    a Python program called `02-solve-nurses.py`, which is located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/02_solve_nurses.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/02_solve_nurses.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the solution representation we chose for this problem is a list (or an
+    array) of binary values, we were able to use the same genetic approach we used
+    for several problems we have solved already, such as the 0-1 knapsack problem
+    we described in [*Chapter 4*](B20851_04.xhtml#_idTextAnchor155), *Combinatorial
+    Optimization*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main parts of our solution are described in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our program starts by creating an instance of the **NurseSchedulingProblem**
+    class with the desired value for **hardConstraintPenalty**, which is set by the
+    **HARD_CONSTRAINT_PENALTY** constant:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since our goal is to minimize the cost, we must define a single objective,
+    minimizing the fitness strategy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since the solution is represented by a list of 0 or 1 values, we must use the
+    following toolbox definitions to create the initial population:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The actual fitness function is set to calculate the cost of the various violations
+    in the schedule, represented by each solution:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As for the genetic operators, we must use tournament selection with a tournament
+    size of **2**, along with two-point crossover and flip-bit mutation, since this
+    is suitable for binary lists:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We keep using the elitist approach, where HOF members – the current best individuals
+    – are always passed untouched to the next generation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When the algorithm concludes, we print the details of the best solution that
+    was found:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Before we run the program, let’s set the algorithm constants, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition, let’s start by setting the penalty for violating hard constraints
+    to a value of `1`, which makes the cost of violating a hard constraint similar
+    to that of violating a soft constraint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the program with these settings yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: This may seem like a good result since we ended up with only three constraint
+    violations. However, one of them is a **shift-per-week violation** – nurse B was
+    scheduled with six shifts for the week, exceeding the maximum allowed of five.
+    This is enough to make the entire solution unacceptable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In an attempt to eliminate this kind of violation, we’ll proceed to increase
+    the hard constraint penalty value to `10`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, the result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, we got three violations, but this time, they were all soft constraint
+    violations, which makes this solution valid.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following graph, which depicts the minimum and average fitness over the
+    generations, indicates that over the first 40-50 generations, the algorithm was
+    able to eliminate all hard constraint violations, and from there on there were
+    only small incremental improvements, which occurred whenever another soft constraint
+    was eliminated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.8: Stats of the program solving the nurse scheduling problem](img/B20851_05_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.8: Stats of the program solving the nurse scheduling problem'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It seems that, in our case, it was enough to set a 10-fold penalty on hard constraint
+    violations. In other problems, higher values may be required. You are encouraged
+    to experiment by altering the problem’s definitions, as well as the genetic algorithm’s
+    settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The same trade-off we have just seen between soft and hard constraints is going
+    to play a part in the next task we take on – the graph coloring problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving the graph coloring problem
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the mathematical branch of graph theory, a **graph** is a structured collection
+    of objects that represents the relationships between pairs of these objects. The
+    objects appear as **vertices** (or nodes) in the graph, while the relation between
+    a pair of objects is represented using an **edge**. A common way of illustrating
+    a graph is by drawing the vertices as circles and the edges as connecting lines,
+    as depicted in the following diagram of the *Petersen graph*, named after the
+    Danish mathematician Julius Petersen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.9: Petersen graph](img/B20851_05_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.9: Petersen graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source: [https://commons.wikimedia.org/wiki/File:Petersen1_tiny.svg](https://commons.wikimedia.org/wiki/File:Petersen1_tiny.svg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image by Leshabirukov.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Graphs are remarkably useful objects as they can represent and help us research
+    an overwhelming variety of real-life structures, patterns, and relationships,
+    such as social networks, power grid layouts, website structures, linguistic compositions,
+    computer networks, atomic structures, migration patterns, and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **graph coloring** task is used to assign a color for every node in the
+    graph in such a way that no pair of connected (adjacent) nodes will share the
+    same color. This is also known as the **proper coloring** of the graph.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following diagram shows the same Petersen graph, but this time colored
+    properly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.10: Proper coloring of the Petersen graph](img/B20851_05_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.10: Proper coloring of the Petersen graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source: [https://en.wikipedia.org/wiki/File:Petersen_graph_3-coloring.svg](https://en.wikipedia.org/wiki/File:Petersen_graph_3-coloring.svg).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The color assignment is often accompanied by an optimization requirement – use
+    the **minimum possible** number of colors. For example, the Peterson graph can
+    be properly colored using three colors, as demonstrated in the preceding diagram.
+    But it would be impossible to color it properly using only two colors. In graph
+    theory terms, this means that the *chromatic number* of this graph is three.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why would we care about coloring the nodes of the graph? Many real-life problems
+    can be translated into a graph representation in such a way that the graph coloring
+    will stand for a solution – for example, scheduling classes for a student, or
+    shifts for an employee can be translated into a graph, where adjacent nodes represent
+    classes or shifts that cause a conflict. Such a conflict can be classes that fall
+    at the same time or shifts that are consecutive (sound familiar?). Due to this
+    conflict, assigning the same person to both classes (or both shifts) will invalidate
+    the schedule. If each color represents a different person, assigning different
+    colors to adjacent nodes will solve the conflicts. The N-Queen problem we encountered
+    at the beginning of this chapter can be represented as a graph coloring problem,
+    where every node in the graph represents a square on the chessboard, and every
+    pair of nodes that share a row, a column, or a diagonal is connected by an edge.
+    Other relevant examples include frequency assignments to radio stations, power
+    grid redundancy planning, traffic light timing, and even Sudoku puzzle-solving.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hopefully, this has convinced you that graph coloring is a problem worth solving.
+    As usual, we will start by formulating an appropriate representation of a possible
+    solution for this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Expanding on the commonly used binary list (or array) representation, we can
+    employ a list of integers, where each integer represents a unique color, while
+    each element of the list matches one of the graph’s nodes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, since the Petersen graph has 10 nodes, we can assign each node
+    an index between 0 and 9\. Then, we can represent the node coloring for that graph
+    using a list of 10 elements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, let’s have a look at what we have in this particular representation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s talk about what we have here in detail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Four colors are used, represented by the integers **0**, **1**, **2**, and **3**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The first, seventh, and tenth nodes of the graph are colored with the first
+    color (**0**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The third and fifth nodes are colored with the second color (**1**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The second and sixth nodes are colored with the third color (**2**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The fourth, eighth, and ninth nodes are colored with the fourth color (**3**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To evaluate the solution, we need to iterate over each pair of adjacent nodes
+    and check if they share the same color. If they do, this is a coloring violation,
+    and we seek to minimize the number of violations to zero to achieve the proper
+    coloring of the graph.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, you may recall that we also wish to minimize the number of colors that
+    are used. If we happen to already know this number, we can just use as many integer
+    values as the known number of colors. But what if we don’t? One way to go about
+    this is to start with an estimate (or just a guess) for the number of colors used.
+    If we find a proper solution using this number, we can reduce the number and try
+    again. If no solution is found, we can increase the number and try again until
+    we have the smallest number we can find a solution with. However, we may be able
+    to get to this number faster by using soft and hard constraints, as described
+    in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using hard and soft constraints for the graph coloring problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When solving the nurse scheduling problem earlier in this chapter, we noted
+    the difference between hard constraints – those we have to adhere to for the solution
+    to be considered valid – and soft constraints – those we strive to minimize to
+    get the best solution. In the graph coloring problem, the **color assignment**
+    requirement – where no two adjacent nodes can have the same color – is a **hard
+    constraint**. We have to minimize the number of violations of this constraint
+    to zero to achieve a valid solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Minimizing the **number of colors** used, however, can be introduced as a **soft
+    constraint**. We would like to minimize this number, but not at the expense of
+    violating the hard constraint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This will allow us to launch the algorithm with several colors higher than our
+    estimate and let the algorithm minimize it until – ideally – it reaches the actual
+    minimal color count.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we did for the nurse scheduling problem, we will implement this approach
+    by creating a cost function, where the cost of a hard constraint violation is
+    greater than the cost induced by using more colors. The total cost will then be
+    used as the fitness function to be minimized. This functionality can be incorporated
+    into the Python class and will be described in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python problem representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To encapsulate the graph coloring problem, we’ve created a Python class called
+    `GraphColoringProblem`. This class can be found in the `graphs.py` file, which
+    can be found at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/graphs.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/graphs.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To implement this class, we’ll utilize the open source Python package `graph`
+    class. Instead of creating this graph from scratch, we can take advantage of the
+    numerous preexisting graphs contained in this library, such as the *Petersen graph*
+    we saw earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The constructor of the `GraphColoringProblem` class accepts the graph to be
+    colored as a parameter. In addition, it accepts the `hardConstraintPenalty` parameter,
+    which represents the penalty factor for a hard constraint violation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The constructor then creates a list of the graph’s nodes, as well as an adjacency
+    matrix, that allows us to quickly find out if any two nodes in the graph are adjacent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This class uses the following method to calculate the number of coloring violations
+    in the given color arrangement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**getViolationsCount****(colorArrangement)**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following method is used to calculate the number of colors used by the
+    given color arrangement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**getNumberOfColors****(colorArrangement)**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In addition, the class provides the following public methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**getCost****(colorArrangement)**: This calculates the total cost of the given
+    color arrangement'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**plotGraph****(colorArrangement)**: This plots the graph with the nodes colored
+    according to the given color arrangement'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The main method of the class exercises the class’ methods by creating a Petersen
+    graph instance and testing a randomly generated color arrangement for it, containing
+    up to five colors. In addition, it sets the value of `hardConstraintPenalty` to
+    `10`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting output may look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since this particular random solution uses five colors and causes one coloring
+    violation, the calculated cost is 15.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The plot for this solution is as follows – can you spot the single coloring
+    violation?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.11: Petersen graph improperly colored with five colors](img/B20851_05_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.11: Petersen graph improperly colored with five colors'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next subsection, we’ll apply a genetic algorithm-based solution in an
+    attempt to eliminate any coloring violations while also minimizing the number
+    of colors that are used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Genetic algorithms solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To solve the graph coloring problem using a genetic algorithm, we’ve created
+    a Python program called `03-solve-graphs.py`, which is located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/03_solve_graphs.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_05/03_solve_graphs.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the solution representation we chose for this problem is a list of integers,
+    we need to expand the genetic approach of using a binary list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe the main points of our solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program starts by creating an instance of the **GraphColoringProblem**
+    class with the desired *NetworkX* graph to be solved – the familiar *Petersen
+    graph* in this case – and the desired value for **hardConstraintPenalty**, which
+    is set by the **HARD_CONSTRAINT_PENALTY** constant:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since our goal is to minimize the cost, we’ll define a single objective, minimizing
+    fitness strategy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since the solution is represented by a list of integer values representing
+    the participating colors, we need to define a random generator that creates an
+    integer between 0 and the number of colors minus 1\. This random integer represents
+    one of the participating colors. Then, we must define a solution (individual)
+    creator that generates a list of these random integers that match the given graph
+    in length – this is how we randomly assign a color for each node in the graph.
+    Finally, we must define an operator that creates an entire population of individuals:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The fitness evaluation function is set to calculate the combined cost of the
+    coloring violations and the number of colors used, which is associated with each
+    solution, by calling the **getCost()** method of the **GraphColoringProblem**
+    class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As for the genetic operators, we can still use the same *selection* and *crossover*
+    operations we used for binary lists; however, the mutation operation needs to
+    change. The *flip-bit mutation* that’s used for binary lists flips between values
+    of 0 and 1, while here, we need to change a given integer to another – randomly
+    generated – integer in the allowed range. The **mutUniformInt** operator does
+    just that – we just need to set the range similar to what we did with the preceding
+    integers operator:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We keep using the *elitist approach*, where the HOF members – the current best
+    individuals – are always passed untouched to the next generation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: When the algorithm concludes, we print the details of the best solution that
+    was found before plotting the graphs.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Before we run the program, let’s set the algorithm constants, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition, we need to set a penalty for violating hard constraints to a value
+    of `10` and the number of colors to `10`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the program with these settings yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: This means that the algorithm was able to find a proper coloring for the graph
+    using three colors, denoted by the integers `0`, `5`, and `6`. As we mentioned
+    previously, the actual integer values don’t matter – it’s the distinction between
+    them that does. Three is indeed the known chromatic number of the Petersen graph.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The preceding code creates the following plot, which illustrates the solution’s
+    validity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.12: A plot of the Petersen graph properly colored by the program
+    using three colors](img/B20851_05_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.12: A plot of the Petersen graph properly colored by the program using
+    three colors'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following graph, which depicts the minimum and average fitness over the
+    generations, indicates that the algorithm reached the solution rather quickly
+    since the Petersen graph is relatively small:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.13: Stats of the program solving the graph coloring problem for
+    the Petersen graph](img/B20851_05_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.13: Stats of the program solving the graph coloring problem for the
+    Petersen graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To try a larger graph, let’s replace the *Petersen graph* with a *Mycielski
+    graph* of order `5`. This graph contains 23 nodes and 71 edges, and is known to
+    have a chromatic number of 5:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the same parameters as before, including the setting of 10 colors, we
+    get the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we happen to know that the chromatic number for this graph is 5, this
+    is not the optimal solution, although it’s close. How can we get there? And what
+    if we didn’t know the chromatic number beforehand? One way to go about this is
+    to change the parameters of the genetic algorithm – for example, we could increase
+    the population size (and possibly the HOF size) and/or increase the number of
+    generations. Another approach would be to start the same search again but with
+    a reduced number of colors. Since the algorithm found a solution with six colors,
+    let’s reduce the maximum number of colors to `5` and see if the algorithm can
+    still find a valid solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: Why would the algorithm find a five-color solution now if it didn’t find one
+    in the first place? As we lower the number of colors from 10 to 5, the search
+    space is considerably reduced – in this case, from 10 23 to 5 23 (since we have
+    23 nodes in the graph) – and the algorithm has a better chance of finding the
+    optimal solution(s), even with a short run and a limited population size. So,
+    while the first run of the algorithm may get us close to the solution, it could
+    be good practice to keep decreasing the number of colors until the algorithm can’t
+    find a better solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our case, when started with five colors, the algorithm was able to find
+    a five-color solution rather easily:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The plot of the colored graph looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.14: A plot of the Mycielski graph properly colored by the program
+    using five colors](img/B20851_05_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.14: A plot of the Mycielski graph properly colored by the program
+    using five colors'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, if we attempt to decrease the maximum number of colors to four, we will
+    always get at least one violation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You are encouraged to try out other graphs and experiment with the various settings
+    of the algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you were introduced to constraint satisfaction problems, which
+    are close relatives of the previously studied combinatorial optimization problems.
+    Then, we explored three classic constraint satisfaction cases – the *N-Queen*
+    problem, the *nurse scheduling* problem, and the *graph coloring* problem. For
+    each of these problems, we followed the now-familiar process of finding an appropriate
+    representation for a solution, creating a class that encapsulates the problem
+    and evaluates a given solution, and creating a genetic algorithm solution that
+    utilizes that class. We ended up with valid solutions for the problems while getting
+    acquainted with the concept of **hard constraints** versus **soft constraints**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, we have been looking into discrete search problems consisting of states
+    and state transitions. In the next chapter, we will study search problems in a
+    continuous space, to demonstrate the versatility of the genetic algorithms approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For more information on the topics that were covered in this chapter, please
+    refer to the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Constraint Satisfaction Problems*, from the book *Artificial Intelligence
+    with Python*, by Prateek Joshi, January 2017'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Introduction to graph theory*, from the book *Python Data Science Essentials
+    – Second Edition*, by Alberto Boschetti, Luca Massaron, October 2016'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'NetworkX tutorial: [https://networkx.github.io/documentation/stable/tutorial.html](https://networkx.github.io/documentation/stable/tutorial.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

@@ -1,0 +1,1896 @@
+- en: '11'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Unsupervised Machine Learning on Network Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Welcome to another exciting chapter exploring network science and data science
+    together. In the last chapter, we used supervised ML to train a model that was
+    able to detect the revolutionaries from the book *Les Miserables*, using graph
+    features alone. In this chapter, we are going to explore unsupervised ML and how
+    it can also be useful in graph analysis as well as node classification with supervised
+    ML.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The order these two chapters have been written in was intentional. I wanted
+    you to learn how to create your own training data using graphs rather than being
+    reliant on embeddings from unsupervised ML. The reason for this is important:
+    when you rely on embeddings, you lose the ability to interpret why ML models have
+    been classified the way that they have. You lose interpretability and explainability.
+    The classifier essentially works as a black box, no matter which model you use.
+    I wanted to show you the interpretable and explainable approach first.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will be using a Python library called **Karate Club**. The
+    library is excellent for use in both community detection and the creation of graph
+    embeddings using graph ML. However, there is no way to gain insights into what
+    exactly the model found useful when using this approach. So, I saved it for last.
+    It can still be very effective if you don’t mind the loss of interpretability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is going to be a fun chapter, as we will be pulling so many things from
+    this book together. We will create a graph, create training data, do community
+    detection, create graph embeddings, do some network visualization, and even do
+    some node classification using supervised ML. If you started the book by reading
+    this chapter, this will all probably look like magic. If you have been following
+    along since [*Chapter 1*](B17105_01.xhtml#_idTextAnchor014), this should all make
+    sense and be easy to understand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be using the Python libraries NetworkX, pandas, scikit-learn,
+    and Karate Club. Other than Karate Club, these libraries should be installed by
+    now, so they should be ready for your use. The steps for installing Karate Club
+    are included in this chapter. If other libraries are not installed, you can install
+    Python libraries with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For instance, to install NetworkX, you would do this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: In [*Chapter 4*](B17105_04.xhtml#_idTextAnchor158), we also introduced the `draw_graph()`
+    function, which uses both NetworkX and `scikit-network`. You will need that code
+    anytime that we do network visualization. Keep it handy!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All the code is available from the GitHub repo: [https://github.com/PacktPublishing/Network-Science-with-Python](https://github.com/PacktPublishing/Network-Science-with-Python).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is unsupervised ML?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In books and courses about ML, it is often explained that there are three different
+    kinds: supervised learning, unsupervised learning, and reinforcement learning.
+    Sometimes, combinations will be explained, such as semi-supervised learning. With
+    supervised learning, we provide data (X) and an answer (y), and the model learns
+    to make predictions. With unsupervised learning, we provide data (X), but no answer
+    (y) is given. The goal is for the model to learn to identify patterns and characteristics
+    of the data by itself, and then we use those patterns and characteristics for
+    something else. For instance, we can use unsupervised ML to automatically learn
+    the characteristics of a graph and convert those characteristics into embeddings
+    that we can use in supervised ML prediction tasks. In this situation, an unsupervised
+    ML algorithm is given a graph (G), and it generates embeddings that will serve
+    as the training data (X) that will be used to be able to predict answers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In short, the goal of unsupervised ML is to identify patterns in data. Often,
+    we call these patterns clusters, but this is not limited to clustering. Creating
+    embeddings is not clustering. However, with embeddings, a complex network has
+    been reduced to a few numeric features that ML will be better able to use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you’ll see firsthand what that actually looks like, as well
+    as the pros and cons of this approach. This is not all positive. There are some
+    less-than-desirable side effects to using embeddings as training data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing Karate Club
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'I’m going to showcase a Python library that we have touched on previously in
+    this book: Karate Club. I mentioned it briefly in previous chapters, but now we
+    are going to actually use it. I purposefully held off on going into detail before
+    now, because I wanted to teach core approaches to working with networks before
+    showing seemingly easy approaches to extracting communities and embeddings from
+    networks using ML. This is because there are some undesirable side effects to
+    using network embeddings rather than metrics extracted from a network. I will
+    get into that in a bit. For now, I want to introduce this awesome, performant,
+    and reliable Python library.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Karate Club’s documentation ([https://karateclub.readthedocs.io/en/latest/](https://karateclub.readthedocs.io/en/latest/))
+    gives a clear and concise explanation of what the library does:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Karate Club is an unsupervised machine learning extension library for NetworkX.
+    It builds on other open source linear algebra, machine learning, and graph signal
+    processing libraries such as NumPy, SciPy, Gensim, PyGSP, and Scikit-learn. Karate
+    Club consists of state-of-the-art methods to do unsupervised learning on graph-structured
+    data. To put it simply, it is a Swiss Army knife for small-scale graph mining
+    research.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Two things should stand out from this paragraph: *unsupervised machine learning*
+    and *graph*. You can think of Karate Club simply as unsupervised learning for
+    graphs. The outputs of Karate Club can then be used with other libraries for actual
+    prediction.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are so many cool approaches to unsupervised learning stacked into Karate
+    Club that it is a real thrill to learn about them. You can learn about them at
+    [https://karateclub.readthedocs.io/en/latest/modules/root.html](https://karateclub.readthedocs.io/en/latest/modules/root.html).
+    The thing that I love the most is that the documentation links to the original
+    research papers that were written about the algorithms. This allows you to really
+    get to know the processes behind unsupervised ML models. To pick out models to
+    use for this chapter, I read seven research papers, and I loved every moment of
+    it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another nice thing about this library is that the outputs are standardized across
+    models. The embeddings generated by one model will be like the embeddings generated
+    by another model. This means that you can easily experiment with different approaches
+    for embeddings, and see how they affect models used for classification. We will
+    do exactly that in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, I’ve never seen community detection as simple as I have with Karate
+    Club. Using NetworkX or other libraries for Louvain community detection can take
+    a little work to set up. Using **Scalable Community Detection** (**SCD**) from
+    Karate Club, you can go from a graph to identified communities in very few lines
+    of code. It’s so clean.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to learn more about Karate Club and graph machine learning, I recommend
+    the book *Graph Machine Learning*. You can pick up a copy at [https://www.amazon.com/Graph-Machine-Learning-techniques-algorithms/dp/1800204493/](https://www.amazon.com/Graph-Machine-Learning-techniques-algorithms/dp/1800204493/).
+    The book goes into much greater detail on Karate Club’s capabilities than this
+    chapter will be able to. It is also a good follow-up book to read after this book,
+    as this book teaches the fundamentals of interacting with networks using Python,
+    and *Graph Machine Learning* takes this knowledge a step further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Network science options
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It is important to know that you do not *need* to use ML to work with graphs.
+    ML can just be useful. There is also a blurry line between what is and isn’t ML.
+    For instance, I would consider any form of community detection to be unsupervised
+    ML, as these algorithms are capable of automatically identifying communities that
+    exist in a network. By that definition, we could consider some of the approaches
+    offered by NetworkX unsupervised ML, but they are not given the same level of
+    attention in the data science community, because they are not explicitly called
+    graph ML. There is a level of hype to be aware of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I am saying this because I want you to keep in mind that there are approaches
+    that you have already learned that can eliminate the need to use what is advertised
+    as graph ML. For instance, you can use Louvain to identify communities, or even
+    just connected components. You can use PageRank to identify hubs – you don’t need
+    embeddings for that. You can use `k_corona(0)` to identify isolates – you don’t
+    need ML at all for that. You can chain together several graph features into training
+    data, like we did in the last chapter. You don’t *need* to use Karate Club to
+    create embeddings, and you *shouldn’t* use Karate Club embeddings if you are interested
+    in any kind of model interpretability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember what you have learned in this book for interrogating and dissecting
+    networks. Use what is in this chapter as a shortcut or if the science behind what
+    you are doing is already figured out. Embeddings can be a nice shortcut, but any
+    model using these embeddings will become a non-interpretable black box.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'My recommendation: use network science approaches (in NetworkX) rather than
+    Karate Club when possible, but be aware of Karate Club and that it can be useful.
+    This suggestion isn’t due to any disdain for Karate Club. It’s because I find
+    the insights I can extract from models to be illuminating, and almost nothing
+    is worth losing those insights to me. For instance, what characteristics allow
+    a model to predict bots and artificial amplification?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loss of interpretability means that you won’t be able to understand your model’s
+    behavior. This is never a good thing. This is not a dig at approaches that decompose
+    graphs into embeddings, or the research around those approaches; it is just worth
+    knowing that certain approaches can lead to a total loss of interpretability of
+    model behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Uses of unsupervised ML on network data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If you take a look at the Karate Club website, you will probably notice that
+    the two approaches to unsupervised ML fall into two categories: identifying communities
+    or creating embeddings. Unsupervised ML can be useful for creating embeddings
+    not just for nodes, but also for edges or for whole graphs.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Community detection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Community detection is the easiest to understand. The goal of using a community
+    detection algorithm is to identify the communities of nodes that exist in a network.
+    You can think of communities as clusters or clumps of nodes that interact with
+    each other in some way. In social network analysis, this is called community detection,
+    because it is literally about identifying communities in a social network. However,
+    community detection can be useful outside of social network analysis involving
+    people. Maybe it helps to think of a graph as just a social network of things
+    that somehow interact. Websites interact. Countries and cities interact. People
+    interact. There are communities of countries and cities that interact (allies
+    and enemies). There are communities of websites that interact. There are communities
+    of people that interact. It’s just about identifying groups of things that interact.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We discuss community detection in [*Chapter 9*](B17105_09.xhtml#_idTextAnchor364)
+    of this book. If you haven’t yet read that, I encourage you to go back to that
+    chapter to learn more about it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example community to refresh your memory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.1 – Community from Les Miserables](img/B17105_11_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.1 – Community from Les Miserables
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking at this community, we can see that it is tightly knit. Each member is
+    connected with every other member of the community. Other communities are more
+    sparsely connected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Graph embeddings
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'I like to think about graph embeddings as a translation of a complex network
+    into a data format that mathematical models will be better able to use. For instance,
+    if you use a graph edge list or a NetworkX graph (G) with Random Forest, nothing
+    is going to happen. The model will have no way of using the input data for anything.
+    In order to make use of these models, we need to deconstruct graphs into a more
+    usable format. In the previous chapter on supervised machine learning, we converted
+    a graph into training data in this format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.2 – Hand-crafted graph training data](img/B17105_11_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.2 – Hand-crafted graph training data
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also included a **label**, which is the answer that an ML model will learn
+    from. After this, we tacked on the adjacency matrix for each node, so that the
+    classification model would also learn from network connections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, it’s easy for us to know what the features are in this training
+    data. First, we have a node’s degrees, then its clustering, the number of triangles,
+    its betweenness and closeness centrality, and finally, its PageRank score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With embeddings, all of the information in a graph is deconstructed into a
+    series of embeddings. If you read the article behind the model, you can get an
+    understanding of what is happening in the process, but by the time the embeddings
+    are created, it’s really not super interpretable. This is what embeddings look
+    like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.3 – Unsupervised ML graph embeddings](img/B17105_11_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.3 – Unsupervised ML graph embeddings
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sweet, we’ve converted a graph into 1,751 columns of… what?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Still, these embeddings are useful and can be fed directly to supervised ML
+    models for prediction, and the predictions can be quite useful, even if the model
+    and data are not very interpretable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But what can these embeddings be used for? They’re just a whole bunch of columns
+    of numeric data with no description. How can that be useful? Well, there are two
+    downstream uses, one involving more unsupervised ML for clustering, and another
+    using supervised ML for classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clustering
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In **clustering**, your goal is to identify clusters, clumps, or groups of things
+    that look or behave similarly. With both the hand-crafted training data and the
+    Karate Club-generated embeddings, clustering is possible. Both of these datasets
+    can be fed to a clustering algorithm (such as K-means) to identify similar nodes,
+    for example. There are implications to using any model, though, so spend time
+    learning about the models you are interested in using. For instance, to use K-means,
+    you have to specify the number of clusters that you expect to exist in the data,
+    and that is practically never known.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting back to the `k_corona`, looked at the connected components, or sorted
+    nodes by PageRank. If you are using ML, you should first ask yourself whether
+    there is a network-based approach to this that eliminates the need for ML.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classification
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: With classification, your goal is to predict something. In a social network,
+    you might want to predict who will eventually become friends, who might like to
+    become friends, who might click on an advertisement, or who might want to buy
+    a product. If you can make these predictions, you can automate recommendations
+    and ad placement. Or, you might want to identify fraud, artificial amplification,
+    or abuse. If you can make these predictions, you can automatically quarantine
+    what looks like bad behavior, and automate the fielding of responding to these
+    kinds of cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classification usually gets the most attention in ML. It deserves the glory.
+    With classification, we can prevent spam from ruining our inboxes and productivity,
+    we can automatically translate text from one language into another, and we can
+    prevent malware from ruining our infrastructure and allowing criminals to take
+    advantage of us. Classification can literally make the world a better and safer
+    place when used well and responsibly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the previous chapter, we invented a fun game called “Spot the Revolutionary.”
+    The same game could be played in real life with different purposes. You could
+    automatically spot the influencer, spot the fraudulent behavior, spot the malware,
+    or spot the cyber attack. Not all classifiers are deadly serious. Some classifiers
+    help us learn more about the world around us. For instance, if you are using hand-crafted
+    training data rather than embeddings, you could train a model to predict bot-like
+    behavior, and then you could learn what features the model found most useful in
+    identifying bots. For instance, maybe the fact that a bot account was created
+    two days ago, has done zero tweets, has done 2,000 retweets, and already has 15,000
+    followers could have something to do with it. A model trained on embeddings might
+    tell you that embedding number 72 was useful, which means nothing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alright, enough talk. Let’s get to coding and see all of this in action. For
+    the rest of this chapter, we will be using Karate Club approaches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Constructing a graph
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before we can do anything, we need a graph to play with. As with the last chapter,
+    we will make use of the NetworkX *Les Miserables* graph, for familiarity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we’ll create the graph and remove the additional fields that we don’t
+    need:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you look closely, I’ve included two lines of code that create a `G_named`
+    graph as a copy of G, and have converted node labels on graph G to numbers for
+    use in Karate Club a bit later in this chapter. This is a required step for working
+    with Karate Club.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s visualize graph G for a sanity check:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: This produces the following graph. We are not including node labels, so it will
+    just be dots and lines (nodes and edges).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.4 – Les Miserables network](img/B17105_11_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.4 – Les Miserables network
+  prefs: []
+  type: TYPE_NORMAL
+- en: This looks as expected. Each node has a label, but we are not showing them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I have also created some training data with labels. The data is included in
+    the `/data` section of the GitHub repo accompanying this book:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The process of creating the training data is a bit involved and was explained
+    in the previous chapter, so please use those steps to learn how to do this manually.
+    For this chapter, you can just use the CSV file to save time. Let’s check that
+    the data looks correct:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 11.5 – Hand-crafted training data](img/B17105_11_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.5 – Hand-crafted training data
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, only one of the models will use the hand-crafted training data
+    as input, but we will use the labels with our embeddings. I’ll show how a bit
+    later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the graph and the training data, we are set to continue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Community detection in action
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'With community detection, our obvious goal is to identify the communities that
+    exist in a network. I explained various approaches in [*Chapter 9*](B17105_09.xhtml#_idTextAnchor364),
+    *Community Detection*. In this chapter, we will make use of two Karate Club algorithms:
+    SCD and EgoNetSplitter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this chapter, and in general, I tend to gravitate toward models that can
+    scale well. If a model or algorithm is only useful on a tiny network, I’ll avoid
+    it. Real networks are large, sparse, and complicated. I don’t think I’ve ever
+    seen something that doesn’t scale well that is actually better than algorithms
+    that do. This is especially true in community detection. The best algorithms do
+    scale well. My least favorite do not scale well at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SCD
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first community detection algorithm I want to showcase is SCD. You can find
+    the documentation and journal article about the model at [https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.community_detection.non_overlapping.scd.SCD](https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.community_detection.non_overlapping.scd.SCD).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This model claims to be much faster than the most accurate state-of-the-art
+    community detection solutions while retaining or even exceeding their quality.
+    It also claims to be able to handle graphs with billions of edges, which means
+    that it can be useful with real-world networks. It claims to perform better than
+    Louvain, the fastest community detection algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Those are some bold claims. Louvain is extremely useful for community detection
+    for a few reasons. First, it is very fast and useful on large networks. Second,
+    the Python implementation is simple to work with. So, we already know that Louvain
+    is fast and easy to work with. How much better is this? Let’s try it out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, make sure you have Karate Club installed on your computer. You can do
+    so with a simple `pip` `install karateclub`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Now, let’s use the model. First, start with the imports. You need these two:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now that we have those, getting the communities for our graph is as simple
+    as 1, 2, 3:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We first instantiate SCD, then we fit the graph to SCD, and then we get the
+    cluster memberships for each node. Karate Club models are this simple to work
+    with. You need to read the articles to know what is happening under the hood.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What do the clusters look like? If we print the `clusters` variable, we should
+    see this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Node zero is in cluster 34, nodes 1-3 are in cluster 14, node 4 is in cluster
+    33, and so forth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we shove the clusters into a `numpy` array so that we can use the data
+    with our named nodes to more easily determine what nodes belong to what clusters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The `clusters` variable will now look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we create a `cluster` DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This gives us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.6 – SCD cluster DataFrame](img/B17105_11_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.6 – SCD cluster DataFrame
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great. This is much easier to understand in this format. We now have actual
+    people nodes as well as the community that they belong to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s find the largest communities by node membership:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This gives us the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.7 – SCD communities by node count](img/B17105_11_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.7 – SCD communities by node count
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Community 1 is the largest, with 13 members, followed by community 15, which
+    has 10 members. Let’s examine both of these:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This gives us the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.8 – SCD community 1](img/B17105_11_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.8 – SCD community 1
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is excellent. This is a clear community of highly connected nodes. This
+    is a densely connected community. Not all nodes are equally well connected. Some
+    nodes are more central than others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at community 15:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The results follow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.9 – SCD community 15](img/B17105_11_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.9 – SCD community 15
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is another high-quality community extraction. All nodes are connected to
+    other nodes in the community. Some nodes are more central than others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at one more community:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We get *Figure 11**.10*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.10 – SCD community 7](img/B17105_11_010.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.10 – SCD community 7
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is another high-quality community extraction. All nodes in the community
+    are connected. In this case, this is quite a pleasing visualization to look at,
+    as all nodes are equally connected. It is quite symmetric and beautiful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The *Les Miserables* network is tiny, so naturally, the SCD model was able to
+    train on it essentially instantly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One thing that I do like about this approach is that the setup is simpler than
+    the approaches I explained in [*Chapter 9*](B17105_09.xhtml#_idTextAnchor364).
+    I can go from a graph to communities in no time and with very little code. The
+    fact that this can supposedly scale to networks with billions of edges is incredible,
+    if true. It is fast, clean, and useful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: EgoNetSplitter
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The next model we will test for community detection is named EgoNetSplitter.
+    You can learn about it here: [https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.community_detection.overlapping.ego_splitter.EgoNetSplitter](https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.community_detection.overlapping.ego_splitter.EgoNetSplitter).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Jupyter, if you *Shift* + *Tab* into the model instantiation code, you can
+    read about it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The tool first creates the ego-nets of nodes. A persona-graph is created which
+    is clustered by the Louvain method. The resulting overlapping cluster memberships
+    are stored as a dictionary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, this model creates ego networks, then uses Louvain for clustering, and
+    then overlapping memberships are stored as a dictionary. It’s an interesting approach
+    and different from other approaches, so I thought it’d be neat to test it out
+    and see how it performs. The steps are slightly different from those with SCD:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To begin, let’s get the model in place:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE44]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE45]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE46]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE47]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This gets us our clusters. Then, creating our `cluster` DataFrame and doing
+    visualizations follows the same code as with SCD:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Let’s check community membership by count:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE50]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.11 – EgoNetSplitter communities by node count](img/B17105_11_011.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.11 – EgoNetSplitter communities by node count
+  prefs: []
+  type: TYPE_NORMAL
+- en: Already, the results look different from SCD. This should be interesting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a look to see what is different. Clusters 7 and 1 are the largest,
+    so let’s take a look at those two:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE52]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE53]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE54]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This will draw our ego network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.12 – EgoNetSplitter community 7](img/B17105_11_012.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.12 – EgoNetSplitter community 7
+  prefs: []
+  type: TYPE_NORMAL
+- en: I don’t like that. I don’t believe that the nodes on the left should be a part
+    of the same community as the nodes that are connected to the densely connected
+    nodes on the right. Personally, I don’t find this to be as useful as SCD’s results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a look at the next most populated cluster:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE56]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE57]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE58]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '*Figure 11**.13* shows the resulting output.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.13 – EgoNetSplitter community 1](img/B17105_11_013.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.13 – EgoNetSplitter community 1
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once again, we are seeing similar behavior, where one node has been included
+    in the network that really should not be. **MotherPlutarch** might be connected
+    to **Mabeuf**, but she really has nothing to do with the other people in the community.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a final look at the next community:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE61]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The code produces the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.14 – EgoNetSplitter community 5](img/B17105_11_014.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.14 – EgoNetSplitter community 5
+  prefs: []
+  type: TYPE_NORMAL
+- en: Again, we see one node connected to one other node, but not connected to the
+    rest of the nodes in the network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I don’t want to say that EgoNetSplitter is inferior to SCD or any other model.
+    I’d say that I personally prefer the outputs of SCD over EgoNetSplitter for community
+    detection. However, it could be argued that it is better to include the few extra
+    nodes as part of the community due to their one connection than it would be to
+    leave them out. It’s important to know the difference between the two approaches,
+    as well as the differences in their results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, due to the scalability claims of SCD and due to its clean separation
+    of communities, I lean toward SCD for community detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have explored using unsupervised ML for community detection, let’s
+    move on to using unsupervised ML for creating graph embeddings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Graph embeddings in action
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we are past the comfort of community detection, we are getting into
+    some weird territory with graph embeddings. The simplest way I think of graph
+    embeddings is just the deconstruction of a complex network into a format more
+    suitable for ML tasks. It’s the translation of a complex data structure into a
+    less complex data structure. That’s a simple way of thinking about it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some unsupervised ML models will create more dimensions (more columns/features)
+    of embeddings than others, as you will see in this section. In this section, we
+    are going to create embeddings, inspect nodes that have similar embeddings, and
+    then use the embeddings with supervised ML to predict “revolutionary or not,”
+    like our “Spot the Revolutionary” game from the last chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’re going to quickly run through the use of several different models – this
+    chapter would be hundreds of pages long if I went into great detail about each
+    model. So, to save time, I’ll provide the link to the documentation and a simple
+    summary, and we’ll just do some simple comparisons. Please know that you should
+    never use ML this blindly. Please read the documentation, read the articles, and
+    know how the models work. I did the legwork, and you should too. Do feel free
+    to just play around with different models to see how they behave. If you are just
+    experimenting and not putting them into production, you aren’t going to accidentally
+    cause a rip in the fabric of spacetime by playing with a `scikit-learn` model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’re going to need this helper function for visualizations of the upcoming
+    embeddings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: I need to explain a few things. First, this `draw_clustering` function uses
+    `plotly` to create an interactive scatter plot. You can zoom in and out and inspect
+    nodes interactively. You will need to have `plotly` installed, which can be done
+    with `pip` `install plotly`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Second, I’m using **Principal Component Analysis** (**PCA**) to reduce embeddings
+    into two dimensions, just for the sake of visualization. PCA is also unsupervised
+    learning and useful for dimension reduction. I needed to do this so that I could
+    show you that these embedding models behave differently. Reducing embeddings to
+    two dimensions allows me to visualize them on a scatter plot. I do not recommend
+    doing PCA after creating embeddings. I am only using this process for visualization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: FEATHER
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first algorithm we will use is called **FEATHER**, and you can learn about
+    it at [https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.attributed.feathernode.FeatherNode](https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.attributed.feathernode.FeatherNode).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Jupyter, if you *Shift* + *Tab* into the model instantiation code, you can
+    read about it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An implementation of “FEATHER-N” <[https://arxiv.org/abs/2005.07959](https://arxiv.org/abs/2005.07959)>
+    from the CIKM ‘20 paper “Characteristic Functions on Graphs: Birds of a Feather,
+    from Statistical Descriptors to Parametric Models”. The procedure uses characteristic
+    functions of node features with random walk weights to describe node neighborhoods.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: FEATHER claims to create high-quality graph representations, perform transfer
+    learning effectively, and scale well to large networks. It creates node embeddings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is actually a very interesting model, as it is able to take both a graph
+    and additional training data for use in creating embeddings. I would love to explore
+    that idea more, to see how well it does with different kinds of training data
+    such as `tf-idf` or topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For now, let’s give it the hand-crafted training data that we used before:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE65]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE66]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE67]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: First, we import the model, then we instantiate it. On the `model.fit` line,
+    notice that we are passing in both `G` and `clf_df`. The latter is the training
+    data that we created by hand. With every other model, we only pass in G. To me,
+    this is fascinating, as it seems like it’d give the model the ability to learn
+    more about the network based on other contextual data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s visualize these embeddings to see how the model is working:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE69]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.15 – FEATHER embeddings](img/B17105_03_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.15 – FEATHER embeddings
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is interesting to look at. We can see that there are several nodes that
+    appear together. As this is an interactive visualization, we can inspect any of
+    them. If we zoom in on the bottom-left cluster, we can see this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.16 – FEATHER embeddings zoomed](img/B17105_11_016.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.16 – FEATHER embeddings zoomed
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s difficult to read, due to the overlap, but **Feuilly** is shown on the
+    bottom left, close to **Prouvaire**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s check both of their ego networks to see what is similar:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE71]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE72]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'That produces *Figure 11**.17*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.17 – Feuilly ego network](img/B17105_11_017.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.17 – Feuilly ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s inspect Prouvaire’s ego network:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE74]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE75]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This outputs *Figure 11**.18*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.18 – Prouvaire ego network](img/B17105_11_018.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.18 – Prouvaire ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nice. The first observation is that they are both part of each other’s ego network
+    and also part of each other’s community. Second, their nodes are quite connected.
+    On both ego networks, both nodes show as being quite well connected and also part
+    of a densely connected community.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a look at a few other nodes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.19 – FEATHER embeddings zoomed](img/B17105_11_019.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.19 – FEATHER embeddings zoomed
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s inspect the ego networks for **MotherInnocent** and **MmeMagloire**.
+    **MotherInnocent** first:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE77]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE78]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '*Figure 11**.20* shows the output.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.20 – MotherInnocent ego network](img/B17105_11_020.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.20 – MotherInnocent ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And now **MmeMagloire**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure 11**.21* shows the results.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.21 – MmeMagloire ego network](img/B17105_11_021.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.21 – MmeMagloire ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**MotherInnocent** has two edges, and **MmeMagloire** has three. Their ego
+    networks are quite small. These similarities are being picked up by FEATHER and
+    translated into embeddings.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: But what do the actual embeddings look like?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE81]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE82]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This produces the following DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.22 – FEATHER embeddings DataFrame](img/B17105_11_022.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.22 – FEATHER embeddings DataFrame
+  prefs: []
+  type: TYPE_NORMAL
+- en: The graph was translated into 1,750 embedding dimensions. In this format, you
+    can think of them as columns or features. A simple network was converted into
+    1,750 columns, which is quite a lot of data for such a small network. Pay attention
+    to the number of dimensions created by these models as we go through the others
+    after FEATHER.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These embeddings are useful for classification, so let’s do just that. I’m going
+    to just throw data at a classification model and hope for the best. This is never
+    a good idea other than for simple experimentation, but that is exactly what we
+    are doing. I encourage you to dig deeper into any of these models that you find
+    interesting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The preceding code already added the `label` field, but we need to create our
+    `X` and `y` data for classification:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE84]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE85]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE86]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE87]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '`X` is our data, `y` is the correct answer. This is our “Spot the Revolutionary”
+    training data. Nodes that are labeled as revolutionaries have a `y` of `1`. The
+    rest have a `y` of `0`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s train a Random Forest model, as I want to show you something about interpretability:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE88]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE89]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE90]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE91]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE92]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE93]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'If we run this code, we get these results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE94]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using the FEATHER embeddings as training data, the model was able to correctly
+    spot the revolutionary 100% of the time on unseen data. This is a tiny network,
+    though, and never, ever, *ever* trust a model that gives 100% accuracy on anything.
+    A model that appears to be hitting 100% accuracy is often hiding a deeper problem,
+    such as data leakage, so it’s a good idea to be skeptical of very high scores
+    or to be skeptical of model results in general until the model has been thoroughly
+    validated. This is a toy model. However, what this shows is that these embeddings
+    can be created using a graph and that a supervised ML model can use these embeddings
+    in prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There’s a nasty downside to using these embeddings with models, though. You
+    lose all interpretability. With our hand-crafted training data, as shown earlier
+    in this chapter, we could see which features the model found to be most useful
+    in making predictions. Let’s inspect the importances with these embeddings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE95]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We get this output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.23 – FEATHER embedding feature importance](img/B17105_11_023.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.23 – FEATHER embedding feature importance
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wonderful! Embedding 1531 was found to be slightly more useful than 1134, but
+    both of these were found to be quite a bit more useful than the other embeddings!
+    Excellent! This is a total loss of interpretability, but the embeddings do work.
+    If you just want to go from graph to ML, this approach will work, but you end
+    up with a black-box model, no matter which model you use for prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: OK, for the rest of the models, I’m going to go a lot faster. We’re going to
+    reuse a lot of this code, I’m just going to do less visualization and give less
+    code so that this chapter doesn’t end up being 100 pages long.
+  prefs: []
+  type: TYPE_NORMAL
+- en: NodeSketch
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The next algorithm we will look at is **NodeSketch**, and you can learn about
+    it at [https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.neighbourhood.nodesketch.NodeSketch](https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.neighbourhood.nodesketch.NodeSketch).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Jupyter, if you *Shift* + *Tab* into the model instantiation code, you can
+    read about it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An implementation of “NodeSketch” <https://exascale.info/assets/pdf/yang2019nodesketch.pdf>
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'from the KDD ‘19 paper “NodeSketch: Highly-Efficient Graph Embeddings'
+  prefs: []
+  type: TYPE_NORMAL
+- en: via Recursive Sketching”. The procedure starts by sketching the self-loop-augmented
+    adjacency matrix of the graph to output low-order node embeddings, and then recursively
+    generates k-order node embeddings based on the self-loop-augmented adjacency matrix
+    and (k-1)-order node embeddings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Like FEATHER, NodeSketch also creates node embeddings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s use the model and do the visualization in one shot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE96]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE97]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE98]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE99]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE100]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE101]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following graph is the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.24 – NodeSketch embeddings](img/B17105_11_024.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.24 – NodeSketch embeddings
+  prefs: []
+  type: TYPE_NORMAL
+- en: As before, this visualization is interactive and you can zoom in on clusters
+    of nodes for closer inspection. Let’s look at a few nodes that were found to be
+    similar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'First, **Eponine**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE102]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can see the result in *Figure 11**.25*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.25 – Eponine ego network](img/B17105_11_025.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.25 – Eponine ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, **Brujon**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE103]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE104]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE105]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Shown in *Figure 11**.26*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.26 – Brujon ego network](img/B17105_11_026.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.26 – Brujon ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: Upon inspection, the ego networks look quite different, but the two nodes seem
+    to have about the same number of connections, and they are part of a pretty well-connected
+    community. I’m satisfied that these two nodes are pretty similar in structure
+    and placement. Both nodes are also part of the same community.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What do the embeddings look like?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE106]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE107]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE108]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This will show our DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.27 – NodeSketch embeddings DataFrame](img/B17105_11_027.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.27 – NodeSketch embeddings DataFrame
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wow, this is a much simpler dataset than what FEATHER produced. **32** features
+    rather than 1,750\. Also, note that the values in the embeddings are integers
+    rather than floats. How well is Random Forest able to make predictions with this
+    training data?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE109]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we run the code, we get these results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE110]'
+  prefs: []
+  type: TYPE_PRE
+- en: The model was able to predict with 98% accuracy on the training data and with
+    100% accuracy on the test data. Again, never ever test a model that gives 100%
+    accuracy. But this still shows that the model is able to use the embeddings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What features did it find important?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE111]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE112]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE113]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE114]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This results in *Figure 11**.28*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.28 – NodeSketch embedding feature importance](img/B17105_11_028.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.28 – NodeSketch embedding feature importance
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great. As I showed before, the use of these embeddings has turned Random Forest
+    into a black-box model that we cannot get any model interpretability for. We know
+    that the model found features **24** and **23** to be most useful, but we have
+    no idea why. I won’t be showing feature importances after this. You get the point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a cool model, and it creates simpler embeddings by default than FEATHER.
+    Random Forest did well with both models’ embeddings, and we can’t say which is
+    better without a lot more experimentation, which is outside of the scope of this
+    chapter. Have fun experimenting!
+  prefs: []
+  type: TYPE_NORMAL
+- en: RandNE
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Next up is **RandNE**, which claims to be useful for “billion-scale network
+    embeddings.” This means that this is useful for networks with either billions
+    of nodes or billions of edges. It’s a claim that would make this model useful
+    for large real-world networks. You can read the documentation at [https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.neighbourhood.randne.RandNE](https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.neighbourhood.randne.RandNE).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Jupyter, if you *Shift* + *Tab* into the model instantiation code, you can
+    read about it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An implementation of “RandNE” <https://zw-zhang.github.io/files/2018_ICDM_RandNE.pdf>
+    from the ICDM ‘18 paper “Billion-scale Network Embedding with Iterative Random
+    Projection”. The procedure uses normalized adjacency matrix based smoothing on
+    an orthogonalized random normally generate base node embedding matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once again, let’s generate the embeddings and do the visualization in one shot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE115]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE116]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE117]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE118]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE119]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE120]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.29 – RandNE embeddings](img/B17105_11_029.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.29 – RandNE embeddings
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Right away, you can see that this scatterplot looks very different from both
+    FEATHER and NodeSketch. Let’s take a look at the ego networks for `Marius` and
+    `MotherPlutarch`, two nodes that have been found to be similar:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE121]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE122]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE123]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We get a network output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.30 – Marius ego network](img/B17105_11_030.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.30 – Marius ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, **MotherPlutarch**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE124]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE125]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE126]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'And the network is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.31 – MotherPlutarch ego network](img/B17105_11_031.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.31 – MotherPlutarch ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wow, these ego networks are so different, and so are the nodes. **Marius** is
+    a well-connected node, and **MotherPlutarch** has a single edge with another node.
+    These are two very different nodes, and the embeddings found them to be similar.
+    However, it could be due to the PCA step for the scatter plot visualization, so
+    please don’t be too quick to judge RandNE from this one example. Check out some
+    of the other similar nodes. I will leave this up to you, for your own practice
+    and learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What do the embeddings look like?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE127]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will show our embeddings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.32 – RandNE embeddings DataFrame](img/B17105_11_032.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.32 – RandNE embeddings DataFrame
+  prefs: []
+  type: TYPE_NORMAL
+- en: The embeddings ended up being 77 features, so this creates simpler embeddings
+    by default than FEATHER. NodeSketch created 32 features, in comparison.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How well is Random Forest able to use the embeddings?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE128]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE129]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE130]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE131]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE132]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE133]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE134]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE135]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE136]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'If we run this code, we get these results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE137]'
+  prefs: []
+  type: TYPE_PRE
+- en: The model was able to predict on the test set with 98.1% accuracy, and 91.7%
+    accuracy on the test set. This is worse than with FEATHER and NodeSketch embeddings,
+    but it could be a fluke. I wouldn’t trust these results with so little training
+    data. The model was able to successfully use the embeddings as training data.
+    However, as before, if you inspect the feature importances of the embeddings,
+    you will not be able to interpret the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: These are not the only three models that Karate Club has available for creating
+    node embeddings. Here are two more. You can experiment with them the same way
+    that we did with FEATHER, NodeSketch, and RandNE. The results with Random Forest
+    for all of the embedding models were about the same. They can all be useful. I
+    recommend that you get curious about Karate Club and start investigating what
+    it has available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These models do the same thing, but the implementation is different. Their implementations
+    are very interesting. I recommend that you read the papers that were written about
+    the approaches. You can see these as an evolution for creating node embeddings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: GraRep
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**GraRep** is another model we can use. You can find the documentation here:
+    [https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.neighbourhood.grarep.GraRep](https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.neighbourhood.grarep.GraRep):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE138]'
+  prefs: []
+  type: TYPE_PRE
+- en: DeepWalk
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**DeepWalk** is another possible model we can use: [https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.neighbourhood.deepwalk.DeepWalk](https://karateclub.readthedocs.io/en/latest/modules/root.html#karateclub.node_embedding.neighbourhood.deepwalk.DeepWalk):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE139]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have several options for creating graph embeddings, let’s use them
+    in supervised ML for classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using embeddings in supervised ML
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Alright! We’ve made it through some really fun hands-on work involving network
+    construction, community detection, and both unsupervised and supervised ML; done
+    some egocentric network visualization; and inspected the results of the use of
+    different embeddings. This chapter really brought everything together. I hope
+    you enjoyed the hands-on work as much as I did, and I hope you found it useful
+    and informative. Before concluding this chapter, I want to go over the pros and
+    cons of using embeddings the way that we have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please also keep in mind that there are many other classification models we
+    could have tested with, not just Random Forest. You can use these embeddings in
+    a neural network if you want, or you could test them with logistic regression.
+    Use what you learned here and go have as much fun as possible while learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pros and cons
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s discuss the pros and cons of using these embeddings. First, let’s start
+    with the cons. I’ve already mentioned this a few times in this chapter, so I’ll
+    just repeat it one last time: if you use these embeddings, no matter how interpretable
+    a classification model is, you lose all interpretability. No matter what, you
+    now have a black-box model, for better or for worse. If someone asks you why your
+    model is predicting a certain way, you’ll just have to shrug and say it’s magic.
+    You lost the ability to inspect importances when you went with embeddings. It’s
+    gone. The way back is to use hand-crafted network training data like we created
+    at the beginning of this chapter and in the previous chapter, but that requires
+    knowledge of network science, which is probably why some people are happy to just
+    use these embeddings. This leads to the benefit of these embeddings, the pros.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The benefit is that creating and using these embeddings is much easier and
+    much faster than creating your own training data. You have to know about network
+    science to know what centralities, clustering coefficients, and connected components
+    are. You don’t have to know anything about network science to run this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE140]'
+  prefs: []
+  type: TYPE_PRE
+- en: It’s a problem when people blindly use stuff in data science, but it happens
+    all the time. I am not excusing it. I am stating that this happens all over the
+    place, and Karate Club’s embeddings give you a shortcut to not really needing
+    to know anything about networks to use graph data in classification. I think that’s
+    a problem, but it doesn’t just happen with graphs. It happens in NLP and ML in
+    general, all the time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loss of explainability and insights
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The worst part about using these embeddings is you lose all model explainability
+    and insights. Personally, building models doesn’t excite me. I get excited about
+    the insights I can pull from predictions and from learned importances. I get excited
+    about understanding the behaviors that the models picked up on. With embeddings,
+    that’s gone. I’ve thrown interpretability in the trash in the hope of quickly
+    creating an effective model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the same problem I have with **PCA**. If you use it for dimension reduction,
+    you lose all interpretability. I hope you have done the science first before deciding
+    to use either PCA or graph embeddings. Otherwise, it’s data alchemy, not data
+    science.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An easier workflow for classification and clustering
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It’s not all bad, though. If you find that one of these types of embeddings
+    is reliable and very high-quality, then you do have a shortcut to classification
+    and clustering, so long as you don’t need the interpretability. You can go from
+    a graph to classification or clustering in minutes rather than hours. That’s a
+    huge speedup compared to hand-crafting training data from graph features. So,
+    if you just want to see whether a graph can be useful for predicting something,
+    this is one definite shortcut to building a prototype.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s all pros and cons and use cases. If you need interpretability, you won’t
+    get it here. If you need to move fast, this can help. And it’s very likely that
+    there are insights that can be harvested from embeddings after learning more about
+    them. I have seen that come true as well. Sometimes there are insights that you
+    can find – it just takes an indirect approach to get to them, and hopefully, this
+    book has given you some ideas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: I can’t believe we’ve made it to this point. At the beginning of this book,
+    this felt like an impossible task, and yet here we are. In order to do the hands-on
+    exercises for this chapter, we’ve used what we learned in the previous chapters.
+    I hope I have shown you how networks can be useful, and how to work with them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the beginning of this book, I set out to write a practical hands-on book
+    that would be code-heavy, not math-heavy. There are tons of network analysis books
+    out there that have an emphasis on math but do not show actual implementation
+    very well, or at all. I hope this book has effectively bridged the gap, giving
+    a new skill to coders, and showing social scientists programmatic ways to take
+    their network analysis to new heights. Thank you so much for reading this book!
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,981 @@
+- en: '11'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Price Prediction with Time Series
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A significant amount of time spent by analysts and researchers in the finance
+    industry is devoted to predicting investment opportunities, including asset prices
+    and asset returns. With the availability of large volumes of data and advancements
+    in processing techniques, **machine learning** (**ML**) has gained momentum, expanding
+    its application beyond asset pricing to areas such as insurance pricing, portfolio
+    management, and risk management.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to the well-known applications of ML in the financial industry,
+    we can now consider the influence of Web3 and open data. As we have learned throughout
+    this book, data in Web3 is accessible to anyone. Privileged information, such
+    as bank balances or significant account movements, can be viewed by anyone who
+    knows where to look, as explained in [*Chapter 5*](B19446_05.xhtml#_idTextAnchor168).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many asset modeling and prediction problems in the financial industry involve
+    a time component and the estimation of continuous outputs. This is why our focus
+    in this chapter will be on time-series analysis, understanding what these outputs
+    are, and how to model them. Our objective is to utilize historical data points,
+    including the time component, to predict future outcomes, particularly in the
+    context of predicting prices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In summary, this chapter will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A primer on time series
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Database selection and feature engineering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Modeling, training, and evaluation of results
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will employ both traditional statistical models and **deep learning** (**DL**)
+    methodologies to capture the patterns and dynamics within the time series data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we will be utilizing the `statsmodels` library, specifically
+    its time-series analysis packages (`tsa` and `statespace`). `statsmodels` is a
+    comprehensive Python module that offers a wide range of classes and functions
+    for estimating various statistical models, performing statistical tests, and conducting
+    statistical data exploration. For time-series analysis, it provides essential
+    models such as univariate **autoregressive** (**AR**) models, **vector AR** (**VAR**)
+    models, and univariate **AR moving average** (**ARMA**) models. Furthermore, it
+    offers descriptive statistics for time series, such as the **autocorrelation**
+    and **partial autocorrelation** functions (**ACF** and **PACF**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you have not worked with `statsmodels` before, it can be installed using
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The documentation for `statsmodels` can be found at [https://www.statsmodels.org/stable/index.xhtml](https://www.statsmodels.org/stable/index.xhtml).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will also be utilizing `pmdarima`, which allows us to interact with `pmdarima`
+    serves as a Python wrapper for various statistical and ML libraries (including
+    `statsmodels` and `scikit-learn`). If you have not worked with `pmdarima` before,
+    it can be installed with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The documentation for `pmdarima` can be found at [http://alkaline-ml.com/pmdarima/](http://alkaline-ml.com/pmdarima/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will also extract our working dataset from `yfinance`, which is an open
+    source Python library that serves as an interface to the Yahoo Finance API, providing
+    convenient access to a wide range of financial data, including stock market prices,
+    historical data, dividend information, and more. To install the library, we have
+    to run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The documentation for `yfinance` can be found at [https://pypi.org/project/yfinance/](https://pypi.org/project/yfinance/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All the data and code files related to this chapter can be accessed in the
+    book’s GitHub repository, available here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter11](https://github.com/PacktPublishing/Data-Science-for-Web3/tree/main/Chapter11)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We recommend that you read through the code files in the `Chapter11` folder
+    to follow along with the chapter effectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A primer on time series
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Time Series is a collection of observations across time, spaced at equal intervals
+    of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Luis Alberiko Gil-Alaña
+  prefs: []
+  type: TYPE_NORMAL
+- en: The collection of observations mentioned by Professor Gil-Alaña forms a sequence
+    of events that unfold and evolve over time in chronological order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These observations represent various data points that change or fluctuate over
+    time, such as stock prices, temperature readings, sales figures, website traffic,
+    number of blockchain transactions, and more. Each observation holds valuable knowledge
+    about the past and provides information about future trends.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A 10-month time series representing the monthly closing price of **Bitcoin-US
+    Dollar** (**BTC-USD**) looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Date** | **Close** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 10/1/2014 | 338.321014 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 11/1/2014 | 378.046997 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 12/1/2014 | 320.192993 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1/1/2015 | 217.464005 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2/1/2015 | 254.263 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3/1/2015 | 244.223999 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4/1/2015 | 236.145004 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5/1/2015 | 230.190002 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6/1/2015 | 263.071991 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7/1/2015 | 284.649994 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 11.1 – Segment of the BTC-USD time series (source: Yahoo Finance)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we analyze time series data, we can identify patterns, trends, and fluctuations.
+    These patterns may reveal recurring themes, follow a clear trajectory, or exhibit
+    chaotic and unpredictable behavior. Here follows a visualization of the time series
+    of the BTC price since 2015:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.1 – Plot of the entire series](img/B19446_11_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.1 – Plot of the entire series
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A time series comprises the following components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Trend**: This represents the overall directional movement of the series.
+    A trend can be deterministic, driven by an underlying rationale, or stochastic,
+    exhibiting random behavior.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next example, we observe a continuous upward trend since 2017, which
+    has accelerated in the past 2 years:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.2: Graph of trend](img/B19446_11_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.2: Graph of trend'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Seasonal**: This component refers to recurring cycles or patterns within
+    the series that repeat over a specific timeframe.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the given dataset, we can observe a drop mid-year and an increase toward
+    the end of each year:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.3 – Seasonal component](img/B19446_11_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.3 – Seasonal component
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**White noise**: This represents the component of the series that is not captured
+    by the trend or seasonal components.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the given dataset, the component appears flat initially but exhibits peaks
+    at specific points coinciding with peaks in the overall series, such as at the
+    end of 2017-2018 and 2021:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.4 – White noise representation](img/B19446_11_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.4 – White noise representation
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To decompose a time series in order to analyze its components, we can use the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There are two additional concepts relevant to time series analysis: autocorrelation
+    and stationarity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Autocorrelation**: This refers to the dependence between consecutive points
+    in a series. It indicates that the value at a given time period is influenced
+    by the measurements at previous time periods. The order of autoregression represents
+    the number of previous values used to predict the present value, known as the
+    *lag*. For instance, if we use the previous 2 months’ prices to predict the monthly
+    price of Bitcoin, it corresponds to an autocorrelation of order 2.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Stationary**: A time series is said to be stationary if “*the mean and the
+    variance do not depend on time, and the covariance between any two observations
+    only depend on the distance between them, but not on a specific location in time*”
+    (*Luis Alberiko Gil-Alaña*). Stationarity is an important assumption for many
+    time series models and analyses. We can derive from the previous citation that
+    a time series that has a trend or seasonality cannot be considered stationary.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, the following time series example has a clear upward trend, so
+    it is not stationary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.5 – Time series with trend](img/B19446_11_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.5 – Time series with trend
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following one has an increasing variance as it is progressing in time and
+    trend, so it is not stationary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.6 – Time series with variance](img/B19446_11_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.6 – Time series with variance
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following has no trend or seasonality, so can be considered stationary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.7 – Stationary time series](img/B19446_11_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.7 – Stationary time series
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have the theory, let’s introduce the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring the dataset
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For price prediction, we will utilize two datasets. The first dataset is the
+    time series data of BTC prices, extracted from Yahoo Finance, with a daily granularity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To extract it, we use the Yfinance library with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The dataset contains multiple columns, but we will focus on the close column
+    and the date. The `date` column needs to be used as an index with a frequency.
+    The following code snippet can be useful if not sourcing from Yfinance, which
+    already handles it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: As a Web3 dataset, compared to traditional financial stock price datasets, it
+    includes prices for weekends as well, reflecting the fact that the market operates
+    continuously. When selecting a times series dataset, it is essential to ensure
+    that there are no missing values or handle them using the appropriate techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If it were necessary to work with business days only, the Pandas library has
+    some additional functions such as `USFederalHolidayCalendar`, which imports holiday
+    calendars and provides a list of holidays:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `CustomBusinessDay` class provides a parametric `BusinessDay` class that
+    can be used to create customized business-day calendars for local holidays and
+    local weekend conventions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Additionally, we have prepared another dataset consisting of news articles and
+    their corresponding **sentiment analysis** (**SA**). For each day in the BTC price
+    time series that we aim to model, we will match it with a set of news articles
+    and their respective SA. We will test the hypothesis that incorporating external
+    information from the real world will improve the prediction performance of the
+    model. Other variables that can be considered include trading volume, the number
+    of tweets containing the term *BTC*, days remaining until the next halving event
+    (when the reward for Bitcoin mining is cut in half, and that takes place approximately
+    every 4 years), and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: During **exploratory data analysis** (**EDA**), it’s possible to discover missing
+    values, outliers, or irregularities in the dataset. As discussed in [*Chapter
+    1*](B19446_01.xhtml#_idTextAnchor020), there have been instances where market
+    prices were halted due to extreme volatility, such as the UST depeg. When faced
+    with a dataset containing these issues, how should we address them? Non-time series-specific
+    methods, such as mean or median imputation, are effective for stationary series.
+    Time series-specific techniques include **Last Observation Carried Forward** (**LOCF**),
+    which replaces missing values with the immediately preceding observed value, and
+    **Next Observation Carried Backward** (**NOCB**), which performs the same replacement
+    with the subsequent observed value. Another method is interpolation, which can
+    be linear, polynomial, or spline, depending on the assumed relationship between
+    observations. Further resources on potential approaches to resolve this issue
+    are provided in the *Further* *reading* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before delving into the models, it is important to address the concept of train-test
+    split for time series data. Unlike the traditional datasets we have analyzed so
+    far, time series models inherently possess an endogenous temporality, which is
+    precisely what we aim to capture. This means that the value’s position in the
+    time series order will have an impact on future points. In order to understand
+    and capture this temporal relationship, we must maintain the chronological order
+    of the time series and any exogenous variables. Randomly splitting the data is
+    not suitable for time series analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, the test dataset will consist of the most recent portion of the
+    series, while the training dataset will include all rows from the beginning of
+    the series up to the selected test portion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sklearn provides a helpful class for performing this split, called `TimeSeriesSplit`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The documentation can be found at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://scikitlearn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.xhtml](https://scikitlearn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.xhtml)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The challenge we will try to solve consists of predicting the BTC price on dates
+    that were not part of the training. Time series problems can be approached by
+    using statistical modeling, which we will call the traditional method, and through
+    ML, whereby we will train a **long short-term memory** (**LSTM**) model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discussing traditional pipelines
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The initial approach involves statistical modeling, using models such as ARIMA,
+    **ARIMA with exogenous variables** (**ARIMAX**), and Auto ARIMA. To work with
+    them, we need to address two additional challenges: ensuring the stationarity
+    of the time series and determining the appropriate model order.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Statistical models perform better when applied to stationary time series. Traditional
+    statistical time series models such as ARIMA are more effective when dealing with
+    stationary time series. Resolving this issue will be part of the preprocessing
+    phase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second challenge lies in the modeling phase, which involves understanding
+    the dataset, determining the appropriate lags, and defining time windows. We will
+    approach the solution manually using the Auto ARIMA algorithm, which handles hyperparameters
+    automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preprocessing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Various functions can be employed to transform non-stationary time series data
+    into a format suitable for our models. Examples include differencing, logarithmic
+    transformations, **moving averages** (**MAs**), percent changes, lags, and cumulative
+    sums.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Differencing calculates the differences between consecutive observations. This
+    technique helps stabilize the mean of a time series by removing changes at a certain
+    level, thereby reducing or eliminating trend and seasonality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `Traditional time series models.ipynb` notebook, we start with a dataset
+    that looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.8 – Complete time series](img/B19446_11_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.8 – Complete time series
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To apply differencing, we use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After such a process, the dataset is transformed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.9 – Differenced time series](img/B19446_11_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.9 – Differenced time series
+  prefs: []
+  type: TYPE_NORMAL
+- en: In some cases, differencing the data once may not result in a stationary series.
+    In such instances, it may be necessary to apply differencing a second time to
+    achieve stationarity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other functions such as percent change, log difference, and MA can also help
+    reduce trend and seasonality, making the series resemble white noise. Log transformation
+    is particularly useful when dealing with non-constant variance, while MA can be
+    beneficial for series with high volatility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To help determine if a series is stationary, we can employ statistical tests
+    such as the Dickey-Fuller test. This test is a root-based test that focuses on
+    the coefficient associated with the first lag of the time series variable. If
+    the coefficient is equal to one (indicating a unit root), the time series behaves
+    as non-stationary, which is the null hypothesis. We reject the null hypothesis
+    if the test result is negative and statistically significant, indicating that
+    the time series is stationary. There are other tests for similar purposes, such
+    as the **Kwiatkowski-Phillips-Schmidt-Shin** (**KPSS**) test or the Phillips-Perron
+    test. An explanation exceeds the scope of this book; however, all of them can
+    be sourced from the same library we have been working on. Once we have a stationary
+    dataset, we can proceed to modeling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Modeling – ARIMA/SARIMAX and Auto ARIMA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Among statistical algorithms used for forecasting future values, we encounter
+    ARIMA /SARIMAX and Auto ARIMA. ARIMA considers past values to predict future values,
+    while SARIMAX incorporates seasonality patterns and exogenous variables. Auto
+    ARIMA automates the modeling process based on training data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The names of these models are derived from the concepts they comprise. **ARIMA**
+    stands for **autoregressive** (**AR**)-**integrated** (**I**)-**moving average**
+    (**MA**). **SARIMAX** adds **S** for **seasonal** and **X** for **exogenous**
+    as it can be fed with independent variables. **Auto ARIMA** adds **Auto** for
+    **automatic modeling**. Let’s delve into these concepts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**AR** identifies the regression order of the time series onto itself. It assumes
+    that the latest data point value depends on previous values with a lag that we
+    determine; that is, *the number of* *lag observations*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can determine the regression order by using the PACF plot, which is part
+    of the `statsmodels` library. The following code can be used to plot it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The PACF measures the direct correlation between past values and current values
+    and examines the spikes at each lag to determine their significance. A significant
+    spike extends beyond significant limits, indicating that the correlation for that
+    lag is not zero. The number of significant correlations determines the order of
+    the AR term (p).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**I** identifies the number of differencing procedures required to make the
+    series stationary.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**MA** models the error of the time series based on past forecast errors, assuming
+    that the current error depends on the previous error with a lag that we determine.
+    In essence, this corresponds to the size of the “window” function over our time
+    series data and corresponds to the MA (*q*) part of the model. We can approach
+    the order of q by examining the autocorrelation plot (ACF).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ACF shows whether the elements of a time series are positively correlated,
+    negatively correlated, or independent of each other. The horizontal axis shows
+    the lags and the spikes show how relevantly correlated such lags are. We consider
+    an ACF of order q based on statistically significant spikes that are far from
+    zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To plot the ACF, we can use the following code, utilizing the `statsmodels`
+    library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is a rule of thumb to start testing models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the PACF has a significant spike at lag p, but not beyond, and the ACF plot
+    decays more gradually, we will use the following order for the model: ARIMA (p,d,0):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.10 – Hypothesis 1](img/B19446_11_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.10 – Hypothesis 1
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the ACF plot has a significant spike at lag q but not beyond and the PACF
+    plot decays more gradually, we will use the following order for the model: ARIMA
+    (0,d,q):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.11 – Hypothesis 2](img/B19446_11_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.11 – Hypothesis 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`m` period of time. It will be modeled in a similar way as the time series.
+    The specifics of the seasonal component of SARIMA are highlighted as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`SARIMA(p,d,q)`**(P,D,Q)[m]**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The components are defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`P`: Seasonal AR order.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`D`: Seasonal difference order.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Q`: Seasonal MA order.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`m`: The number of time steps for a single seasonal period. To get this number,
+    it is useful to decompose similar periods of time that we want to predict (always
+    from the training dataset) to spot the seasonality. In the case under analysis,
+    we see a seasonality of 8 days.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To evaluate the model, we utilize a traditional regression metric known as **root
+    mean squared error** (**RMSE**). RMSE is a statistical measure employed to assess
+    the accuracy of a model’s predictions by calculating the square root of the **mean
+    squared error** (**MSE**). MSE is the average of the squared differences between
+    the original and predicted values. RMSE yields a single, easily interpretable
+    value that represents the typical magnitude of errors made by a predictive model.
+    A lower RMSE indicates a better fit between predicted and actual values, reflecting
+    a more accurate predictive model. Another related metric is **mean absolute error**
+    (**MAE**), which represents the average of the absolute differences between the
+    actual and predicted values in the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RMSE is widely favored for comparing the performance of regression models, particularly
+    because it is expressed in the same units as the dependent variable, facilitating
+    a straightforward interpretation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the Jupyter notebook, we can observe that the model can be further improved.
+    The result of the manual modeling is an RMSE value of `0.073`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Auto ARIMA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Auto ARIMA handles the task of tuning hyperparameters very well. It automatically
+    generates the optimal values for the parameters (`p`,`d`, and `q`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The metric named the **Akaike information criterion** (**AIC**), useful in selecting
+    predictors for regression, is used to determine the order of an ARIMA model. Particularly,
+    the Auto ARIMA model iterates during the fitting process to find the best combination
+    of parameters that minimizes the AIC. According to the documentation, it functions
+    *like a grid search*, trying different sets of p and q parameters. For the differencing
+    terms, Auto ARIMA utilizes a test of stationarity, such as an augmented Dickey-Fuller
+    test, and considers seasonality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This approach significantly improves our model, saving time and reducing human
+    errors. To implement it, we can use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The parameters passed are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`training_data`: This is the time series data we want to model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`stepwise`: A Boolean parameter that controls whether the function should perform
+    a stepwise search for the best ARIMA model. If set to `True`, the function will
+    perform a stepwise search (that is, it will iteratively consider adding or removing
+    AR, MA, or I components). If set to `False`, the function will search for the
+    best ARIMA model using an exhaustive search over possible combinations, similar
+    to a grid search. A stepwise search is faster but may not always find the best
+    model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`seasonal`: A Boolean parameter that specifies whether the model should include
+    seasonal components (for example, SARIMA). If set to `True`, the function will
+    search for seasonal patterns in the data. If set to `False`, it will only consider
+    non-seasonal ARIMA models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`n_jobs`: This parameter controls the number of CPU cores to use when performing
+    the model search. Setting it to `-1` means using all available CPU cores, which
+    can speed up the search process, especially when we have a large dataset.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`trace`: This is a debugging parameter. When set to `True`, it enables verbose
+    output, which includes diagnostic information and intermediate results during
+    the model search.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: After implementing this model, the RMSE decreases substantially; however, it
+    has room for improvement. Now, let’s look at incorporating a specific domain or
+    subject-matter knowledge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding exogenous variables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Exogenous variables are additional pieces of information that can be included
+    in our models. These variables can originate from the same time series, such as
+    observing BTC price increases at specific hours or days, or they can be completely
+    exogenous, such as SA of news or derived from X (formerly Twitter).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our notebook, we incorporate the sentiment of the news of each day as an
+    exogenous variable. The preprocessing of such a dataset includes the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Mapping the sentiment of the news according to the `sentiment_mapping` dictionary
+    to the following criteria:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: outliers = day_sentiment_df[z_scores > threshold]
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: outliers['sentiment_number'] = outliers['sentiment_number'] * 2
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: day_sentiment_df.update(outliers)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Both decisions in *steps 1* and *2* are arbitrary decisions of the data scientist
+    and look to reflect in the data the fact that the crypto market tends to overreact
+    to news, whether positive, negative, or neutral.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By applying the exogenous variable, ARIMAX and Auto ARIMA models show a decreased
+    RMSE compared to their versions without exogenous variables, which is very positive:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`rmse -` `manual: 0.046`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`rmse -` `auto: 0.062`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We see that the manual tuning of the model outperforms the Auto ARIMA model
+    when adding the exogenous variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To compare the performance of these models with the LSTM, we can compare RMSE
+    metrics or reverse the results with the following code in order to compare USD
+    prices. To reverse from logs, we can use this code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have now reviewed the statistic model, so we proceed to build a DL model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a neural network – LSTM
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We explained in detail how LSTM works in [*Chapter 8*](B19446_08.xhtml#_idTextAnchor250).
+    Briefly, LSTM serves as a specialized form of **recurrent neural network** (**RNN**)
+    designed to detect patterns in data sequences. Its distinct feature lies in its
+    capacity to preserve information over extended periods compared to conventional
+    RNNs. LSTM overcomes this short-term memory problem by selectively retaining relevant
+    information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preprocessing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will treat the problem as a **supervised learning** (**SL**) task. For that
+    purpose, we will modify the training set as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scale the dataset using the `MinMaxScaler()`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Iterate through the scaled dataset and retrieve the 60 days previous to the
+    current price (`y_train)` and convert them into features for each price. The result
+    will be a training dataset with 60 price columns as `x_train` features for each
+    BTC price (`y_train`). In summary, for each data point that the model learns,
+    it refers to the previous 60 days in `x_train`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.12 – Structure of the training dataset](img/B19446_11_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.12 – Structure of the training dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: We use the previous 60 days as input variables for each day considered as an
+    output variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Model building
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To build the model, we will leverage the Keras library. For that, we add to
+    the model two LSTM layers with 50 neurons each, the first one with the input shape
+    of our dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also add two dense layers with 25 and 1 neurons each. The structure of the
+    model should be kept as simple as possible and is totally modifiable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will later compile with the Adam optimizer and choose `mean_squared_error`
+    as the loss metric:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To save the callbacks, in order to analyze the results of our training, we
+    set up the TensorBoard tool to read from a new folder that saves the logs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Training and evaluation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We train our model with a batch size of 10 and 35 epochs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: To evaluate how well the model predicts, we will build a new dataset with data
+    from the last 30 days that has not been passed to the model. To do that, we need
+    to follow the same steps that we executed for the training dataset in the *Preprocessing*
+    section. We turn 60 rows into columns in `x_test` that become features of the
+    61st value that becomes `y` or the value to be predicted (`y_test`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the prediction, we will only consider the last 30 days and calculate the
+    RMSE between the predicted values and the `y_test` values. To do that, we can
+    use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we plot the prediction and the ground truth data, the result is not bad.
+    Please refer to the `Chapter11/LSTM.ipynb` notebook for a colored version:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.13 – Predicted and ground truth data](img/B19446_11_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.13 – Predicted and ground truth data
+  prefs: []
+  type: TYPE_NORMAL
+- en: A comparison between the RMSE of the models shows that the LSTM approach performs
+    better in this environment of high volatility of prices with a $457 error versus
+    a $1,283 error of the best ARIMA model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some key differences to take into account are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Relationship between variables**: ARIMA models assume linear relationships
+    between the input and output variables. They can capture some nonlinear patterns,
+    but complex nonlinear dependencies present in the data will not be covered. LSTM
+    models are better suited for capturing nonlinear relationships and long-term dependencies
+    in time series data. This makes LSTM models more suitable for modeling nonlinear
+    and sequential data with complex temporal patterns.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Training complexity**: ARIMA models involve estimating parameters such as
+    AR, MA, and differencing terms. LSTM models, as with all **neural networks** (**NNs**),
+    require more computational resources and training time. They involve training
+    multiple layers of recurrent units with a large number of parameters. Training
+    DL models typically requires more data and computational power compared to traditional
+    statistical models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With the libraries we analyzed, it is possible to examine both methods, compare
+    the performance, and evaluate the accuracy of each model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we explored the analysis of price time series for BTC in a
+    market that operates continuously, exhibits high volatility, and can experience
+    exaggerated reactions to news events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We began by familiarizing ourselves with the fundamental concepts of time series
+    analysis and introduced traditional models such as ARIMA and Auto ARIMA. For our
+    use case, we transformed our price dataset into the stationary form and learned
+    to apply the models to it. Lastly, we incorporated an exogenous variable such
+    as the news into our model. This external information proved to be valuable, contributing
+    to a reduction in the error metric we were tracking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, we delved into the LSTM model approach, which required us to restructure
+    the dataset differently. This involved numerous modifications and adaptations
+    to accommodate the specific requirements of the LSTM model, which ultimately performed
+    better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By employing a comprehensive range of techniques and incorporating external
+    factors, we have gained valuable insights into analyzing and forecasting token
+    price time series. These findings serve as a foundation for further exploration
+    and refinement of our models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To complement this chapter, the following links may help:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Time Series Analysis in R Part 2: Time Series Transformations*. (n.d.). An
+    online community for showcasing R & Python tutorials. *DataScience+*. [https://datascienceplus.com/time-series-analysis-in-r-part-2-time-series-transformations/](https://datascienceplus.com/time-series-analysis-in-r-part-2-time-series-transformations/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Computer Science*. (*2019*, *December 22*). *Stock Price Prediction Using
+    Python & Machine Learning* [Video]. *YouTube*. [https://www.youtube.com/watch?v=QIUxPv5PJOY](https://www.youtube.com/watch?v=QIUxPv5PJOY)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Luis Alberiko Gil-Alaña*. (*2021*). *Introduction to Time Series* [PDF document].'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Cryptocurrencies and stock market indices. Are they related?* *LA Gil-Alaña*,
+    *EJA Abakah*, *MFR Rojo*. *Research in International Business and Finance*, *2020*.
+    [http://ddfv.ufv.es/bitstream/handle/10641/2229/cryptocurrencies%20and%20stock%20market%20indices.pdf?sequence=1&isAllowed=y](http://ddfv.ufv.es/bitstream/handle/10641/2229/cryptocurrencies%20and%20stock%20market%20indices.pdf?sequence=1&isAllowed=y)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Modelling long memory volatility in the Bitcoin market: Evidence of persistence
+    and structural breaks*. *E Bouri*, *LA Gil*-*Alaña*, *R Gupta*, *D Roubaud*. *International
+    Journal of Finance & Economics*, *2019*. [https://onlinelibrary.wiley.com/doi/abs/10.1002/ijfe.1670](https://onlinelibrary.wiley.com/doi/abs/10.1002/ijfe.1670)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Abulkhair, A.* (*2023*, *June 13*). *Data imputation demystified | Time series
+    data*. *Medium*. [https://medium.com/@aaabulkhair/data-imputation-demystified-time-series-data-69bc9c798cb7](mailto:https://medium.com/@aaabulkhair/data-imputation-demystified-time-series-data-69bc9c798cb7)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Jingjuewang*. (*2017*, *December 11*). *Handle Missing Values in Time Series
+    For Beginners*. *Kaggle: Your Machine Learning and Data Science* *Community*.
+    [https://www.kaggle.com/code/juejuewang/handle-missing-values-in-time-series-for-beginners](https://www.kaggle.com/code/juejuewang/handle-missing-values-in-time-series-for-beginners)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Aldean, A. S.* (*2023*, *June 29*). *Time Series Data Interpolation*. *Medium*.
+    [https://medium.com/@aseafaldean/time-series-data-interpolation-e4296664b86](mailto:https://medium.com/@aseafaldean/time-series-data-interpolation-e4296664b86)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Holloway, N*. (*2019*, *March 16*). *Seasonality and SARIMAX*. *Kaggle: Your
+    Machine Learning and Data Science* *Community*. [https://www.kaggle.com/code/nholloway/seasonality-and-sarimax](https://www.kaggle.com/code/nholloway/seasonality-and-sarimax)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Brownlee, J*. (*2020*, *December*). *Understand Time Series Forecast Uncertainty
+    Using Prediction Intervals with Python*. *Machine Learning* *Mastery*. [https://machinelearningmastery.com/time-series-forecast-uncertainty-using-confidence-intervals-python/](https://machinelearningmastery.com/time-series-forecast-uncertainty-using-confidence-intervals-python/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Chugh, A.* (*2022*, *March 16*). *MAE, MSE, RMSE, Coefficient of Determination,
+    Adjusted R Squared — Which Metric is Better?* *Medium*. [https://medium.com/analytics-vidhya/mae-mse-rmse-coefficient-of-determination-adjusted-r-squared-which-metric-is-better-cd0326a5697e](https://medium.com/analytics-vidhya/mae-mse-rmse-coefficient-of-determination-adjusted-r-squared-which-metric-is-better-cd0326a5697e)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

@@ -1,0 +1,1211 @@
+- en: Finding Genetic Variants with HTS Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**High-Throughput Sequencing** (**HTS**) has made it possible to discover genetic
+    variants and carry out genome-wide genotyping and haplotyping in many samples
+    in a short space of time. The deluge of data that this technology has released
+    has created some unique opportunities for bioinformaticians and computer scientists,
+    and some really innovative new data storage and data analysis pipelines have been
+    created. The fundamental pipeline in variant calling starts with the quality control
+    of HTS reads and the alignment of those reads to a reference genome. These steps
+    invariably take place before analysis in R and typically result in a BAM file
+    of read alignments or a VCF file of variant positions (see the Appendix of this
+    book for a brief discussion of these file formats) that we''ll want to process
+    in our R code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As variant calling and analysis is such a fundamental technique in bioinformatics,
+    Bioconductor is well equipped with the tools we need to construct our software
+    and perform our analysis. The key questions researchers will want to ask will
+    range from *Where are the genetic variants on my genome?* to *How many are there?* to
+    *How can I classify them?* We'll look at some recipes to address these questions
+    and also look at other important general techniques that allow us to visualize
+    variants and markers on a genome and assess associations of variants with genotypes.
+    We'll also look at other definitions of the term genetic variant and see how we
+    can assess the copy number of individual loci.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding SNPs and indels in sequence data using VariantTools
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicting open reading frames in long reference sequences
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Plotting features on genetic maps with karyoploteR
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding alternative transcript isoforms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Selecting and classifying variants with VariantAnnotation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Extracting information in genomic regions of interest
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding phenotype and genotype associations with GWAS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Estimating the copy number at a locus of interest
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Here are the R packages you''ll need. Some will install with `install.packages()`. The
+    packages listed under `Bioconductor` need to be installed with the dedicated installer.
+    That''s described here. If you need to do anything further, installation will
+    be described in the recipes in which the packages are used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Bioconductor`: Following are the packages:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Biostrings`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`GenomicRanges`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`gmapR`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`karyoploteR`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`rtracklayer`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`systemPipeR`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`SummarizedExperiment`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`VariantAnnotation`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`VariantTools`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`rrBLUP`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Bioconductor is huge and has its own installation manager. You can install
+    these packages with the following code (further information is available at [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Normally, in R, a user will load a library and use the functions directly by
+    name. This is great in interactive sessions but it can cause confusion when many
+    packages are loaded. To clarify which package and function I'm using at a given
+    moment, I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, in the middle of a recipe, I''ll interrupt the code so you can see
+    some intermediate output or the structure of an object that''s important to understand.
+    Whenever that happens, you''ll see a code block where each line begins with double
+    hash (`##`) symbols, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: All of the code and data for the recipes in this chapter are in this book's
+    GitHub repository at [https://github.com/danmaclean/R_Bioinformatics_Cookbook](https://github.com/danmaclean/R_Bioinformatics_Cookbook).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding SNPs and indels from sequence data using VariantTools
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A key bioinformatics task is to take an alignment of high-throughput sequence
+    reads, typically stored in a BAM file, and compute a list of variant positions.
+    Of course, this is ably handled by many external command-line programs and tools
+    and usually results in a VCF file of variants, but there are some really powerful
+    packages in Bioconductor that can do the whole thing, and in a fast and efficient
+    manner, by taking advantage of BiocParallel's facilities for parallel evaluation—a
+    set of tools designed to speed up work with large datasets in Bioconductor objects.
+    Using Bioconductor tools allows us to keep all of our processing steps within
+    R, and in this section, we'll go through a whole pipeline—from reads to lists
+    of genes carrying variants—using purely R code and a number of Bioconductor packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we'll use a set of synthetic reads on the first 83 KB or so
+    of the human genome chromosome 17\. The reads were generated using the `wgsim` tool
+    in `samtools`—an external command-line program. They have 64 SNPs introduced by
+    `wgsim`, which can be seen in the sample data in `datasets/ch2/snp_positions.txt`<q>.</q>
+    You'll see, as the program progresses, that by default the parameters find many
+    more SNPs than there are—you'll need to spot the places where you can set the
+    parameters properly to finely tune the SNP-finding process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Finding SNPs and indels from sequence data using `VariantTools` can be done
+    using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the required libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, load the datasets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set up the genome object and the parameter objects:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Call the variants:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we move on to annotation and load in the feature position information
+    from a `.gff` or `.bed` file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we calculate which variants overlap which genes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finally, we subset the genes with the list of overlaps.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This is a long and involved pipeline with a few complicated steps. After loading
+    the libraries, the first four lines set up the files we're going to need from
+    the dataset directory. Note we need a `.bam` file and a `fasta` file. Next, we
+    create a `GmapGenome` object using the `gmapR::GmapGenome()` function with the
+    `fasta` object—this describes the genome to the later variant-calling function. The
+    next two functions we use, `TallyVariantParams()` and `VariantCallingFilters()`,
+    are vital for the correct calling and filtering of candidate SNPs. These are the
+    functions in which you can set the parameters that define an SNP or indel. The
+    options here are deliberately very poor. As you can see from the output, there
+    are 6 SNPs called, when we created 64.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the parameters are defined, we use the `callVariants()` function with all
+    of the information we set up to get a `vranges` object of variants.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can then set up the `GRanges` object of the `GFF` file of annotations (I
+    also provided a function for getting annotations from `BED` files).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The final step is to use the powerful overlapping and subsetting capability
+    of the `XRanges` objects. We use `GenomicRanges::findOverlaps()` to find the actual
+    overlap—the returned `overlaps` object actually contains the indices in each input
+    object of the overlapped object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Hence, we can use `subjectHits(overlaps)` to directly subset the genes with
+    SNPs inside and get a very non-redundant list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When we''re happy with the filters and the set of variants we called, we can
+    save a VCF file of the variants using the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Although our recipe makes the steps and code clear, the actual parameters and
+    values we need to change can't be described in such a straightforward manner as
+    the value will be very dataset-dependent. The `VariantTools` documentation contains
+    a good discussion of how to work out and set parameters properly: [http://bioconductor.org/packages/release/bioc/vignettes/VariantTools/inst/doc/VariantTools.pdf](http://bioconductor.org/packages/release/bioc/vignettes/VariantTools/inst/doc/VariantTools.pdf).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Predicting open reading frames in long reference sequences
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A draft genome assembly of a previously unsequenced genome can be a rich source
+    of biological knowledge, but when genomics resources such as gene annotations
+    aren't available, it can be tricky to proceed. Here, we'll look at a first stage
+    pipeline for finding potential genes and genomic loci of interest absolutely *de
+    novo* and without information beyond the sequence. We'll use a very simple set
+    of rules to find open reading frames—sequences that begin with a start codon and
+    end with a stop codon. The tools for doing this are encapsulated within a single
+    function in the Bioconductor package, `systemPipeR`. We'll end up with yet another `GRanges` object
+    that we can integrate into processes downstream that allow us to cross-reference
+    other data, such as RNAseq, as we saw in the *Finding unannotated transcribed
+    regions* recipe of [Chapter 1](ff091bc9-a002-4a63-b0fe-c0b9f9baf7d1.xhtml), *Performing
+    Quantitative RNAseq*. As a final step, we'll look at how we can use a genome simulation
+    to assess which of the open reading frames are actually likely to be real and
+    not just occurring by chance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we need just the short DNA sequence of the `Arabidopsis` chloroplast
+    genome as input; it is in `datasets/ch2/arabidopsis_chloroplast.fa`<q>.</q> We'll
+    also need the `Bioconductor` packages `Biostrings` and `systemPipeR`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Predicting open reading frames in long reference sequences can be done using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries and input genome:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Predict the **ORFs** (**open reading frames**):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Calculate the properties of the reference genome:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a function that finds the longest ORF in a simulated genome:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run the function on 10 simulated genomes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get the length of the longest random ORF:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Keep only predicted ORFs longer than the longest random ORF:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first part of this recipe is where we actually predict ORFs. Initially,
+    we load in the DNA sequence as a `DNAStringSet` object using `readDNAStringSet()` from
+    `Biostrings`. The `predORF()` function from `systemPipeR` uses this object as
+    input and actually predicts open reading frames according to the options set.
+    Here, we're returning all ORFs on both strands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: We receive a `GRanges` object in return, with 2,501 open reading frames described.
+    This is far too many, so we need to filter out those; in particular, we can work
+    out which are ORFs that occurred by chance from the sequence. To do this, we need
+    to do a little simulation and that's what happens in the next section of code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To estimate the length that random ORFs can reach, we're going to create a series
+    of random genomes of a length equal to our input sequence and with the same base
+    proportion and see what the longest ORF that can be predicted is. We do a few
+    iterations of this and we get an idea of what the longest ORF occurring by chance
+    could be. This length serves as a cut-off we can use to reject the predicted ORFs
+    in the real sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Achieving this needs a bit of setup and a custom function. First, we define
+    the bases we will use as a simple character vector. Then, we get a character vector
+    of the original DNA sequence by splitting the `as.character` version of `dna_object`.
+    We use this information to work out the proportions of each base in the input
+    sequence by first counting the number of each base (resulting in `counts` ), then
+    dividing it by the sequence length, resulting in `probs`. In both these steps,
+    we use `lapply()` to loop over the vector `bases` and the list `counts` and apply
+    an anonymous function that uses these two variables to give lists of results.
+    `unlist()` is used on our final list to reduce it to a simple vector.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we have the setup done, we can build our `get_longest_orf_in_random_genome()` simulation
+    function. This generates a random genome by sampling length characters from the
+    selection in `bases` with probabilities given in `probs`. The vector is `paste0()` into
+    a single string and then converted into a `DNAStringSet` object for the `predORF()` function.
+    This time, we ask for only the longest ORF using *n* = *1* and return the length
+    of that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, we can run the function, which we do 10 times using `lapply()` and the
+    `length`, `probs`, and `bases` information we calculated before. `unlist()` turns
+    the result into a simple vector and we extract the longest of the 10 runs with
+    `max()`. We can use subsetting on our original `predicted_orfs GRanges` object
+    to keep the ORFs longer than the ones generated by chance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Once you''ve got a set of ORFs you''re happy with, you''ll likely want to save
+    them to a file. You can do that by using the `getSeq()` function in the `BSgenome` package,
+    passing it the original sequence object—`dna_object`—and the ranges in `orfs_to_keep`,
+    then give the result some names using `names()`, and you can use the `writeXStringSet()` function
+    to save them to file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Plotting features on genetic maps with karyoploteR
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the most rewarding and insightful things we can do is visualize data.
+    Very often, we want to see on a chromosome or genetic map where some features
+    of interest lie in relation to others. These are sometimes called chromosome plots,
+    and sometimes ideograms, and in this section, we'll see how to create one of these
+    using the `karyoploteR` package. The package takes as input the familiar `GRanges` objects
+    and creates detailed plots from configuration. We'll take a quick look at some
+    different plot styles and some configuration options for ironing out the bumps
+    in your plots when labels spill off the page or overlap each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, you'll need `karyoploteR` installed but all of the data we'll
+    use will be generated within the recipe itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Plotting features on genetic maps with `karyoploteR` can be done using the
+    following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we load the libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, set up the genome object that will be the base for our karyotype:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set up the SNP positions we will draw on as markers:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create some labels for the markers:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set the plot margins:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create the base plot and add tracks:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code first loads the libraries we'll need, then we construct a `data.frame` describing
+    the genome we want to draw, with names and lengths set accordingly. The `data.frame` is
+    then converted to `genome_gr`—a `GRanges` object with the `makeGRangesFromDataFrame()` conversion
+    function. Next, we create a `data.frame` of 25 random SNPs using the `sample()` function
+    to choose a position and chromosome. Again, this is converted to `GRanges`. Now
+    we can set up our plot. First, we get the default plot parameter object from inside
+    the package using `getDefaultPlotParams()`. We can modify this object to make
+    any changes to the default settings in our plot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note we have selected `plot.type = 1`—this is a simple plot with one data track
+    directly above each chromosome region. We'll need to change the margin height
+    of the data track to stop our marker labels pouring out over the top—this is done
+    with `plot.params$data1outmargin <- 600`. Finally, we can draw our plot; we create
+    the base plot object, `kp`, by calling `plotKaryotype()` and passing in the `genome_gr`
+    object, `plot.type`, and the parameters in the modified `plot.params` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/125d2fb6-50f7-4424-a449-e31639a10d96.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Our markers are drawn using the `kpPlotMarkers()` function with the new `kp`
+    plot object, the `snps_gr` data, and the SNP labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We can add numeric data of many different types into data tracks with `karyoploteR`.
+    The following example shows how to draw some numeric data onto a plot as a simple
+    line. The first step is to prepare our data. Here, we create a `data.frame` that
+    has 100 random numbers that map into 100 windows of chromosome 4 and, as before,
+    we create a `GRanges` object. This time, we''ll have a data track above and below
+    our chromosome—one for SNP markers and the other for the new data (note that this
+    is `plot.type = 2`). We then need to set the parameters for the plo—in particular,
+    the margins, to stop labels and data overlapping; but after that, it''s the same
+    plot calls, this time adding a `kpLines()` call. The key parameter here is `y`,
+    which describes the `y` value of the data at each plotting point (note that this
+    comes as a single column from our `numeric_data` object). We now have a plot with
+    a numeric data track along chromosome 4\. The following are the steps to be performed
+    for this example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create some numeric data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set up plot margins:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a plot and add tracks:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/84f62bee-dec5-4ba7-b03c-c0763a0ec302.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are many more types of tracks and plot layouts available that aren't covered
+    here. Try the karyoploteR vignette for a definitive list: [http://bioconductor.org/packages/release/bioc/vignettes/karyoploteR/inst/doc/karyoploteR.html](http://bioconductor.org/packages/release/bioc/vignettes/karyoploteR/inst/doc/karyoploteR.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: A quirk of `karyoploteR` means that it only draws chromosomes horizontally.
+    For vertical maps, there is also the `chromPlot` package in Bioconductor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selecting and classifying variants with VariantAnnotation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In pipelines where we've called variants, we'll often want to do subsequent
+    analysis steps that need further filtering or classification based on features
+    of the individual variants, such as the depth of coverage in the alternative allele.
+    This is best done from a VCF file, and a common protocol is to save a VCF of all
+    variants from the actual calling step and then experiment with filtering that.
+    In this section, we'll look at taking an input VCF and filtering it to retain
+    variants in which the alternative allele is the major allele in the sample.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll need a `tabix` index VCF file; I provide one in the `datasets/ch2/sample.vcf.gz`
+    file. We'll also need the Bioconductor package, `VariantAnnotation`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Selecting and classifying variants with `VariantAnnotation` can be done using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a prefilter function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load up the prefilter function into a `FilterRules` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a filter function to keep variants where the reference allele is in
+    less than half the reads:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load the filter function into a `FilterRules` object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load the input VCF file and apply filters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There is a surprisingly large amount of stuff going on in this very short script.
+    The general outline is that we need to define two sets of filtering rules—`prefilter`
+    and `filter`. This is achieved by defining functions that take the parsed VCF
+    record and return `TRUE` if the record passes. Prefilters are generally straightforward
+    text-based filters on an unparsed VCF record line—the raw text of the record.
+    Our first line of code defines a `is_not_microsat()` function that, when passed
+    a character string, uses the `grepl()` function to work out whether the line contains
+    the word `microsat` and returns `TRUE` if it doesn't. The prefilter function is
+    bundled into a `FilterRules` object we call `prefilters`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The filters are more complex. These take the parsed VCF records (as **VCF** class
+    objects) and operate on those. Our `major_alt()` function uses the `info()` **VCF** accessor
+    function to extract the `info` data in the VCF record. It returns a dataframe
+    in which each column is a separate part of the info section. We extract the `AF` column,
+    which returns a list with an element for each VCF. To iterate over those elements,
+    we use the `lapply()` function to apply an anonymous function that returns `TRUE`
+    if the reference allele has a proportion lower than 0.5 (that is, the alternative
+    alleles are the major alleles). We then `unlist()` the result to provide a vector.
+    The `major_alt()` function is then bundled into a `FilterRules` object we call
+    `filters`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, with all of this setup done, we can load the input VCF file and run
+    the filtering with `filterVCF()`. This function needs the `FilterRules` objects
+    and the output filtered VCF filename. We use `filtered.vcf` as the file to write
+    to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In filter functions, we can take advantage of other accessor functions to get
+    at different parts of the VCF record. There are the `geno()` and `fixed()` functions,
+    which will return data structures describing these parts of the VCF record. You
+    can use these to create filters in the same way we used `info()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extracting information in genomic regions of interest
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Very often, you'll want to look in more detail at data that falls in a particular
+    genomic region of interest, whether that be the SNPs and variants in a gene or
+    the genes in a particular locus. This extremely common task is handled very well
+    by the extremely powerful `GRanges` and `SummarizedExperiment` objects, which
+    are a little fiddly to set up but have very flexible subsetting operations that
+    make the effort well worth it. We'll look at a few ways to set up these objects
+    and a few ways we can manipulate them to get interesting information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this recipe, we need the `GenomicRanges`, `SummarizedExperiment`, and `rtracklayer` Bioconductor
+    packages.We''ll also need two input data files: a GFF file of features of the `Arabidopsis` chromosome
+    4 in the `datasets/ch2/arabidopsis_chr4.gff` file and a smaller text version of
+    gene-only features of the same chromosome in `datasets/ch2/arabidopsis_chr4.txt`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Extracting information in genomic regions of interest can be done using the
+    following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in packages and define some functions that create `GRanges` from common
+    files:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Actually create some `GRanges` objects using those functions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract a region by filtering on attributes; in this case—the `seqnames` and
+    `metadata` columns:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Manually create a region of interest:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use the region of interest to subset the larger object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first step here is to create a `GRanges` object that describes the features
+    of the genome you're interested in. The three functions we create all load in
+    information from different file types, namely, `.gff`, `.bed`, and a tab-delimited
+    `.txt` file, and return the necessary `GRanges` object. In *Step 2*, we make use
+    of the GFF and text functions to create two `GRanges` objects: `gr_from_gff` and
+    `gr_from_txt`. These are then used in subsetting. First, in *Step 3*, we subset
+    on feature attributes. The code finds features of type gene on chromosome 4\.
+    Note the difference in syntax between finding genes and features in `Chr4`. The
+    base columns in the `GRanges` object—namely, `seqnames`, `width`, and `start`—all
+    have accessor functions that return vectors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hence, we use that in the second part of the condition. All other columns—called
+    metadata in `GRanges` parlance—can be accessed with the standard `$` syntax, so
+    we use that in the first part of the condition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 4*, we create a specific region in a custom minimal `GRanges` object.
+    This contains only one region but more could be added just by putting more `seqnames`,
+    `start`, and `width` in the manually specified vectors. Finally, in *Step 5*,
+    we use the `findOverlaps()` function to get the indices of features in the `gr_from_gff`
+    object that overlap the manually created `region_of_interest` and use those indices
+    to subset the larger `gr_from_gff` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we need to extract the subject hits column using the `subjectHits()` accessor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'It''s also possible to extract subsets of dataframes or matrices in the same
+    way by taking advantage of `GRanges` that are part of other objects. In the following
+    example, we create a matrix of random data and use that to build a `SummarizedExperiment` object
+    that uses a `GRanges` object to describe its rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we can subset in the same way as before and get back a subset of the
+    data as well as a subset of the ranges. The `assay()` function returns the actual
+    data matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give the resultant output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finding phenotype and genotype associations with GWAS
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A powerful application of being able to find many thousands of genetic variants
+    in many samples using high-throughput sequencing is **genome-wide association
+    studies** (**GWAS**) of genotype and phenotypes. GWAS is a genomic analysis set
+    of genetic variants in different individuals or genetic lines to see whether any
+    particular variant is associated with a trait. There are numerous techniques for
+    doing this, but all rely on gathering data on variants in particular samples and
+    working out each sample's genotype before cross-referencing with the phenotype
+    in some way or other. In this recipe, we'll look at the sophisticated mixed linear
+    model described by Yu *et al* in 2006 (*Nature Genetics*, 38:203-208). Describing
+    the workings of the unified mixed linear model is beyond the scope of the recipe,
+    but it is a suitable model for use in data with large sample and broad allelic
+    diversity and is usable on plant and animal data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we'll look at constructing the data structures we need to run
+    the analysis from input VCF files. We'll use the `GWAS()` function in the `rrBLUP` package.
+    Our sample data file contains three SNPs—for didactic purposes, this will aid
+    our programming task but for a GWAS study, the number is laughably small. Although
+    the code will work, the results will not be biologically meaningful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll need `rrBLUP`, which is not part of Bioconductor, so install it with `install.packages()`,
+    `VariantAnnotation`, and the `datasets/ch2/small_sample.vcf` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Finding phenotype and genotype associations with GWAS can be done using the
+    following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in the libraries and get the VCF file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract the genotype, sample, and marker position information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a custom function to convert VCF genotypes into the convention used
+    by the GWAS function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Call the function and convert the result into a numeric matrix:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build a dataframe describing the variant:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build a combined variant/genotype dataframe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build a `phenotype` dataframe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run `GWAS`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Most of the code in this recipe is setup code. After loading libraries and
+    fixing the random number generator for reproducibility with `set.seed()`, in the
+    first step, we get the VCF file of useful variants loaded in, and in the second
+    step, we extract some useful information: we get a matrix of genotypes with the
+    `geno(vcf)$GT` call, which returns a matrix in which a row is a variant, a column
+    is a sample, and the genotype is recorded at the intersection. We then use some
+    accessor functions to pull sample and marker names and the reference sequence
+    (`chrom`) and position (`pos`) for each variant. In *Step 3*, we define a translation
+    function (`convert()`) to map VCF-style heterozygous and homozygous annotations
+    to that used in `GWAS()`. Briefly, in VCF, `"0/0"` means *AA* (homozygous), which
+    is encoded as 1 in `GWAS()`, `"0/1"` and `"1/0"` is heterozygous *Aa* or 0 in
+    `GWAS()`, and `"1/1"` is homozygous `aa` or -1 in `GWAS()`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 4*, we apply `convert()` into the `gts` matrix. Annoyingly, the return
+    value is a character matrix and must be converted to numeric and re-wrapped in
+    a matrix, which is what the last couple of lines in *Step 4* are for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 5*, we build a dataframe describing the variant from the sample, marker,
+    and sequence information we created before, and in *Step 6*, we actually combine
+    the variant information with the genotype encodings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will give the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the order of the columns is important. The `GWAS()` function expects
+    us to have this information in the order specified here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 7*, we build the phenotype information. The first column must be called
+    `line` but contain the sample names in the same order as the columns of the genotype
+    matrix. The rest of the columns can be phenotype scores and have fixed effects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in something like the following output (your actual numbers
+    may vary if you omit the `set.seed()` call at the top of the script because of
+    the randomizing procedures and small sample sizes in the example data):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finally, in *Step 8*, we run the `GWAS()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in the following output (again, your numbers may vary):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: By default, the function tries to create a plot. There are too few points for
+    that to work, so we turn it off here with `plot = FALSE`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Estimating the copy number at a locus of interest
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It is often of interest to know how often a sequence occurs in a sample of interest—that
+    is, to estimate whether, in your particular sample, a locus has been duplicated
+    or its copy number has increased. The locus could be anything from a gene at Kbp
+    scale or a large section of DNA at Mbp scale. Our approach in this recipe will
+    be to use HTS read coverage after alignment to estimate a background level of
+    coverage and then inspect the coverage of our region of interest. The ratio of
+    the coverage in our region of interest to the background level will give us an
+    estimate of the copy number in the region. The recipe here is the first step.
+    The background model we use is very simple—we calculate only a global mean, but
+    we'll discuss some alternatives later. Also, this recipe does not cover ploidy—the
+    number of copies of the whole genome that are present in a cell. It is possible
+    to estimate ploidy from similar data—especially SNP major/minor allele frequency,
+    but it is a very involved pipeline. Take a look at the *See also* section for
+    recommendations on packages to use for that long analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we need the `csaw` Bioconductor package and the sample `hg17` human
+    genome `.bam` file of HTS read alignments in `datasets/ch2/hg17_snps.bam`*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Estimating the copy number of a locus of interest can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library and get counts in windows across the genome:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract the data from `SummarizedExperiment`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Work out a low count threshold and set windows with lower counts to `NA`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Double the counts of a set of windows in the middle—these will act as our high
+    copy number region:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Calculate the mean coverage and the ratio in each window to that mean coverage,
+    and inspect the ratio vector with a plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build `SummarizedExperiment` with the new data and the row data of the old
+    one:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a region of interest and extract coverage data from it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, this recipe begins in familiar fashion, using the `csaw` package
+    to get read counts in 100 bp windows over our small section of human chromosome
+    17\. The read filtering options are set in the `param` argument. In *Step 2*,
+    we extract the first and only column of data to give us a simple vector of the
+    counts using the `assay()` function and subsetting. Next, in *Step 3*, we use
+    the `quantile()` function to get the `min_count` value in the lower 10^(th) percentile
+    of the `counts` vector. The double-bracket subsetting is needed to get a single
+    number from the named vector that the `quantile()` function returns. The `min_count`
+    value will act as a cut-off. All values in the `counts` vector lower than this
+    are set to `NA` to remove them from the analysis—this acts as a low coverage threshold
+    and the percentile used can be modified in your own adaptations of the recipe
+    as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 4*, we add some regions with doubled coverage—so that we can detect
+    them. We select a number of windows to double the counts in and then create a
+    `multiplier` vector of equal length to counts that contains **1** where we don't
+    wish to change counts and **2** where we wish to double them. We then apply the
+    multiplication. *Step 4* will likely be left out in your own analysis as it is
+    a synthetic data-generation step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 5*, we actually compute the background coverage level. Our function
+    here is a simple global mean, saved in `mean_cov`—but you can use many other functions.
+    See the *See also* section for a discussion on this. We also calculate the `log2()` of
+    the ratio of each window count to the global `mean_cov` and save it in a one-column
+    matrix object called `ratio`—as we'll need the result to be a matrix in our final
+    `SummarizedExperiment` object. We quickly use `plot()` to inspect `ratio` and
+    can clearly see the count doubled windows in the middle of the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ab333e87-4cfa-40b0-8f57-e2c7565533c1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In *Step 6*, we build a new `SummarizedExperiment` object, `se`, to hold the
+    window ranges and the new ratio data. We take the `GRanges` and `colData` objects
+    from `window_counts` and add our new `ratio` matrix. We can now start to subset
+    this and see what coverage is in our regions of interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 7*, we construct a manual `GRanges` object for an arbitrary region
+    we're interested in, helpfully called `region_of_interest`, and use that to find
+    the overlapping windows in our `se` object using `findOverlaps()`*.* We then use
+    the resulting `overlap_hits` vector to subset the `se` object and the `assay()` function
+    to view the counts in the region of interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the output, we can see the region has roughly a log2 ratio of 1 (twofold)
+    coverage relative to the background, which we can interpret as a copy number of
+    2.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The calculation for the background level in this recipe is really simple—which
+    is great for learning the recipe, but might be quickly underpowered in your own
+    real data. There are numerous options you could take to modify the way you calculate
+    the background level for your own data. Check out the `rollmeans()` and `rollmedians()` functions
+    in the `zoo` package—these give the mean and median in rolling windows of arbitrary
+    step length and can give you a moving window background average that may be more
+    appropriate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A related analysis to copy number is the estimation of ploidy from SNP allele
+    frequencies. You can check out the `vcfR` package's `freq_peaks()` function as
+    a starting place to estimate ploidy from variant information in `BAM` files.
+  prefs: []
+  type: TYPE_NORMAL

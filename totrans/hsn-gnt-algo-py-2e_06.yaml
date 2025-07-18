@@ -1,0 +1,1344 @@
+- en: '4'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Combinatorial Optimization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn how genetic algorithms can be utilized in combinatorial
+    optimization applications. We will start by describing search problems and combinatorial
+    optimization, and outline several hands-on examples of combinatorial optimization
+    problems. We will then analyze each of these problems and match them with Python-based
+    solutions using the DEAP framework. The optimization problems we’ll cover are
+    the well-known knapsack problem, the **traveling salesman problem** (**TSP**),
+    and the **vehicle routing problem** (**VRP**). As a bonus, we will cover the topics
+    of genotype-to-phenotype mapping and exploration versus exploitation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of this chapter, you will be able to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understand the nature of search problems and combinatorial optimization
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Solve the knapsack problem using a genetic algorithm coded with the DEAP framework
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Solve the TSP using a genetic algorithm coded with the DEAP framework
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Solve the VRP using a genetic algorithm coded with the DEAP framework
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understand genotype-to-phenotype mapping
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Gain familiarity with the concept of exploration versus exploitation and its
+    relation to elitism
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be using Python 3 with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**deap**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**numpy**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**matplotlib**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**seaborn**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you use the **requirements.txt** file provided (see [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091)),
+    these libraries will already be in your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, we will be using the benchmark data from the *Rosetta Code* ([https://rosettacode.org/wiki/Rosetta_Code](https://rosettacode.org/wiki/Rosetta_Code))
+    and *TSPLIB* ([http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/))
+    web pages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The programs that will be used in this chapter can be found in this book’s
+    GitHub repository: [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_04](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_04).
+    Check out the following video to see the Code in Action: [https://packt.link/OEBOd](https://packt.link/OEBOd)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Search problems and combinatorial optimization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One common area of applying genetic algorithms is *search problems*, which have
+    important applications in fields such as logistics, operations, artificial intelligence,
+    and machine learning. Examples include determining the optimal routes for package
+    delivery, designing hub-based airline networks, managing investment portfolios,
+    and assigning passengers to available drivers in a fleet of taxis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Search algorithms focus on solving a problem through methodic evaluation of
+    **states** and **state transitions**, aiming to find a path from the initial state
+    to a desirable final (or “goal”) state. Typically, there is a **cost** or a **gain**
+    involved in every state transition, and the objective of the corresponding search
+    algorithm is to find a path that minimizes the cost or maximizes the gain. Since
+    the optimal path is one of many possible ones, this kind of search is related
+    to *combinatorial optimization*, a topic that involves finding an optimal object
+    from a finite, yet often extremely large, set of possible objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These concepts will be illustrated as we get acquainted with the *knapsack problem*,
+    which is the main focus of the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving the knapsack problem
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Think of the familiar situation of packing for a long trip. There are many items
+    that you would like to take with you, but you are limited by the capacity of your
+    suitcase. In your mind, each item has a certain value it will add to your trip;
+    at the same time, it has a size (and weight) associated with it, and it will compete
+    with other items over the available space in your suitcase. This situation is
+    just one of many real-life examples of the *knapsack problem*, which is considered
+    one of the oldest and most investigated combinatorial search problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'More formally, the knapsack problem consists of the following components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A set of **items**, each of them associated a certain **value** and a certain
+    **weight**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A **bag/sack/container** (the “knapsack”) of a certain **weight capacity**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Our goal is to come up with a group of selected items that will provide the
+    maximum total value, without exceeding the total weight capacity of the bag.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the context of search algorithms, each subset of the items represents a state,
+    and the set of all possible item subsets is considered the state space. For an
+    instance of the knapsack 0-1 problem with *n* items, the size of the state space
+    is 2 n, which can quickly grow very large, even for a modest value of *n*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this (original) version of the problem, each item can only be included once
+    or not at all, and therefore it is sometimes referred to as the **knapsack 0-1**
+    problem. However, it can be expanded into other variants – for example, where
+    items can be included multiple times (limited or unlimited) or where multiple
+    knapsacks with varying capacities are present.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applications of knapsack problems appear in many real-world processes that involve
+    resource allocation and decision-making, such as selecting investments when building
+    an investment portfolio, minimizing the waste when cutting raw materials, and
+    getting the “most bang for your buck” when selecting which questions to answer
+    in a timed test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get our hands dirty with a knapsack problem, we will look at a widely known
+    example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Rosetta Code knapsack 0-1 problem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The *Rosetta Code* website ([rosettacode.org](http://rosettacode.org)) provides
+    a collection of programming tasks, each with solutions in numerous languages.
+    One of these tasks, described at [rosettacode.org/wiki/Knapsack_problem/0-1](http://rosettacode.org/wiki/Knapsack_problem/0-1),
+    is a knapsack 0-1 problem where a tourist needs to decide which items to pack
+    for their weekend trip. The tourist has 22 items they can choose from; each item
+    is assigned by the tourist with some value that represents its relative importance
+    for the upcoming journey.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The weight capacity of the tourist’s bag in this problem is **400**. The list
+    of items, along with their associated values and weights, is provided in the following
+    table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Item** | **Weight** | **Value** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `map` | 9 | 150 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `compass` | 13 | 35 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `water` | 153 | 200 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `sandwich` | 50 | 160 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `glucose` | 15 | 60 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `tin` | 68 | 45 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `banana` | 27 | 60 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `apple` | 39 | 40 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `cheese` | 23 | 30 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `beer` | 52 | 10 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `suntan cream` | 11 | 70 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `camera` | 32 | 30 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `T-shirt` | 24 | 15 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `trousers` | 48 | 10 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `umbrella` | 73 | 40 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `waterproof trousers` | 42 | 70 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `waterproof overclothes` | 43 | 75 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `note-case` | 22 | 80 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `sunglasses` | 7 | 20 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `towel` | 18 | 12 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `socks` | 4 | 50 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `book` | 30 | 10 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 4.1: A list of Rosetta Code knapsack 0-1 items'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we start solving this problem, we need to discuss one important matter
+    – what’s a potential solution?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When solving the knapsack 0-1 problem, a straightforward way to represent a
+    solution is using a list of binary values. Every entry in that list corresponds
+    to one of the items in the problem. For the Rosetta Code problem, a solution can
+    be represented using a list of 22 integers of the values `0` or `1`. A value of
+    `1` represents picking the corresponding item, while a value of `0` means that
+    the item hasn’t been picked. When applying the genetic algorithms approach, this
+    list of binary values is going to be used as the chromosome.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, we have to remember that the total weight of the chosen items cannot
+    exceed the capacity of the knapsack. One way to incorporate this restriction into
+    the solution is to wait until it gets evaluated. We then evaluate by adding the
+    weights of the chosen items one by one, while ignoring any chosen item that will
+    cause the accumulated weight to exceed the maximum allowed value. From the genetic
+    algorithm’s point of view, this means that the chromosome representation of an
+    individual (*genotype*) may not entirely express itself when it gets translated
+    into the actual solution (*phenotype*) as some of the 1 values in the chromosome
+    may be ignored. This situation is sometimes referred to as **genotype-to-phenotype
+    mapping**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution representation we just discussed is implemented in the Python class
+    described in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python problem representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To encapsulate the Rosetta Code knapsack 0-1 problem, we created a Python class
+    called `Knapsack01Problem`. This class is contained in the `knapsack.py` file,
+    which can be found at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/knapsack.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/knapsack.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The class provides the following methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**__init_data()**: This initializes the **RosettaCode.org** knapsack 0-1 problem
+    data by creating a list of tuples. Each tuple contains the name of an item, followed
+    by its weight and its value.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**getValue(zeroOneList)**: This calculates the value of the chosen items in
+    the list while ignoring items that will cause the accumulating weight to exceed
+    the maximum weight.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**printItems(zeroOneList)**: This prints the chosen items in the list while
+    ignoring items that will cause the accumulating weight to exceed the maximum weight.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The `main()` method of the class creates an instance of the `Knapsack01Problem`
+    class. It then creates a random solution and prints out its relevant information.
+    If we run this class as a standalone Python program, a sample output may look
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the last occurrence of `1` in the random solution, representing the
+    `note-case` item, fell victim to the *genotype-to-phenotype mapping* discussed
+    in the previous subsection. As this item’s weight is 22, it would cause the total
+    weight to exceed 400\. As a result, this item was not included in the solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This random solution, as you may expect, is far from being optimal. Let’s try
+    and find the optimal solution for this problem using a genetic algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Genetic algorithm solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To solve our knapsack 0-1 problem using a genetic algorithm, we created the
+    `01-solve-knapsack.py` Python program located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/01_solve_knapsack.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/01_solve_knapsack.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a reminder, the chromosome representation we decided to use here is a list
+    of integers with the values of 0 or 1\. This makes our problem, from the point
+    of view of the genetic algorithm, similar to the OneMax problem we solved in the
+    previous chapter. The genetic algorithm doesn’t care what the chromosome represents
+    (also known as the *phenotype*) – a list of items to pack, a sequence of Boolean
+    equation coefficients, or perhaps an actual binary number; it is only concerned
+    with the chromosome itself (the *genotype*) and the fitness value of that chromosome.
+    Mapping the chromosome to the solution it represents is carried out by the fitness
+    evaluation function, which is implemented outside the genetic algorithm. In our
+    case, this chromosome mapping and fitness calculation is implemented by the `getValue()`
+    method, which is encapsulated within the `Knapsack01Problem` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The outcome of all this is that we can use the same genetic algorithm implementation
+    that we used for the On-Max problem, with a few adaptations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe the main points of our solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to create an instance of the knapsack problem we would like
+    to solve:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we must instruct the genetic algorithm to use the **getValue()** method
+    of that instance for fitness evaluation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The genetic operators that are used are compatible with the binary-list chromosome:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once the genetic algorithm stops, we can use the **printItems()** method to
+    pretty-print the best solution that was found:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We can also tweak some of the parameters of the genetic algorithm. As this particular
+    problem uses a binary string of length 22, it seems easier than the 100-length
+    OneMax problem we previously solved, so we can probably reduce the population
+    size and maximum number of generations.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Upon running the algorithm for 50 generations, with a population size of 50,
+    we get the following outcome:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The total value of `1030` is the known optimal solution for this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, too, we can see that the last occurrence of 1 in the chromosome of the
+    best individual, representing the `book` item, was sacrificed to the actual solution
+    in the mapping to keep the accumulated weight from exceeding the limit of 400.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure, which depicts the max and average fitness over the generations,
+    indicates that the best solution was found in less than 10 generations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.1: Stats of the program solving the knapsack 0-1 problem](img/B20851_04_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.1: Stats of the program solving the knapsack 0-1 problem'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will shift gears and tackle a more involved, yet still
+    classic, combinatorial search task known as the TSP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving the TSP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Imagine that you manage a small fulfillment center and need to deliver packages
+    to a list of customers using a single vehicle. What’s the best route for the vehicle
+    to take so that you can visit all your customers and then return to the starting
+    point? This is an example of the classic **TSP**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The TSP dates back to 1930, and since then has been one of the most thoroughly
+    studied problems in optimization. It is often used to benchmark optimization algorithms.
+    The problem has many variants, but it was originally formulated after a traveling
+    salesman who needs to take a trip that covers several cities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: “Given a list of cities and the distances between each pair of the cities, find
+    the shortest possible path that goes through all the cities and then returns to
+    the starting city.”
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using combinatorics, you could find that when given *n* cities, the number of
+    possible paths that go through all cities is (n − 1) !/ 2.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows the shortest path for the traveling salesperson
+    problem that covers the 15 largest cities in Germany:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.2: The shortest TSP path for the 15 largest cities in Germany. ](img/B20851_04_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.2: The shortest TSP path for the 15 largest cities in Germany.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source: [https://commons.wikimedia.org/wiki/File:TSP_Deutschland_3.png](https://commons.wikimedia.org/wiki/File:TSP_Deutschland_3.png).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image by Kapitän Nemo.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, *n=15*, so the number of possible routes is *14!/2*, which amounts
+    to the staggering number of 43,589,145,600.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the context of search algorithms, each path (or partial path) through the
+    cities represents a state, and the set of all possible paths is considered the
+    state space. Each of the paths has a corresponding “cost” – the length (distance)
+    of the path – and we are looking for the path that will minimize this distance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we pointed out, the state space is very large, even for a moderate number
+    of cities, which can make it prohibitively expensive to evaluate every possible
+    path. As a result, even though it is relatively easy to find a path that goes
+    through all the cities, finding the *optimal* path can be very hard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: TSPLIB benchmark files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **TSPLIB** is a library containing sample problems for the TSP based on
+    the actual geographic locations of cities. The library is maintained by Heidelberg
+    University, and relevant examples can be found here: [http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Two types of files can be found on this web page: files with the`.tsp.gz` suffix,
+    each of them containing the description of a particular TSP problem, and the corresponding
+    `.opt.tour.gz` files, containing the optimal solution for each problem.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The problem description files are text-based and white-space delimited. A typical
+    file contains several informational lines, followed by city data. We are interested
+    in files that include the x, y coordinates of the participating cities so that
+    we can plot the cities and visualize their locations. For example, the contents
+    of the `burma14.tsp.gz` file, once unzipped, look as follows (with some of the
+    lines omitted here for brevity):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: The interesting section for us is the lines between `NODE_COORD_SECTION` and
+    `EOF`. In some of the files, `DISPLAY_DATA_SECTION` is used instead of `NODE_COORD_SECTION`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Are we ready to solve a sample problem? Well, before we start doing that, we
+    still need to figure out how a potential solution will be represented. This will
+    be addressed in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When solving the TSP, the cities are typically represented by numbers from 0
+    to *n-1*, and possible solutions will be sequences of these numbers. A problem
+    with five cities, for example, can have solutions of the form [0,1, 2, 3, 4],
+    [2, 4, 3, 1, 0], and so on. Each solution can be evaluated by calculating and
+    totaling the distances between each two subsequent cities, then adding the distance
+    between the last city to the first one. Consequently, when applying the genetic
+    algorithms approach to this problem, we can use a similar list of integers to
+    serve as the chromosome.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Python class described in the next subsection reads the contents of TSPLIB
+    files and calculates the distances between each two cities. In addition, it calculates
+    the total distance covered by a given potential solution using the list representation
+    we just discussed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python problem representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To encapsulate the TSP problem, we’ve created a Python class called `TravelingSalesmanProblem`.
+    This class is contained in the `tsp.py` file and can be found at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/tsp.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/tsp.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The class provides the following private methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**__create_data()**: This reads the desired TSPLIB file, extracts the coordinates
+    of all cities, calculates the distances between every two cities, and uses them
+    to populate a distance matrix (two-dimensional array). It then serializes the
+    city locations and the calculated distances to disk using the **pickle** utility.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**__read_data()**: This reads the serialized data and, if not available, calls
+    **__create_data()** to prepare it.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These methods are invoked internally by the constructor, so the data is initialized
+    as soon as the instance is created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition, the class provides the following public methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**getTotalDistance(indices)**: This calculates the total distance of the path
+    described by the given list of city indices'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**plotData(indices)**: This clots the path described by the given list of city
+    indices'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The main method of the class exercises the class methods mentioned previously:
+    first, it creates the `bayg29` problem (29 cities in Bavaria), then calculates
+    the distance for the hard-coded optimal solution (as described in the matching
+    `.opt.tour` file), and finally plots it. So, if we run this class as a standalone
+    Python program, the output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The plot of the optimal solution looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.3: A plot of the optimal solution for the “bayg29” TSP. The red
+    dots represent cities](img/B20851_04_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.3: A plot of the optimal solution for the “bayg29” TSP. The red dots
+    represent cities'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will try to reach this optimal solution using a genetic algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Genetic algorithm solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For our first attempt at solving the TSP using a genetic algorithm, we created
+    the `02-solve-tsp-first-attempt.py` Python program, which is located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/02_solve_tsp_first_attempt.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/02_solve_tsp_first_attempt.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main parts of our solution are described in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program starts by creating an instance of the **bayg29** problem, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we need to define the fitness strategy. Here, we want to minimize the
+    distance, which translates to a single-objective minimizing **fitness** class
+    that’s defined using a single negative weight:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: creator.create("Individual", array.array, typecode='i',
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: fitness=creator.FitnessMin)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox.register("randomOrder", random.sample,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: range(len(tsp)), len(tsp))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox.register("individualCreator", tools.initIterate,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: creator.Individual, toolbox.randomOrder)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox.register("populationCreator", tools.initRepeat, list,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox.individualCreator)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now that the chromosome has been implemented, it’s time to define the fitness
+    evaluation function. This is carried out by the **tspDistance()** function, which
+    directly utilizes the **getTotalDistance()** method of the **TravelingSalesmanProblem**
+    class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we need to define the genetic operators. For the selection operator,
+    we can use tournament selection with a tournament size of **3**, as we did in
+    previous cases:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'However, before picking the crossover and mutation operators, we need to remember
+    that the chromosome we use is not just a list of integers but a list of indices
+    (or an **ordered list**) that represent the order of the cities, and therefore
+    we cannot just mix parts of two lists or arbitrarily change an index in the list.
+    Instead, we need to use specialized operators that were designed to produce valid
+    lists of indices. In [*Chapter 2*](B20851_02.xhtml#_idTextAnchor053), *Understanding
+    the Key Components of Genetic Algorithms*, we examined several of these operators,
+    including **ordered crossover** and **scramble mutation**. Here, we’re using DEAP’s
+    corresponding implementations of these operators, **cxOrdered** and **mutShuffleIndexes**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, it’s time to invoke the genetic algorithm flow. Here, we use the default
+    DEAP built-in **eaSimple** algorithm, with our default **stats** and **halloffame**
+    objects to provide information we can display later:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Running this program with the constant values appearing at the top of the file
+    (a population size of 300, 200 generations, a crossover probability of 0.9, and
+    a mutation probability of 0.1) yields the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The best fitness found (9549.98) is not too far from the known optimal distance
+    of 9074.14.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program then produces two plots. The first plot illustrates the path of
+    the best individual found during the run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.4: A plot of the best solution found by the first program attempting
+    to solve the “bayg29” TSP](img/B20851_04_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.4: A plot of the best solution found by the first program attempting
+    to solve the “bayg29” TSP'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second plot shows the statistics of the genetic flow. Note that this time,
+    we chose to collect data for the *minimum* fitness value rather than the maximum
+    as the objective of this problem is to minimize the distance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.5: Stats of the first program attempting to solve the “bayg29” TSP](img/B20851_04_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.5: Stats of the first program attempting to solve the “bayg29” TSP'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we’ve found a good solution but not the best-known one, we can try
+    and figure out ways to improve the results. For example, we can experiment with
+    changing the population size, number of generations, and probabilities. We can
+    also replace the genetic operators with other compatible ones. We can even change
+    the random seed we set just to see the effect on the results or make multiple
+    runs with different seeds. In the next section, we will try to use **elitism**
+    combined with **enhanced exploration** to improve our results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving the results with enhanced exploration and elitism
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If we try to increase the number of generations in the previous program, we
+    will realize that the solution doesn’t improve – it’s stuck in the (somewhat)
+    suboptimal solution that was reached sometime before generation 200\. This is
+    shown in the following plot, which displays 500 generations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.6: Stats of the first program, running for 500 generations](img/B20851_04_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.6: Stats of the first program, running for 500 generations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From that point on, the similarity between the average value and the best value
+    indicates that this solution took over the population and therefore we will not
+    see any improvement unless a lucky mutation turns up. In genetic algorithms terms,
+    this means that **exploitation** has overpowered **exploration**. Exploitation
+    generally means taking advantage of the current available results, while exploration
+    emphasizes the search for new solutions. Striking a delicate balance between the
+    two can lead to better results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One way to increase exploration could involve reducing the tournament size
+    of the tournament selection that’s used from 3 to 2:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we discussed in [*Chapter 2*](B20851_02.xhtml#_idTextAnchor053), *Understanding
+    the Key Components of Genetic Algorithms*, this will increase the chances of less
+    successful individuals being selected. These individuals may carry the key to
+    better future solutions. However, if we run the same program after making this
+    change, the results are far from impressive – the best fitness value is over 13,000,
+    and the best solution plot looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.7: A plot of the best solution found by the program with the tournament
+    size reduced to 2](img/B20851_04_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.7: A plot of the best solution found by the program with the tournament
+    size reduced to 2'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These poor results can be explained using the statistics plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.8: Stats of the program with the tournament size reduced to 2](img/B20851_04_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.8: Stats of the program with the tournament size reduced to 2'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This plot illustrates that we cannot retain the best solutions. As evident from
+    the “noisy” graph, which keeps jumping between better values to worse values,
+    good solutions tend to quickly get “lost” due to the more permissive selection
+    scheme, which often enables lesser solutions to be selected. This means that we
+    let exploration go too far, and to balance it out, we need to re-introduce a measure
+    of exploitation into the mix. This can be done using the **elitism** mechanism,
+    which was first introduced in [*Chapter 2*](B20851_02.xhtml#_idTextAnchor053).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Elitism enables us to keep the best solutions intact by letting them “skip”
+    the genetic operators of selection, crossover, and mutation during the genetic
+    flow. To implement elitism, we will have to go “under the hood” and modify DEAP’s
+    `algorithms.eaSimple()` algorithm as the framework doesn’t provide a direct way
+    to skip all three operators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The modified algorithm, called `eaSimpleWithElitism()`, can be found in the
+    `elitism.py` file, located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/elitism.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/elitism.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `eaSimpleWithElitism()` method is similar to the original `eaSimple()`,
+    with the modification that the `halloffame` object is now used to implement an
+    elitism mechanism. The individuals contained in the `halloffame` object are directly
+    injected into the next generation and are not subject to the genetic operators
+    of selection, crossover, and mutation. This is essentially the outcome of the
+    following modifications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead of selecting several individuals equal to the population size, this
+    number of selected individuals is reduced by the number of hall-of-fame individuals:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After the genetic operators have been applied, the hall-of-fame individuals
+    are added back into the population:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We can now replace the call to `algorithms.eaSimple()` with a call to `elitism.eaSimpleWithElitism()`,
+    without changing any of the parameters. Then, we’ll set the `HALL_OF_FAME_SIZE`
+    constant to 30, which means that we will always keep the best 30 individuals in
+    the population.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The modified Python program, `03-solve-tsp.py` can be found at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/03_solve_tsp.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/03_solve_tsp.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Upon running this new program, we are now able to hit the optimal solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The solution plot is identical to the optimal one we saw previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.9: A plot of the best solution found by the program using a tournament
+    size of 2 and elitism](img/B20851_04_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.9: A plot of the best solution found by the program using a tournament
+    size of 2 and elitism'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following statistics plot indicates that we were able to eliminate the
+    “noise” we observed before. We were also able to keep some distance between the
+    average value and the best values for a lot longer compared to the original attempt:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.10: Stats of the program using a tournament size of 2 and elitism](img/B20851_04_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.10: Stats of the program using a tournament size of 2 and elitism'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will look into the **VRP**, which adds an interesting
+    twist to the problem we just solved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving the VRP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Imagine that you now manage a larger fulfillment center. You still need to deliver
+    packages to a list of customers, but now, you have a fleet of several vehicles
+    at your disposal. What’s the best way to deliver the packages to the customers
+    using these vehicles?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is an example of the VRP, a generalization of the TSP described in the
+    previous section. The basic VRP consists of the following three components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The list of locations that need to be visited
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The number of vehicles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The location of the depot, which is used as the starting and ending point for
+    each of the vehicles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The problem has numerous variations, such as several depot locations, time-critical
+    deliveries, different types of vehicles (varying capacity, varying fuel consumption),
+    and many more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The goal of the problem is to minimize the cost, which can also be defined in
+    many different ways. Examples include minimizing the time it takes to deliver
+    all the packages, minimizing the cost of the fuel, and minimizing the variation
+    in travel time among the vehicles used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An illustration of a VRP with three vehicles is shown here. The cities are
+    marked with dark circles and the depot location with an empty square, while the
+    routes of the three vehicles are marked with three different colors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.11: Example VRP with three vehicles](img/B20851_04_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.11: Example VRP with three vehicles'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our example, we will aim to optimize the time it takes to deliver all the
+    packages. Since all the vehicles operate simultaneously, this measure is determined
+    by the vehicle making the longest route. Therefore, we can make it our objective
+    to minimize the length of the longest route among the participating vehicles’
+    routes. For example, if we have three vehicles, each solution consists of three
+    routes. We will evaluate all three, and then only consider the longest one of
+    them for scoring – the longer the route, the worse the score. This will inherently
+    encourage all three routes to be shorter, as well as closer in size to each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thanks to the similarity between the two problems, we can utilize the code we
+    wrote previously to solve the TSP for solving the VRP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To build on the solution we created for the TSP, we can represent vehicle routing
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A TSP instance, namely a list of cities and their coordinates (or their mutual
+    distances)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The depot location, which is selected out of the existing cities, and represented
+    by the index of that city
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The number of vehicles used
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the next two subsections, we will show you how to implement this solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solution representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As usual, the first question we need to address is how to represent a solution
+    to this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate our suggested representation, we will look at the 10-city example
+    problem shown in the following figure, where the locations of the cities are marked
+    with numbers from 0 to 9:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.12: Example VRP with numbered city locations](img/B20851_04_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.12: Example VRP with numbered city locations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A creative way to represent a candidate VRP solution while maintaining similarity
+    to the previously solved TSP is by using a list that contains the numbers from
+    0 to *(n-1) + (m-1)*, where *n* is the number of cities and *m* is the number
+    of vehicles. For example, if the number of cities is 10 and the number of vehicles
+    is 3 (*n = 10, m = 3*), we would have a list containing all the integers from
+    0 to 11, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[0, 6, 8, 9, 11, 3, 4, 5, 7, 10, 1, 2]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first *n* integer values, which is 0...9 in our case, still represent the
+    cities, just like before. However, the last *(m - 1)* integer values, 10 and 11
+    in our case, are used as delimiters (or “separators”) that break the list into
+    routes. As an example, [0, 6, 8, 9 **11**, 3, 4, 5, 7, **10**, 1, 2] will be broken
+    into the following three routes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[0, 6, 8, 9], [3, 4, 5, 7], [1, 2]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, the index of the depot location needs to be removed since it is not part
+    of a particular route. If, for example, the depot location is index **7**, the
+    resulting routes will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[0, 6, 8, 9], [3, 4, 5], [1, 2]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When calculating the distance that each route covers, we need to recall that
+    each route starts and ends at the depot location (7). So, to calculate the distances,
+    as well as plot the routes, we will be using the following data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[**7**, 0, 6, 8, 9, **7**], [**7**, 3, 4, 5, **7**], [**7**, 1, 2, **7**]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This candidate solution is illustrated in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.13: Visualization of the candidate solution [0, 6, 8, 9, 11, 3,
+    4, 5, 7, 10, 1, 2]](img/B20851_04_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.13: Visualization of the candidate solution [0, 6, 8, 9, 11, 3, 4,
+    5, 7, 10, 1, 2]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next subsection, we will look into a Python implementation of this idea.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python problem representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To encapsulate the VRP problem, we created a Python class called `VehicleRoutingProblem`.
+    This class is contained in the `vrp.py` file and can be found at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/vrp.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/vrp.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `VehicleRoutingProblem` class contains an instance of the `TravelingSalesmanProblem`
+    class, which is used as the container for the city indices and their corresponding
+    locations and distances. When creating an instance of the `VehicleRoutingProblem`
+    class, the instance of the underlying `TravelingSalesmanProblem` is created internally
+    and initialized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `VehicleRoutingProblem` class is initialized using the name of the underlying
+    `TravelingSalesmanProblem`, as well as the depot location index and the number
+    of vehicles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition, The `VehicleRoutingProblem` class provides the following public
+    methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**getRoutes(indices)**: This breaks the list of given indices into separate
+    routes by detecting the “separator” indices'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**getRouteDistance(indices)**: This calculates total the distance of the path
+    that starts at the depot location and goes through the cities described by the
+    given indices'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**getMaxDistance(indices)**: This calculates the max distance among the distances
+    of the various paths described by the given indices, after breaking the indices
+    to separate routes'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**getTotalDistance(indices)**: This calculates the combined distance of the
+    various paths described by the given indices'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**plotData(indices)**: This breaks the list of indices into separate routes
+    and plots each route in a different color'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'When executed as a standalone program, the `main` method of the class exercises
+    these methods by creating an instance of `VehicleRoutingProblem` with the underlying
+    TSP set to “bayg29” – the same problem we used in the previous section. The number
+    of vehicles is set to 3, and the depot location index is set to 12 (which maps
+    to a city with a central location). The following figure shows the locations of
+    the cities (red dots) and the depot (green “x”):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.14: A plot of the VRP based on the “bayg29” TSP. ](img/B20851_04_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.14: A plot of the VRP based on the “bayg29” TSP.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Red dots mark the cities while the green “X” marks the depot
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main method then generates a random solution, breaks it down into routes,
+    and calculates the distances, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note how the original list of indices of the random solution is broken down
+    into separate routes using the separator indices (29 and 30). The plot for this
+    random solution is shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.15: A plot of a random solution for the VRP with three vehicles](img/B20851_04_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.15: A plot of a random solution for the VRP with three vehicles'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we would expect from a random solution, it is far from optimal. This is evident
+    from the inefficient order of cities along the long (green) route, as well as
+    one route (green) being much longer than the other two (red and purple).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next subsection, we will attempt to produce good solutions using the
+    genetic algorithms method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Genetic algorithm solution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The genetic algorithm solution we created for the VRP resides in the `04-solve-vrp.py`
+    Python file located at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/04_solve_vrp.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_04/04_solve_vrp.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we were able to build on top of the TSP and used a similar representation
+    for the solution – an array of indices – we could use the same genetic approach
+    we used in the previous section. We could also take advantage of elitism by reusing
+    the elitist version that we created for the genetic flow. This makes our genetic
+    algorithm solution very similar to the one we used for the TSP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps detail the main parts of our solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program starts by creating an instance of the **VehicleRoutingProblem**
+    class, using the “bayg29” TSP for its underlying data, and setting the depot location
+    to 12 and the number of vehicles to 3:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The fitness function is set to minimize the distance of the longest route among
+    the three routes produced by each solution:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'For the genetic operators, we once again use tournament selection with a tournament
+    size of 2, which is assisted by the elitist approach, and crossover and mutation
+    operators that are specialized for ordered lists:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As the VRP is inherently more difficult than TSP, we chose a larger population
+    size and number of generations than before:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'And that’s it! We’re ready to run the program. The results that we obtain with
+    these settings are shown here – three routes, with a maximum length of `3857`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note, again, how the solution is broken down into three separate routes using
+    the highest two indices (29, 30) as separators, and ignoring the depot location
+    (12). We ended up with three routes, two of them covering nine cities each, and
+    the third covering 10 cities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plotting the solution produces the following figure depicting the three resulting
+    routes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.16: A plot of the best solution found by the program for the VRP
+    with three vehicles](img/B20851_04_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.16: A plot of the best solution found by the program for the VRP with
+    three vehicles'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following statistics plot shows that the algorithm did most of the optimization
+    before reaching 300 generations. After, there are several small improvements:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.17: Stats of the program solving the VRP with three vehicles](img/B20851_04_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.17: Stats of the program solving the VRP with three vehicles'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How about changing the number of vehicles? Let’s run the algorithm again after
+    increasing the number of vehicles to six, and making no other changes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The results for this run are shown here – six routes, with a maximum length
+    of `2803`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that increasing the number of vehicles two-fold didn’t decrease the maximum
+    distance in a similar manner (`2803` with six compared to `3857` with three).
+    This is likely because each separate route still needs to start and end at the
+    depot location, which is added to the cities in the route.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plotting the solution produces the following figure, depicting the six resulting
+    routes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.18: A plot of the best solution found by the program for the VRP
+    with six vehicles](img/B20851_04_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.18: A plot of the best solution found by the program for the VRP with
+    six vehicles'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One interesting point demonstrated by this plot is that the orange route doesn’t
+    seem to be optimized. Since we told the genetic algorithm to minimize the longest
+    route, any route that is shorter than the longest route may not be optimized further.
+    You are encouraged to modify our solution to further optimize the routes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As with the three-vehicle case, the following statistics plot shows that the
+    algorithm did most of the optimization before reaching 200 generations, after
+    which there are several small improvements:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.19: Stats of the program solving the VRP with six vehicles](img/B20851_04_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.19: Stats of the program solving the VRP with six vehicles'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The solution we’ve found seems reasonable. Can we do better than that? What
+    about other numbers of vehicles? Or other depot locations? Different genetic operators
+    or different parameter settings? Perhaps even a different fitness criteria? We
+    encourage you to experiment with all these and learn from these experiments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you were introduced to search problems and combinatorial optimization.
+    We then closely examined three classic combinatorial problems – each with numerous
+    real-life applications – the knapsack problem, the TSP, and the VRP. For Each
+    of these problems, we followed a similar process of finding an appropriate representation
+    for a solution, creating a class that encapsulates the problem and evaluates a
+    given solution, and then creating a genetic algorithm solution that utilizes that
+    class. We ended up with valid solutions for all three problems while experimenting
+    with genotype-to-phenotype mapping and elitism-backed exploration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will look into a family of closely related tasks, namely
+    *constraint satisfaction problems*, starting with the classic *n-queens* problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For more information, please refer to the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving the knapsack problem using dynamic programming, from the book *Keras
+    Reinforcement Learning Projects*, by Giuseppe Ciaburro, September 2018
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The VRP, from the book *Keras Reinforcement Learning Projects*, by Giuseppe
+    Ciaburro, September 2018
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

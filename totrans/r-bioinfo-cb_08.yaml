@@ -1,0 +1,807 @@
+- en: Working with Databases and Remote Data Sources
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Large-scale model organism sequencing projects, such as the **Human Genome Project**
+    (**HGP**), or the 1,001 plant genomes sequencing projects have made a huge amount
+    of genomics data publicly available. Likewise, open access data sharing by individual
+    laboratories has made the raw sequencing data of genomes and transcriptomes widely
+    available, too. Working with this data programmatically can mean having to parse
+    or bring locally some seriously large or complicated files. As such, much effort
+    has gone into making these resources as accessible as possible through APIs and
+    other queryable interfaces, such as BioMart. In this chapter, we'll look at some
+    recipes that will allow us to search for annotations without having to download
+    whole genome files and find relevant information across databases. We'll look
+    at how to pull raw reads from experiments from within your code and take the opportunity
+    to look at how to apply quality control to this downloaded data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following recipes will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Retrieving gene and genome annotations from BioMart
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Retrieving and working with SNPs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Getting gene ontology information
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding experiments and reads from SRA/ENA
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Performing quality control and filtering on high-throughput sequence reads
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Completing read-to-reference alignment with external programs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualizing quality control plots of read-to-reference alignments
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sample data you'll need is available from this book's GitHub repository
+    at [https://github.com/PacktPublishing/R-Bioinformatics-Cookbook](https://github.com/PacktPublishing/R-Bioinformatics-Cookbook)[.](https://github.com/danmaclean/R_Bioinformatics_Cookbook) If
+    you want to use the code examples as they are written, then you will need to make
+    sure that this data is in a sub-directory of whatever your working directory is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the R packages that you''ll need. In general, you can install these
+    with `install.packages("package_name")`. The packages listed under `Bioconductor`
+    need to be installed with the dedicated installer. That''s described as follows
+    in this section. If you need to do anything further, installation will be described
+    in the recipes in which the packages are used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Bioconductor`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`biomaRt`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ramwas`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ShortRead`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`SRAdb`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Bioconductor is huge and has its own installation manager. You can install
+    the manager with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you can install the packages with this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further information is available at [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, in R, a user will load a library and use the functions directly by
+    name. This is great in interactive sessions but it can cause confusion when many
+    packages are loaded. To clarify which package and function I'm using at a given
+    moment, I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, in the middle of a recipe, I''ll interrupt the code so you can see
+    some intermediate output or the structure of an object that''s important to understand.
+    Whenever that happens, you''ll see a code block where each line begins with `##` (double
+    hash) symbols. Consider the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`letters[1:5]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will give us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`## a b c d e`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the output lines are prefixed with `##`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Retrieving gene and genome annotation from BioMart
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Once a draft of a genome sequence is prepared, a lot of bioinformatics work
+    goes into finding the genes and other functional features or important loci that
+    are in a genome. These annotations are numerous, difficult to perform and verify,
+    typically take lots of expertise and time, and are not something we would want
+    to repeat. So, genome project consortia will typically share their annotations
+    in some way, often through public databases of some sort. BioMart is a common
+    data structure and API through which annotation data is made available. In this
+    recipe, we'll look at how to programmatically access such databases so we can
+    get annotations for genes that we are interested in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we need the `Bioconductor` package called `biomaRt` and a working
+    internet connection. We'll also need to know the BioMart server to connect to—there
+    are about 40 worldwide, providing information about all sorts of things. The most
+    widely accessed are the Ensembl databases and these are the default in these packages.
+    You can see a list of all of the BioMarts here: [http://www.biomart.org/notice.html](http://www.biomart.org/notice.html).
+    The code we'll develop will apply to any of these BioMarts with a little modification
+    of table names and URLs, as appropriate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Retrieving gene and genome annotation from BioMart can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'List marts in the selected example database—`gramene`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a connection to the selected mart:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'List datasets in that mart:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'List the datatypes we can actually retrieve:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get a vector of all chromosome names:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create some filters to query data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get gene IDs on the first chromosome:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The recipe revolves around doing a series of different lookups on the database,
+    each time receiving a little more information to work with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 1*, we use the `listMarts()` function to get a list of all of the BioMarts
+    available at the specified host URL. Change the URL as appropriate when you want
+    to connect to a different server. We get a dataframe of the available marts and
+    use that information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we create a connection object called `gramene_connection` with
+    the `useMart()` function, passing in the server URL and the specific BioMart from
+    *Step 1*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step* *3*, we pass `gramene_connection` to the `listDatasets()` function
+    to retrieve the datasets in this `biomart`. Having selected one of the datasets
+    (`atrichopda_eg_gene`), we can run the `useMart()` function to create a connection
+    to the datasets in that `biomart`, naming the object `data_set_connection`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 4*, we're nearly done working out which datasets we can use. Here,
+    we use `data_set_connection`, which we created in the `listAttributes()` function,
+    to get a list of the types of information we can retrieve from this dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At *Step 5*, we finally get some actual information with the main function, `getBM()`.
+    We set the `attributes` argument to the names of the data we want to get back;
+    here, we get all values for `chromosome_name` and save them in a vector, `chrom_names`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 6*, we set up filters—the restrictions on which values to receive.
+    We first ask the `data_set_connection` object which filters we can use with the
+    `listFilters()` function. Notice from the returned `filters` object that we can
+    filter on `chromosome_name`, so we'll use that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 7*, we set up a full query. Here, we intend to get all genes on the
+    first chromosome. Note that we already have a list of chromosomes from *Step 5*,
+    so we take the first element of the `chrom_names` object to use in the filter,
+    saving it in `first_chr`. To perform the query, we use the `getBM()` function,
+    with the `ensembl_gene_id` and `description` attributes. We set the `filter` argument
+    to the data type we wish to filter on and set the `values` argument to the value
+    of the filter we wish to keep. We also pass the `data_set_connection` object as
+    the BioMart to use. The resulting `genes` object contains `ensembl_gene_id` and
+    descriptions on the first chromosome, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Retrieving and working with SNPs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: SNPs and other polymorphisms are important genomic features and we often want
+    to retrieve known SNPs in particular genomic regions. Here, we'll look at doing
+    that in two different BioMarts that hold different types of data for their SNPs.
+    In the first part, we'll use Gramene again to look at retrieving plant SNPs. In
+    the second part, we'll look at how to find information on human SNPs in the main
+    Ensembl database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As before, we'll need only the `biomaRt` package from `Bioconductor` and a working
+    internet connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Retrieving and working with SNPs can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Get the list of datasets, attributes, and filters from Gramene:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Query for the actual SNP information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Step 1* will be familiar from the previous recipe''s *steps 1* to *6*, in
+    which we make the initial connections and get them to list the datasets, attributes,
+    and filters we can use in this BioMart; it''s the same pattern and is repeated
+    every time we use the BioMart (until we get to know it by heart).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we use the information gathered to pull the SNPs in the region
+    of interest. Again, we use the `getBM()` function and use a `chromosomal_region` filter. This
+    allows us to specify a value describing a particular locus on the genome. The
+    `value` argument gets a `Chromosome:Start:Stop:Strand` formatted string; specifically, `1:200:20000:1`,
+    which will return all SNPs on chromosome 1, between nucleotide 200 and 20,000
+    on the positive strand (note that the positive DNA strand identifier is `1`, and
+    the negative DNA strand identifier is `-1`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Finding human SNPs from Ensembl follows pretty much the same pattern. The only
+    difference is that, because Ensembl is the default server, we can omit the server
+    information from the `useMart()` functions. A similar query for humans would look
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you have the `dbSNP refsnp ID` numbers, it is possible to query these directly
+    using the `rnsps` package and the `ncbi_snp_query()` function. Simply pass this
+    function a vector of valid `refsnp` IDs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting gene ontology information
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The **Gene Ontology** (**GO**) is a very useful restricted vocabulary of annotation
+    terms for genes and gene products that describe the biological process, molecular
+    function, or cellular component of an annotated entity. As such, the terms are
+    extremely useful as data in such things as gene-set enrichment analysis and other
+    functional -omics approaches. In this recipe, we'll look at how we can prepare
+    a list of gene IDs in a genomic region and get the GO IDs and descriptions for
+    them all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we're still using the `biomaRt` package, we'll just need that and a working
+    internet connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Getting gene ontology information can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Make connections to the Ensembl BioMart and find the appropriate attributes
+    and filters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get a list of genes and, using their IDs, get their GO annotations:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As in the previous two recipes, *Step 1* involves finding the right values for
+    the biomart, datasets, attributes, and filters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we use the `getBM()` function to get `ensembl_gene_id` attributes
+    in a particular chromosome region, saving the result in the `genes` object. We
+    then use that function again using `ensembl_gene_id` as a filter and `go_id` and
+    `goslim_goa_description` to get the actual GO annotation for just the selected
+    genes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding experiments and reads from SRA/ENA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The **Short Read Archive** (**SRA**) and the **European Nucleotide Archive**
+    (**ENA**) are databases of records of raw high-throughput-DNA sequence data. Each
+    is a mirrored version of the same sets of high-throughput sequence data, submitted
+    by scientists in all fields of biology from all over the world. The free availability
+    of high-throughput sequence data through these databases means that we can conceive
+    of and execute new analyses on existing datasets. By performing searches on the
+    databases, we can identify sequence data that we may wish to work with. In this
+    recipe, we'll look at using the `SRAdb` package to query the datasets on SRA/ENA
+    and retrieve the data for selected sets programmatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The two essential items for this recipe are the `SRAdb` package from `Bioconductor`
+    and a working internet connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Finding experiments and reads from SRA/ENA can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Download the SQL database and make the connection:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get the study information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get information on what is contained in that study:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get a list of the files available:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Download the sequence files:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: After loading the library, the first step sets up a local SQL file, called `sqlfile`.
+    The file contains all of the information about the studies on SRA. In our example,
+    we are using a small version from within the package itself (hence, we're extracting
+    it with the `system.file()` function); the real file is >50GB in size so we won't
+    use it now but it can be retrieved using this replacement code: `sqlfile <- getSRAdbfile()`.
+    Once we have a `sqlfile` object, we can create a connection to the database with
+    the `dbConnect()` function. We save the connection in the object named `sra_con`
+    for reuse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then perform a query on the `sqlfile` database using the `dbGetQuery()` function.
+    The first argument to this is the database file, and the second is a full query
+    in SQL format. The query written is pretty self-explanatory; we''re looking to
+    return `study_accession` and `study_description` when the description contains
+    the term `coli`. Much more complicated queries are possible—if you''re prepared
+    to write them in SQL. A tutorial on that is far beyond the scope of this recipe
+    but there are numerous books dedicated to the subject; you should try *SQL for
+    Data Analytics* by Upom Malik, Matt Goldwasser, and Benjamin Johnston, Packt Publishing: [https://www.packtpub.com/big-data-and-business-intelligence/sql-data-analysis](https://www.packtpub.com/big-data-and-business-intelligence/sql-data-analysis).
+    The query returns a dataframe object that looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Step 3* uses the accession number we extracted to get all of the related submission,
+    sample, and experiment and run information related to the study with the `sraConvert()` function.
+    This returns something like the following table—we can see the run IDs for this
+    study, showing the actual files containing the sequence:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In *Step 4*, we use the `listSRAfile()` function to get the actual FTP address
+    on the server for the specific sequences in a run. This provides the address of
+    the SRA format file, a compressed and convenient format should you wish to know
+    that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: But in *Step 5*, we use the `getSRAfile()` function, setting the `fileType`
+    argument to `fastq` to get the data in the standard `fastq` format. The files
+    are downloaded into the folder specified in the `destDir` argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Don't forget to refresh the local SQL database regularly and to use the full
+    version with this code: `sqlfile <- getSRAdbfile()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Performing quality control and filtering on high-throughput sequence reads
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When we have a new set of sequence reads to work with, whether that be from
+    a new experiment or a database, we need to perform a quality control step that
+    will remove any sequence adapters, remove reads with a poor sequence, or trim
+    down a poor sequence, as appropriate. In this recipe, we'll look at doing that
+    within R using the `Bioconductor ShortRead` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You'll need the `ShortRead` package and you'll need to run the code for the
+    *Finding experiments and reads from SRA/ENA* recipe in this chapter. Two files
+    are created in the last step of that recipe and we'll use one of those. Once that
+    code is run, the file should be in `datasets/ch8/ERRR019652.fastq.gz` of this
+    book's repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Performing quality control and filtering on high-throughput sequence reads
+    can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library and connect to a file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Filter reads with any nucleotide with quality lower than 20:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Trim the right-hand side of the read:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set up a custom filter to remove *N* and homomeric runs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Write out the retained reads:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first step loads in the reads to a `ShortReadQ` object that represents the
+    DNA read and its associated quality scores; this special object allows us to work
+    on the sequence and qualities in one go.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second step lets us find any reads where all quality scores are above 20\.
+    The code here is a little idiomatic so take some time to unpack it. First, we
+    use the `quality()` function on `fastq_file` to extract the qualities alone, then
+    pass that to the `as()` function, asking for a matrix. On that resultant matrix,
+    we calculate the sum of each row with `rowSums()` and finally get a logical vector,
+    `qualities`, from a comparison to see which of the `rowSums()` values is less
+    than 20\. In the next line, we use the `qualities` vector to subset `fastq_file`
+    and remove the lower quality reads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 3*, we trim the right-hand side of a read (to correct places where
+    the read quality falls below a threshold). The main function here is `trimTails()`, which
+    takes two arguments: `k`, the number of failing letters required to start trimming,
+    and `a`, the letter to start trimming at. This, of course, means that the Phred
+    numeric quality score we think of (such as in *Step 2*, where we just used 20)
+    needs to be converted into its ASCII equivalent as per the text encoding of the
+    quality score. That''s what happens in the first line; the number 40 is converted
+    into raw bytes with `as.raw()` and then into a character in `rawToChar()`. The
+    resulting text can be used by storing it in the `cut_off_txt` variable.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 4* applies some custom filters. The first line, `custom_filter_1`, creates
+    a filter for sequences containing bases called *N*, the threshold argument allowing
+    sequences to contain zero *N*s. The second, `custom_filter_2`, creates a filter
+    for homopolymeric reads of homopolymers of length equal or longer than the threshold.
+    The `nuc` argument specifies which nucleotides are to be considered. Once the
+    filters are specified, we must join them into a single filter using the `compose()` function,
+    which returns a filter function we call `custom_filter()` and then call on the
+    trimmed object. It returns an `SRFFilterResult` object that can be used to subset
+    the reads.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, in *Step 5*, we use the `writeFastQ()` function to write the retained
+    reads to a file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Completing read-to-reference alignment with external programs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The alignment of high-throughput reads is an important prerequisite for a lot
+    of the recipes in this book, including RNAseq and SNP/INDEL calling. We looked
+    at them in depth in [Chapter 1](ff091bc9-a002-4a63-b0fe-c0b9f9baf7d1.xhtml), *Performing
+    Quantitative RNAseq*, and [Chapter 2](951477d3-d812-45e7-a324-0ffb1dc3ebf4.xhtml),
+    *Finding Genetic Variants with HTS Data*, but we didn't cover how to actually
+    perform alignment. We wouldn't normally do this within R; the programs needed
+    to make these alignments are powerful and run from the command line as independent
+    processes. But R can control these external processes, so we'll look at how to
+    run an external process so you can control them from within an R wrapper script,
+    ultimately allowing you to develop end-to-end analysis pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll use base R only in this recipe, so you don't need to install any packages.
+    You will need the reference genome FASTA file in `datasets/ch8/ecoli_genome.fa`
+    and the `datasets/ch8/ERR019653.fastq,gz` file that we created in the *Finding
+    experiments and reads from SRA/ENA* recipe. This recipe also requires a working
+    copy of BWA and `samtools` on your system. The web pages for these pieces of software
+    are at [http://samtools.sourceforge.net/](http://samtools.sourceforge.net/) and [http://bio-bwa.sourceforge.net/](http://bio-bwa.sourceforge.net/).
+    If you have `conda` installed, you can install it with `conda install -c bioconda
+    bwa` and `conda install -c bioconda samtools`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Complete read-to-reference alignment with external programs using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Set up the files and executable paths:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Prepare the `index` command and run:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Prepare the `alignment` command and run:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The first step is simple: we just create a few variables that hold directory
+    paths to the programs and files we will use. `bwa` and `samtools` hold the path
+    to those programs on the system. Note that the paths on your system are almost
+    definitely different. On Linux and macOS systems, you can find the path using
+    the `which` command in the Terminal, on Windows machines, you can try the `where`
+    command or equivalent.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we outline the basic pattern for running a system command. First,
+    with the `paste()` function, we create the command as a string and save it in
+    a variable called `command`. Here, we're preparing a command line that creates
+    the index we need before performing read alignment with BWA. Then, we use the
+    command as the first argument in the `system()` function, which actually executes
+    the command. The command is started as a brand new process in the background and,
+    by default, control is returned to the R script as soon as the process begins.
+    If you intend to work immediately within R upon output from the background process,
+    then you need to set the `system()` argument wait to `TRUE`, so that the R process
+    only continues once the background process is complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we extend the pattern, creating reads and output variables and
+    putting together a much longer command line, showing that any valid command line
+    can be composed. We then repeat the `system` command. This process results in
+    a final BAM file in `datasets/ch8/aln.bam`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing the quality control of read-to-reference alignments
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Once the alignment of reads has been performed, it is usually wise to check
+    the quality of the alignment and ensure that there is nothing unexpected about
+    the pattern of reads and things such as expected insert distances. This can be
+    especially useful in draft reference genomes where unusual alignments of high-throughput
+    reads can reveal misassemblies of the reference or other structural rearrangements.
+    In this recipe, we'll use a package called `ramwas`, which has some easily accessed
+    plots we can create to assess alignment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll need the prepared `bam_list.txt` and `sample_list.txt` information
+    files in the `datasets/ch8` directory of this book's repository. We'll need the
+    small `ERR019652.small.bam` and `ERR019653.small.bam` files from the same place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Visualizing the quality control of read-to-reference alignments can be done
+    using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Set up the parameters for the run:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Perform the QC:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'View the plots:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Step 1* sets up a parameter-containing object using the `ramwasParameters()` function.
+    We simply provide information files (`bam_list.txt` and `sample_list.txt`) saying
+    where the BAM files to be used are and the samples they contain, respectively.
+    The `dirproject` argument specifies the place on the system to which the results
+    should be written. Note the results from this are written to disk; they don''t
+    come directly back to memory.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 2* uses the parameters to run the QC with the `ramwas1scanBams()` function.
+    The results are written to disk so we load the resulting RDS file back in using
+    the base R `readRDS()` function. The `qc` object has a lot of members that represent
+    different quality control aspects of alignment.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 3* uses the generic `plot` function to create graphs of some of the QC
+    statistics in the `qc` object.'
+  prefs: []
+  type: TYPE_NORMAL

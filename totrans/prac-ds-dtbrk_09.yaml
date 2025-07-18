@@ -1,0 +1,1377 @@
+- en: '9'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Model Drift Detection and Retraining
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the last chapter, we covered various workflow management options available
+    in Databricks for automating **machine learning** (**ML**) tasks. Now, we will
+    expand upon our understanding of the ML life cycle up to now and introduce the
+    fundamental concept of **drift**. We will discuss why model monitoring is essential
+    and how you can ensure your ML models perform as expected over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the time of writing this book, Databricks has a product that is in development
+    that will simplify monitoring model performance and data out of the box. In this
+    chapter, we will go through an example of how to use the existing Databricks functionalities
+    to implement drift detection and monitoring.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will be covering the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Motivation for model monitoring
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introduction to model drift
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introduction to Statistical Drift
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Techniques for drift detection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing drift detection on Databricks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s go through the technical requirements for this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The following are the prerequisites for the chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Access to a Databricks workspace
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A running cluster with Databricks Runtime for Machine Learning (Databricks Runtime
+    ML) with a version higher than 10.3
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Notebooks from [*Chapter 9*](B17875_09.xhtml#_idTextAnchor129) imported into
+    the Databricks workspace
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introductory knowledge of hypothesis testing and interpreting statistical tests
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s take a look at the motivation behind why model monitoring is important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The motivation behind model monitoring
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: According to an article in Forbes magazine by Enrique Dans, July 21, 2019, 87%
+    of data science projects never make it to production ([https://www.forbes.com/sites/enriquedans/2019/07/21/stop-experimenting-with-machine-learning-and-start-actually-usingit/?sh=1004ff0c3365](https://www.forbes.com/sites/enriquedans/2019/07/21/stop-experimenting-with-machine-learning-and-start-actually-usingit/?sh=1004ff0c3365)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a lot of reasons why ML models fail; however, if we look purely at
+    the reason for ML project failure in a production environment, it comes down to
+    a lack of re-training and testing the deployed models for performance consistency
+    over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The performance of the model keeps degrading over time. Many data scientists
+    neglect the maintenance aspect of the models post-production. The following visualizations
+    offer a comparative analysis between two distinct approaches to model management—one
+    where the model is trained once and then deployed for an extended period and another
+    where the model undergoes regular retraining with fresh data while being monitored
+    for performance drift:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.1 – A comparison of model quality for a static model versus a regularly
+    trained model](img/B17875_09_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.1 – A comparison of model quality for a static model versus a regularly
+    trained model
+  prefs: []
+  type: TYPE_NORMAL
+- en: Source
+  prefs: []
+  type: TYPE_NORMAL
+- en: Courtesy of Databricks
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a lot of statistical tests that can help us monitor changes in our
+    model’s performance over time, and since the field of MLOps is still in the early
+    stages of maturity, ML practitioners struggle with how and which tests to incorporate
+    in their ML productionizing process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will dive deeper into what statistical tests we recommend
+    using to monitor ML models in the production environment. Several Python libraries
+    can be seamlessly integrated into the Databricks environment for this purpose.
+    Among these are open source options such as whylogs, Evidently, and Seldon Alibi
+    Detect, which offer various functionalities ranging from data drift tracking to
+    full-scale model health assessments. Although the primary focus of this chapter
+    will be on leveraging statistical tests for model monitoring within Databricks,
+    you are encouraged to explore these libraries to augment your monitoring toolkit.
+    Databricks’ flexibility allows you to easily incorporate these libraries into
+    your workflows if you wish to extend beyond statistical approaches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will also go over how to use everything we have learned up to now to implement
+    model monitoring on Databricks using open source tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The example we’ll explore focuses on batch scoring using a tabular dataset.
+    However, the underlying principles are equally applicable to streaming or real-time
+    inference involving image or text data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Organizations differ in their automation preferences, particularly when it comes
+    to retraining models in response to detected performance drift. In this section,
+    our primary objective is to examine various model monitoring strategies. Depending
+    on your specific use case, you can then determine the most appropriate next steps
+    based on these insights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To better contextualize where model monitoring fits in, let’s examine the typical
+    life cycle of an ML project.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.2 – Showing the life cycle of an ML project](img/B17875_09_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.2 – Showing the life cycle of an ML project
+  prefs: []
+  type: TYPE_NORMAL
+- en: Source
+  prefs: []
+  type: TYPE_NORMAL
+- en: Courtesy of Databricks
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step in any ML project is the business coming up with a business problem
+    that they believe can benefit from the application of ML. As part of this process,
+    the various stakeholders and the data scientists come up with the online and offline
+    metrics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Offline metrics are the ones that can be calculated when ML models are being
+    trained, such as accuracy and F1 score. Online metrics are the ones that are business-driven.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After the metrics and success criteria are decided, the data scientists and
+    ML engineers work with the data engineers to understand all the data sources that
+    are available to them and which could be useful for the current business problem.
+    In the preceding figure, this is shown as the **Data** **Collection** phase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once data collection is done, the data scientists proceed to perform the feature
+    engineering and train various ML models, and after evaluating the model, they
+    productionize the best model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This productionizing of the model is where the model deployment and monitoring
+    come in. The entire process, from collecting data to training and evaluating models
+    and productionizing the best model, is iterative in nature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Operationalizing the entire process previously explained is what we call MLOps.
+    All the ML deployments look different and depend on the domain and the problem
+    we are trying to solve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you are designing your own ML solution on Databricks, spend considerable
+    time determining how often you will train and deploy a new model and what kind
+    of performance monitoring and action will make sense for your use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, we have discovered that degrading model performance over time is one
+    of the main causes of failed ML projects in organizations. Now, let’s take a look
+    at some of the reasons why model performance might degrade over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to model drift
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: ML models can experience a decline in performance over time, which is a common
+    issue in projects. The main reasons for this are changes in the input data that
+    is fed into the model. These changes can occur due to various reasons, such as
+    the underlying distribution of the data changing, an alteration in the relationship
+    between the dependent and independent features, or changes in the source system
+    that generates the data itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The performance degradation of deployed models over time is called Model Drift.
+    To effectively identify instances of Model Drift, various metrics can be monitored:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Accuracy**: A declining trend in accuracy can serve as a strong indicator
+    of model drift.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Precision and Recall**: A noticeable decrease in these values may highlight
+    the model''s diminishing ability to make accurate and relevant predictions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**F1 Score**: This is a harmonized metric that encapsulates both precision
+    and recall. A drop in the F1 Score suggests that the model''s overall efficacy
+    is compromised.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Business Metrics**: Beyond technical indicators, key business metrics like
+    conversion rate, churn rate, and customer lifetime value can also reveal model
+    drift by showing the model''s declining impact on business objectives.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'There are many categories of model drift, including the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Feature drift**: Feature drift refers to changes in the distribution of input
+    features or predictors used by an ML model. These changes can occur due to various
+    reasons, such as changes in data collection processes, measurement errors, or
+    shifts in the characteristics of the data source:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For example, if a model is trained on data collected from a specific location
+    and time period and then deployed to a different location or time period where
+    the feature distributions are different, the model may experience feature drift.
+    This can result in the degradation of model performance, as the model may not
+    be able to accurately generalize to the new feature distribution.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Label drift**: Label drift refers to changes in the distribution of output
+    labels or target variables used for training an ML model. These changes can occur
+    due to shifts in the underlying data generation process, changes in data collection
+    methods, or changes in the definitions of labels:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For example, if a model is trained to predict customer churn using historical
+    data and the definition of churn changes over time, the model may experience label
+    drift. This can result in a misalignment between the model’s predictions and the
+    ground truth labels, leading to decreased model performance.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Prediction drift**: Prediction drift refers to changes in the distribution
+    of model predictions over time. This can occur due to changes in the underlying
+    data distribution, changes in the model’s parameters, or changes in the model’s
+    architecture:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For example, if a model is trained to predict stock prices and deployed in a
+    dynamic financial market, the model’s predictions may drift over time as the market
+    conditions change. Prediction drift can impact the reliability and accuracy of
+    the model’s predictions, leading to potential business or operational implications.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Concept drift**: Concept drift refers to changes in the underlying concepts
+    or relationships between variables in the data distribution over time. This can
+    occur due to changes in the data source, changes in the data generation process,
+    or changes in the underlying phenomenon being modeled:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For example, if a model is trained to predict credit risk based on historical
+    credit data and there are changes in the economic or regulatory environment, the
+    model may experience concept drift. Concept drift can result in a misalignment
+    between the model and the real-world phenomenon, leading to decreased model performance.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We can summarize this information on the various types of drift and how to
+    mitigate them as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.3 – Summarizing the various types of drift and the actions we can
+    perform to mitigate them](img/B17875_09_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.3 – Summarizing the various types of drift and the actions we can perform
+    to mitigate them
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature drift, label drift, and concept drift collectively fall into the category
+    of **data drift**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding and addressing drift in ML models is crucial to ensure their continued
+    performance and reliability in real-world applications. Feature drift, label drift,
+    prediction drift, and concept drift are important types of drift that can occur
+    in ML models. Detecting and mitigating drift requires the use of appropriate statistical
+    tests or methods to identify and quantify the changes in data distribution over
+    time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll explore another critical factor that can contribute
+    to the deterioration of model performance over time—Statistical Drift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to Statistical Drift
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Statistical drift refers to changes in the underlying data distribution itself.
+    It can affect both the input features and the target variable. This drift may
+    or may not affect the model's performance but understanding it is crucial for
+    broader data landscape awareness.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To effectively identify instances of Statistical Drift, various metrics can
+    be monitored:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Mean and Standard Deviation**: Significant changes can indicate drift.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Kurtosis and Skewness**: Changes signal data distribution alterations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Quantile Statistics**: Look at changes in 25th, 50th, and 75th percentiles
+    for example.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To fully grasp how Model Drift and Statistical Drift are interconnected, consider
+    the following key points:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Cause and Effect Relationship**: Statistical drift in either the features
+    or the target variable frequently serves as a precursor to model drift. For example,
+    should the age demographic of your customer base shift (indicative of statistical
+    drift), a model designed to predict customer behavior could begin to falter in
+    its performance (resulting in model drift).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Simultaneous Occurrence**: Both forms of drift can occur concurrently. Take,
+    for instance, an e-commerce model that experiences model drift due to seasonal
+    variations, while also undergoing statistical drift owing to changes in customer
+    demographics.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Diverse Monitoring Requirements**: Each type of drift necessitates its own
+    unique set of monitoring strategies. Model drift is commonly identified through
+    an examination of prediction errors, whereas statistical drift is usually detected
+    by observing shifts in the data distribution.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Distinct Corrective Measures**: Addressing model drift typically involves
+    retraining the model or making fine-tuned adjustments. On the other hand, statistical
+    drift may call for more comprehensive changes in data processing protocols or
+    adjustments in feature engineering.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To make an informed decision on which drift detection method to employ, it's
+    essential to weigh the pros and cons of each approach. Your choice will hinge
+    on the specific requirements of your project and the nuances of your business
+    domain. The table below offers a concise summary, highlighting the advantages
+    and challenges of using Model Drift Detection Methods versus Statistical Drift
+    Detection Methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Aspect** | **Model Drift** **Detection Methods** | **Statistical Drift**
+    **Detection Methods** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Pros | Ease of detection through performance metrics; Allows for model updates
+    or recalibration | Provides broader understanding of data landscape, Not model-specific
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Cons | Requires continual monitoring; Can be resource-intensive | Difficult
+    to quantify; May require sophisticated tests; Less obvious indicators |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 9.1 – Summarizing the pros and cons of Model Drift Detection Methods versus
+    Statistical Drift Detection Methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will discuss the various techniques we can utilize to
+    monitor drift in our features and model performance over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Techniques for drift detection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To ensure effective monitoring of our model’s performance over time, we should
+    track changes in summary statistics and distributions of both the model features
+    and target variables. This will enable us to detect any potential data drift early
+    on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, it’s important to monitor offline model metrics such as accuracy
+    and F1 scores that were utilized during the initial training of the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, we should also keep an eye on online metrics or business metrics to
+    ensure that our model remains relevant to the specific business problem we are
+    trying to solve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following table provides an overview of various statistical tests and methods
+    that can be employed to identify drift in your data and models. Please note that
+    this compilation is not all-encompassing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Data Type** **to Monitor** | **Sub-Category** | **Statistical Measures**
+    **and Tests** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Numeric Features** | Summary Statistics | - Mean |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Median |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Minimum |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Maximum |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Missing value count |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  | Statistical Tests | - Kolmogorov-Smirnov (KS) test |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Levene test |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Wasserstein distance |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Categorical Features** | Summary Statistics | - Mode |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Unique level count |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Missing value count |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  | Statistical Tests | - Chi-Squared Test |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Target-Feature Relation** | Numeric Target | - Pearson Coefficient |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  | Categorical Target | - Contingency Tables |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Model Performance** | Regression Models | - Mean Square Error (MSE) |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Error distribution plots |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  | Classification Models | - Confusion Matrix |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  |  | - Accuracy |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 9.2 – Monitoring table for detecting various types of drift
+  prefs: []
+  type: TYPE_NORMAL
+- en: Going into detail for each and every statistical test is out of the scope of
+    this book. We will be using open source libraries to perform these tests and detect
+    drift; however, it is still beneficial to learn the high-level steps involved
+    in performing some of the tests we will use in the sample notebooks accompanying
+    this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s first understand the basics of hypothesis testing. All statistical tests
+    use the hypothesis testing framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hypothesis testing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When it comes to drawing conclusions about population characteristics based
+    on sample data, hypothesis tests are invaluable. This statistical technique is
+    designed to examine whether meaningful discrepancies exist between distinct sets
+    of data. Let’s take a look at the core steps involved in hypothesis testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Core steps in hypothesis testing
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'There are four core steps in hypothesis testing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Formulate** **the hypotheses**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Null Hypothesis H0**: This proposes that no noteworthy differences exist
+    between the datasets.'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Alternate Hypothesis Ha**: This claims that a significant divergence is present
+    between the datasets.'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Establish the level of significance**: Often symbolized by *α*, this value
+    signifies the likelihood of making an erroneous decision by rejecting the null
+    hypothesis when it’s actually true. An *α* value of 0.05 is commonly chosen, which
+    corresponds to a 5% risk of a Type I error.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Compute the test statistic**: This numerical measure is derived from both
+    the sample data and the null hypothesis. It serves as the basis for determining
+    the validity of the null hypothesis.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Ascertain the p-value**: The p-value quantifies the odds of achieving the
+    computed test statistic—or a more extreme result if the null hypothesis holds.
+    This metric guides the decision to either uphold or reject the null hypothesis.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Making the** **final decision**'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When the p−value< *α*, the null hypothesis is rejected. The data provides ample
+    evidence to support the claim made by the alternate hypothesis.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When the p−value< *α*, the null hypothesis is not rejected. The evidence to
+    back the alternate hypothesis is insufficient.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: So, now we understand the basics of hypothesis testing. Let’s go over the steps
+    for some statistical tests that are utilized in the notebook accompanying this
+    chapter to demonstrate drift detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To clearly visualize the outcomes of each numerical test we''ll discuss, the
+    accompanying figures will be based on a synthetic dataset. This dataset contains
+    two distinct yet comparable sets of data points, labeled as ''Group 1'' and ''Group
+    2'':'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Group 1
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This ensemble includes 1,000 entries, generated using a Gaussian distribution
+    with a zero mean and a unitary standard deviation. Essentially, it's a prototypical
+    bell-shaped curve centered at zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Group 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: This assembly, too, comprises 1,000 entries. However, these are pulled from
+    a Gaussian distribution with a mean value of one and a unit standard deviation.
+    The distribution closely resembles that of Group 1, albeit shifted one unit to
+    the right on the x-axis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining Characteristics
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Sample Size**: Each of the groups, Group 1 and Group 2, contains an equal
+    number of entries, allowing for a balanced comparison.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Distribution Nature**: Both groups follow a Gaussian distribution, although
+    the central values are distinct.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Uniform Variance**: The variances for both groups are closely matched, making
+    them appropriate for any tests that hinge on equal variance assumptions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Statistical tests and measurements for numeric features
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the following section, we delve into an array of statistical techniques that
+    are crucial for understanding and analyzing numeric features in your dataset.
+    We’ll explore various tests and metrics that can help you assess the quality,
+    distribution, and relationships of these features, thereby aiding in effective
+    model building and monitoring.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kolmogorov-Smirnov tests
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The **Kolmogorov-Smirnov** (**KS**) two-sample assessment is a non-parametric
+    method of evaluating whether two separate sets of data originate from identical
+    distributions or if their distributions differ in a statistically meaningful way.
+    This test focuses on comparing the **empirical cumulative distribution functions**
+    (**ECDFs**) of the two datasets. To perform a KS test for detecting drift in our
+    numeric features, we take the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Formulate hypotheses:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Null hypothesis (H0)**: This hypothesis posits that both datasets come from
+    the same distribution.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Alternative hypothesis (H1)**: This hypothesis argues that the two datasets
+    have statistically different distributions.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Choose a significance level (alpha). This is the cut-off point for deciding
+    whether to reject the null hypothesis. Typical alpha values are 0.05 or 0.01.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the test statistics and determine the critical value or p-value from
+    the KS test’s critical values table.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Make a decision:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compare the p-value obtained in *step 3* with the chosen significance level
+    (alpha).
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the p-value is less than alpha, reject the null hypothesis and conclude that
+    the variances of the groups or samples are not equal.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the p-value is larger than alpha, retain the null hypothesis. This suggests
+    that there’s insufficient evidence to say the distributions are different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following graph depicts the **Empirical Cumulative Distribution Functions**
+    (**ECDFs**) for Group 1 and Group 2\. The red dashed line indicates the maximum
+    difference between the two ECDFs, quantifying the **Kolmogorov-Smirnov** (**KS**)
+    statistic. The KS statistic and p-value are presented, offering a statistical
+    measure of the drift between the two groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.4 – Kolmogorov-Smirnov test visualization using the described dummy
+    data for ''Group 1'' and ''Group 2](img/B17875_09_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.4 – Kolmogorov-Smirnov test visualization using the described dummy
+    data for 'Group 1' and 'Group 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: The KS statistic is 0.4310 and the p-value is nearly 0.0, indicating that the
+    difference between the two groups is statistically significant. In terms of "drift,"
+    this suggests that there is indeed a notable change or drift in the distribution
+    between 'Group 1' and 'Group 2.' This is particularly relevant when monitoring
+    models over time for changes in the data they are processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important to note that, depending on the use case, we may need to use
+    Bonferroni correction to reduce false positives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Levene t-test
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Levene’s test is a statistical test used to assess the equality of variances
+    in two or more groups or samples. It is a parametric test that can be used when
+    the assumption of equal variances (homoscedasticity) required by some other tests,
+    such as the t-test or **analysis of variance** (**ANOVA**), may not be met. Levene’s
+    test can be performed using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Formulate the hypotheses:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Null hypothesis (H0)**: This means the variances of the groups or samples
+    are equal.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Alternative hypothesis (H1)**: This means the variances of the groups or
+    samples are not equal.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Choose a significance level (alpha).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the test statistics and compare them to the p-value.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Make a decision:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compare the p-value from the third step to the predetermined alpha level.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the p-value is smaller than the alpha level, reject the null hypothesis.
+    This indicates that the variances across the groups or samples are not the same.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the p-value is larger than the alpha level, retain the null hypothesis. This
+    suggests that there’s insufficient evidence to claim the variances are different.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The box plots display the data distributions for 'Group 1' and 'Group 2.' Variances
+    for each group are annotated, and the W statistic and p-value are presented to
+    assess the statistical significance of variance differences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.5 – The W statistic and p-value from Levene’s test](img/B17875_09_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.5 – The W statistic and p-value from Levene’s test
+  prefs: []
+  type: TYPE_NORMAL
+- en: The W statistic is low, and the p-value is high, suggesting that the variances
+    between the two groups are not significantly different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wasserstein distance
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Also referred to as the earth mover’s distance, the Wasserstein metric serves
+    as a gauge for comparing the likeness or differences between two statistical distributions.
+    It calculates the effort needed to morph one distribution into another, where
+    these distributions can be depicted as histograms or discrete sets of probability
+    values. When it comes to identifying data drift, this metric can be employed to
+    assess how much two distributions diverge from each other, either over time or
+    across varying conditions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When comparing two distributions using the Wasserstein distance, a higher Wasserstein
+    distance value indicates greater dissimilarity or discrepancy between the distributions,
+    while a lower Wasserstein distance value indicates greater similarity or agreement
+    between the distributions. In the context of data drift detection, an increase
+    in the Wasserstein distance over time or between different environments can indicate
+    the presence of data drift, which refers to changes in the underlying data-generating
+    process or distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, if the Wasserstein distance between two distributions increases
+    significantly over time or between different environments, it suggests that the
+    distributions have diverged and the data may have drifted from the original distribution.
+    This can be an indication of changes in data characteristics, the data-generating
+    process, or the data source. This may prompt further investigation and monitoring
+    to ensure data quality and model performance. The threshold for what constitutes
+    a significant increase in the Wasserstein distance as an indicator of data drift
+    may depend on the specific problem or application. It requires careful consideration
+    and domain knowledge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The histograms in the following represent the distributions of 'Group 1' and
+    'Group 2.' The purple dashed lines visually signify the Wasserstein distance,
+    quantifying the amount of 'work' required to transform one distribution into the
+    other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.6 – visualization to represent the Wasserstein distance between
+    ''Group 1'' and ''Group 2](img/B17875_09_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.6 – visualization to represent the Wasserstein distance between 'Group
+    1' and 'Group 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Wasserstein distance provides a measure of how much the two distributions
+    differ in terms of their location and shape. In this case, the distance value
+    and the spread of the purple lines across the distributions suggest that there
+    is some level of discrepancy between the two groups, but not an extreme one..
+  prefs: []
+  type: TYPE_NORMAL
+- en: Statistical tests and measurements for categorical features
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this section, we are going to briefly cover one of the most popular tests:
+    the chi-squared test. As mentioned before, all the statistical tests follow the
+    framework of hypothesis testing described in the earlier section.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Chi-squared test
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The chi-squared test serves as a statistical method for assessing the presence
+    of a meaningful relationship between two categorical variables, typically represented
+    in a contingency table. The general procedure involves the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Establish the hypotheses:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Null Hypothesis (H0)**: This suggests that no significant relationship exists
+    between the two categorical variables.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Alternative Hypothesis (Ha)**: This indicates that a meaningful relationship
+    does exist between the two categorical variables.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Make** **the decision**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the chi-squared statistics have a p-value less than the chosen significance
+    level (alpha), we reject the null hypothesis. Otherwise, we accept the null hypothesis.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'To offer a clear understanding of the Chi-squared test, we will utilize illustrative
+    visuals based on a synthetic dataset. This dataset comprises two distinct categories,
+    termed ''Group 1'' and ''Group 2'':'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Group** 1'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This collection consists of 1,000 entries. Specifically, 572 entries fall under
+    category 'A' and 428 entries under category 'B'.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Group 2**'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This set also includes 1,000 entries, with 447 entries in category 'A' and 553
+    entries in category 'B'.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Key Attributes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Sample Size**: Both Group 1 and Group 2 have an equal number of entries (N=1,000),
+    enabling a fair comparative analysis.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Category Distribution**: Each group contains two categories—''A'' and ''B''.
+    However, the distribution of entries across these categories varies between the
+    groups.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Uniform Sample Size**: Since both groups have 1,000 entries, they are suitable
+    for statistical tests like the Chi-squared test that benefit from balanced datasets.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The following bar chart showcases the frequencies of categories 'A' and 'B'
+    for 'Group 1' and 'Group 2'. The annotated statistics in the corner provide the
+    calculated Chi-squared statistic, p-value, and degrees of freedom, serving as
+    quantitative measures for the visual comparisons.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.7 – visualization to represent the Chi-squared test results between
+    ''Group 1'' and ''Group 2](img/B17875_09_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.7 – visualization to represent the Chi-squared test results between
+    'Group 1' and 'Group 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: The extremely low p-value and the high Chi-squared statistic indicate a statistically
+    significant difference between the category distributions of 'Group 1' and 'Group
+    2'.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For easy reference here's a table detailing various statistical methods, their
+    hypotheses formulation, decision criteria, and example use-cases with metrics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Method** | **Formulate** **Hypotheses** | **Decision** **Criteria** | **Example**
+    **Metrics** | **Feature** **Type** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| T-Test | Null: Sample means identical &#124; Alt: Sample means differ | Reject
+    null if p-value is less than significance level | Average user session durations:
+    5 min vs 8 min | Numeric |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Chi-SquaredTest | Null: No relation between categories &#124; Alt: Categories
+    related | Reject null if p-value is less than significance level | Engagement
+    levels across various ad channels | Categorical |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ANOVA | Null: Group averages same &#124; Alt: At least one group average
+    varies | Reject null if p-value is less than significance level | Performance
+    metrics of distinct sales units | Numeric |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Kolmogorov-Smirnov Test | Null: Data distributions match &#124; Alt: Data
+    distributions vary | Reject null if D exceeds critical value | Customer age distributions
+    across regions | Numeric |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Levene’s Test | Null: Equal group variances &#124; Alt: Variances differ
+    between groups | Reject null if p-value is less than significance level | Score
+    variance comparison between genders | Numeric |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Wasserstein Distance | Null: Distributions are equal &#124; Alt: Distributions
+    differ | Consider domain-specific threshold for Wasserstein distance | Distributional
+    shift in customer incomes over time | Numeric |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 9.3 – A guide to statistical methods, their hypotheses, decision criteria,
+    example use-cases, and applicable feature types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we have covered at a high level statistical tests involved for detecting
+    drift for individual features. Let’s discuss what monitoring tests we can implement
+    on our models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Statistical tests and measurements on models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When it comes to monitoring model performance altogether, we can have additional
+    monitoring in place for the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can monitor the relationship between the target and independent features:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Numeric target**: For calculating and monitoring Pearson coefficients'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Categorical target**: For calculating and monitoring contingency tables'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Model performance**: Here, we can monitor the model’s offline metrics over
+    time:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Regression models**: These comprise **Mean square error** (**MSE**), residual
+    plots, **root-mean-squared Error** (**RMSE**), and so on'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Classification models**: These comprise accuracy, F1 scores, **receiving
+    operating characteristics** (**ROC**) curves, and so on'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tracking performance on holdout datasets
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Time taken to train**: If the time taken to train the model over time increases
+    drastically, we may need to investigate that'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s take a look at an end-to-end example of detecting drift on the Databricks
+    platform. We will be working with a synthetic dataset generated to simulate various
+    types of drift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing drift detection on Databricks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The necessary files for this chapter are located within the `Chapter-09` folder.
+    This example demonstrates how you can arrange your code into specific modules
+    to keep it organized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.8 – A screenshot showing the layout of the files in our code base](img/B17875_09_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.8 – A screenshot showing the layout of the files in our code base
+  prefs: []
+  type: TYPE_NORMAL
+- en: The setup notebook in the `config` folder is designed to establish the folder
+    structure for data reading and writing. It also sets up the MLflow experiment
+    for tracking model performance over time and manages other variables that will
+    be utilized in our `model`-`drift` notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `datagen` notebook within the data folder serves the purpose of creating
+    a synthetic dataset that effectively demonstrates the concept of model drift.
+    This dataset encompasses time series data of online sales for an e-commerce website
+    spanning three months.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this dataset, we have a set of independent features and a target feature,
+    along with simulated relationships between them. The independent features include
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Temperature` **(Numeric)**: This captures the highest daily temperature in
+    Fahrenheit'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Weather_Condition``''sunny''`, `''cloudy''`, or `''rainy''`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Promotion_Type``''discount''`, `''free_gift''`, or `''bundle_deal''`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Website_Traffic` **(Numeric)**: This represents the total number of visits
+    to the website'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Device_Type` **(Categorical)**: This indicates the type of device used to
+    access the website'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The target feature is `Daily_Sales` (numeric), which represents the total sales
+    revenue for each day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In terms of relationships, the target variable, `Daily_Sales`, has specific
+    correlations with these features. For instance, it shows a `Temperature` and `Website_Traffic`.
+    On the other hand, it has a `Weather_Condition` and `Device_Type`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our approach involves training the model using the data from the initial month
+    and subsequently simulating diverse drift patterns in the ensuing months’ data.
+    This process allows us to effectively explore the impact of changing data distributions
+    and patterns on the model’s performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, there are two additional notebooks present inside the `util` folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `monitoring` notebook contains a set of monitoring utility functions designed
+    to ensure the quality and consistency of new incoming data compared to production
+    data in a data-driven environment. These functions cover various aspects, including
+    checking null value proportions, identifying significant differences in summary
+    statistics, detecting variations in variances and distributions, evaluating categorical
+    differences, and comparing model performances. The utility functions assist in
+    maintaining data integrity, identifying potential discrepancies, and providing
+    recommendations for transitioning models to production. Additionally, there’s
+    a function to plot boxplots for visualizing distribution differences between incoming
+    and production data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To perform various statistical tests on data, we are going to use the `scipy.stats`
+    package. The `scipy.stats` package is a fundamental component of the SciPy library,
+    which is widely used in scientific and statistical computing in Python. It provides
+    a comprehensive collection of statistical distributions, functions, and methods
+    for performing various statistical calculations, probability density estimations,
+    and hypothesis testing. With `scipy.stats`, you can easily work with continuous
+    and discrete probability distributions, generate random samples, compute statistical
+    measures, and perform tests to analyze data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This package encompasses a wide range of statistical techniques, such as calculating
+    probabilities, quantiles, and moments and performing goodness-of-fit tests. The
+    distributions available in `scipy.stats` include common ones such as normal, exponential,
+    uniform, and many more, as well as less common and specialized distributions used
+    in various research fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to statistical distributions, `scipy.stats` offers functions for
+    hypothesis testing, correlation analysis, linear regression, and non-parametric
+    tests. You can read more about it on the official website ([https://docs.scipy.org/doc/scipy/reference/stats.html](https://docs.scipy.org/doc/scipy/reference/stats.html)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `training` notebook focuses on training and managing ML models using scikit-learn
+    within the MLflow environment. It includes utility functions for MLflow Model
+    Registry interactions, Delta table-handling, and a detailed ML workflow. The workflow
+    encompasses data loading, preprocessing, training a `RandomForestRegressor` model,
+    evaluating performance, and logging relevant metrics and artifacts to MLflow for
+    model tracking. The script’s purpose is to streamline the end-to-end process of
+    training, evaluating, and tracking ML models in a production setting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With all the supporting notebooks and high-level code explanations out of the
+    way, let’s go through the main driver notebook called `model-drift`, which calls
+    all the other notebooks. You can go over the supporting notebooks in your own
+    time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s jump right into the `model-drift` notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The initial cells are just calling the other supporting notebooks to have the
+    required libraries, directory structure, raw dataset, and MLflow experiment ready
+    for our example:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we use the Databricks notebook widgets to allow us to parametrize our
+    notebook to set certain thresholds for our hypothesis tests and model performance
+    metrics:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Ingest the first month’s data from the raw synthetic dataset stored as a CSV
+    file into a Delta table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train the baseline model as an MLflow run using our custom method, `train_sklearn_rf_model`.
+    This run will be available to view under our experiment:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Register the baseline model we trained on the first month’s data in the model
+    registry and change its state to production:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Let’s delve into the run that has been generated as a result of training the
+    baseline model. Locate the flask icon situated on the right-hand side of the notebook
+    and proceed to click on it to access the run. It’s important to note that the
+    name of the run might vary given that it is randomly generated.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.9 – A screenshot showing run tracking the baseline model training
+    using the first month’s data](img/B17875_09_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.9 – A screenshot showing run tracking the baseline model training using
+    the first month’s data
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to the metrics, our custom model training method contains code that
+    logs the summary statistics of the dataset that we used for training the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.10 – A screenshot showing the logged summary statistics for the
+    training dataset](img/B17875_09_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.10 – A screenshot showing the logged summary statistics for the training
+    dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: Along with this, we also logged the exact version of the Delta table that we
+    used to train the model. This will provide us with reproducibility and lineage
+    in the future if we need to analyze how this model was trained and what features
+    were used to train it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.11 – The logging of the Delta table version and the size of the
+    training and test sets used for this run](img/B17875_09_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.11 – The logging of the Delta table version and the size of the training
+    and test sets used for this run
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the rest of the notebook, we simply use this baseline to compare model performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the second month’s data, we simulate upstream data errors by introducing
+    missing values for `website_traffic` for certain promotion types and changing
+    the measurement of the temperature from Fahrenheit to Celsius. By performing the
+    test that checks the null proportion for all numeric columns, we are able to capture
+    that `web_traffic` has an unusual amount of missing values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '![Figure 9.12 – A screenshot showing the results of the null value check on
+    the new data](img/B17875_09_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.12 – A screenshot showing the results of the null value check on the
+    new data
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To detect drift in the data, we use the `calculate_summary_stats` method defined
+    in our monitoring notebook to calculate summary statistics on the second month’s
+    data. Then, we use the other utility methods, such as `load_summary_stats_pdf_from_run`,
+    to read the summary statistics from our base run to compare the second month’s
+    data with:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Our summary statistics comparison tests are able to capture the drift in the
+    data and highlight that the temperature has changed drastically in the new data.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.13 – Screenshot showcasing the output generated by the statistical
+    tests comparing the summary statistics between the new month’s data and the baseline
+    data](img/B17875_09_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.13 – Screenshot showcasing the output generated by the statistical
+    tests comparing the summary statistics between the new month’s data and the baseline
+    data
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Moving forward, we employ the Levine test to assess variations in variance
+    coupled with a corrected Bonferroni test to ascertain statistical significance:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As the next step in the production stage, you may want to collaborate with the
+    upstream data provider team to understand the root cause of the temperature values
+    have changed so drastically in comparison to our base dataset.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The presented tests serve as illustrative instances, underscoring the seamless
+    integration of drift detection code within your ML workflow on Databricks. It’s
+    worth noting that these tests can be effortlessly triggered automatically, mirroring
+    the demonstration in [*Chapter 8*](B17875_08.xhtml#_idTextAnchor122), *Automating
+    ML Workflows Using* *Databricks Jobs*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you progress through the remainder of the notebook, you’ll encounter additional
+    examples that illuminate the method of tracking model metrics over time to detect
+    deterioration. Furthermore, you’ll gain insights into the programmatic management
+    of model promotion up to the production stage or other stages, a process contingent
+    on the outcomes derived from your tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s summarize what we learned in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we extensively explored the significance of monitoring both
+    models and data, emphasizing the crucial role of drift detection. Our understanding
+    deepened as we delved into the spectrum of statistical tests at our disposal,
+    which are adept at identifying diverse forms of drift encompassing numerical and
+    categorical features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moreover, we engaged in a comprehensive walk-through, exemplifying the application
+    of these concepts. Through a simulated model drift scenario using a synthetic
+    e-commerce dataset, we harnessed the power of various statistical tests from the
+    `scipy.stats` package to accurately pinpoint instances of drift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we venture into the next chapter, our focus will pivot toward elucidating
+    the organization within the Databricks workspace and delving into the realm of
+    **continuous integration/continuous** **deployment** (**CI/CD**).
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,1864 @@
+- en: 2 Reading Time Series Data from Files
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Join our book community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '![](img/file0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[https://packt.link/zmkOY](https://packt.link/zmkOY)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will use **pandas**, a popular **Python** library with a
+    rich set of I/O tools, data wrangling, and date/time functionality to streamline
+    working with **time series data**. In addition, you will explore several reader
+    functions available in pandas to ingest data from different file types, such as
+    **Comma-Separated Value** (**CSV**), Excel, and SAS. You will explore reading
+    from files, whether stored locally on your drive or remotely on the cloud, such
+    as an **AWS S3 bucket**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time series data is complex and can be in different shapes and formats. Conveniently,
+    the pandas reader functions offer a vast number of arguments (parameters) to help
+    handle such variety in the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **pandas** library provides two fundamental data structures, Series and
+    DataFrame, implemented as classes. The DataFrame class is a distinct data structure
+    for working with tabular data (think rows and columns in a spreadsheet). The main
+    difference between the two data structures is that a Series is one-dimensional
+    (single column), and a DataFrame is two-dimensional (multiple columns). The relationship
+    between the two is that you get a Series when you slice out a column from a DataFrame.
+    You can think of a DataFrame as a side-by-side concatenation of two or more Series
+    objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A particular feature of the Series and DataFrames data structures is that they
+    both have a labeled axis called an index. A specific type of index that you will
+    often see with time series data is the `DatetimeIndex` , which you will explore
+    further in this chapter. Generally, the index makes slicing and dicing operations
+    very intuitive. For example, to make a DataFrame ready for time series analysis,
+    you will learn how to create DataFrames with an index of the `DatetimeIndex` type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following recipes on how to ingest data into a pandas DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading data from CSVs and other delimited files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reading data from an Excel file
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reading data from URLs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reading data from Parquet filesWorking with large data files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: WHY DATETIMEINDEX?
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: A pandas DataFrame with an index of the `DatetimeIndex` type unlocks a large
+    set of features and useful functions needed when working with time series data.
+    You can think of it as adding a layer of intelligence or awareness to pandas to
+    treat the DataFrame as a time series DataFrame.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter and forward, we will extensively use pandas 2.2.0 (released
+    January 20, 2024).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throughout our journey, you will be installing additional Python libraries to
+    use in conjunction with pandas. You can download the Jupyter notebooks from the
+    GitHub repository ([https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch2/Chapter%202.ipynb](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch2/Chapter%202.ipynb))
+    to follow along.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can download the datasets used in this chapter from the GitHub repository
+    using this link: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch2](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch2).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading data from CSVs and other delimited files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, you will use the `pandas.read_csv()` function, which offers
+    a large set of parameters that you will explore to ensure the data is properly
+    read into a time series DataFrame. In addition, you will learn how to specify
+    an index column, parse the index to be of the type `DatetimeIndex`, and parse
+    string columns that contain dates into `datetime` objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, using Python, data read from a CSV file will be in string format
+    (text). When using the `read_csv` method in pandas, it will try to infer the appropriate
+    data types (dtype), and, in most cases, it does a great job at that. However,
+    there are situations where you will need to explicitly indicate which columns
+    to cast to a specific data type. For example, you will specify which column(s)
+    to parse as dates using the `parse_dates` parameter in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You will read a CSV file containing hypothetical box office numbers for a movie.
+    The file is provided in the GitHub repository for this book. The data file is
+    in `datasets/Ch2/movieboxoffice.csv`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You will ingest our CSV file using pandas and leverage some of the available
+    parameters in `read_csv`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let''s load the libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a `Path` object for the file location:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Read the CSV file into a DataFrame using the `read_csv` function and pass the
+    `filepath` with additional parameters.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The first column in the CSV file contains movie release dates, and it needs
+    to be set as an index of the `DatetimeIndex` (`index_col=0` and `parse_dates=[''Date'']`)
+    types. Specify which columns you want to include by providing a list of column
+    names to `usecols`. The default behavior is that the first row includes the header
+    (`header=0`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will output the following first five rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.1: The first five rows of the ts DataFrame in JupyterLab](img/file16.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 2.1: The first five rows of the ts DataFrame in JupyterLab'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Print a summary of the DataFrame to check the index and column data types:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that the `Date` column is now an index (not a column) of the type `DatetimeIndex`.
+    Additionally, both the `Daily` and `Forecast` columns have the wrong dtype inference.
+    You would expect them to be of the `float` type. The issue is due to the source
+    CSV file containing dollar signs (`$`) and thousand separators (`,`) in both columns.
+    The presence of non-numeric characters will cause the columns to be interpreted
+    as strings. A column with the `dtype` object indicates either a string column
+    or a column with mixed dtypes (not homogeneous).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To fix this, you need to remove both the dollar sign (`$`) and thousand separators
+    (`,`) or any other non-numeric character. You can accomplish this using `str.replace()`,
+    which can take a regular expression to remove all non-numeric characters but exclude
+    the period (`.`) for the decimal place. Removing these characters does not convert
+    the dtype, so you will need to cast those two columns as a float dtype using `.astype(float)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Print a summary of the updated DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, you have a DataFrame with `DatetimeIndex` and both `Daily` and `Forecast`
+    columns are of the `float64` dtype (numeric fields).
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Using pandas for data transformation is fast since it loads the data into memory.
+    For example, the `read_csv` method reads and loads the entire data into a DataFrame
+    in memory. When requesting a DataFrame summary with the `info()` method, the output
+    will display memory usage for the entire DataFrame in addition to column and index
+    data types. To get the exact memory usage for each column, including the index,
+    you can use the `memory_usage()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The total will match what was provided in the DataFrame summary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: So far, you have used a few of the available parameters when reading a CSV file
+    using `read_csv`. The more familiar you become with the different options available
+    in any pandas reader functions, the more upfront preprocessing you can do during
+    data ingestion (reading).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You leveraged the built-in `parse_dates` argument, which takes in a list of
+    columns (either specified by name or position). The combination of `index_col=0`
+    and `parse_dates=[0]` produced a DataFrame with an index of the `DatetimeIndex`
+    type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s inspect the parameters used in this recipe as defined in the official
+    `pandas.read_csv()` documentation ([https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`filepath_or_buffer`: This is the first positional argument and the only required
+    field needed (at a minimum) to read a CSV file. Here, you passed the Python path
+    object named `filepath`. This can also be a string that represents a valid file
+    path such as `''../../datasets/Ch2/movieboxoffice.csv''` or a URL that points
+    to a remote file location, such as an AWS S3 bucket (we will examine this later
+    in the *Reading data from URLs* recipe in this chapter).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`sep`: This takes a string to specify which delimiter to use. The default is
+    a comma delimiter (`,`) which assumes a CSV file. If the file is separated by
+    another delimiter, such as a pipe (`|`) or semicolon (`;`), then the argument
+    can be updated, such as `sep="|" or sep=";"`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Another alias to `sep` is `delimiter`, which can be used as well as a parameter
+    name.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`header`: In this case, you specified that the first `row` (`0`) value contains
+    the header information. The default value is `infer`, which usually works as-is
+    in most cases. If the CSV does not contain a header, then you specify `header=None`.
+    If the CSV has a header but you prefer to supply custom column names, then you
+    need to specify `header=0` and overwrite it by providing a list of new column
+    names to the `names` argument.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`parse_dates`: In the recipe, you provided a list of column positions using
+    `[0]`, which specified only the first column (by position) should be parsed. The
+    `parse_dates` argument can take a list of column names, such as `["Date"]`, or
+    a list of column positions, such as `[0, 3]`, indicating the first and the fourth
+    columns. If you only intend to parse the index column(s) specified in the `index_col`
+    parameter, you only need to pass `True` (Boolean).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`index_col`: You specified that the first column by position (`index_col=0`)
+    will be used as the DataFrame index. Alternatively, you could provide the column
+    name as a string (`index_col=''Date''`). The parameter also takes in a list of
+    integers (positional indices) or strings (column names), which would create a
+    `MultiIndex` object.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`usecols`: The default value is `None`, which includes all the columns in the
+    dataset. Limiting the number of columns to only those that are required results
+    in faster parsing and overall lower memory usage, since you only bring in what
+    is needed. The `usecols` arguments can take a list of *column names*, such as
+    `[''Date'', ''DOW'', ''Daily'', ''Percent Diff'', ''Forecast'']` or a list of
+    *positional indices*, such as `[0, 1, 3, 7, 6]`, which would produce the same
+    result.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Recall that you specified which columns to include by passing a list of column
+    names to the **usecols** parameter. These names are based on the file header (the
+    first row of the CSV file).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you decide to provide custom header names, you cannot reference the original
+    names in the **usecols** parameter; this will produce the following error: `ValueError:
+    Usecols do not match columns.`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There are situations where `parse_dates` may not work (it just cannot parse
+    the date). In such cases, the column(s) will be returned unchanged, and no error
+    will be thrown. This is where the `date_format` parameter can be helpful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code shows how `date_format` can be used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code will print out the first five rows of the `ts` DataFrame,
+    displaying a correctly parsed `Date` index.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.2: The first five rows of the ts DataFrame using JupyterLab](img/file17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 2.2: The first five rows of the ts DataFrame using JupyterLab'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s break it down. In the preceding code, since the date is stored as a
+    string in the form *26-Apr-2021*, you passed `"%d-%b-%Y"` to reflect that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`%d` represents the day of the month, such as `01` or `02`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`%b` represents the abbreviated month name, such as `Apr` or `May`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`%Y` represents the year as a four-digit number, such as `2020` or `2021`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Other common string codes include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`%y` represents a two-digit year, such as `19` or `20`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`%B` represents the month''s full name, such as `January` or `February`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`%m` represents the month as a two-digit number, such as `01` or `02`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For more information on Python's string formats for representing dates, visit
+    [https://strftime.org](https://strftime.org).
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When dealing with more complex date formats an alternate options is to use the
+    `to_datetime()` function. The `to_datetime()` function is used to convert a string,
+    integer, or float into a datetime object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Initially, you will read the CSV data as is, then apply the `to_datetime()`
+    function to parse the specific column(s) as desired. This is demonstrated in the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The last line, `ts.index = pd.to_datetime(ts.index, format="%d-%b-%Y"),` converts
+    the index of the `ts` DataFrame into a `DatetimeIndex` object. Notice how we specified
+    the data string format similar to what we did with the `date_format` parameter
+    in the `read_csv()` function in the *There’s more…* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading data from an Excel file
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To read data from an Excel file, you will need to use a different reader function
+    from pandas. Generally, working with Excel files can be challenging since the
+    file can contain formatted multi-line headers, merged header cells, and images.
+    They may also contain multiple worksheets with custom names (labels). Therefore,
+    it is vital that you always inspect the Excel file first. The most common scenario
+    is reading from an Excel file that contains data partitioned into multiple sheets,
+    which is the focus of this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will be using the `pandas.read_excel()` function and will
+    examine the various parameters available to ensure the data is read properly as
+    a DataFrame with a `DatetimeIndex` for time series analysis. In addition, you
+    will explore different options to read Excel files with multiple sheets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To use `pandas.read_excel()`, you will need to install an additional library
+    for reading and writing Excel files. In the `read_excel()` function, you will
+    use the engine parameter to specify which library (engine) to use for processing
+    an Excel file. Depending on the Excel file extension you are working with (for
+    example, `.xls` or `.xlsx`), you may need to specify a different engine that may
+    require installing an additional library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The supported libraries (engines) for reading and writing Excel include `xlrd`,
+    `openpyxl`, `odf`, and `pyxlsb`. When working with Excel files, the two most common
+    libraries are usually `xlrd` and `openpyxl`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `xlrd` library only supports `.xls` files. So, if you are working with an
+    older Excel format, such as `.xls`, then `xlrd` will do just fine. For newer Excel
+    formats, such as `.xlsx`, we will need a different engine, and in this case, `openpyxl`
+    would be the recommendation to go with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install `openpyxl` using `conda`, run the following command in the terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using `pip`, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: We will be using the `sales_trx_data.xlsx` file, which you can download from
+    the book's GitHub repository. See the *Technical requirements* section of this
+    chapter. The file contains sales data split by year into two sheets (`2017` and
+    `2018`), respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You will ingest the Excel file (`.xlsx`) using pandas and `openpyxl`, and leverage
+    some of the available parameters in `read_excel()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the libraries for this recipe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Read the Excel (`.xlxs`) file using the `read_excel()`function. By default,
+    pandas will only read from the first sheet. This is specified under the `sheet_name`
+    parameter, which is set to `0` as the default value. Before passing a new argument,
+    you can use `pandas.ExcelFile` first to inspect the file and determine the number
+    of sheets available. The `ExcelFile` class will provide additional methods and
+    properties, such as `sheet_name`, which returns a list of sheet names:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you have multiple sheets, you can specify which sheets you want to ingest
+    by passing a list to the `sheet_name` parameter in `read_excel`. The list can
+    either be positional arguments, such as first, second, and fifth sheets with `[0,
+    1, 4]`, sheet names with `["Sheet1", "Sheet2", "Sheet5"]`, or a combination of
+    both, such as first sheet, second sheet, and a sheet named `"Revenue"` `[0, 1,
+    "Revenue"]`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following code, you will use sheet positions to read both the first
+    and second sheets (`0` and `1` indexes). This will return a Python `dictionary`
+    object with two DataFrames. Note that the returned dictionary (key-value pair)
+    has numeric keys (`0` and `1`) representing the first and second sheets (positional
+    index), respectively:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Alternatively, you can pass a list of sheet names. Notice that the returned
+    dictionary keys are now strings and represent the sheet names as shown in the
+    following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you want to read from all the available sheets, you will pass `None` instead.
+    The keys for the dictionary, in this case, will represent sheet names:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The two DataFrames within the dictionary are identical (homogeneous-typed) in
+    terms of their schema (column names and data types). You can inspect each DataFrame
+    with `ts['2017'].info()` and `ts['2018'].info()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: They both have a `DatetimeIndex` object, which you specified in the `index_col`
+    parameter. The 2017 DataFrame consists of 36,764 rows and the 2018 DataFrame consists
+    of 37,360\. In this scenario, you want to stack (combine) the two (think `UNION`
+    in SQL) into a single DataFrame that contains all 74,124 rows and a `DatetimeIndex`
+    that spans from `2017-01-01` to `2018-12-31`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To combine the two DataFrames along the index axis (stacked one on top of the
+    other), you will use the `pandas.concat()` function. The default behavior of the
+    `concat()` function is to concatenate along the index axis (`axis=0`). In the
+    following code, you will explicitly specify which DataFrames to concatenate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When you have multiple DataFrames returned (think multiple sheets), you can
+    use the `concat()` function on the returned dictionary. In other words, you can
+    combine the `concat()` and `read_excel()` functions in one statement. In this
+    case, you will end up with a `MultiIndex` DataFrame where the first level is the
+    sheet name (or number) and the second level is the `DatetimeIndex`. For example,
+    using the `ts` dictionary, you will get a two-level index: `MultiIndex([(''2017'',
+    ''2017-01-01''), ..., (''2018'', ''2018-12-31'')], names=[None, ''Date''], length=74124)`.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To reduce the number of levels, you can use the `droplevel(level=0)` method
+    to drop the first level after pandas `.concat()` shown as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you are only reading one sheet, the behavior is slightly different. By default,
+    `sheet_name` is set to `0`, which means it reads the first sheet. You can modify
+    this and pass a different value (single value), either the sheet name (string)
+    or sheet position (integer). When passing a single value, the returned object
+    will be a pandas DataFrame and not a dictionary:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Do note though that if you pass a single value inside two brackets (`[1]`),
+    then pandas will interpret this differently and the returned object will be a
+    dictionary that contains one DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, note that you did not need to specify the engine in the last example.
+    The `read_csv` function will determine which engine to use based on the file extension.
+    So, for example, suppose the library for that engine is not installed. In that
+    case, it will throw an `ImportError` message, indicating that the library (dependency)
+    is missing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `pandas.read_excel()` function has many common parameters with the `pandas.read_csv()`
+    function that you used earlier. The `read_excel` function can either return a
+    DataFrame object or a dictionary of DataFrames. The dependency here is whether
+    you are passing a single value (scalar) or a list to `sheet_name`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the `sales_trx_data.xlsx` file, both sheets had the same schema (homogeneous-
+    typed). The sales data was partitioned (split) by year, where each sheet contained
+    sales for a particular year. In this case, concatenating the two DataFrames was
+    a natural choice. The `pandas.concat()` function is like the `DataFrame.append()`
+    function, in which the second DataFrame was added (appended) to the end of the
+    first DataFrame. This should be similar in behavior to the `UNION` clause for
+    those coming from a SQL background.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: An alternative method to reading an Excel file is with the `pandas.ExcelFile()`
+    class, which returns a pandas `ExcelFile` object. Earlier in this recipe, you
+    used `ExcelFile()` to inspect the number of sheets in the Excel file through the
+    `sheet_name` property.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ExcelFile` class has several useful methods, including the `parse()` method
+    to parse the Excel file into a DataFrame, similar to the `pandas.read_excel()`
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, you will use the `ExcelFile` class to parse the first
+    sheet, assign the first column as an index, and print the first five rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You should see similar results for the first five rows of the DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.3: The first five rows of the DataFrame using JupyterLab](img/file18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 2.3: The first five rows of the DataFrame using JupyterLab'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From *Figure 2.3*, it should become clear that `ExcelFile.parse()` is *equivalent*
+    to `pandas.read_excel()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information on `pandas.read_excel()` and `pandas.ExcelFile()`, please
+    refer to the official documentation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`pandas.read_excel`: [https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html](https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.ExcelFile.parse`: [https://pandas.pydata.org/docs/reference/api/pandas.ExcelFile.parse.html](https://pandas.pydata.org/docs/reference/api/pandas.ExcelFile.parse.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reading data from URLs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Files can be downloaded and stored locally on your machine, or stored on a remote
+    server or cloud location. In the earlier two recipes, *Reading from CSVs and other
+    delimited files*, and *Reading data from an Excel file*, both files were stored
+    locally.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many of the pandas reader functions can read data from remote locations by passing
+    a URL path. For example, `read_csv()` and `read_excel()` can take a URL to read
+    a file accessible via the internet. In this recipe, you will read a CSV file using
+    `pandas.read_csv()` and Excel files using `pandas.read_excel()` from remote locations,
+    such as GitHub and AWS S3 (private and public buckets). You will also read data
+    directly from an HTML page into a pandas DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You will need to install the **AWS SDK for Python** (**Boto3**) for reading
+    files from S3 buckets. Additionally, you will learn how to use the `storage_options`
+    parameter available in many of the reader functions in pandas to read from S3
+    without the Boto3 library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To use an S3 URL (for example, `s3://bucket_name/path-to-file`) in pandas, you
+    will need to install the `s3fs` library. You will also need to install an HTML
+    parser for when we use `read_html()`. For example, for the parsing engine (the
+    HTML parser), you can install either `lxml` or `html5lib`; pandas will pick whichever
+    is installed (it will first look for `lxml`, and if that fails, then for `html5lib`).
+    If you plan to use `html5lib` you will need to install Beautiful Soup (`beautifulsoup4`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install using pip, you can use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using Conda, you can use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'This recipe will present you with different scenarios when reading data from
+    online (remote) sources. Let''s import pandas upfront since you will be using
+    it throughout this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Reading data from GitHub
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Sometimes, you may find useful public data on GitHub that you want to use and
+    read directly (without downloading). One of the most common file formats on GitHub
+    are CSV files. Let''s start with the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To read a CSV file from GitHub, you will need the URL to the raw content. If
+    you copy the file''s GitHub URL from the browser and use it as the file path,
+    you will get a URL that looks like this: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/datasets/Ch2/AirQualityUCI.csv](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/datasets/Ch2/AirQualityUCI.csv).
+    This URL is a pointer to the web page in GitHub and not the data itself; hence
+    when using `pd.read_csv()`, it will throw an error:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Instead, you will need the raw content, which will give you a URL that looks
+    like this: [https://raw.githubusercontent.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./main/datasets/Ch2/AirQualityUCI.csv](https://raw.githubusercontent.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./main/datasets/Ch2/AirQualityUCI.csv):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.4: The GitHub page for the CSV file. Note the View raw button](img/file19.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: 'Figure 2.4: The GitHub page for the CSV file. Note the View raw button'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In *Figure 2.4*, notice that the values are not comma-separated (not a comma-delimited
+    file); instead, the file uses semicolon (`;`) to separate the values.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The first column in the file is the `Date` column. You will need to parse (using
+    the `parse_date` parameter) and convert it to `DatetimeIndex` (`index_col` parameter).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Pass the new URL to `pandas.read_csv()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: We successfully ingested the data from the CSV file in GitHub into a DataFrame
+    and printed the first three rows of select columns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading data from a public S3 bucket
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'AWS supports **virtual-hosted-style** URLs such as `https://bucket-name.s3.Region.amazonaws.com/keyname`,
+    **path-style** URLs such as `https://s3.Region.amazonaws.com/bucket-name/keyname`,
+    and using `S3://bucket/keyname`. Here are examples of how these different URLs
+    may look for our file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A virtual hosted-style URL or an object URL: [https://tscookbook.s3.us-east-1.amazonaws.com/AirQualityUCI.xlsx](https://tscookbook.s3.us-east-1.amazonaws.com/AirQualityUCI.xlsx)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A path-style URL: [https://s3.us-east-1.amazonaws.com/tscookbook/AirQualityUCI.xlsx](https://s3.us-east-1.amazonaws.com/tscookbook/AirQualityUCI.xlsx)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'An S3 protocol: `s3://tscookbook/AirQualityUCI.csv`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this example, you will be reading the `AirQualityUCI.xlsx` file, which has
+    only one sheet. It contains the same data as `AirQualityUCI.csv`, which we read
+    earlier from GitHub.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that in the URL, you do not need to specify the region as `us-east-1`.
+    The `us-east-1` region, which represents US East (North Virginia), is an **exception.**
+    This is not the case for other regions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Read the same file using the `S3://` URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You may get an error such as the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: This indicates that either you do not have the `s3fs` library installed or possibly
+    you are not using the right Python/Conda environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading data from a private S3 bucket
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: When reading files from a private S3 bucket, you will need to pass your credentials
+    to authenticate. A convenient parameter in many of the I/O functions in pandas
+    is `storage_options`, which allows you to send additional content with the request,
+    such as a custom header or required credentials to a cloud service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will need to pass a dictionary (key-value pair) to provide the additional
+    information along with the request, such as username, password, access keys, and
+    secret keys to `storage_options` as in `{"username": username, "password": password}`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, you will read the `AirQualityUCI.csv` file, located in a private S3 bucket:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will start by storing your AWS credentials in a config `.cfg` file outside
+    your Python script. Then, use `configparser` to read the values and store them
+    in Python variables. You do not want your credentials exposed or hardcoded in
+    your code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can load the `aws.cfg` file using `config.read()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The *AWS Access Key ID* and *Secret Access Key* are now stored in A`WS_ACCESS_KEY`
+    and `AWS_SECRET_KEY.` Use `pandas.read_csv()` to read the CSV file and update
+    the `storage_options` parameter by passing your credentials, as shown in the following
+    code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Alternatively, you can use the AWS SDK for Python (Boto3) to achieve similar
+    results. The `boto3` Python library gives you more control and additional capabilities
+    (beyond just reading and writing to S3). You will pass the same credentials stored
+    earlier in `AWS_ACCESS_KEY` and `AWS_SECRET_KEY` and pass them to AWS, using `boto3`
+    to authenticate:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, the `client` object has access to many methods specific to the AWS S3
+    service for creating, deleting, and retrieving bucket information, and more. In
+    addition, Boto3 offers two levels of APIs: client and resource. In the preceding
+    example, you used the client API.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The client is a low-level service access interface that gives you more granular
+    control, for example, `boto3.client("s3")`. The resource is a higher-level object-oriented
+    interface (an abstraction layer), for example, `boto3.resource("s3")`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Chapter 4*, *Persisting Time Series Data to Files*, you will explore the
+    **resource** API interface when writing to S3\. For now, you will use the client
+    interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will use the `get_object` method to retrieve the data. Just provide the
+    bucket name and a key. The key here is the actual filename:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When calling the `client.get_object()` method, a dictionary (key-value pair)
+    is returned, as shown in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: The content you are interested in is in the response body under the `Body` key.
+    You passed `data['Body']` to the `read_csv()` function, which loads the response
+    stream (`StreamingBody`) into a DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading data from HTML
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'pandas offers an elegant way to read HTML tables and convert the content into
+    a pandas DataFrame using the `pandas.read_html()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following recipe, we will extract HTML tables from Wikipedia for COVID-19
+    pandemic tracking cases by country and by territory ([https://en.wikipedia.org/wiki/COVID-19_pandemic_by_country_and_territory](https://en.wikipedia.org/wiki/COVID-19_pandemic_by_country_and_territory)):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`pandas.read_html()` returned a list of DataFrames, one for each HTML table
+    found in the URL. Keep in mind that the website''s content is dynamic and gets
+    updated regularly, and the results may vary. In our case, it returned 69 DataFrames.
+    The DataFrame at index `15` contains summary on COVID-19 cases and deaths by region.
+    Grab the DataFrame (at index `15`) and assign it to the `df` variable, and print
+    the returned columns:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Display the first five rows for `Total cases`, `Total deaths`, and the `Cases
+    per million` columns:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Most of the pandas reader functions accept a URL as a path. Examples include
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`pandas.read_csv()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.read_excel()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.read_parquet()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.read_table()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.read_pickle()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.read_orc()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.read_stata()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.read_sas()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pandas.read_json()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The URL needs to be one of the valid URL schemes that pandas supports, which
+    includes `http` and `https`, `ftp`, `s3`, `gs`, or the `file` protocol.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `read_html()` function is great for scraping websites that contain data
+    in HTML tables. It inspects the HTML and searches for all the `<table>` elements
+    within the HTML. In HTML, table rows are defined with the `<tr> </tr>` tags and
+    headers with the `<th></th>` tags. The actual data (cell) is contained within
+    the `<td> </td>` tags. The `read_html()` function looks for `<table>`, `<tr>`,
+    `<th>`, and `<td>` tags and, converts the content into a DataFrame, and assigns
+    the columns and rows as they were defined in the HTML. If an HTML page contains
+    more than one `<table></table>` tag, `read_html` will return them all and you
+    will get a list of DataFrames.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code demonstrates how `pandas.read_html()`works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Passing HTML literal strings**'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: As of pandas version 2.1.0\. you will need to wrap HTML code in io.StringIO.
+    The `StringIO(<HTML CODE>)` creates an in-memory file-like object from the HTML
+    string that can be passed directly to `read_html()` function.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'In the preceding code, the `read_html()` function reads the HTML content from
+    the file-like object and converts an HTML table, represented between “`<table>
+    … </table>`“ tags, into a pandas DataFrame. The headers between the `<th>` and
+    `</th>` tags represent the column names of the DataFrame, and the content between
+    the `<tr><td>` and `</td></tr>` tags represent the row data of the DataFrame.
+    Note that if you go ahead and delete the `<table>` and `</table>` table tags,
+    you will get the `ValueError: No tables found` error.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `read_html()` function has an optional `attr` argument, which takes a dictionary
+    of valid HTML `<table>` attributes, such as `id` or `class`. For example, you
+    can use the `attr` parameter to narrow down the tables returned to those that
+    match the `class` attribute `sortable` as in `<table class="sortable">`. The `read_html`
+    function will inspect the entire HTML page to ensure you target the right set
+    of attributes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the previous exercise, you used the `read_html` function on the COVID-19
+    Wikipedia page, and it returned 71 tables (DataFrames). The number of tables will
+    probably increase as time goes by as Wikipedia gets updated. You can narrow down
+    the result set and guarantee some consistency by using the `attr` option. First,
+    start by inspecting the HTML code using your browser. You will see that several
+    of the `<table>` elements have multiple classes listed, such as `sortable`. You
+    can look for other unique identifiers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note, if you get the error `html5lib not found`, please install it you will
+    need to install both `html5lib` and `beautifulSoup4`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install using `conda`, use the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using `pip`, use the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let''s use the `sortable` class and request the data again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: The list returned a smaller subset of tables (from `71` down to `7`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information, please refer to the official `pandas.read_html` documentation:
+    [https://pandas.pydata.org/docs/reference/api/pandas.read_html.html](https://pandas.pydata.org/docs/reference/api/pandas.read_html.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading data from Parquet files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Parquet** files have emerged as a popular choice for storing and processing
+    large datasets efficiently in the world of data engineering and big data analytics.
+    Initially developed by Twitter and Cloudera, Parquet was later contributed to
+    the **Apache Foundation** as an open-source columnar file format. The focus of
+    Parquet is to prioritize fast data retrieval and efficient compression. Its design
+    specifically caters to analytical workloads and serves as an excellent option
+    for partitioning data, which you will explore in this recipe and again in Chapter
+    4, *Persisting Time Series Data to Files*. As a result, Parquet has become the
+    de facto standard for modern data architectures and cloud storage solutions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe you learn how to read parquet files using pandas and learn how
+    to query a specific partition for efficient data retrieval.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You will be reading parquet files that contain weather data from National Oceanic
+    And Atmospheric Administration from Los Angeles Airport stations which you can
+    find in `datasets/Ch2/ LA_weather.parquet` folder. This contains weather readings
+    from 2010-2023 and partitioned by year (14 subfolders).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will use the `pandas.read_parquet()` function which requires you to install
+    a Parquet engine to process the files. You can install either **fastparquet**
+    or **PyArrow**, with the latter being the default choice for pandas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install PyArrow using **conda** run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install PyArrow using **pip** run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The **PyArrow** library allows you to pass additional arguments `(**kwargs`)
+    to the `pandas.read_parquet()` function, thereby providing more options when reading
+    files, as you will explore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading all partitions
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The following steps are for reading all the partitions in the `LA_weather.parquet`
+    folder in one go:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a path to reference the Parquet folder, which contains the partitions,
+    and pass it to the `read_parquet` function.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can validate and check the schema using the `.info()` method
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: Reading specific partitions
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The following steps explain how to read a specific partition or set of partitions
+    using the `filters` argument and specify columns using the `columns` argument
+    from the PyArrow library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As the data is partitioned by year, you can utilize the `filters` argument
+    to specify a particular partition. In the following, you will only read the partition
+    for the year 2012:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To read a set of partitions, such as for the years 2021, 2022, and 2023, you
+    can utilize any of the following options, which will produce similar results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After defining the `filters` object, you can assign it to the `filters` argument
+    within the `read_parquet()` function as demonstrated below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: Another useful argument is `columns` which allows you to specify the column
+    names you want to retrieve as a Python list.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code, the `read_parquet()` function will only retrieve the
+    specified columns (‘*Date’*, ‘*year’*, and ‘*TMAX’*) from the Parquet file, using
+    the defined filters. You can validate the results by running `df.head()` and `df.info()`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice how the memory usage has significantly reduced when narrowing your selection
+    to only the necessary data by specifying the partitions and columns for your data
+    analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There are several advantages to working with the Parquet file format, especially
+    when dealing with large data files. The columnar-oriented format of Parquet offers
+    faster data retrieval and efficient compression, making it ideal for cloud storage
+    and reducing storage costs. Parquet employs advanced techniques and algorithms
+    for data encoding, leading to improved compression ratios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.5 below shows an example of a folder structure for a dataset stored
+    as a Parquet file partitioned by year. Each year has its own subfolder, and within
+    each subfolder, there are individual files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.5: Example of a folder structure for a Parquet dataset partitioned
+    by year](img/file20.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 2.5: Example of a folder structure for a Parquet dataset partitioned
+    by year'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parquet files are referred to as “**self-described**” since each file contains
+    the encoded data and additional metadata in the footer section. The metadata includes
+    the version of the Parquet format, data schema and structure (such as column types),
+    and other statistical information such as the minimum and maximum values for the
+    columns. Consequently, when writing and reading Parquet datasets using pandas,
+    you will notice that the DataFrame schema is preserved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are some key parameters you need to be familiar with based on the official
+    pandas documentation for the `read_parquet()` reader function which you can find
+    in their official page here ([https://pandas.pydata.org/docs/reference/api/pandas.read_parquet.html](https://pandas.pydata.org/docs/reference/api/pandas.read_parquet.html)).
+    You already used some of these parameters in the previous *How to do it…* section.
+    The following shows the key parameters you already used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`path`: This is the first positional argument and the only required field needed
+    (at a minimum) to read a Parquet file. In our example, you passed the Python path
+    object named `file` as the argument. You can also pass a valid URL that points
+    to a remote Parquet file location, such as an AWS S3 bucket.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`engine`: The default value is “auto” if you do not pass any arguments to the
+    engine parameter. The other two valid options are “pyarrow” and “fastparquet”
+    depending on which engine you installed. In our example, you installed the **PyArrow**
+    library (see the *Getting ready* section). The “auto” option will first attempt
+    to load the **PyArrow**, and then fallback to **fastparquet** if it’s not available.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`columns`: Here you can specify the columns you would like to limit when reading.
+    You will pass this as a Python list even if you select just one column. In our
+    example, you defined a columns variable as `columns = [''DATE'', ''year'', ''TMAX'']`
+    and then passed it as an argument.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`**kwargs`: Indicates that additional arguments can be passed to the engine.
+    In our case, we used the **PyArrow** library; hence, the `read_parquet()` pandas
+    function will pass these arguments to the `pyarrow.parquet.read_table()` function
+    from the PyArrow library. In the previous examples, we passed a list with filtering
+    criteria to the `filters` parameter in the `pyarrow.parquet.read_table()`. For
+    additional parameters that you can utilize, you can check the official documentation
+    for `pyarrow.parquet.read_table()` here [https://arrow.apache.org/docs/python/generated/pyarrow.parquet.read_table.html](https://arrow.apache.org/docs/python/generated/pyarrow.parquet.read_table.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There’s more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Recall in the *Getting Ready* section that you installed the PyArrow library
+    as the backend engine for working with Parquet files with pandas. When you used
+    the `read_parquet()` reader function in pandas, the `pyarrow` engine was the default.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Since you have already installed the library, you can utilize it directly to
+    work with Parquet files in a similar manner as you did using pandas. Instead of
+    the `pandas.read_parquet()` function, you will use `pyarrow.parquet.read_table()`
+    function as shown in the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `table` object is an instance of the `pyarrow.Table` class. You can validate
+    this using the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `table` object contains many useful methods including the `.to_pandas()`
+    method to convert the object into a pandas DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following illustrates this further to show the similarities between the
+    `read_table()` and `read_parquet()` functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: Both `df_pa` and `df_pd` are equivalent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The PyArrow library provides a low-level interface, while pandas provides a
+    high-level interface that is built on top of PyArrow. The same applies if you
+    decide to install the `fastparquet` library instead. Note that PyArrow is the
+    Python implementation of **Apache Arrow**, an open-source project for in-memory
+    data (columnar memory). While Apache Parquet specifies the columnar file format
+    for efficient storage and retrieval, Apache Arrow allows us to process such large
+    columnar datasets in memory efficiently as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: Working with large data files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One of the advantages of using pandas is that it provides data structures for
+    in-memory analysis, which results in a performance advantage when working with
+    data. However, this advantage can also become a constraint when working with large
+    datasets, as the amount of data you can load is limited by the available memory.
+    When datasets exceed the available memory, it can lead to performance degradation,
+    especially when pandas creates intermediate copies of the data for certain operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In real-world scenarios, there are general best practices to mitigate these
+    limitations, including:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Sampling or loading a small number of rows for your Exploratory Data Analysis
+    (EDA):** Before applying your data analysis strategy to the entire dataset, it
+    is a good practice to sample or load a small number of rows. This allows you to
+    get a better understanding of your data, gain some intuition, and identify unnecessary
+    columns that can be eliminated, thus reducing the overall dataset size.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Reduce the Number of Columns:** Keeping only the columns necessary for your
+    analysis can significantly reduce the memory footprint of the dataset.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Chunking**: Utilizing the `chunksize` parameter available in many of the
+    reader functions in pandas allows you to process the data in smaller, manageable
+    chunks. This technique helps in handling large datasets by processing them piece
+    by piece.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**User Other Libraries for Large Datasets**: There are alternative libraries
+    specifically designed for working with large datasets that offer a similar API
+    to pandas, such as **Dask** **Polars, and Modin**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will learn about techniques within pandas to handle large
+    datasets, such as *chunking*. Afterward, you will explore three new libraries:
+    **Dask**, **Polars**, and **Modin.** These libraries serve as alternatives to
+    pandas and can be particularly useful when dealing with large datasets.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this recipe, you will install Dask and Polars libraries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install using pip, you can use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using Conda, you can use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this recipe, you will be working with the New York Taxi data set from ([https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page))
+    and we will be working with Yellow Taxi Trip Records for 2023 (covering January
+    to May). In the GitHub repository of the book I have provided the `run_once()`
+    function that you will need to execute once. It will combine all five months of
+    datasets (five parquet files), and produce one large CSV data set (around 1.72
+    GB).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Below is the script as a reference:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will explore four different methods for handling large
+    datasets for ingestion purposes. These methods include:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the `chuncksize` parameter, which is available in many of the reader functions
+    in pandas.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the Dask library
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the Polars library
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The `memory_profiler` library will be utilized for illustration purposes to
+    show memory consumption. You can install the library using `pip`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To use memory_profiler in Jupyter Notebook, you will need to run the following
+    once:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once loaded, you can use it inside any code cell. You just need to start the
+    cell with the `%memit` or `%%memit in a Jupyter code cell. A typical output will
+    show peak memory size and increment size.`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Peak memory** represents the maximum memory usage during the execution of
+    a specific line of code.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Increment** represents the difference in memory usage between the current
+    line and the previous line.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Chunksize
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Several reader functions in pandas support chunking through the `chunksize`
+    parameter. This approach is convenient when you have a large dataset that you
+    need to ingest, but it may not be suitable if you need to perform complex logic
+    on each chunk, which requires coordination between the chunks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some of the reader functions in pandas that support the `chunksize` parameter
+    include: `pandas.read_csv()`, `pandas.read_table()`, `pandas.read_sql()`, `pandas.read_sql_query()`,
+    `pandas.read_sql_table()`, `pandas.read_json()`, `pandas.read_fwf()`, `pandas.read_sas()`,
+    `pandas.read_spss()`, and `pandas.read_stata()`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s start by reading this large tile using the traditional approach
+    with `read_csv` without chunking:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Given we have two magic commands `%%time` and `%%memit` the output will display
+    memory usage and CPU time as shown below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using the same `read_csv` function, you utilize the chunksize parameter, which
+    represents the number of lines to read per chunk. In this example, you will use
+    `chunksize=10000,` which will create a chunk every 10000 rows.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will produce the following output
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The reason the execution occurred so fast is that what has been returned is
+    an **iterator** object of type `TextFileReader` as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To retrieve the data in each chunk you can use the `get_chunk()` method to
+    retrieve one chunk at a time or use a loop to retrieve all chunks or simply use
+    the `pandas.concat()` function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Option 1: Using the `get_chunk()` method or Python `next()` function. This
+    will retrieve one chunk at a time, at 10000 records per chunk. Every time you
+    run one get_chunk() or next() you will get the next chunk.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Option 2: Looping through the chunks. This is useful if you want to perform
+    simple operations on each chunk before combining each chunk:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Option 3: using pd.concat() to retrieve all the chunks at once in one operation.
+    This may not be as useful in terms of overall performance:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: The memory and CPU time measurements are added for illustration purposes. As
+    you can observe, looping through the chunks and appending each chunk can be a
+    time-consuming process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, you will learn about how to use Polars which provides a very similar API
+    to that of pandas making the transition to learn Polars a simpler task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Polars
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Similar to pandas the Polars library is designed to be used on a single machine
+    but offers higher performance than pandas when working with large datasets. Unlike
+    pandas which is single threaded and cannot leverage multiple cores on a single
+    machine, Polars can utilize all available cores on a single machine for efficient
+    parallel processing. In terms of memory usage, pandas provides in-memory data
+    structures hence its popularity for in-memory analytics. This also means that
+    when you load your CSV file, the entire dataset is loaded into memory, hence working
+    with datasets beyond your memory’s capacity can be problematic. Polars on the
+    other hand requires less memory than pandas for similar operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Polars is written in Rust, a programming language that offers similar performance
+    to C and C++ and is becoming a very popular programming language in the land of
+    Machine Learning Operations (MLOps) due to its performance compared to Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe you will explore the basics of Polars, primarily reading a large
+    CSV file using the `read_csv()` reader function. The
+  prefs: []
+  type: TYPE_NORMAL
+- en: Start by importing the Polars library
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can now read the CSV file using the `read_csv` function similar to how
+    you have done it using pandas. Notice the use of the Jupyter magic commands `%%time`
+    and `%%memit` for illustration purposes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can use the `.head()` method to print out the first 5 records of the Polars
+    DataFrame similar to pandas.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get the total number of rows and columns of the Polars DataFrame you can
+    use the `.shape` property similar to how pandas:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you decided to use Polars for processing large datasets but later decided
+    to output the results back as a pandas DataFrame, you can do so using the `.to_pandas()`
+    method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs: []
+  type: TYPE_PRE
+- en: Just from these simple code runs it becomes clear how fast Polars is. This can
+    be even more obvious from the memory and CPU metrics when comparing `read_csv`
+    in the Polars library to the `read_csv` in pandas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Dask
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Another popular library for working with large datasets is Dask. It has a similar
+    API to pandas but differs in its distributed computing capabilities allowing it
+    to scale beyond a single machine. Dask integrates pretty well with other popular
+    libraries such as pandas, Scikit-Learn, NumPy, and XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, you can install Dask-ML, an add-on library that provides scalable
+    machine learning alongside popular Python ML libraries such as Scikit-Learn, XGBoot,
+    PyTorch, and TensorFlow/Keras.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will explore the basics of Polars, primarily reading a large
+    CSV file using the `read_csv()` reader function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the `dataframe` module from the `dask` library:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can now read the CSV file using the `read_csv` function similar to how
+    you have done it using pandas. Notice the use of the Jupyter magic commands `%%time`
+    and `%%memit` for illustration purposes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs: []
+  type: TYPE_PRE
+- en: Interesting output in terms of memory and CPU utilization. One would assume
+    nothing was read. Let’s run a few tests to understand what is happening.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will explore the df_dk DataFrame using familiar techniques you would normally
+    do in pandas such as checking the size of the DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we get insights into the number of columns, and their data types,
+    but no information on the total number of records (rows). Additionally, notice
+    the Delayed object in Dask. We will get back to this shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lastly, try to output the DataFrame using the print function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output is very interesting; pretty much all that is shown is the structure
+    or layout of the DataFrame, but no data. To simplify the explanation, Dask utilizes
+    a strategy called lazy loading or lazy evaluation. In other words, most workloads
+    in Dask are lazy; they do not get executed immediately until you trigger them
+    with a specific action, for example, using the `compute()` method. This feature
+    enables Dask to handle large datasets and distributed computing by delaying the
+    actual computation until it is explicit. Instead, Dask constructs a task graph
+    or execution logic behind the scenes almost instantaneously, but the task graph
+    or execution logic is not triggered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When using the `read_csv`, Dask does not load the entire dataset “yet”. It only
+    reads the data when you perform specific operations or functions. For example,
+    using the `head()` method will retrieve only the first 5 records, and that’s it.
+    Thus saving memory and improving performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Print the first 5 records of the Dask DataFrame using the head method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will notice that the first five (5) records are printed out similar to how
+    you would expect when using pandas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get the total number of records in the dataset, you can use the compute
+    method, which will force evaluation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, if you were able to reduce the size of the DataFrame to be easier to
+    load in pandas, you can convert from Dask DataFrame to a pandas DataFrame using
+    the `compute()` method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: The Dask library offers different APIs. You only explored the DataFrame API,
+    which is similar to the pandas library. Dask offers many optimization capabilities
+    and has a learning curve for those working with very large datasets and needing
+    to scale their current workflows, whether it be from NumPy, Scikit-Learn, or pandas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Due to pandas popularity, many libraries such as Polars and Dasks were inspired
+    by pandas simplicity and API. This is because these libraries are designed to
+    target pandas users to provide a solution to one of pandas most significant limitations:
+    lack of ability to scale and work with very large datasets that cannot fit into
+    memory.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: So far, you have been introduced to better options when working with large files
+    than using pandas, especially if you have memory constraints and cannot fit all
+    the data into the memory available. The pandas library is a single-core framework
+    and does not offer parallel computing capabilities. Instead, there are specialized
+    libraries and frameworks for parallel processing designed to work with big data.
+    Such frameworks do not rely on loading everything into memory and instead can
+    utilize multiple CPU cores, disk usage, or expand into multiple worker nodes (think
+    multiple machines). Earlier, you explored **Dask,** which chunks your data, creates
+    a computation graph, and parallelizes the smaller tasks (chunks) behind the scenes,
+    thus speeding the overall processing time and reducing memory overhead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These frameworks are great but will require you to spend time learning the framework
+    and may necessitate that you rewrite the original code to leverage these capabilities.
+    So, there might be a learning curve initially. Luckily, this is where the **Modin**
+    project comes into play. The Modin library acts as a wrapper or, more specifically,
+    an abstraction on top of **Dask** or **Ray** that uses an API similar to that
+    of pandas. Modin makes optimizing your pandas' code much more straightforward
+    without learning another framework; all it takes is a single line of code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the necessary libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice a few things here, first we specified the engine to be used. In this
+    case we opted to use Dask. Modin supports other engines including Ray and MPI.
+    Second, notice the import modin.pandas as pd statement, this single line is all
+    that is needed to scale your existing pandas code. Keep in mind that the Modin
+    project is in active development, which means that as pandas mature and adds additional
+    features and functionalities, Modin may still be catching up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s read our CSV file and compare the metrics in terms of CPU and memory
+    utilization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE86]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Your data is loaded fast and you can run other pandas functions to further
+    inspect your data such as `df_pd.head(),` `df_pd.info()`, `df_pd.head()` and you
+    will notice how fast the results appear:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE87]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using Moding allows you to utilize your existing pandas code, skillset and experience
+    with the library without having to learn a new framework. This includes access
+    to the pandas I/O functions (reader and writer functions) and all the parameters
+    you would expect from the pandas library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Other Python projects are dedicated to making working with large datasets more
+    scalable and performant and, in some cases, better options than pandas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Dask: [https://dask.org/](https://dask.org/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Modin: [https://modin.readthedocs.io/en/latest/](https://modin.readthedocs.io/en/latest/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Polars: [https://pola.rs](https://pola.rs)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Ray: [https://ray.io/](ch003.xhtml)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Vaex: [https://vaex.io/](https://vaex.io/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

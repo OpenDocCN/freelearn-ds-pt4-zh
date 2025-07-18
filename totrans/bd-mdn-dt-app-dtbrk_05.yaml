@@ -1,0 +1,1041 @@
+- en: '5'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Mastering Data Governance in the Lakehouse with Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we’ll dive into the implementation of effective data governance
+    for the lakehouse using Unity Catalog. We’ll cover enabling Unity Catalog on an
+    existing Databricks workspace, implementing data cataloging for data discovery,
+    enforcing fine-grained data access at the table, row and column levels, as well
+    as tracking data lineage. By the end of the chapter, you’ll be armed with industry
+    best practices around data governance and will have gained real-world insights
+    for enhancing data security and compliance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding data governance in the l akehouse
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enabling Unity Catalog on an existing Databricks workspace
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Identity federation in Unity Catalog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Data discovery and cataloging
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hands-on lab – data masking healthcare datasets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along in this chapter, you’ll need Databricks workspace permissions
+    to create and start an all-purpose cluster so that you can execute the chapter’s
+    accompanying notebooks. It’s also recommended that your Databricks user be elevated
+    to an account admin and a metastore admin so that you can deploy a new Unity Catalog
+    metastore and attach it to your existing Databricks workspace. All code samples
+    can be downloaded from this chapter’s GitHub repository located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter05](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter05)
+    . This chapter will create and run several new notebooks, estimated to consume
+    around 5–10 **Databricks** **units** ( **DBUs** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding data governance in a lakehouse
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It’s quite common for a lakehouse implementation to leverage multiple processing
+    engines for different use cases. However, each processing engine comes with its
+    own data security implementation and, often, these different data security solutions
+    don’t integrate with one another. Where most lakehouses fall short is that due
+    to these multiple security layers, implementing consistent, global data security
+    policies is nearly impossible. Ensuring that the data in your lakehouse is completely
+    and consistently secured and private and that access is only granted to the correct
+    set of users is of the utmost importance when building a data lakehouse. Therefore,
+    having a simple data governance solution that covers all the data in your organization’s
+    lakehouse is critical for your organization’s success.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing the Databricks Unity Catalog
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Unity Catalog is a centralized data governance solution that simplifies securing
+    the data in your lakehouse by organizing workspace object access policies into
+    a single administrative “pane of glass.” In addition to access policies, Unity
+    Catalog was designed with strong auditing in mind, allowing administrators to
+    capture all user access patterns to workspace objects so that administrators can
+    observe access patterns, workspace usage, and billing patterns across all Databricks
+    workspaces. Furthermore, Unity Catalog was designed to allow data professionals
+    to discover datasets across your organization, track data lineage, view entity
+    relationship diagrams, share curated datasets, and monitor the health of systems.
+    One of the major strong suites of Unity Catalog is that once your organization’s
+    data is in Unity Catalog, it’s secured by default – no process, whether it’s internal
+    within the Databricks workspace or an external process that interacts with data
+    from outside of the Databricks Data Intelligence Platform, has access to the data
+    unless access has been explicitly granted by a data administrator. Unity Catalog
+    was designed to span across the perimeter of your lakehouse from workspace to
+    workspace and beyond the Databricks workspace, sitting on top of your organization’s
+    data so that a single governance model can be simply and consistently applied
+    to all parties accessing your organization’s data in the l akehouse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.1 – Unity Catalog provides a single, unified governance layer on
+    top of your organization’s cloud data](img/B22011_05_1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.1 – Unity Catalog provides a single, unified governance layer on top
+    of your organization’s cloud data
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, having a global data and workspace object security layer wasn’t always
+    as seamless as it is in Unity Catalog today. Let’s travel back in time to the
+    lessons learned from the previous security model in Databricks and how Unity Catalog
+    came to fruition today.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A problem worth solving
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Previously, data access control policies were defined per workspace using a
+    mechanism known as table **access control lists** ( **ACLs** ). When these were
+    enforced properly, table ACLs provided a powerful data governance solution. Administrators
+    could define data access policies for different users and groups within a workspace
+    and those access policies could be enforced by the Databricks cluster when executing
+    Spark code that accessed the underlying datasets registered in the **Hive** **Metastore**
+    ( **HMS** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, four major problems quickly arose from the table ACL security model.
+    The first problem was that data access policies defined using the table ACL security
+    model needed to be repeated for each unique Databricks workspace. Most organizations
+    prefer to have separate workspaces for each logical work environment – for example,
+    a single workspace for development, another workspace for acceptance testing,
+    and finally, a workspace dedicated to running production workloads. Aside from
+    the repetition of the same shared data access policies, if a data access policy
+    happened to change in one workspace, it often meant that the data access policies
+    across *all* workspaces needed to be changed as well. This led to unnecessary
+    maintenance overhead, as there was not a single location where these data access
+    patterns could be easily defined within the Databricks Data Intelligence Platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Secondly, table ACLs were only enforced on the underlying data when interactive
+    notebooks or automated jobs were executed on a table ACL-enabled cluster. A cluster
+    without the table ACL security model enabled could directly access the underlying
+    dataset, bypassing the security model entirely! While cluster policies (covered
+    in [*Chapter 1*](B22011_01.xhtml#_idTextAnchor014) ) could be used to mitigate
+    this issue and prevent any potential nefarious access to privileged datasets,
+    cluster policies are complex to write. They require knowledge of the cluster policy
+    schema as well as experience expressing configuration as JSON, making it difficult
+    to scale across an organization. More often than not, it was quite common for
+    a user to complain to their organization’s leaders that they needed administrative
+    workspace access to spin up a cluster of their own liking and complete their day-to-day
+    activities. Once the user was granted administrator workspace access, they too
+    could grant administrator access to other users, and, like a snowball effect,
+    there would be an unreasonable number of administrators for a workspace. This
+    type of bad practice can easily lead to a data leak by side-stepping the table
+    ACL security model using a cluster without table ACLs enabled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, due to the isolation issues of running **Java Virtual Machine**
+    ( **JVM** ) languages on a shared computational resource, table ACL-enabled clusters
+    limited end users to only running workloads using either the SQL or Python programming
+    languages. Users wanting to execute workloads using the Scala, Java, or R programming
+    languages would need to be granted an exception to use a non-table ACL-enabled
+    cluster, opening a huge hole in the organization’s data governance solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The fourth major problem that arose had to do with the ability of the HMS to
+    scale. The Databricks Data Intelligence Platform leveraged the HMS to register
+    datasets across a workspace, which allowed users to create new datasets from scratch,
+    organize them in schemas, and even share access to users and groups across an
+    organization. However, as a workspace onboarded thousands of users, those users
+    would need to execute ad hoc queries concurrently, while also executing hundreds
+    or even thousands of scheduled jobs. Eventually, the HMS struggled to keep up
+    with the level of concurrency needed for the most demanding workspaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It was clear that there needed to be a huge change and so Databricks set out
+    to completely redesign a data governance solution from scratch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An overview of the Unity Catalog architecture
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One of the primary pain points that Unity Catalog aimed to solve was to implement
+    a complete end-to-end data governance solution that spans all of an organization’s
+    workspaces, removing the redundancy of having to redefine data access policies
+    for each Databricks workspace. Instead, with Unity Catalog, data administrators
+    can define data access controls *once* in a centralized location and have the
+    peace of mind that they will be consistently applied across an organization no
+    matter what computational resource or processing engine is used to interact with
+    datasets in Unity Catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.2 – Unity Catalog centralizes data access policies that are then
+    consistently applied across multiple Databricks workspaces](img/B22011_05_2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.2 – Unity Catalog centralizes data access policies that are then consistently
+    applied across multiple Databricks workspaces
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition to centralized data governance, Unity Catalog has several other
+    key motivating factors that make it an ideal data governance solution for the
+    modern-day l akehouse:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Secure by default** : Users will not have access to read data from any form
+    of compute without using a Unity Catalog-enabled cluster (Unity Catalog clusters
+    are covered in the following section) and having been granted specific access
+    to use and select data from a particular dataset.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Comfortable administrator interfaces** : Data access policies in Unity Catalog
+    are tightly integrated with **American National Standards Institute** ( **ANSI**
+    ) SQL, allowing administrators to express data access permissions on familiar
+    database objects such as catalogs, databases, tables, functions, and views. Data
+    access permissions can also be set using the administrator UI from the Databricks
+    web app, or automated deployment tools such as Terraform.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Data discovery** : Unity Catalog makes it easy for data stewards to tag datasets
+    with descriptive metadata, allowing users across your organization to search and
+    discover datasets available to them.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Strong auditing** : Unity Catalog automatically captures user-level access
+    patterns and data operations, allowing administrators to view and audit user behavior
+    as they interact with the data in your l akehouse.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Data lineage tracking** : Tracing how tables and columns are generated from
+    upstream sources is important in ensuring that downstream datasets are formed
+    using trusted sources. Unity Catalog makes tracking data and workspace assets
+    simple through its strong data lineage APIs and system tables.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Observability** : Because Unity Catalog spans multiple Databricks workspaces,
+    it can aggregate system metrics and auditing events into a centralized set of
+    read-only tables for monitoring and system observability called system tables
+    (covered in greater detail in the *Observability with system* *tables* section).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To implement a security model where the data is secured by default and there
+    is no ability to access the data externally without going through Unity Catalog,
+    Databricks needed to design different clusters based on the user’s persona. Let’s
+    look at the different cluster types available to users in a Unity Catalog-enabled
+    workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unity Catalog-enabled cluster types
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There are three major types of clusters for a workspace with Unity Catalog
+    enabled:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Single-user cluster** : Only a single user or service principal will have
+    permission to execute notebook cells or workflows on this type of cluster. Workloads
+    containing a mixture of Scala, Java, R, Python, and SQL languages can be executed
+    on this type of cluster *only* . Datasets registered in Unity Catalog can be queried
+    from this type of cluster.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Shared cluster** : Multiple users or service principals can have permission
+    to execute notebook cells or workflows on this type of cluster. This type of cluster
+    is restricted to only Python, SQL, and Scala workloads. Datasets registered in
+    Unity Catalog can be queried from this type of cluster.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Standalone cluster** : A single user or multiple users can attach a notebook
+    and execute notebook cells to this type of cluster. However, datasets registered
+    within the Unity Catalog *cannot* be queried by this type of cluster and will
+    result in a runtime exception if a user attempts to query a dataset registered
+    in Unity Catalog. This type of cluster can be used for reading datasets registered
+    in the legacy HMS.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that we’ve outlined the different types of computational resources you can
+    use to interact with the data in Unity Catalog, let’s now turn our attention to
+    how the data and other assets are organized within the Unity Catalog, mainly understanding
+    the Unity Catalog object model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unity Catalog object model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It’s important to understand the object model within Unity Catalog as it will
+    help users understand the types of objects that can be secured and governed by
+    Unity Catalog. Furthermore, it will also help metastore administrators architect
+    data access policies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the major changes that Unity Catalog introduced is the concept of a three-level
+    namespace. Traditionally, in the HMS, users interacting with the data could reference
+    datasets using a combination of a schema (or database) and a table name. However,
+    Unity Catalog adds a third logical container, called the catalog, which can hold
+    one or more schemas. To reference a fully qualified dataset in Unity Catalog,
+    data practitioners will need to provide the name of the catalog, schema, and table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.3 – Unity Catalog consists of many different securable objects beyond
+    just a dataset](img/B22011_05_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.3 – Unity Catalog consists of many different securable objects beyond
+    just a dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s dive more into the Unity Catalog object model starting with the objects
+    related to organizing physical datasets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Metastore** : The “physical” implementation of Unity Catalog. A particular
+    cloud region can at most contain a single metastore.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Catalog** : The top-level container for datasets in Unity Catalog. A catalog
+    can contain a collection of one or more schema objects.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Schema** : Serves as the second tier in Unity Catalog. A schema can contain
+    a collection of one or more tables, views, functions, models, and volumes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Table** : The representation of a dataset containing a defined schema and
+    organized into rows and columns.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**View** : A calculated dataset that can be the result of joining together
+    tables, filtering columns, or applying complex business logic. Furthermore, views
+    are read-only and cannot have data written to them or data updated using **data
+    manipulation language** ( **DML** ) statements.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Model** : A machine learning model that has been registered to the tracking
+    server using MLflow.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Function** : A custom, user-defined function that often contains complex
+    business logic that typically cannot be implemented using the built-in Spark functions
+    alone.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Volume** : A data storage location designed for storing structured, semi-structured,
+    or unstructured data (we will cover volumes in greater detail in the following
+    chapter, *Mastering Data Locations in* *Unity Catalog* ).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Next, let’s turn our attention to the objects within Unity Catalog that are
+    used to interact with data outside of the Databricks Data Intelligence Platform:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Connection** : Represents a read-only connection containing the credentials
+    to access data in a foreign **relational database management system** ( **RDBMS**
+    ) or data warehouse .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Storage credential** : Represents the authentication credential for accessing
+    a cloud storage location .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**External location** : Represents a cloud storage location outside of the
+    Databricks-managed root storage location .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Lastly, let’s look at the elements of the Unity Catalog object model for sharing
+    and receiving datasets using the Delta Sharing protocol:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Provider** : Represents a data provider. This entity creates a collection
+    of one or more curated datasets into a logical grouping, called a *share* . The
+    data provider can revoke access to a shared dataset at any moment.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Share** : A logical grouping of one or more shared datasets that can be shared
+    with a data recipient.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Recipient** : Represents a data recipient. This entity receives access to
+    a data share and can query the datasets within their workspace.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that we’ve outlined the major building blocks of Unity Catalog, let’s look
+    at how we can enable Unity Catalog on an existing Databricks workspace so that
+    administrators can begin taking full advantage of the strong data governance solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling Unity Catalog on an existing Databricks workspace
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Beginning in early November 2023, all new Databricks workspaces created on **Amazon
+    Web Services** ( **AWS** ) or Azure are enabled with Unity Catalog by default,
+    so there is no extra configuration needed if your workspace was created after
+    this date on these two cloud providers. Similarly, at the time of the creation
+    of a new Databricks workspace, a single regional Unity Catalog metastore will
+    be provisioned for your workspace to use. Within the regional metastore is a default
+    catalog having the same name as the workspace and is bound to that workspace only
+    (we’ll cover catalog binding in the following section). Furthermore, all users
+    of a newly created workspace will have read and write access to a schema called
+    **default** within this workspace catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Workspace administrators cannot disable Unity Catalog on a workspace once a
+    Databricks workspace has been enabled for Unity Catalog. However, datasets can
+    always be migrated back to the HMS implementation, but the workspace will always
+    be enabled with a Unity Catalog metastore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in upgrading an existing Databricks workspace with Unity Catalog
+    is to deploy a new metastore. A metastore is the “physical” implementation of
+    a Unity Catalog. Administrators will need to deploy a single metastore per cloud
+    region for an organization. A metastore can be deployed through a variety of methods,
+    but for simplicity’s sake, we’ll cover deploying a new metastore using the Databricks
+    UI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, ensure that you are logged in to the account console located at [https://accounts.cloud.databricks.com](https://accounts.cloud.databricks.com)
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: From the account console, click on the **Catalog** menu item in the sidebar
+    and click the **Create metastore** button to begin deploying a new metastore.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter a meaningful name for your metastore, choose the appropriate region, and,
+    optionally, select a default storage path where managed datasets should be stored
+    in.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, click the **Create** button. After a few minutes, your new metastore
+    will be provisioned in the cloud region of your choosing.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Databricks, global configurations such as catalog binding, network configurations,
+    or user provisioning are centralized in a single administrative console, sometimes
+    shortened to the “ account console.”
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that the metastore has been deployed, the only thing left is to choose
+    which Databricks workspaces you’d like to link the metastore to, enabling Unity
+    Catalog:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the account console, again choose the **Catalog** menu item from the sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, click the name of the newly created metastore, followed by the **Assign
+    to** **workspaces** button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Lastly, click the workspace you would like to enable Unity Catalog on and confirm
+    your selection by clicking the **Assign** button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Congratulations! You’ve now enabled Unity Catalog for your existing Databricks
+    workspace, and you can begin to enjoy the peace of mind that your lakehouse data
+    will be governed by a complete data security solution. Equally as important, once
+    you have attached a Unity Catalog metastore to a Databricks workspace, you have
+    now enabled your workspace for identity federation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identity federation in Unity Catalog
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Whether you’ve deployed a brand new Databricks workspace or you’ve manually
+    upgraded an existing workspace to use Unity Catalog, the natural next step is
+    to set up new users so that they log in to the Databricks workspace and take advantage
+    of the benefits of Unity Catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Previously, user management in Databricks was managed within each workspace.
+    Unity Catalog consolidates user management into a single centralized governance
+    pane – the account console. Rather than manage the workspace identities at a workspace
+    level, which can get repetitive if the same users have access to more than one
+    workspace in a Databricks account, identity management is managed at the account
+    level. This allows administrators to define users and their privileges once, and
+    easily manage identity roles and permissions at a global level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Prior to Unity Catalog, workspace administrators would need to sync organizational
+    identities from the identity provider, such as Okta, Ping, or **Azure Active Directory**
+    ( **AAD** ). With Unity Catalog, the identities are synced across at the account
+    level once using the **System for Cross-domain Identity Management** ( **SCIM**
+    ). Unity Catalog will then take care of syncing across the identities to the appropriate
+    workspace in a process known as **identity federation** . This allows an organization
+    to continue to manage the identities within their organization’s identity provider
+    while ensuring that changes are automatically propagated to the individual Databricks
+    workspaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.4 – Identities are managed at the account console and will automatically
+    get federated across multiple Databricks workspaces](img/B22011_05_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.4 – Identities are managed at the account console and will automatically
+    get federated across multiple Databricks workspaces
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In fact, the word *administrator* is quite an overloaded term in the context
+    of the Databricks Data Intelligence Platform. Let’s take a look at the different
+    administrative roles and the level of entitlement each persona has in a Unity
+    Catalog-enabled workspace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Account owner** : The individual who originally opened the Databricks account.
+    By default, this user will have access to the account console and will be added
+    as both an account admin as well as a workspace admin.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Account admin** : A power user who has the privileges to access the account
+    console and make account-level changes, such as deploying a new Unity Catalog
+    metastore, making network configuration changes, or adding users, groups, and
+    service principals to workspaces. This user has the power to grant additional
+    account admins and metastore admins.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Metastore admin** : An administrative user who has privileges to make metastore-level
+    changes, such as changing catalog ownership, granting access to users to create
+    or delete new catalogs, or configuring new datasets shared through the Delta Sharing
+    protocol, to name a few. This user does not have access to the account console.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Workspace admin** : An administrative user who has privileges to make workspace-level
+    configuration changes, including creating cluster policies and instance pools,
+    creating new clusters and DBSQL warehouses, or configuring workspace appearance
+    settings, to name a few. This user does not have access to the account console.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: "![Figure 5.5 – Administrator-level privileges in the \uFEFFDatabricks Data\
+    \ Intelligence Platform](img/B22011_05_5.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.5 – Administrator-level privileges in the Databricks Data Intelligence
+    Platform
+  prefs: []
+  type: TYPE_NORMAL
+- en: To begin provisioning new workspace users, you will need to log in to the account
+    console, located at [https://accounts.cloud.databricks.com/login](https://accounts.cloud.databricks.com/login)
+    . However, only account owners, the individual who originally opened the Databricks
+    organization, or account admins will have access to the admin console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step to begin onboarding new workspace users is to enable **single
+    sign-on** ( **SSO** ) in the account console. This can be done by navigating to
+    the **Settings** menu of the account console and providing the details of your
+    organization’s identity provider. Once you’ve entered the configuration details,
+    click on the **Test SSO** button to verify connectivity is successful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.6 – SSO is required for identity federation to sync with your identity
+    provider](img/B22011_05_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.6 – SSO is required for identity federation to sync with your identity
+    provider
+  prefs: []
+  type: TYPE_NORMAL
+- en: After the identity provider integration has been verified successfully, the
+    next step is to assign users and groups to the appropriate Databricks workspace.
+    If you have a single Databricks workspace, then this is a trivial exercise. However,
+    if there is more than one Databricks workspace, then it will be up to your organization
+    to determine who has access to a particular workspace. You can assign individual
+    users and groups to a Databricks workspace by navigating to the account console,
+    then clicking on the **User Management** tab from the menu item, and assigning
+    users to the appropriate workspace either at the user level or at the group level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s look at how you can promote secure data exploration across your organization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data discovery and cataloging
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Data tags are useful data cataloging constructs that permit data stewards to
+    link descriptive metadata with datasets and other securable objects, such as catalogs,
+    volumes, or machine learning models, within Unity Catalog. By attaching descriptive
+    tags to datasets and other securable objects, users across your organization can
+    search and discover data assets that may be helpful in their day-to-day activities.
+    This helps to promote collaboration across teams, saving time and resources by
+    not having to recreate similar data assets to reach the completion of a particular
+    activity. Unity Catalog supports tags on the following data objects: catalogs,
+    databases, tables, volumes, views, and machine learning models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s look at an example of how we can apply descriptive tags to our existing
+    taxi trip datasets that will make it easier for users across our organization
+    to search, discover, and use our published datasets in Unity Catalog. Tags can
+    be easily added to a table in Unity Catalog from a variety of methods. The easiest
+    method is directly from the UI using Catalog Explorer in the Databricks Data Intelligence
+    platform. Starting from Catalog Explorer, search for the catalog created in a
+    previous chapter’s hands-on exercise that stored data from our DLT pipeline into
+    our **yellow_taxi_raw** dataset. Next, expand the schema and select the **yellow_taxi_raw**
+    dataset to bring up the dataset details. Finally, click on the **Add tags** button
+    to begin adding tag data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.7 – Tags can be added to datasets directly from Catalog Explorer](img/B22011_05_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.7 – Tags can be added to datasets directly from Catalog Explorer
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tags are added as key-value pairs, with the key serving as a unique identifier,
+    such as a category, and the value containing the contents that you’d like to assign
+    to the securable object. In this case, we’d like to add a few tags to mark the
+    data sensitivity of our dataset as well as a tag for the dataset owner. Add a
+    few tags of your own choosing and click the **Save tags** button to persist your
+    changes to the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.8 – Tags are key-value pairs that help distinguish the dataset from
+    others in Unity Catalog](img/B22011_05_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.8 – Tags are key-value pairs that help distinguish the dataset from
+    others in Unity Catalog
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, tag data can be added, changed, or removed using SQL syntax as well.
+    In the next example, create a new notebook within your workspace home directory
+    in Databricks, and in the first cell of the notebook, add the following SQL statement.
+    In this example, we’ll update the dataset description tag of our dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Lastly, tags support finer granularity and can be added down to the column level
+    for datasets in Unity Catalog. This is useful in scenarios when you might want
+    to distinguish the data sensitivity of a column so that you can dynamically apply
+    a data mask for a view in Unity Catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.9 – Tags can be added at the column level for datasets in Unity
+    Catalog](img/B22011_05_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.9 – Tags can be added at the column level for datasets in Unity Catalog
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Conversely, users can search for views, tables, or columns that have tags applied
+    by using the following syntax in the **Search** text field of Catalog Explorer:
+    **tag:<case_sensitive_name_of_tag>** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, tags are extremely useful in helping promote the discoverability
+    of datasets across your organization and help users distinguish datasets in Unity
+    Catalog from one another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to discovering datasets across your organization, it’s also imperative
+    to know how a dataset is formed and whether upstream sources are trusted. Data
+    lineage is one such method for users to know exactly how the datasets they discover
+    in Unity Catalog are formed and where the different columns originate from.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tracking dataset relationships using lineage
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As data is transformed in your lakehouse by data pipelines, the contents of
+    your organization’s datasets can go through a series of evolutions by a variety
+    of processes. This can include processes such as data cleansing, data type casting,
+    column transformation, or data enrichment, to name a few. As you can imagine,
+    the data can deviate quite far from when it was originally ingested from its originating
+    source. It’s important for downstream consumers of the data in your lakehouse
+    to be able to verify the validity of your datasets. Data lineage is one mechanism
+    for such validation by allowing users to trace the origin of tables and columns
+    so that you can ensure that you are using data from trusted sources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.10 – A lakehouse table may be the result of a combination of multiple
+    upstream tables](img/B22011_05_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.10 – A lakehouse table may be the result of a combination of multiple
+    upstream tables
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Data lineage can be viewed from a variety of mechanisms in the Databricks Data
+    Intelligence Platform:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Directly from Catalog Explorer by viewing the lineage graph
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Retrieved using the Lineage Tracking REST API
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Querying the Lineage Tracking system tables in Unity Catalog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s look at how we might be able to trace the origin of a few columns in our
+    downstream table to the upstream sources in Databricks. If you haven’t already
+    done so, you can clone this chapter’s sample notebooks from the GitHub repository
+    located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter05](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter05)
+    . Begin by importing the sample notebook titled **Data Lineage Demo.sql** into
+    your Databricks workspace. Attach the notebook to a running all-purpose cluster
+    and execute all of the notebook cells. The notebook will generate two tables –
+    a parent table and a child table whose columns are constructed from the upstream
+    parent table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the notebook has been executed and the tables have been saved to Unity
+    Catalog, navigate to Catalog Explorer by clicking the **Catalog** menu item from
+    the left-hand navigation menu. From Catalog Explorer, search for the child table
+    by entering the table name in the **Search** text field. Click on the child table
+    to reveal the table details. Finally, click on the blue button titled **See lineage
+    graph** to generate a lineage diagram. You’ll notice that the diagram clearly
+    depicts the relationship between the two data assets – the parent table and the
+    child table. Next, click on the column titled **car_description** in the child
+    table. You’ll notice that the lineage diagram is updated, clearly illustrating
+    which columns from the parent table are used to construct this column in the downstream
+    child table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.11 – The table lineage graph can be viewed directly from Catalog
+    Explorer](img/B22011_05_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.11 – The table lineage graph can be viewed directly from Catalog Explorer
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, thanks to the unification nature of Unity Catalog, data lineage can
+    be used to trace data relationships across multiple workspaces. Furthermore, data
+    lineage will capture relationship information in near-real time, so that users
+    can always have an up-to-date view of dataset relationships no matter the Databricks
+    workspace they are using.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observability with system tables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Strong auditing and system observability is another core strength of Unity Catalog
+    and is implemented in Databricks using system tables. System tables are a set
+    of read-only tables in a Databricks workspace that capture the operational data
+    about activities within your Databricks workspaces. Furthermore, systems tables
+    record data across all workspaces within a Databricks account, serving as a single
+    source of truth to retrieve operational data pertaining to your Databricks workspaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'System tables record observability information about the following aspects
+    of your Databricks workspaces (the latest list of available system tables can
+    be found at [https://docs.databricks.com/en/admin/system-tables/index.html#which-system-tables-are-available](https://docs.databricks.com/en/admin/system-tables/index.html#which-system-tables-are-available)
+    ):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Category** | **Service** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| System billing | Billable usage | Captures billing information about utilized
+    computational resources such as warehouses and clusters |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Pricing | Captures historical changes to system service pricing (or **stock-keeping**
+    **unit** ( **SKU** )) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| System access | System audit | Contains event data from workspace services
+    including jobs, workflows, clusters, notebooks, repos, secrets, and more |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Table lineage | Captures data about reads/writes to and from a table in Unity
+    Catalog |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Column lineage information | Captures data about reads/writes to and from
+    a column within a Unity Catalog table |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Compute | Clusters | Captures information about clusters – for example, configuration
+    changes over time |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Node type information | Includes hardware information about cluster node
+    types |'
+  prefs: []
+  type: TYPE_TB
+- en: '| SQL warehouse events | Captures changes made to SQL warehousing such as scaling
+    events |'
+  prefs: []
+  type: TYPE_TB
+- en: '| System storage | Predictive optimizations | Captures predicative I/O optimizations
+    as they occur during data processing |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Marketplace | Marketplace funnel events | Captures marketplace analytical
+    information such as number of impressions and funnel data about dataset listing
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Marketplace listing events | Records marketplace consumer information about
+    dataset listings |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 5.1 – System tables will record operational information across various
+    parts of the Databricks Data Intelligence Platform
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Like all tables in Unity Catalog, there is no access to the system tables by
+    default. Instead, a metastore administrator will need to grant read access ( **SELECT**
+    permissions) to these tables to the appropriate users and groups. For example,
+    to grant permissions for department leaders to track their warehouse scaling events
+    throughout the workday, a metastore admin would need to explicitly grant permissions
+    for the group, **dept_leads** , to query the SQL warehouse system table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can imagine, very active Databricks workspaces will record many events
+    throughout the day, and over time, these tables can grow to be quite large. To
+    prevent observability information from accumulating to the point of creating a
+    large cloud storage bill, instead, the system information will only be retained
+    for a maximum of one year within your Databricks account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For use cases where the auditing information is required to be retained in the
+    order of many years, you will need to set up a secondary process to copy the system
+    information into a long-term archival system, for example. Tracking changes to
+    datasets is critical to ensuring strong observability in your lakehouse. Another
+    strong suite of Unity Catalog is that observability extends beyond just datasets
+    and covers all objects that can be secured under Unity Catalog governance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tracing the lineage of other assets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As previously mentioned, Unity Catalog implements a single governance solution
+    over your organization’s data assets, which extends beyond just tables. With Unity
+    Catalog, you can trace the lineage of other data assets such as workflows, notebooks,
+    and machine learning models, to name a few.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s turn our attention to how Unity Catalog can dynamically generate different
+    result sets to queries by evaluating the user and group permissions of a given
+    Databricks user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fine-grained data access
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Dynamic views are a special type of view within the Databricks Data Intelligence
+    Platform that provides data administrators with the ability to control fine-grained
+    access to data within a dataset. For example, administrators can specify which
+    rows and columns a particular individual may have access to depending upon their
+    group membership. The Databricks Data Intelligence Platform introduces several
+    built-in functions for dynamically evaluating group membership when a particular
+    user queries the contents of a view:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**current_user()** returns the email address of the user querying the view'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**is_member()** returns a Boolean ( **True** or **False** ) of whether the
+    user querying a view is a member of a Databricks workspace-level group'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**is_account_group_member()** returns a Boolean ( **True** or **False** ) of
+    whether the user querying a view is a member of a Databricks account-level group
+    (as opposed to a workspace-level group)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: For dynamic views created against tables and views in Unity Catalog, it’s recommended
+    to use the **is_account_group_member()** function to evaluate a user’s membership
+    to a group as it will evaluate group membership at the Databricks account level.
+    On the other hand, the **is_member()** function will evaluate a user’s membership
+    to a group that is local to a particular workspace and may provide false or unintended
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, dynamic views also enable data administrators to obfuscate specific
+    column values so that sensitive data is not exfiltrated by accident. Using built-in
+    Spark SQL functions such as **concat()** , **regexp_extract()** , or even **lit()**
+    is a simple yet powerful tool for protecting the contents of the most sensitive
+    datasets on the Databricks platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we’ll look at how we can leverage dynamic views to permit
+    members of a data science team to perform ad hoc data wrangling of a sensitive
+    dataset while simultaneously protecting the contents of columns with **personally
+    identifiable information** ( **PII** ) data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hands-on example – data masking healthcare datasets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this example, we’ll be creating a dynamic view to restrict data access to
+    certain rows and columns within a dataset. We’ll be using the COVID sample dataset
+    located within the Databricks datasets at **/databricks-datasets/COVID/covid-19-data/us-counties.csv**
+    . The dataset contains COVID-19 infection data for US counties during the 2020
+    global pandemic. Since this dataset can contain sensitive data, we’ll apply a
+    simple data mask to prevent the exposure of sensitive data to non-privileged users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s start by defining a few global variables, as well as the catalog and
+    schema that will hold our dynamic views:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we’ll need to define a persistent table object in Unity Catalog that
+    we will use to create views. Let’s start by creating a new table using the sample
+    US Counties COVID dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let’s query the newly created table in Unity Catalog. Note that all columns
+    and rows are returned since we didn’t specify any qualifying criteria that would
+    filter the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s create a view that will dynamically evaluate the querying user’s group
+    membership in Unity Catalog. In this case, we want to restrict access to certain
+    columns if the user is not a member of the **admins** group. Based upon the group
+    membership, we can give access to a user or we could limit access to the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s also leverage a built-in Spark SQL function to apply a simple yet powerful
+    data mask to sensitive data columns, allowing only privileged members of the **admins**
+    group access to view the text:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the previous view definition, we’ve limited data access to a particular
+    set of columns within the US Counties COVID dataset. Using dynamic views, we can
+    also limit access to a particular set of rows using a query predicate. In the
+    final view definition, we’ll limit which US states a particular user can view
+    based on a user’s membership to the **admins** group:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, members of other groups can perform ad hoc data exploration and other
+    data experimentation. However, we won’t inadvertently expose any sensitive healthcare
+    data. For example, let’s imagine that there is another group called **data-science**
+    . This group can query the dynamic view, but the results will be different from
+    if a member of the **admins** group queried the view. For example, the following
+    aggregation will return different result sets depending on whether a user is in
+    the **admins** group or the **data-science** group:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We get the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.12 – Dynamic views can generate customized results based on group
+    membership](img/B22011_05_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.12 – Dynamic views can generate customized results based on group membership
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, you should be able to realize the power of dynamic views within the
+    Databricks Data Intelligence Platform. With just a few built-in functions, we
+    can implement strong data governance across various users and groups interacting
+    with your organization’s data in the l akehouse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered the challenges specific to lakehouse data governance
+    and how Unity Catalog solves these challenges. We also covered how to enable Unity
+    Catalog within an existing Databricks workspace and how metastore admins can establish
+    connections with external data sources. Lastly, we covered techniques for discovering
+    and cataloging data assets within the lakehouse and how annotating data assets
+    with metadata tags can create a searchable and well-organized data catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll explore how to effectively manage input and output
+    data locations using Unity Catalog. You’ll learn how to govern data access across
+    various roles and departments within an organization, ensuring security and auditability
+    within the Databricks Data Intelligence Platform.
+  prefs: []
+  type: TYPE_NORMAL

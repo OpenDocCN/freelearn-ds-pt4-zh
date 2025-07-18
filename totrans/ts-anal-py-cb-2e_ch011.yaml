@@ -1,0 +1,2770 @@
+- en: 10 Building Univariate Time Series Models Using Statistical Methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Join our book community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '![](img/file0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[https://packt.link/zmkOY](https://packt.link/zmkOY)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Chapter 9*, *Exploratory Data Analysis and Diagnosis*, you were introduced
+    to several concepts to help you understand the time series process. Such recipes
+    included *Decomposing time series data*, *Detecting time series stationarity*,
+    *Applying power transformations,* and *Testing for autocorrelation in time series
+    data*. These techniques will come in handy in the statistical modeling approach
+    that will be discussed in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When working with time series data, different methods and models can be used,
+    depending on whether the time series you are working with is **univariate** or
+    **multivariate**, **seasonal** or **non-seasonal**, **stationary** or **non-stationary**,
+    and **linear** or **nonlinear**. If you list the assumptions you need to consider
+    and examine – for example, stationarity and autocorrelation – it will become apparent
+    why time series data is deemed to be complex and challenging. Thus, to model such
+    a complex system, your goal is to get a good enough approximation that captures
+    the critical factors of interest. These factors will vary by industry domain and
+    the study's objective, such as forecasting, analyzing a process, or detecting
+    abnormalities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some popular statistical modeling methods include **Exponential Smoothing**,
+    **Autoregressive Integrated Moving Average** (**ARIMA**), **Seasonal ARIMA** (**SARIMA**),
+    **Vector Autoregressive** (**VAR**), and other variants of these models such as
+    ARIMAX, SARIMAX, VARX, and VARMA. Many practitioners, such as economists and data
+    scientists, still use such statistical “classical” models. Additionally, these
+    models can be found in popular software packages such as EViews, MATLAB, Orange,
+    KNIME, and Alteryx, as well as libraries in Python and R.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn how to build these statistical models in Python.
+    In other words, I will only provide a brief introduction to the theory and math
+    since the focus is on the implementation. I will provide references where it makes
+    sense if you are interested in diving deeper into the math and theory of such
+    models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Plotting ACF and PACF
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Forecasting univariate time series data with exponential smoothing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Forecasting univariate time series data with non-seasonal ARIMA
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Forecasting univariate time series data with seasonal ARIMA
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Forecasting univariate time series data with Auto_Arima
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before diving into these recipes, pay special attention to the upcoming *Technical
+    requirements* section, in which you will perform upfront preparation. This will
+    remove any distractions and repetitive coding so that you can focus on the recipe's
+    core goals and the concepts behind each implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can download the Jupyter Notebooks and necessary datasets from this book''s
+    GitHub repository:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Jupyter Notebook: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch10/Chapter%2010.ipynb](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch10/Chapter%2010.ipynb)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Datasets: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch10](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch10)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Before you start working through the recipes in this chapter, please run the
+    following code to load the datasets and functions that will be referenced throughout:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the basic libraries that will be shared across all the recipes
+    in this chapter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will be working with two datasets throughout this chapter: `Life Expectancy
+    from Birth` and `Monthly Milk Production`. Import these datasets, which are stored
+    in CSV format (`life_expectancy_birth.csv`, and `milk_production.csv`), into pandas
+    DataFrames. Each dataset comes from a different time series process, so they will
+    contain a different trend or seasonality. Once you''ve imported the datasets,
+    you will have two DataFrames called `life` and `milk`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Inspect the data visually and observe if the time series contains any trend
+    or seasonality. You can always come back to the plots shown in this section for
+    reference:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should display two time series plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.1: Time series plots for Annual Life Expectancy and Monthly Milk
+    Production](img/file152.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.1: Time series plots for Annual Life Expectancy and Monthly Milk
+    Production'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding figure shows a time series plot for the `life expectancy` DataFrame
+    showing a positive (upward) trend and no seasonality. The life expectancy data
+    contains *annual* life expectancy records at birth from 1960 to 2018 (59 years).
+    The original dataset contained records for each country, but you will be working
+    with *world* records in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The time series plot for the `monthly milk production` DataFrame shows a positive
+    (upward) trend and a repeating seasonality (every summer). The milk production
+    data is recorded monthly from January 1962 to December 1975 (168 months). The
+    seasonal magnitudes and variations over time seem to be steady, indicating an
+    additive nature. Having a seasonal decomposition that specifies the level, trend,
+    and season of an additive model will reflect this as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For more insight on seasonal decomposition, please review the *Decomposing time
+    series data* recipe in *Chapter 9*, *Exploratory Data Analysis and Diagnosis*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need to split the data into `test` and `train` datasets. You will train
+    the models (fitting) on the training dataset and use the test dataset to evaluate
+    the model and compare your predictions. A forecast that's created on the data
+    that is used in training is called an **in-sample** forecast, while forecasting
+    for unseen data such as a test set is called an **out-of-sample** forecast. When
+    you're evaluating the different models, you will be using the out-of-sample or
+    test sets.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a generalized function, `split_data`, which splits the data based on
+    a test split factor. This way, you can experiment on different splits as well.
+    We will be referencing this function throughout this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Call the `split_data` function to split the two DataFrames into `test` and
+    `train` datasets (start with 15% test and 85% train). You can always experiment
+    with different split factors:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will be checking for stationarity often since it is an essential assumption
+    for many of the models you will build. For example, in *Chapter 9*, *Exploratory
+    Data Analysis and Diagnosis*, in the *Detecting time series stationarity* recipe,
+    we discussed the importance of testing for stationarity and using the **Augmented
+    Dickey-Fuller** test. Create a function that you can refer to throughout this
+    chapter to perform the test and interpret the results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: There will be recipes in which you will run multiple variations of a model as
+    you search for the optimal configuration, a practice commonly called **hyperparameter
+    tuning**. For example, you may train an ARIMA model with different parameter values
+    and thus produce multiple variations of the ARIMA model (multiple models).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The `get_top_models_df` function will compare the different models – for example,
+    multiple ARIMA models – to select the best model and the set of parameters associated
+    with that model. The `get_top_models_df` function will take a dictionary that
+    contains the produced models, the associated parameters, and the scores for each
+    model. It returns a DataFrame detailing the top performing models, for easier
+    comparison. The function allows you to specify the number of top models to return
+    and the `criterion` for their selection, such as Root Mean Squared Percentage
+    Error (**RMSPE**), Root Mean Square Error (**RMSE**), Mean Absolute Percentage
+    Error (**MAPE**), Akaike's Information Criteria (**AIC**), Corrected Akaike's
+    Information Criteria (**AICc**), or Bayesian Information Criteria (**BIC**). These
+    metrics can be crucial in determining the most suitable model for your data analysis
+    needs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, you may opt to evaluate the models based on their AIC scores by
+    default, but you can easily switch to another metric like RMSPE or RMSE if these
+    are more relevant to your specific situation. This flexibility ensures that you
+    can tailor the model selection process to best fit the analytical demands and
+    complexity of your data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create the `plot_forecast` function, which takes a model object that you have
+    trained, a starting position, and both the train and test datasets to create a
+    plot that compares the forecast (predicted values) against actuals. This will
+    become clearer as you dive into this chapter''s recipes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, create a `combinator` utility function that takes a list of parameter
+    values and returns a **cartesian product** of these choices. You will use this
+    when performing a grid search for hyperparameter tuning. In grid search, you specify
+    a combination of parameter values to train multiple models on each set and then
+    evaluate the winning model using the `get_top_models_df` function. For example,
+    suppose your list contains three possible values for three different parameters.
+    In such a case, the `combinator` function will return a list containing 3x3 or
+    nine possible combinations. This will become clearer as you dive into this chapter''s
+    recipes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can represent the overall flow as in *Figure 10.2* which shows how you will
+    be utilizing the functions you just created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.2: The overall process in this Chapter utilizing the prepared helper
+    functions created](img/file153.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.2: The overall process in this Chapter utilizing the prepared helper
+    functions created'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's dive into the recipes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first recipe, you will be introduced to the **ACF** and **PACF** plots,
+    which are used to evaluate model fit, check stationarity, and determine the **orders**
+    (**parameters**) for some of the models that will be used in this chapter, such
+    as the ARIMA model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Plotting ACF and PACF
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before building any statistical forecasting models such as **AR** (AutoRegressive),
+    **MA** (Moving Average), **ARMA** (AutoRegressive Moving Average), **ARIMA** (AutoRegressive
+    Integrated Moving Average), or **SARIMA** (Seasonal AutoRegressive Integrated
+    Moving Average), you will need to determine the most suitable type of time series
+    model for your data. Additionally, you will need to identify the values for some
+    required parameters, known as orders. More specifically, these include the lag
+    orders for the autoregressive (AR) or moving average (MA) components. This process
+    will be explored further in the *'Forecasting Univariate Time Series Data with
+    ARIMA'* section of this chapter. For example, an Autoregressive Moving Average
+    (ARMA) model is denoted as `ARMA(p, q)`, where `'p'` represents the autoregressive
+    order, or AR(p) component, and `'q'` represents the moving average order, or MA(q)
+    component. Hence, an ARMA model combines an AR(p) and an MA(q) model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The core idea behind these models is built on the assumption that the current
+    value of a particular variable,![](img/file154.png), can be estimated from past
+    values of itself. For example, in an autoregressive model of order `p` or `AR(p)`,
+    we assume that the current value,![](img/file155.png), at time![](img/file156.png)can
+    be estimated from its past values (![](img/file157.png)) up to `p`, where `p`
+    determines how many lags (steps back) we need to go. If![](img/file158.png), this
+    means we must use two previous periods![](img/file159.png)) to predict![](img/file160.png).
+    Depending on the granularity of your time series data, `p=2` can be 2 hours, 2
+    days, 2 months, 2 quarters, or 2 years.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To build an ARMA(p,q) model, you will need to provide values for the `p` and
+    `q` orders (known as lags). These are considered **hyperparameters** since they
+    are supplied by you to influence the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The terms parameters and hyperparameters are sometimes used interchangeably.
+    However, they have different interpretations and you need to understand the distinction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PARAMETERS VERSUS HYPERPARAMETERS
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: When training an ARMA or an ARIMA model, the outcome will produce a set of parameters
+    called coefficients – for example, a coefficient value for AR Lag 1 or sigma –
+    that are estimated by the algorithm during the model training process and are
+    used for making predictions. They are referred to as the model's parameters.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: On the other hand, the (p, d, q) parameters are the ARIMA(p, q, d) orders for
+    AR, differencing, and MA, respectively. These are called hyperparameters. They
+    are provided during training and influence the model’s parameters that are produced
+    (for example, the coefficients). These hyperparameters, can be tuned using grid
+    search, for example, to find the best set of values that produce the best model.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Now, you might be asking yourself, how do I find the significant lag values
+    for AR and MA models?
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is where the **Autocorrelation Function** (**ACF**) and the **Partial Autocorrelation
+    Function** (**PACF**) and their plots come into play. The ACF and PACF can be
+    plotted to help you identify if the time series process is an AR, MA, or an ARMA
+    process (if both are present) and the *significant* lag values (for `p` and `q`).
+    Both PACF and ACF plots are referred to as **correlograms** since the plots represent
+    the **correlation** statistics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The difference between an ARMA and ARIMA, written as `ARIMA(p, d, q)`, is in
+    the stationarity assumption. The `d` parameter in ARIMA is for the differencing
+    order. An ARMA model assumes a **stationary** process, while an ARIMA model does
+    not since it handles differencing. An ARIMA model is a more generalized model
+    since it can satisfy an ARMA model by making the differencing factor `d=0`. Hence,
+    an `ARIMA(1,0,1)` is `ARMA(1,1)`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**AR** ORDER VERSUS **MA** ORDER'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: You will use the PACF plot to estimate the AR order and the ACF plot to estimate
+    the MA order. Both the ACF and PACF plots show values that range from `-1` to
+    `1` on the vertical axis (y-axis), while the horizontal axis (x-axis) indicates
+    the size of the lag. A *significant* lag is any lag that goes outside the shaded
+    confidence interval, as you shall see from the plots.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'The **statsmodels** library provides two functions: `acf_plot` and `pacf_plot`.
+    The correlation (for both ACF and PACF) at lag zero is always *one* (since it
+    represents autocorrelation of the first observation on itself). Hence, both functions
+    provide the `zero` parameter, which takes a Boolean. Therefore, to exclude the
+    zero lag in the visualization, you can pass `zero=False` instead.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Chapter 9*, *Exploratory Data Analysis and Diagnosis*, in the *Testing autocorrelation
+    in time series data* recipe, you used the **Ljung-Box** test to evaluate autocorrelation
+    on the residuals. In this recipe, you will also learn how to use the ACF plot
+    to examine **residual autocorrelation** visually as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will explore `acf_plot` and `pacf_plot` from the `statsmodels`
+    library. Let''s get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will use the life expectancy data in this recipe. As shown in *Figure 10.1*,
+    the data is not stationary due to the presence of a long-term trend. In such a
+    case, you will need to difference (detrend) the time series to make it stationary
+    **before** applying the ACF and PACF plots.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Start by differencing and then create the plots without the zero lag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following two plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.3: The ACF and PACF plots for the life expectancy data after differencing](img/file161.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.3: The ACF and PACF plots for the life expectancy data after differencing'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to see the calculated PACF and ACF for more lags you can update
+    the `lags` parameter as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following two plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.4: The ACF and PACF for the first 25 lags](img/file162.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.4: The ACF and PACF for the first 25 lags'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ACF plot shows a significant spike at lag (order) 1\. Significance is represented
+    when a lag (vertical line) goes above or below the shaded area. The shaded area
+    represents the confidence interval, which is set to `95%` by default. In the ACF
+    plot, only the first lag is significant, which is below the lower confidence interval,
+    and then *cuts off* right after. All the remaining lags are not significant. This
+    indicates a moving average of order one or MA(1).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The PACF plot shows a *gradual* decay with oscillation. Generally, if PACF shows
+    a gradual decay, it indicates a moving average model. For example, if you are
+    using an ARMA or ARIMA model, it would be represented as `ARMA(0, 1)` once the
+    data has been differenced to make it stationary, or `ARIMA(0, 1, 1)`, indicating
+    a first-order differencing with `d=1`. In both ARMA and ARIMA, the AR order is
+    `p=0`, and the MA order is `q=1`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s see how PACF and ACF can be used with a more complex dataset containing
+    strong trends and seasonality. In *Figure 10.1*, the `Monthly Milk Production`
+    plot shows an annual seasonal effect and a positive upward trend indicating a
+    non-stationary time series. It is more suitable with a SARIMA model. In a SARIMA
+    model, you have two components: a non-seasonal and a seasonal component. For example,
+    in addition to the AR and MA processes for the non-seasonal components represented
+    by lower case `p` and `q`, which you saw earlier, you will have AR and MA orders
+    for the seasonal component, which are represented by upper case `P` and `Q`, respectively.
+    This can be written as `SARIMA(p,d,q)(P,D,Q,S)`. You will learn more about the
+    SARIMA model in the *Forecasting univariate time series data with seasonal ARIMA*
+    recipe.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To make such time series stationary, you will need to start with seasonal differencing
+    to remove the seasonal effect. Since the observations are taken monthly, the seasonal
+    effects are observed annually (every 12 months or period):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use the `check_stationarity` function that you created earlier in this chapter
+    to perform an Augmented Dickey-Fuller test to check for stationarity:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The differenced time series is still not stationary, so you still need to perform
+    a second differencing. This time, you must perform first-order differencing (detrend).
+    When the time series data contains seasonality and trend, you may need to difference
+    it twice to make it stationary. Store the resulting DataFrame in the `milk_diff_12_1`
+    variable and run `check_stationarity` again:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Great – now, you have a stationary process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plot ACF and PACF for the stationary time series in `milk_diff_12_1`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following ACF and PACF plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.5: PACF and ACF for Monthly Milk Production after differencing](img/file163.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.5: PACF and ACF for Monthly Milk Production after differencing'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the seasonal orders, `P` and `Q`, you should diagnose spikes or behaviors
+    at lags `s`, `2s`, `3s`, and so on, where `s` is the number of periods in a season.
+    For example, in the milk production data, `s=12` (since there are 12 monthly periods
+    in a season). Then, we observe for significance at 12 (s), 24 (2s), 36 (3s), and
+    so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Starting with the ACF plot, there is a significant spike at lag 1, which represents
+    the *non-seasonal* order for the MA process as `q=1`. The spike at lag 12 represents
+    the *seasonal* order for the MA process as `Q=1`. Notice that there is a cut-off
+    right after lag 1, then a spike at lag 12, followed by a cut-off (no other significant
+    lags afterward). These indicate a moving average model: an MA(1) for the non-seasonal
+    component and an MA(1) for the seasonal component. The PACF plot confirms this
+    as well; an exponential decay at lags 12, 24, and 36 indicates an MA model. So,
+    the SARIMA model would be `ARIMA (0, 1,1)(0, 1, 1, 12)`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Though using ACF and PACF plots can be useful for identifying the ARIMA orders
+    p and q, it should not be used alone. There are different techniques that you
+    will explore in this chapter to help you determine the orders such as model selection
+    techniques using AIC and BIC.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The ACF and PACF plots can help you understand the strength of the linear relationship
+    between past observations and their significance at different lags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ACF and PACF plots show significant autocorrelation or partial autocorrelation
+    above the **confidence interval**. The shaded portion represents the confidence
+    interval, which is controlled by the `alpha` parameter in both `pacf_plot` and
+    `acf_plot` functions. The default value for `alpha` in `statsmodels` is `0.05`
+    (at a 95% confidence interval). Being significant could be in either direction;
+    strongly positive the closer to `1` (above) or strongly negative the closer to
+    `-1` (below).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following table shows an example guide for identifying the stationary AR
+    and MA orders from PACF and ACF plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/file164.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Table 10.1: Identifying the AR, MA, and ARMA models using ACF and PACF plots'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this recipe, you used ACF and PACF plots to try and estimate what order values
+    (lags) to use for the seasonal and non-seasonal ARIMA models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how ACF plots can be used to diagnose the model''s **residuals**.
+    Inspecting a model’s residuals is an integral part of evaluating a model. The
+    assumption here is quite simple: if the model captured all the necessary information
+    correctly, then the residuals should not include any correlated data points at
+    any lags (no autocorrelation). Hence, you would expect an ACF plot of the residuals
+    to show autocorrelations closer to zero.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s build the Seasonal ARIMA model we identified earlier in this recipe
+    as `SARIMA(0,1,1)(0,1,1,12)`, then use the ACF to diagnose the residuals. If the
+    model captured all the information that''s been embedded within the time series,
+    you would expect the residuals to have *no autocorrelation*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following autocorrelation plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.6: Autocorrelation plot of the SARIMA residuals](img/file165.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.6: Autocorrelation plot of the SARIMA residuals'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overall, the `SARIMA(0,1,1)(0,1,1,12)` did a good job at capturing the necessary
+    information, and yet there might be some opportunity for improvement. There is
+    one significant lag (at lag=12 above the confidence threshold) indicating the
+    existence of some autocorrelation in the residuals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can further tune the model and experiment with other values for the seasonal
+    and non-seasonal orders. In this chapter and later recipes, you will explore a
+    grid search method for selecting the best hyperparameters to find the best model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to further diagnose your model’s residuals you can do so using
+    the `plot_diagnostics` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.7: Residual analysis using plot_diagnostics method](img/file166.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.7: Residual analysis using plot_diagnostics method'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the diagnostic plots produced are based on the standardized residuals,
+    a common technique that makes comparing residuals between models easier because
+    they are normalized and expressed in terms of standard deviations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can replicate the same diagrams by accessing the `model.standardized_forecasts_error`
+    as shown below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: and
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The two plots produced should resemble the following figures, illustrating
+    the autocorrelation and time series pattern of the standardized residuals:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.8: ACF plot of the standardized residuals of the SARIMA model](img/file167.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.8: ACF plot of the standardized residuals of the SARIMA model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.9: Standardized residuals plot of the SARIMA model](img/file168.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.9: Standardized residuals plot of the SARIMA model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The difference between *Figure 10.6* and *Figure 10.8* is due to scale normalization.
+    Standardization can reduce the impact of outliers, as the residuals are scaled
+    down. This is why the autocorrelation at Lag 12, though still visible in both
+    figures, is at the border of the confidence interval in Figure 10.8, as opposed
+    to *Figure 10.6*. At the same time, standardization can amplify smaller autocorrelations
+    that may not be initially visible in the original ACF plot. Throughout the recipes,
+    you will rely on the `plot_diagnostics method for residual diagnosis.`
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To learn more about ACF plots, visit the official documentation at [https://www.statsmodels.org/dev/generated/statsmodels.graphics.tsaplots.plot_acf.html.](https://www.statsmodels.org/dev/generated/statsmodels.graphics.tsaplots.plot_acf.html.)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To learn more about PACF plots, visit the official documentation at [https://www.statsmodels.org/dev/generated/statsmodels.graphics.tsaplots.plot_pacf.html](https://www.statsmodels.org/dev/generated/statsmodels.graphics.tsaplots.plot_pacf.html).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With that, you know how to use ACF and PACF plots when building an ARIMA model
+    and its variants – for example, an ARMA or SARIMA model. In the next recipe, you
+    will be introduced to this chapter's first time series forecasting technique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forecasting univariate time series data with exponential smoothing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will explore the **exponential smoothing** technique using
+    the `statsmodels` library, which offers functionality similar to popular implementations
+    from the R `forecast` package, such as `ets()` and `HoltWinters()`. In statsmodels,
+    there are three different implementations (*classes*) of exponential smoothing,
+    depending on the nature of the data you are working with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**SimpleExpSmoothing**: Simple exponential smoothing is used when the time
+    series process lacks seasonality and trend. This is also referred to as single
+    exponential smoothing.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Holt**: Holt''s exponential smoothing is an enhancement of the simple exponential
+    smoothing and is used when the time series process contains only trend (but no
+    seasonality). It is referred to as double exponential smoothing.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**ExponentialSmoothing**: Holt-Winters'' exponential smoothing is an enhancement
+    of Holt''s exponential smoothing and is used when the time series process has
+    both seasonality and trend. It is referred to as triple exponential smoothing.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**You can import the classes as shown:**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `statsmodels` implementation adheres to the definitions found in *Forecasting:
+    principles and practice, by Hyndman, Rob J., and George Athanasopoulos*, which
+    you can reference here: [https://otexts.com/fpp3/expsmooth.html](https://otexts.com/fpp3/expsmooth.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will perform exponential smoothing on the two datasets
+    introduced earlier in the chapter (*Technical Requirements*). Since the `Holt`
+    class and the `SimpleExpSmoothing` class are restricted versions of the `ExponentialSmoothing`
+    class, you will be using the latter for simplicity. Instead of using all three,
+    you can use the `ExponentialSmoothing` class to run the three different types
+    since `ExponentialSmoothing` is a more generic implementation. This approach allows
+    you to manage different types of time series—whether they exhibit trend, seasonality,
+    or both—using a single, more versatile implementation. Let''s get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the `ExponentialSmoothing` class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will start with the life expectancy dataset and use the `ExponentialSmoothing`
+    class.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The `ExponentialSmoothing` takes several parameters (referred to as hyperparameters)
+    and can be broken into two types: those specified when constructing the model
+    and those specified while fitting the model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Model Construction:**'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`trend`: Choose from ‘`multiplicative’` (alias ‘`mul`’), ''`additive`'' (alias
+    ''`add`''), or `None`.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`seasonal`: Choose from ‘`multiplicative’` (alias ‘`mul`’), ''`additive`''
+    (alias ''`add`''), or `None`.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`seasonal_periods`: An integer representing the seasonality period; for example,
+    use 12 for monthly data or 4 for quarterly data.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`damped_trend`: A Boolean value (`True` or `False`) to specify if the trend
+    should be damped.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`use_boxcox`: A Boolean value (`True` or `False`) to determine if a Box-Cox
+    transform should be applied.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Model Fitting:**'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`smoothing_level`: A float specifying the smoothing factor for the level known
+    as **alpha** ('
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/file169.png)'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_IMG
+- en: ), with valid values between 0 and 1 (
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![](img/file170.png)'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_IMG
+- en: ).
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`smoothing_trend`: A float specifying the smoothing factor for the trend known
+    as **beta** ('
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/file171.png)'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_IMG
+- en: ), with valid values between 0 and 1 (
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![](img/file172.png)'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_IMG
+- en: ).
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`smoothing_seasonal`: A float specifying the smoothing factor for the seasonal
+    trend known as *gamma* ('
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/file173.png)'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_IMG
+- en: ), with valid values between 0 and 1 (
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![](img/file174.png)'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_IMG
+- en: ).
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Later, in the *How it works…* section, you will explore the **Holt-Winters'**
+    formulas for level, trend, and seasonality and how these parameters are applied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a list that contains different combinations of values for the **hyperparameters**.
+    This way, in the next step you get to evaluate different combination of hyperparameter
+    values in each run. Essentially, you will train a different model and capture
+    its scores during each iteration. Once every combination has been evaluated, you
+    will use the `get_top_models_df` function (from the *Technical requirements* section)
+    to determine the best-performing model and its optimal hyperparameter values through
+    this exhaustive grid search. This process can be a time-consuming process, but
+    fortunately, there is an alternative hybrid technique to shorten the search.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You can use the `ExponentialSmoothing` class to find the optimal values for
+    `alpha`, `beta`, and `gamma` (![](img/file175.png)). This approach eliminates
+    the need to specify these values in your grid (although you still do so if you
+    prefer to control the process). This simplification means that you only need to
+    provide values for the remaining hyperparameters like `trend` and `seasonal`.
+    You can initially attempt to identify whether the components are multiplicative
+    or additive by plotting their decomposition using the `seasonal_decompose()` function.
+    If you're still uncertain, the exhaustive grid search remains a viable alternative.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the `life` DataFrame, you only have *trend*, so you only need to explore
+    different values for the *two* parameters; that is, `trend` and `damped`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we have two parameters that take two different values, each providing
+    us with a 2x2 or four total combinations to evaluate for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Loop through the combination list and train (fit) a different model at each
+    iteration. Capture the evaluation metrics in a dictionary to compare the results
+    later. Example scores you will capture include RMSE, RMSPE, MAPE, AIC, and BIC,
+    to name a few. Keep in mind that most automated tools and software will use the
+    AIC and BIC scores behind the scenes to determine the best model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the previous function, you used `life_train` for training the different models,
+    and `life_test` for evaluating the error metrics such as RMSPE, RMSE, and MAPE.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To retrieve the top models using the `get_top_models_df` function, just pass
+    the scores dictionary. For now, keep the default criteria set to `c=AIC` to be
+    consistent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `get_top_models_df` function will return a DataFrame displaying the top
+    models (up to 5 by default), ranked based on the criterion selected, such as the
+    AIC score in this case. The DataFrame not only includes all additional scores
+    but also stores the model instances themselves in a column labeled 'model'.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To view the ranking and the various scores, you can execute the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code excludes the last column which contains the model instances,
+    thus displaying a DataFrame that includes columns for each of the evaluation metrics
+    such as AIC, BIC, RMSE, etc
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.10: Exponential Smoothing models for the Life Expectancy data ranked
+    based on AIC scores](img/file176.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.10: Exponential Smoothing models for the Life Expectancy data ranked
+    based on AIC scores'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Generally, for model selection based on information criteria such as AIC, BIC,
+    and AICc, lower values are better, indicating a more optimal balance between model
+    fit and complexity. In our case we opted to use AIC. If you inspect the DataFrame
+    in figure 10.10 there are a few observations you can make:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If prioritizing information criteria (AIC, BIC, AICc), **Model 1** (trend:
+    additive, damped: False) would be considered the best model as it scores the lowest
+    across all three information criteria. This model likely offers the best trade-off
+    between model complexity and fit.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If prioritizing error metrics (RMSPE, RMSE, MAPE), which measure prediction
+    accuracy, **Model 0** (trend: additive, damped: True) would be considered superior
+    due to its lower prediction errors.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Selecting the "winning" model will depend on your specific goals and the context
+    in which the model will be used. If you need a balance between both approaches,
+    you might consider other factors or further validation to decide between Models
+    1 and 0.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: We will continue with the AIC as our selection criteria.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The models stored in the DataFrame are an instance of the `HoltWintersResultsWrapper`
+    class. You can access the top model directly from the DataFrame, which allows
+    you to utilize additional methods and attributes associated with the model, such
+    as `summary`, `predict`, and `forecast`. To extract and interact with the winning
+    model in the first row, use the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can access the `summary()` method as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code will produce a summary output that provides a tabular layout
+    detailing the model—for example, the parameter values that were used and the coefficients
+    calculated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.11: Exponential Smoothing summary for the life expectancy data](img/file177.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.11: Exponential Smoothing summary for the life expectancy data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The summary will show key information such as the optimal values for **alpha**
+    (*smoothing_level*) and **beta** (*smoothing_trend*) that have been automatically
+    deduced by the fitting process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can forecast future values using the `forecast` method and then evaluate
+    the results against the test set (unseen data by the model). The `plot_forecast()`
+    function, which we introduced earlier in this chapter in the *Technical requirements*
+    section, will be used to generate and plot the forecast results alongside the
+    test data. To perform this visualization, pass the model object stored in `top_model`
+    along with both the `training` and `test` datasets to `plot_forecast()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `start` argument in the `plot_forecast` function slices the data from that
+    point forward to make it easier to compare the results. Think of it as zooming
+    in on a specific segment of the timeline. For example, instead of displaying data
+    spanning from 1960 to 2018 (59 months), you request only the segment starting
+    from the year 2000.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This should produce a plot with the x-axis starting from the year 2000\. There
+    should be three lines: One line representing the training data, another line for
+    the test data, and a third line depicting the forecast (predicted values):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.12: Plotting the exponential smoothing forecast versus the actual
+    data for the life expectancy dataset](img/file178.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.12: Plotting the exponential smoothing forecast versus the actual
+    data for the life expectancy dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The forecast from the simple exponential smoothing produced a straight line
+    extending the upward trend from the trained data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Replicate the same process as earlier but with the `milk` DataFrame. Keep in
+    mind that the most significant difference here is the addition of the seasonal
+    parameters. This means you will be adding two additional hyperparameters to evaluate
+    for – that is, `seasonal` and `seasonal_periods`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Build a cartesian product for the different options. For `seasonal_periods`,
+    you can explore three periods – 4, 6, and 12 months. This should give you a total
+    of 24 models that you will need to evaluate for:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Loop through the list of combinations to train multiple models and capture
+    their scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Upon training completion, run the `get_top_models_df` function to identify
+    the top models based on the AIC score:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should display the following DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.13: Top 5 Exponential Smoothing models for the Milk Production
+    data ranked based on AIC scores](img/file179.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.13: Top 5 Exponential Smoothing models for the Milk Production data
+    ranked based on AIC scores'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To determine the winning model from the results, you typically look at various
+    metrics like AIC, BIC, AICc (which are information criteria), and error metrics
+    such as RMSPE, RMSE, and MAPE. Lower values in AIC, BIC, and AICc indicate a model
+    with a better balance between goodness of fit and complexity. Lower values in
+    RMSPE, RMSE, and MAPE indicate better predictive accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you inspect the DataFrame in Figure 10.13 there are a few observations you
+    can make:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If prioritizing information criteria (AIC, BIC, AICc), **Model 8** (trend:
+    additive, damped: False) appears to be the best model as it has the lowest values
+    across all information criteria. This suggests that it provides a favorable balance
+    between fitting the data well and maintaining simplicity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If prioritizing error metrics (RMSPE, RMSE, MAPE), **Model 2** (trend: additive,
+    damped: True) is superior in terms of prediction accuracy. This model has the
+    lowest error rates, indicating it predicts future values most accurately among
+    the models listed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selecting the "winning" model will depend on your specific goals and the context
+    in which the model will be used. If you need a balance between both approaches,
+    you might consider other factors or further validation to decide between Models
+    8 and 2.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: We will continue with the AIC as our selection criteria.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can display the best model''s summary with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce a tabular layout summarizing the best model – for example,
+    the parameter values that were used to build the model and the calculated coefficients:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.14: Exponential Smoothing summary for the Monthly Milk Production
+    data](img/file180.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.14: Exponential Smoothing summary for the Monthly Milk Production
+    data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice the optimal combination of hyperparameter values for `Trend`, `Seasonal`,
+    and `Seasonal Periods`. The optimal `Seasonal Periods` was at 12 months or lags.
+    The summary results table will show the coefficients for all those lags, and it
+    will be a long list. The preceding screenshot only shows the top section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, the summary will show key information such as the optimal values
+    for alpha (*smoothing_level*), beta (*smoothing_trend*), and gamma (*smoothing_seasonal*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recall that the best model is selected based on the AIC score. Therefore, you
+    should explore different metrics that have been captured, for example, using `get_top_models_df(score,
+    'MAPE', top_n=5)`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Compare your forecast using the best model against the test data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should result in a plot starting from the year 1969, featuring three lines
+    representing the training data, test data, and the forecast (predicted values):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.15: Plotting the exponential smoothing forecast versus the actual
+    Monthly Milk Production data](img/file181.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.15: Plotting the exponential smoothing forecast versus the actual
+    Monthly Milk Production data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overall, the model effectively captured both the trend and seasonality, closely
+    aligning with the actual values from the test set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There are various techniques for smoothing time series data, including the simple
+    moving average, simple exponential smoothing, Holt's exponential smoothing, and
+    Holt-Winter's exponential smoothing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The moving average model treats past values equally, while exponential smoothing
+    models place greater emphasis (weight) on more recent observations. In exponential
+    smoothing, the influence of older observations decreases (weight decay) exponentially,
+    hence the term "exponential". This approach is based on the logical assumption
+    that more recent events are likely to be more significant than older ones. For
+    instance, in a daily time series, occurrences from yesterday or the day before
+    are generally more relevant than those from two months ago.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The formula for simple exponential smoothing (single), ideal for time series
+    processes without trend or seasonality, is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/file182.jpg)Here, the `ExponentialSmoothing` class aims to find the
+    optimal value for the smoothing parameter **alpha** (![](img/file183.png)). In
+    this formula,![](img/file184.png)represents the expected (smoothed) level at the
+    current time![](img/file185.png),![](img/file186.png)is the previous smoothed
+    level value at time![](img/file187.png), and![](img/file188.png)is the observed
+    value at the current time![](img/file189.png). The alpha (![](img/file190.png))
+    parameter is critical, serving as the level smoothing parameter and plays a role
+    in determining whether the model should trust the past (![](img/file191.png))
+    versus the present (![](img/file192.png)). Hence, as![](img/file193.png)gets closer
+    to zero, the first term,![](img/file194.png), gets closer to zero, and more weight
+    is put on the past. And as![](img/file195.png)gets closer to one, then the![](img/file196.png)term
+    gets closer to zero and more emphasis or weight is put on the present. Several
+    factors influence the choice of![](img/file197.png), including the degree of randomness
+    in the system. The output value for the coefficient![](img/file197.png)determines
+    how the model weighs current and past observations to forecast future events![](img/file198.png).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This explanation aligns with the theme present throughout similar formulae;
+    while we won't delve into every detail, the overarching concept remains consistent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The formula for Holt's exponential smoothing (double) incorporates the addition
+    of the trend (![](img/file199.png)) and its smoothing parameter, beta (![](img/file200.png)).
+    Hence, once a trend is included, the model will output the values for both coefficients
+    – that is, **alpha** and **beta** (![](img/file201.png)):![](img/img_chapter10_image53.jpg)The
+    Holt-Winters exponential smoothing (triple) formula incorporates both trend (![](img/img_chapter10_image56.png))
+    and seasonality (![](img/file202.png)). The following equation shows **multiplicative**
+    seasonality as an example:![](img/img_chapter10_image58.jpg)When using `ExponentialSmoothing`
+    to find the best![](img/file203.png)parameter values, it does so by minimizing
+    the error rate (the **Sum of Squared Error** or **SSE**). So, every time in the
+    loop you were passing new parameters values (for example, damped as either `True`
+    or `False`), the model was solving for the optimal set of values for the![](img/file203.png)coefficients
+    by minimizing for SSE. This can be written as follows:![](img/img_chapter10_image64.jpg)
+  prefs: []
+  type: TYPE_NORMAL
+- en: In some textbooks, you will see different letters used for level, trend, and
+    seasonality, but the overall structure of the formulas holds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, exponential smoothing is a fast and effective technique for smoothing
+    a time series for improved analysis, dealing with outliers, data imputation, and
+    forecasting (prediction).
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: An exciting library known as **Darts** offers a `ExponentialSmoothing` class
+    that is a wrapper on top of statsmodels's `ExponentialSmoothing` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install Darts using `pip`, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using `conda`, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load the `ExponentialSmoothing` and `TimeSeries` classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Darts** expects the data to be an instance of the `TimeSeries` class, so
+    you need to convert your pandas DataFrame before using it to train the model.
+    The `TimeSeries` class provides the `from_dataframe` method, which you will be
+    using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When creating the `TimeSeries` object, you must specify which column name is
+    the date and which column contains the observations (values). You can train the
+    model using the `.fit()` method. Once trained, you can forecast using the `.predict()`
+    method. To plot the results, you can use the `.plot()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 10.16: ExponentialSmoothing forecast for the Monthly Milk Production
+    data using Darts](img/file204.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.16: ExponentialSmoothing forecast for the Monthly Milk Production
+    data using Darts'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `darts` library automated the evaluation process to find the optimal configuration
+    (hyperparameters). Darts'' `ExponentialSmoothing` class is a wrapper to statsmodels''s
+    `ExponentialSmoothing` class, which means you have access to familiar methods
+    and attributes, such as the `summary()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should produce the familiar statsmodels tabular summary of the model and
+    the optimized parameter values. As a challenge, compare the summary using Dart
+    with the results shown in *Figure 10.14*. Though you will notice you achieved
+    similar results, it was with less effort using Darts. It automatically picked
+    the best hyperparameters as those established in Figure 10.14.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Darts library features another useful class called **StatsForecastAutoETS**,
+    which draws its functionality from the AutoETS implementation in the StatsForecast
+    library. Compared to the traditional **ExponentialSmoothing** class, AutoETS is
+    often lauded for its faster performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To explore the capabilities of **StatsForecastAutoETS**, consider the following
+    code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 10.17: AutoETS forecast for the Monthly Milk Production data using
+    Darts](img/file204.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.17: AutoETS forecast for the Monthly Milk Production data using Darts'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can compare the two forecasts, ExponentialSmoothing and StatsForecastAutoETS,
+    using the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 10.18: Comparing AutoETS and ExponentialSmothing](img/file206.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.18: Comparing AutoETS and ExponentialSmothing'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The top line represents the `ExponentialSmoothing` forecast, while the bottom
+    line represents the `StatsForecastAutoETS` forecast.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Exponential Smoothing versus ETS**'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ETS and Exponential Smoothing are very closely related, as they both use smoothing
+    of past data points for forecasting time series data. However, they differ in
+    their approach. Exponential Smoothing estimates the parameters by minimizing the
+    Sum of Squared Errors, while ETS maximizes the likelihood. Additionally, Exponential
+    Smoothing provides point forecasts (predictions). ETS also provides the same point
+    forecasts but with added prediction intervals
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To learn more about the `ExponentialSmoothing` class, you can visit statsmodels's
+    official documentation at [https://www.statsmodels.org/dev/generated/statsmodels.tsa.holtwinters.ExponentialSmoothing.html](https://www.statsmodels.org/dev/generated/statsmodels.tsa.holtwinters.ExponentialSmoothing.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Did you notice that you did not have to test for stationarity with exponential
+    smoothing? Exponential smoothing is only appropriate for non-stationary time series
+    (for example, a time series with trend or seasonality).
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: In the next section, while building an ARIMA model, you will be testing for
+    stationarity to determine the differencing factor and leverage the ACF and PACF
+    plots that were discussed earlier in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forecasting univariate time series data with ARIMA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will explore ARIMA, using the **statsmodels** package for
+    implementation. ARIMA stands for Autoregressive Integrated Moving Average, which
+    combines three principal components: the **autoregressive** or `AR(p)` model,
+    the **moving average** or `MA(q)` model, and an **integrated** process or `I(d)`
+    which applies differencing to the data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An ARIMA model is characterized by the `p`, `d`, and `q` parameters, an ARIMA
+    model for a non-seasonal time series is described by the notation `ARIMA(p, d,
+    q)`. The `p` and `q` parameters denote the **orders or lags**; for example, an
+    AR of order `p` and MA of order `q`. They are called lags as they represent the
+    number of “past” periods we need to consider. You may also come across another
+    reference for `p` and `q`, namely **polynomial degrees**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ARIMA models can handle non-stationary time series data through differencing,
+    a time series transformation technique, to make a non-stationary time series stationary.
+    The integration or order of differencing, `d`, is one of the parameters that you
+    will need to pick a value for when building the model. For a refresher on stationarity,
+    please refer to the *Detecting time series stationarity recipe in Chapter 9, Exploratory
+    Data Analysis and Diagnosis*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While ARIMA models are designed to handle trends by utilizing the integrated
+    factor '*d*', they traditionally assume the absence of seasonality within the
+    dataset. However, should seasonality be a factor, the Seasonal ARIMA, or SARIMA,
+    model is the appropriate alternative, as it extends ARIMA to include seasonal
+    differencing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Start by loading this recipe''s necessary classes and functions from the `statsmodels`
+    library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Different time series models are suited to various kinds of data. Therefore,
+    it is crucial to choose a model that aligns with the characteristics of your dataset
+    and the specific problem you're addressing. In this recipe, you will use the `life`
+    DataFrame, which exhibits a trend but no seasonality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will combine visual inspection (using the ACF and PACF plots) and statistical
+    tests to make an informed decision for the AR and MA components of the model -
+    known as the `p` and `q` orders. These methods were covered in *Chapter 9*, *Exploratory
+    Data Analysis and Diagnosis*, in the *Testing data for autocorrelation*, *Decomposing
+    time series data*, and *Detecting time series stationarity* recipes. Let''s get
+    started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Begin by **decomposing** the dataset to separate it into its three principal
+    components: trend, seasonality, and residual (often considered as noise). You
+    can achieve this using the `seasonal_decompose` function'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can see the plot as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.19: Decomposition of life expectancy data](img/file205.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.19: Decomposition of life expectancy data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observe that the decomposition shows a positive (upward) trend within the dataset.
+    This indicates a consistent increase over time. However, there is no observable
+    seasonality effect, which aligns with our expectations for the **life** dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will need to detrend the data first. Perform a first-order differencing
+    and then test for stationarity by using the `check_stationarity` function you
+    created earlier in this chapter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, the data is *stationary*. The p-value is significant, and you can reject
+    the null hypothesis. Note that the default `periods` value for `diff()` is `1`.
+    Generally, `diff(periods=n)` is the difference between the current observation
+    at period `t` and its lagged version at period `t-n`. In the case of `diff(1)`
+    or `diff()`, the lagged version is `t-1` (for example, the prior month's observation).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can plot the differenced time series data using the `plot` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.20: First-order differencing for life expectancy data (detrending)](img/file207.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.20: First-order differencing for life expectancy data (detrending)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, you will need to determine the `p` and `q` orders for the ARIMA (p, d,
+    q) model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The ACF and PACF plots will help you estimate the appropriate `p` and `q` values
+    for the AR and MA models, respectively. Use `plot_acf` and `plot_pacf` on the
+    stationary `life_df1` data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It produces the following plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/file208.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.21: ACF and PACF plot for life expectancy data after differencing'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding example, the zero lag is included in the plot to help you visually
+    compare it against past lags. The ACF and PACF at lag(0) are always one; they
+    are sometimes omitted from plots because they does not provide any meaningful
+    information. Therefore, it’s more important to focus on lag(1) and subsequent
+    lags to determine their significance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ACF plot helps identify significant lags for the MA(q) component. The ACF
+    plot shows a cut-off after lag 1, indicating an MA(1) model. Conversely, the PACF
+    plot helps determine the significant lags for the AR(p) component. You can observe
+    a gradual decay with oscillation after lag 1, indicating an MA model at lag 1
+    or MA(1). This indicates a lack of an AR process, so the `p` order is zero or
+    AR(0). Please refer to *Table 10.1* for more details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An MA(1) process is also called a first-order moving average process, and implies
+    that the current value (at time `t`) is influenced by the value immediately preceding
+    it (at time `t-1`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, you can construct an ARIMA(p, d, q) model using p=0, q=1, and d=1 specifications
+    , resulting in an `ARIMA(0,1,1)`. Often, the optimal lag values (orders) for p
+    and q are not immediately apparent, so you will need to experiment by evaluating
+    multiple ARIMA models using different p, d, and q parameters. This can be archived
+    through approaches like grid-search, similar to the method described and used
+    in the *Forecasting univariate time series data with Exponential Smoothing* recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Train the ARIMA model on the training set, `life_train`, and inspect the model''s
+    summary. It is important not to use the previously differenced `life_df1` for
+    this, since ARIMA internally applies differencing based on the value of the `d`
+    parameter. In this example, since first-order differencing (d=1) was satisfactory
+    to detrend and make the data stationary, and you will set `d=1` in the model initialization:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will see the summary as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.22: Summary of ARIMA(0,1,1) for the life expectancy data](img/img_chapter10_image71.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.22: Summary of ARIMA(0,1,1) for the life expectancy data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that the AIC and BIC scores are provided in the model summary. While
+    these scores are useful, they are most meaningful when used to compare multiple
+    models, as they help in assessing model fit while penalizing excessive complexity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, the ARIMA model is primarily an MA process with an integration
+    (differencing) factor of `d=1`, the summary results provide the coefficient values
+    for the MA(1) component only. More on that in the *How it works…* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will need to validate the model''s residuals to determine if the ARIMA(0,
+    1, 1) model adequately captured the information in the time series. You would
+    assume the residuals from the model''s prediction are random (noise) and do not
+    follow a pattern. More specifically, you would expect no autocorrelation in the
+    residuals. You can start with the `acorr_ljungbox` test followed by the autocorrelation
+    (ACF) plot on the residuals. Ideally, if the model was good you would expect no
+    autocorrelation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result shows `0`, which is an aggregate of the results for the first 25
+    lags, indicating no autocorrelation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Try the ACF plot as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce an ACF plot. Here you would expect the plot to show no
+    significant lags. In other words, all the vertical lines should be closer to zero
+    or at zero for all lags:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.23: ACF plot showing no autocorrelation for the residuals](img/file209.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.23: ACF plot showing no autocorrelation for the residuals'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This plot confirms no signs of autocorrelation (visually).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also inspect the distribution of the residuals. For example, you would
+    expect normally distributed residuals with a mean of zero. You can use the QQPlot
+    and **Kernel Density Estimation** (**KDE**) plot to observe the distribution and
+    assess normality. You can accomplish this with the `plot_diagnostics` method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code will produce following plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.24: Visual diagnostics for the ARIMA(0,1,1) model](img/file210.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.24: Visual diagnostics for the ARIMA(0,1,1) model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The plots show a slight deviation from a normal distribution. For example, a
+    perfect normally distributed dataset will have a perfect bell-curved KDE plot
+    and all the points will be perfectly aligned on the line in the QQPlot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, the results and diagnostics indicate a decent model, though there might
+    be room for improvements. Remember, building an ARIMA model is often an iterative
+    process involving multiple rounds of testing and adjustments to achieve the best
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The final step in the ARIMA modeling process is to forecast future values and
+    compare these predictions with your test dataset, which represents unseen or out-of-sample
+    data. Use the `plot_forecast()` function, which you created earlier in this chapter
+    in the *Technical requirements* section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Executing this function will generate a plot where the x-axis starts from the
+    year 1998\. The plot will display three lines: the actual data is split into two
+    lines, one for the training data (`orig_train`) and another for the test data
+    (`orig_test`), and a third line for the `forecast` (predicted values).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This visual representation helps in assessing how well the ARIMA model has captured
+    the underlying patterns of the dataset and how accurately it forecasts future
+    values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.25: ARIMA(0,1,1) forecast versus the actual life expectancy data](img/Picture9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.25: ARIMA(0,1,1) forecast versus the actual life expectancy data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dashed line (forecast) doesn't seem to align with the expected trend, unlike
+    the results from the exponential smoothing model shown in Figure 10.6, which demonstrated
+    better performance. To address this, you can run multiple ARIMA models with varying
+    (p, d, q) values and compare their RMSE, MAPE, AIC, or BIC scores to pick the
+    best-fitted model. You will explore this option in the *There's more...* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'An autoregressive model or AR(p) is a linear model that uses observations from
+    previous time steps as inputs into a regression equation to determine the predicted
+    value of the next step. Hence, the *auto* part in autoregression indicates *self*
+    and can be described as the regression of a variable on a past version of itself.
+    A typical linear regression model will have this equation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Picture1.jpg)Here,![](img/Picture2.png)is the predicted variable,![](img/file211.png)is
+    the intercept,![](img/file212.png)are the features or independent variables, and![](img/file213.png)are
+    the **coefficients** for each of the independent variables. In regression, your
+    goal is to solve for these coefficients, including the intercept (think of them
+    as weights), since they are later used to make predictions. The error term,![](img/file214.png),
+    denotes the residual or noise (the unexplained portion of the model).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Compare that with the autoregressive equation and you will see the similarities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Picture3.jpg)This is an AR model of order `p` written as `AR(p)`. The
+    main difference between an autoregressive and regression model is that the predicted
+    variable is![](img/Picture4.jpg), which is![](img/file215.png)at the current time,![](img/file216.png),
+    and that the![](img/file217.png)variables are lagged (previous) versions of![](img/file215.png).
+    In this recipe, you used an ARIMA(0,1,1), which translates into an AR(0), indicating
+    no autoregressive model being used.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Unlike an autoregressive model that uses past values, the moving average or
+    MA(q) uses past errors (from past estimates) to make a prediction:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Picture5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Combining the AR(p) and MA(q) models would produce an ARMA(p,q) model (autoregressive
+    moving average). Both the AR and ARMA processes assume a stationary time series.
+    However, suppose the time series is not stationary due to the presence of a trend.
+    In that case, you cannot use the AR or ARMA models on non-stationary data, unless
+    you perform some transformations, such as **differencing**. This was the case
+    with the `life` data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Differencing is just subtracting a current value from its previous (lagged)
+    version. For example, a differencing order of one (lag=1) can be written as![](img/Picture6.png).
+    In pandas, you used the `diff` method, which is set to `periods=1` by default.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ARIMA model improves on the ARMA model by adding an integrated (differencing)
+    factor to make the time series stationary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You leveraged both ACF plots and PACF plots to estimate the order values for
+    the AR and MA models. The autocorrelation function measures the correlation between
+    a current observation and its lagged version. The purpose of the ACF plot is to
+    determine how reliable past observations are in making predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, a **partial autocorrelation function** (**PACF**) is like
+    autocorrelation but with the relationships of intervening observations removed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ACF VERSUS PACF THROUGH AN EXAMPLE
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: If there is a strong correlation between past observations at lags 1, 2, 3,
+    and 4, this means that the correlation measure at lag 1 is influenced by the correlation
+    with lag 2, lag 2 is influenced by the correlation with lag 3, and so on.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: The ACF measure at lag 1 will include these influences of prior lags if they
+    are correlated. In contrast, a PACF at lag 1 will remove these influences to measure
+    the pure relationship at lag 1 with the current observation.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'One of the reasons ARIMA is popular is because it generalizes to other simpler
+    models, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ARIMA(1, 0, 0) is a first-order autoregressive or AR(1) model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ARIMA(1, 1, 0) is a *differenced* first-order autoregressive model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ARIMA(0, 0, 1) is a first-order moving average or MA(1) model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ARIMA(1, 0, 1) is an ARMA (1,1) model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ARIMA(0, 1, 1) is a simple exponential smoothing model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Sometimes, it isn't easy to identify if the time series is an MA or AR process
+    or determine the optimal order (lag) values for `p` or `q`. You can look at the
+    following example of a naive grid search approach by trying different combinations
+    for `p`, `d`, and `q` to train other ARIMA models before picking a winning model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, you will leverage the `combinator()` function that you created in the
+    *Technical requirements* section. You will train multiple ARIMA models and then
+    use `get_top_models_df()` to find the best model. As a starter, try a combination
+    of (0,1,2) for each of the three hyperparameters (p, d, and q). You will be testing
+    3x3x3 or 27 ARIMA models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce a DataFrame sorted by AIC. The following table shows the
+    first five models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.26: Results from the 27 ARIMA models sorted by AIC score](img/Picture7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.26: Results from the 27 ARIMA models sorted by AIC score'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can select the top model using the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you run `best_m.summary()` to view the model's summary, you will notice that
+    it is an `ARIMA(0,2, 2)`. This further confirms our earlier observation that this
+    is a moving average (MA) process, but we missed the orders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **Akaike Information Criterion** (**AIC**) is a metric that aims to find
+    a balance between a model''s maximum likelihood and a model''s simplicity. Overly
+    complex models can sometimes overfit, meaning they can look like they learned
+    but once they are presented with unseen data, they perform poorly. The AIC score
+    penalizes as the number of parameters increases since they increase complexity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/file219.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *2k* is considered the penalty term.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **Bayesian Information Criteria** (**BIC**) is very similar to AIC but
+    has a higher penalty term on the model''s complexity. In general, the BIC penalty
+    term is more significant, so it can encourage models with fewer parameters than
+    AIC does. Therefore, if you change the sorting or evaluation criteria from AIC
+    to BIC, you may see different results. Simpler models are preferred more with
+    BIC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/file220.jpg)Here,![](img/Picture8.png)is the maximum likelihood, *k*
+    is the number of estimated parameters, and *n* is the number of data points.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To plot a forecast using the best model, you can run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.26: ARIMA(0,2,2) forecast versus the actual life expectancy data](img/file222.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.26: ARIMA(0,2,2) forecast versus the actual life expectancy data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the output in *Figure 10.25* for ARIMA(0, 1, 1) model with *Figure 10.26*
+    for the ARIMA(0,2,2). How do they compare with the Figure 10.12 using Exponential
+    Smoothing?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we proceed to the next recipe, let''s apply an ARIMA model to the Milk
+    Production data, which, unlike the life expectancy data, exhibits both trend and
+    seasonality:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: After running the code and inspecting the top model with **model.summary()**,
+    you will find that it identifies an ARIMA(2,2,2). The resulting forecast plot
+    will likely show poor predictions overall, as depicted in Figure 10.27 – forecasting
+    against actual Milk Production data
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.27: ARIMA(2,2,2) forecast versus the actual Milk Production data](img/file223.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.27: ARIMA(2,2,2) forecast versus the actual Milk Production data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This outcome is expected since standard ARIMA models are not designed to handle
+    seasonality. The next recipe will introduce SARIMA (Seasonal ARIMA), which is
+    better equipped to model time series data with both seasonal patterns and trends.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To learn more about the ARIMA class, you can visit statsmodels's official documentation
+    at [https://www.statsmodels.org/dev/generated/statsmodels.tsa.arima.model.ARIMA.html](https://www.statsmodels.org/dev/generated/statsmodels.tsa.arima.model.ARIMA.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: How about the `milk` data, which has trend and seasonality? The next recipe
+    will explore working with a SARIMA model to handle such data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: FORECAST VERSUS PREDICT METHODS
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'In the `plot_forecast` function, we used the forecast method. In statsmodels,
+    the SARIMA family of models, such as ARMA and ARIMA, have two methods for making
+    predictions: `predict` and `forecast`.'
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: The `predict` method allows you to include both **in-sample** (historical) and
+    **out-of-sample** (future) predictions, hence why the method takes the `start`
+    and `end` parameters. On the other hand, the `forecast` method only takes **steps**,
+    which is the number of **out-of-sample** forecasts, starting from the end of the
+    sample or the training set.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Forecasting univariate time series data with Seasonal ARIMA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, you will be introduced to an enhancement to the ARIMA model
+    for handling seasonality, known as the **Seasonal Autoregressive Integrated Moving
+    Average** or **SARIMA**. Like an ARIMA(p, d, q), a SARIMA model also requires
+    (p, d, q) to represent non-seasonal orders. Additionally, a SARIMA model requires
+    the orders for the seasonal component, which is denoted as (P, D, Q, s). Combining
+    both components, the model can be written as a SARIMA(p, d, q)(P, D, Q, s). The
+    letters still mean the same, and the letter case indicates which component. For
+    example, the lowercase letters represent the non-seasonal orders, while the uppercase
+    letters represent the seasonal orders. The new parameter, `s`, is the number of
+    steps per cycle – for example, `s=12` for monthly data or `s=4` for quarterly
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In statsmodels, you will use the `SARIMAX` class to build a SARIMA model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will be working with the `milk` data, which contains both
+    trend and seasonality. This was prepared in the *Technical requirements* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the necessary libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From *Figure 10.1*, we determined that both seasonality and trend exist. We
+    could also see that the seasonal effect is additive. The periodicity or number
+    of periods in a season is 12 since the data is monthly. This can be confirmed
+    with an ACF plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce an ACF plot for the `milk` data with a noticeable cyclical
+    pattern of spikes at specific lags:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.28: ACF plot showing significant spikes at lags 1, 12, and 24](img/file224.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.28: ACF plot showing significant spikes at lags 1, 12, and 24'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that there is a repeating pattern every 12 months (lags). If the pattern
+    is not easy to spot, you can try the ACF plot after you difference the data –
+    for example, detrend (first-order differencing) the data first, then plot the
+    ACF plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce an ACF plot on the differenced data that makes the seasonal
+    spikes more apparent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.29 – ACF plot after differencing shows significant spikes at lags
+    1, 12, 24, and 36](img/file225.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.29 – ACF plot after differencing shows significant spikes at lags
+    1, 12, 24, and 36
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also extract the seasonal component and use that for the ACF plot,
+    as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: The ACF plot will show the autocorrelation using the seasonal component after
+    decomposition and will tell a similar story to what's shown in *Figure 10.28*
+    and *Figure 10.29*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.30: ACF on the seasonal component after decomposition shows significant
+    spikes at lags 1, 12, 24, and 36](img/file226.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.30: ACF on the seasonal component after decomposition shows significant
+    spikes at lags 1, 12, 24, and 36'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, you can assume a 12-month cycle when working with monthly data. For
+    example, for the non-seasonal ARIMA portion, start with `d=1` for detrending,
+    and for the seasonal ARIMA portion, start with `D=1` as well, given `s=12`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Suppose you are not sure about the values for `d` (non-seasonal differencing)
+    and `D` (seasonal differencing). In that case, you can use the `check_stationarity`
+    function after differencing to determine if seasonal differencing was enough or
+    not. In most cases, if the time series has both trend and seasonality, you may
+    need to difference twice. First, you perform seasonal differencing, followed by
+    a first-order differencing for detrending.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Start with seasonal differencing by using `diff(12)` (*deseasonalize*) and
+    test if that is enough to make the time series stationarity. If not, then you
+    will need to follow it with a first-order differencing, `diff()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce 2x2 subplots (two plots per row), where the extra subplot
+    is hidden:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.31: Stationarity comparison for original, seasonally differenced,
+    and differenced twice time series](img/file227.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.31: Stationarity comparison for original, seasonally differenced,
+    and differenced twice time series'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, you will need to estimate the AR and MA orders for the non-seasonal (p,
+    q) and seasonal components (P, Q). To do this, you must use the ACF and PACF plots
+    on the stationary data, which can be found in the `milk_dif_12_1` DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce ACF and PACF plots on the same row:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.32: ACF and PACF plots for the milk data after becoming stationary](img/file228.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.32: ACF and PACF plots for the milk data after becoming stationary'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Starting with the ACF plot, there is a significant spike at lag 1, which represents
+    the non-seasonal order for the MA process. The spike at lag 12 represents the
+    seasonal order for the MA process. Notice that there is a cut-off right after
+    lag 1, then a spike at lag 12, followed by another cut-off (no other significant
+    lags afterward). These are indications of a moving average model – more specifically,
+    an order of `q=1` and `Q=1`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The PACF plot confirms this as well; an exponential decay at lags 12, 24, and
+    36 indicates an MA model. Here, the seasonal ARIMA would be ARIMA(0, 1,1)(0, 1,
+    1, 12).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Build the SARIMA model based on the initial information that was extracted
+    for the AR and MA orders. The following code will fit a SARIMA(0, 1, 1)(0, 1,
+    1, 12) model on the training dataset. Note that the results may differ from those
+    shown in the *Plotting ACF and PACF* recipe since the data was not split in that
+    recipe, but it has been split here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, use the `plot_diagnostics` method, which becomes available after fitting
+    the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will provide four plots – a standardized residual plot, a QQPlot, an ACF
+    residual plot, and a histogram with kernel density plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.33: SARIMA(0,1,1)(0,1,1,12) diagnostic plots](img/file229.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.33: SARIMA(0,1,1)(0,1,1,12) diagnostic plots'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The residual's ACF plot (correlogram) does not show autocorrelation (ignoring
+    the spike at lag 0 since it is always 1). However, the histogram and QQPlot show
+    that the residuals do not fit a perfectly normal distribution. These are not critical
+    assumptions compared to random residuals (no autocorrelation). Overall, the results
+    look very promising.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can obtain the summary using the `summary` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should print out additional information regarding the model in a tabular
+    format including the coefficients for the seasonal and non-seasonal components.
+    Recall, the diagnostic plots are based on the standardized residuals. You can
+    plot ACF for the residuals without standardization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should produce the following ACF plot which shows a couple of lags beyond
+    the threshold indicating some autocorrelation and potential for more improvements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.34: The residual ACF Plot for SARIMA(0,1,1)(0,1,1,12)](img/file230.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.34: The residual ACF Plot for SARIMA(0,1,1)(0,1,1,12)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `plot_forecast` function to plot the forecast from the SARIMA model
+    and compare it with the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce a plot with the x-axis starting from the year 1971:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.35: Milk production forecast versus actual production using SARIMA(0,1,1)(0,1,1,12)](img/file231.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.35: Milk production forecast versus actual production using SARIMA(0,1,1)(0,1,1,12)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overall, the SARIMA model did a decent job of capturing the seasonal and trend
+    effects. You can always iterate and test different values for (p, q) and (P, Q)
+    by evaluating the results using other metrics such as RMSE, MAPE, or AIC, to name
+    a few. More on that in the *There’s more…* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The SARIMA model extends the ARIMA model by incorporating seasonality, requiring
+    an additional set of seasonal parameters. For instance, a SARIMA model with non-seasonal
+    order (1, 1, 1) and no seasonal components would be specified as SARIMA(1,1,1)(0,0,0,0),
+    which essentially reduces to an ARIMA(1, 1, 1) model. To handle seasonality, you
+    would set the seasonal order to non-zero values
+  prefs: []
+  type: TYPE_NORMAL
+- en: In statsmodels, the `SARIMAX` class generalizes AR, MA, ARMA, ARIMA, and SARIMA
+    models, allowing you to fit a model tailored to your time series data, whether
+    it has seasonal components or not. Similarly, as discussed in the *Forecasting
+    univariate time series data with Exponential Smoothing* recipe, the `ExponentialSmoothing`
+    class serves as a generalized implementation for both `SimpleExpSmoothing` and
+    `Holt`’s models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Similar to the approach in the *Forecasting univariate time series data with
+    ARIMA* recipe, you can execute a naive grid search to evaluate different combinations
+    of the non-seasonal (p, d, q) and seasonal (P, D, Q, s) parameters to identify
+    the best SARIMA model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can be done by leveraging the `combinator()` function to loop through all
+    possible parameter combinations, fitting a SARIMA model at each iteration. To
+    determine the top N models, you can use the `get_top_models_df` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For instance, let’s consider testing all combinations where the non-seasonal
+    (p, d, q) parameters each takes the values (0,1,2), and the seasonal (P, D, Q)
+    parameters each takes the values (0,1), while keeping `s`, the seasonal period,
+    at 12\. This setup would test a total of (3x3x3x2x2x2) = 216 SARIMA models. Although
+    this brute force (naïve) approach can be computationally intensive, it is still
+    a valid method. Automated time series libraries such as `Auto_ARIMA` often employ
+    similar exhaustive grid searches to optimize model parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After executing the previous code, it should print a status output every 15
+    iterations as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the `enforce_stationarity=False` parameter to avoid a `LinAlgError` that
+    may occur when running a naive grid search.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To identify the top 5 models sorted by AIC, you can run the `get_top_models_df`
+    function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 10.36: Top 5 SARIMA models ranked by AIC for the Milk Production data](img/file232.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.36: Top 5 SARIMA models ranked by AIC for the Milk Production data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that the first two models have similar AIC scores. Generally, when two
+    models have similar AIC scores, the simpler model is preferred. For example, a
+    SARIMA(0,2,2)(0,1,1) model is simpler than a SARIMA(2,2,2)(0,1,1) model. There
+    are also other metrics such as AICc and BIC, which in this case, would favor the
+    second model (model_id=67) over the first model (model_id=211). Similarly, if
+    you consider RMSPE or MAPE, you may end up selecting different models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Occam''s Razor**'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Occam's Razor is a principal suggesting that when multiple models produce similar
+    quality, in other words similarly produce good fit to the data, then the simpler
+    model should be preferred. This principal is especially useful when evaluating
+    several models, such as evaluating multiple SARIMA models. If a few models emerge
+    as strong candidates, generally, the simplest model is favored, assuming all are
+    equally likely candidates to begin with.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'To sort the models based on BIC score, rerun the function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: Examine the results displayed in Figure 10.36 below, which shows the top 5 SARIMA
+    models ranked by BIC for the Milk Production data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.37: Top 5 SARIMA models ranked by BIC for the Milk Production data](img/file233.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.37: Top 5 SARIMA models ranked by BIC for the Milk Production data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing the results in Figure 10.36 and Figure 10.35, you will notice the
+    third model in Figure 10.36 (model_id = 35), the SARIMA(0,1,1)(0,1,1) model, which
+    was derived earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s select the best model based on the BIC score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, you can visualize the model’s forecast alongside the actual data using
+    the `plot_forecast` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce a plot with the x-axis starting from the year 1962, as
+    shown in Figure 10.37:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.38: Milk production forecast versus actual production using SARIMA(0,2,2)(0,1,1,12)](img/file234.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.38: Milk production forecast versus actual production using SARIMA(0,2,2)(0,1,1,12)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To learn more about the SARIMAX class, you can visit statsmodels's official
+    documentation at [https://www.statsmodels.org/dev/generated/statsmodels.tsa.statespace.sarimax.SARIMAX.html](https://www.statsmodels.org/dev/generated/statsmodels.tsa.statespace.sarimax.SARIMAX.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forecasting univariate time series with auto_arima
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For this recipe, you will need to install **pmdarima**, a Python library that
+    includes `auto_arima` – a tool designed to automate the optimization and fitting
+    of ARIMA models. The `auto_arima` implementation in Python is inspired by the
+    popular `auto.arima` from the `forecast` package in R.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you've seen in earlier recipes, determining the correct orders for the AR
+    and MA components can be challenging. While techniques like examining ACF and
+    PACF plots are helpful, finding the optimal model often involves training multiple
+    models – a process known as **hypeparameter tuning**, which can be quite labor-intensive.
+    This is where `auto_arima` shines as it simplifies the effort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead of the naïve, brute force, approach of manually conducting a grid search
+    to try every parameter combination, auto_arima uses a more efficient approach
+    to finding the optimal parameters. The `auto_arima` function uses a **stepwise**
+    **algorithm** that is faster and more efficient than a full **grid search** or
+    **random search**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, with `stepwise=True`, `auto_arima` conducts a stepwise search which
+    iteratively refines the model parameters.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If you set `stepwise=False`, it performs an exhaustive “brute-force” grid search
+    across all parameter combinations.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With `random=True`, it performs a random search.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The **stepwise** **algorithm** was proposed in 2008 by Rob Hyndman and Yeasmin
+    Khandakar in the paper *Automatic Time Series Forecasting: The forecast Package
+    for R*, which was published in the Journal of Statistical Software 27, no. 3 (2008)
+    ([https://doi.org/10.18637/jss.v027.i03](https://doi.org/10.18637/jss.v027.i03)).
+    In a nutshell, **stepwise** is an optimization technique that utilizes grid search
+    more efficiently. This is accomplished using **unit root tests** and minimizing
+    information criteria (for example, **Akaike Information Criterion** (**AIC**)
+    and **Maximum Likelihood Estimation** (**MLE**).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further, `auto_arima` can handle both seasonal and non-seasonal ARIMA models.
+    For seasonal models, set `seasonal=True` to enable optimization of the seasonal
+    parameters (P, D, Q).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You will need to install `pmdarima` before you can proceed with this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install it using `pip`, use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install it using `conda`, use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will use the Milk Production dataset which you prepared in the Technical
+    Requirements section You will be using `milk_train` for training and `milk_test`
+    for evaluation`.` Recall that the data contains both trend and seasonality, so
+    you will be training a **SARIMA** model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The **pmdarima** library wraps over the **statsmodels** library, so you will
+    encounter familiar methods and attributes. You will follow a similar process by
+    loading the data, splitting the data into train and test sets, first training
+    the model, and then evaluating the results. These steps were already completed
+    in the *Technical Requirements* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Begin by importing the `pmdarima` library
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Utilize the `auto_arima` function from `pmdarima` to find the optimal configuration
+    for your SARIMA model. Prior knowledge about the Milk Production dataset is key
+    to obtaining the best results from `auto_arima`. You know the data exhibits seasonal
+    patterns, so you will need to provide values for the *two parameters*: `seasonal=True`
+    and `m=12`, which represents the number of periods in the season. Failing to set
+    these parameters (`seasonal` and `m`) would limit the search to non-seasonal orders
+    (p, d, q) only.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The `test` parameter specifies the type of **unit root test** to use to detect
+    stationarity to determine the differencing order (`d`). The default test is `kpss`.
+    You will change the parameter to use `adf` instead (to be consistent with what
+    you did in earlier recipes). Similarly, `seasonal_test` is used to determine the
+    order (`D`) for seasonal differencing. The default `seasonal_test` is `OCSB`,
+    which you will keep as-is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The summary provides a detailed configuration of the chosen SARIMA model, including
+    information criteria scores like AIC and BIC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.39: Summary of the best SARIMA model selected using auto_arima](img/file235.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.39: Summary of the best SARIMA model selected using auto_arima'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interestingly, the selected model, SARIMA(0,1,1)(0,1,1,12), algins with the
+    one you derived in the *Forecasting univariate time series data with seasonal
+    ARIMA* recipe, where you estimated the non-seasonal order (p, q) and seasonal
+    orders (P, Q) using the ACF and PACF plots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To monitor the performance of each model configuration evaluated during the
+    stepwise search, enable the `trace=True` parameter in the `auto.arima` function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This setting will print the AIC results for each SARIMA model tested by the
+    step-wise algorithm, as shown in Figure 10.39:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.40: auto_arima evaluating different SARIMA models based on AIC](img/file236.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.40: auto_arima evaluating different SARIMA models based on AIC'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The best model was selected based on AIC, which is determined by the `information_criterion`
+    parameter. By default, this is set to `aic`, but it can be changed to one of the
+    other supported criteria: `bic`, `hqic`, or `oob`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Figure 10.39,* the two highlighted models have similar AIC scores but drastically
+    different non-seasonal (p, q) orders. The preferred model (marked with number
+    1) lacks a non-seasonal autoregressive AR(p) component and instead relies on a
+    moving average MA(q) process. Conversely, the second highlighted model (marked
+    with number 2) features only an AR(p) process for the non-seasonal component.
+    This demonstrates, while `auto_arima` significantly aids in the model selection,
+    careful judgement and analysis are still required to interpret and evaluate results
+    effectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To explore how the choice of information criterion affects model selection,
+    change the `information_criterion` to `bic` and rerun the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 10.41: auto_arima evaluating different SARIMA models based on BIC](img/file237.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.41: auto_arima evaluating different SARIMA models based on BIC'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As illustrated in Figure 10.40, this will produce output from each iteration
+    based on BIC. Notably, the winning remains the same as the one selected based
+    on AIC from Figure 10.39\. However, observe how the second model (marked with
+    number 2), which was a close contender in Figure 10.39, is no longer as competitive
+    under the BIC criterion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Evaluate the overall performance of the model using the `plot_diagnostics` method.
+    This is the same method you used previously from statsmodels.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the diagnostic plots for residual analysis of the selected
+    SARIMA model as shown in Figure 10.41:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.42: Diagnostic plots for residual analysis based on the selected
+    SARIMA model](img/file238.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.42: Diagnostic plots for residual analysis based on the selected
+    SARIMA model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To access the model summary, use the `summary` method. This will produce Figure
+    10.42, showing the SARIMA model summary as selected by `auto_arima`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.43: SARIMA model summary based on auto_arima selected model](img/file239.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.43: SARIMA model summary based on auto_arima selected model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To forecast future periods, utilize the `predict` method. You will need to
+    specify the number of periods to forecast forward into the future:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The produced plot, shown in Figure 10.43, compares the forecast with the test
+    data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.44: Plotting the forecast from auto_arima against actual test data](img/file240.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.44: Plotting the forecast from auto_arima against actual test data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can obtain the confidence intervals with the prediction by updating the
+    `return_conf_int` parameter from `False` to `True`. This will allow you to plot
+    the lower and upper confidence intervals using matplotlib's `fill_between` function.
+    The default confidence interval is set to 95% (`alpha=0.05).`
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code uses the `predict` method, returns the confidence intervals,
+    and plots the predicted values against the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should produce a plot with a shaded area representing the likelihood that
+    the real values would lie within this range. Ideally, you would prefer a narrower
+    confidence interval range.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The shaded area is based on the lower and upper bounds of the confidence intervals
+    as shown in Figure 10.44:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.45: Plotting the forecast from auto_arima against actual test data
+    with the confidence intervals](img/file241.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.45: Plotting the forecast from auto_arima against actual test data
+    with the confidence intervals'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that the forecast line lies in the middle of the shaded area. This represents
+    the mean of the upper and lower bounds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code checks if the forecast values align with the mean of the
+    confidence intervals:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The `auto_arima` function from the **pmdarima** library serves as a wrapper
+    for the **statsmodels** SARIMAX class and aims to automate the process of identifying
+    the best model and parameters. This function provides three primary methods to
+    control the optimization of the training process, dictated by the `stepwise` and
+    `random` parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Naive brute-force grid search**: Conducts a comprehensive grid search over
+    all parameter combinations by setting `stepwise=False` and `random=False`. This
+    method exhaustively evaluates each combination, which can be time-consuming but
+    thorough.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Random grid search**: Activates a random search across the parameter space
+    by setting `stepwise=False` and `random=True`. This approach randomly selects
+    combinations to test, which can be faster and still effective, especially in large
+    parameter spaces.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Stepwise search algorithm**: Enabled by default with `stepwise=True`, this
+    method uses a heuristic to explore the parameter space step by step, adding or
+    subtracting from each parameter based on the AIC or BIC scores from previous steps.
+    It is generally faster and more efficient than the full grid search, as it intelligently
+    narrows down the range of models to those most likely to provide the best fit.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `pmdarima` library offers a plethora of useful functions to help you make
+    informed decisions so that you can understand the data you are working with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, the `ndiffs` function performs stationarity tests to determine
+    the differencing order, `d`, to make the time series stationary. The tests include
+    the **Augmented Dickey-Fuller** (`adf`) test, the **Kwiatkowski–Phillips–Schmidt–Shin**
+    (`kpss`) test, and the **Phillips-Perron** (`pp`) test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, the `nsdiffs` function helps estimate the number of seasonal differencing
+    orders (`D` ) that are needed. The implementation covers two tests – the **Osborn-Chui-Smith-Birchenhall**
+    (`ocsb`) and **Canova-Hansen** (`ch`) tests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `auto_arima` function allows for detailed control over the model evaluation
+    process by setting the minimum and maximum constraints on various parameters.
+    For example, you can specify limits for the non-seasonal autoregressive order,
+    `p`, or the seasonal moving average, `Q`. The following code example demonstrates
+    how to set some of these parameters and constraints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you run the preceding code, `auto_arima` will create different models for
+    every combination of the parameter values based on the constraints you provided.
+    Because *stepwise* is set to *False*, it becomes a brute-force **grid search**
+    in which every permutation for the different variable combinations is tested one
+    by one. Hence, this is generally a much slower process, but by providing these
+    constraints, you can improve the search performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By enabling `trace=True`, the AIC scores for each model configuration tested
+    are displayed. Once completed, it should print out the best model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The approach that was taken here, with `stepwise=False`, should resemble the
+    approach you took in the *Forecasting univariate time series data with seasonal
+    ARIMA* recipe, in the *There's more...* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Darts AutoArima
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: In *the Forecasting univariate time series data with exponential smoothing*
+    recipe, you were introduced to the **Darts** library in the *There’s more…* section
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Darts library offers the `AutoArima` class, a thin wrapper around **pmdarima**’s
+    **auto_arima**. The following code demonstrates how you can leverage Darts to
+    perform the same functionality:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code produces a plot showing the forecast, as displayed in Figure 10.45:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.46: Plotting the forecast using AutoARIMA from the Darts library](img/file242.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.46: Plotting the forecast using AutoARIMA from the Darts library'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Darts StatsForecastAutoARIMA
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Darts also provides a wrapper over **Statsforecasts**’ Auto_ARIMA which offers
+    a potentially faster implementation than AutoArima. The following code demonstrates
+    how you can use the `StatsForecastAutoARIMA` to perform the same functionality:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code produces a plot comparing forecasts from AutoARIMA and StatsForecastAutoARIMA,
+    as shown in Figure 10.47:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.47: Plotting the forecast using StatsForecastAutoARIMA from the
+    Darts library](img/Picture10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.47: Plotting the forecast using StatsForecastAutoARIMA from the Darts
+    library'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To learn more about the `auto_arima` implementation, please visit the official
+    documentation at [https://alkaline-ml.com/pmdarima/modules/generated/pmdarima.arima.auto_arima.html](https://alkaline-ml.com/pmdarima/modules/generated/pmdarima.arima.auto_arima.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next recipe, you will learn about a new algorithm that provides a simpler
+    API for model tuning and optimization. In other words, there are far fewer parameters
+    that you need to worry about.
+  prefs: []
+  type: TYPE_NORMAL

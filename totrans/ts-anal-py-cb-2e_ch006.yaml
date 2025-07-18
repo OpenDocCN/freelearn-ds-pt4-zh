@@ -1,0 +1,1661 @@
+- en: 5 Persisting Time Series Data to Databases
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Join our book community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '![](img/file0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[https://packt.link/zmkOY](https://packt.link/zmkOY)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is common that, after completing a **data analysis** task, in which data
+    is extracted from a source system, processed, transformed, and possibly modeled,
+    the output is stored in a database for persistence. You can always store the data
+    in a flat file or export it to a CSV, but when dealing with a large amount of
+    corporate data (including proprietary data), you will need a more robust and secure
+    way to store it. **Databases** offer several advantages: security (encryption
+    at rest), concurrency (allowing many users to query the database without impacting
+    performance), fault tolerance, **ACID** compliance, optimized read-write mechanisms,
+    distributed computing, and distributed storage.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a corporate context, once data is stored in a database, it can be shared
+    across different departments; for example, finance, marketing, sales, and product
+    development can now access the data stored for their own needs. Furthermore, the
+    data can now be democratized and applied to numerous use cases by different organizational
+    roles, such as business analysts, data scientists, data engineers, marketing analysts,
+    and business intelligence developers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will write your time series data to a database system for
+    persistence. You will explore different types of databases (relational and non-relational)
+    and use **Python** to push your data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More specifically, you will be using the **pandas** library since you will be
+    doing much of your analysis using pandas **DataFrames**. You will learn how to
+    use the pandas library to persist your time series DataFrame to a database storage
+    system. Many databases offer Python APIs and connectors, and recently, many of
+    them support pandas DataFrames (for reading and writing) given their popularity
+    and mainstream adoption. In this chapter, you will work with a relational database,
+    a document database, a cloud data warehouse, and a specialized time series database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter aims to give you first-hand experience working with different methods
+    to connect to these database systems to persist your time series DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the list of the recipes that we will cover in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing time series data to a relational database
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing time series data to MongoDB
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing time series data to InfluxDB
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing time series data to Snowflake
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: WRITING TO A DATABASE AND PERMISSIONS
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Remember that when you install your database instance or use your cloud service,
+    writing your data is straightforward since you are in the owner/admin role.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: This will not be the case in any corporation when it's their database system.
+    You must align and work with the database owners, maintainers, and possibly IT,
+    database admins, or cloud admins. In most cases, they can permit you to write
+    your data in a sandbox or a development environment. Then, once you are done,
+    possibly the same or another team (such as a DevOps team) may want to inspect
+    the code and evaluate performance before they migrate the code to a Quality Assurance
+    (QA) / User Acceptance Testing (UAT) environment. Once there, the business may
+    get involved to test and validate the data for approval. Finally, it may be promoted
+    to the production environment so that everyone can start using the data.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter, we will extensively use pandas 2.2.2 (released April 10, 2024).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throughout our journey, you will install several Python libraries to work with
+    pandas. These are highlighted in the Getting ready section for each recipe. You
+    can also download the Jupyter notebooks from the GitHub repository at [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook)
+    to follow along.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should refer to the *Technical Requirements* section in *Chapter 3*, *Reading
+    Time Series Data from Databases*. This includes creating a **configuration file**
+    such as the `database.cfg`.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: You will be using the same dataset throughout the recipes in this chapter. The
+    dataset is based on Amazon's stock data from January 2019 to December 2023 pulled
+    using the `yfnance` library and written as a pandas DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by installing the `yfinance` library, which you can install using **conda**
+    with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also install using **pip** with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: To understand how the library works, you will start by pulling Amazon stock
+    data using `yfinance`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting DataFrame has seven (7) columns and **1258** rows. There is a
+    `DatetimeIndex` with the following format `2019-01-02 00:00:00-05:00`. Let’s focus
+    on a handful of columns (Open, High, Low, Close, and Volume), and change the `DatetimeIndex`
+    datetime format to be `YYYY-MM-DD` as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Based on the preceding example, we can generalize the approach by creating
+    a function that we can call throughout this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `get_stock_data` function will return a pandas DataFrame with select columns
+    and formatted DatetimeIndex. It requires three inputs: a `ticker` symbol, a `start`
+    date, and an `end` date. If you can want to get stock data from January 1, 2024,
+    up to today, just pass `None` to the `end` parameter. Here is an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will give you stock data from January 1, 2024, up to the latest available
+    data as of when the request is made.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing time series data to a relational database (PostgreSQL and MySQL)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, you will write your DataFrame to a relational database such
+    as **PostgreSQL**. The approach is the same for any relational database system
+    supported by the `SQLAlchemy` Python library. You will experience how SQLAlchemy
+    makes switching the backend database (called `dialect`) simple without altering
+    the code. The abstraction layer provided by the SQLAlchemy library makes it feasible
+    to switch to any supported database, such as from PostgreSQL to Amazon Redshift,
+    using the same code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The sample list of supported relational databases (dialects) in SQLAlchemy
+    includes the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft SQL Server
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MySQL/MariaDB
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PostgreSQL
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Oracle
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: SQLite
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Additionally, external dialects are available to install and use with SQLAlchemy
+    to support other databases (dialects), such as `Snowflake`, `Microsoft SQL Server`,
+    and `Google BigQuery`. Please visit the official page of SQLAlchemy for a list
+    of available dialects: [https://docs.sqlalchemy.org/en/14/dialects/](https://docs.sqlalchemy.org/en/14/dialects/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You should refer to the recipe “*Reading data from a relational database*” in
+    *Chapter 3*, *Reading Time Series Data from Databases,* as a refresher on the
+    different ways to connect to PostgreSQL.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: In this recipe, you will use the `yfinance` Python library to pull stock data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install the libraries using **conda**, run the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install the libraries using `pip`, run the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The file is provided in the GitHub repository for this book, which you can
+    find here: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will be pulling Amazon''s stock data from January, 2019
+    to December, 2023 using the `yfnance` library into a pandas DataFrame, and then
+    writing the DataFrame to a table in a PostgreSQL database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Start by calling the `get_stock_data` function created in the *Technical Requirements*
+    section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will need to create a SQLAlchemy **engine** object. The engine informs SQLAlchemy
+    and pandas which dialect (backend database) we plan to interact with and connection
+    details for the running database instance. Utilize `URL.create()` method to create
+    a properly formatted URL object by providing the necessary parameters (`drivername`,
+    `username`, `password`, `host`, `port`, and `database`). These parameters are
+    stored in a `database.cfg` file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can now pass the `url` object to `create_engine`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s write the `amz_hist` DataFrame in a new `amzn` table in our PostgreSQL
+    database instance. This is achieved using `the DataFrame.to_sql()` writer function,
+    which leverages SQLAlchemy''s capabilities to convert the DataFrame into the appropriate
+    table schema and translate the data into the appropriate SQL statements such as
+    `CREATE TABLE` and `INSERT INTO` specific to the dialect (backend database). If
+    the table does not exist, a new table is created before loading the data, otherwise,
+    if the table exists, then you will need to provide instructions on how it should
+    be handled. This is done through the `if_exists` parameter, which accepts one
+    of these options: `''fail''`, `''replace''`, or `''append''`.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: An alternative method to accomplish the same tasks as the preceding code is
+    by utilizing the `with` clause, this way you do not have to manage the connection.
+    This would be a preferred approach in general.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once the preceding code is executed, a new `amzn` table is created under the
+    public schema in the default `postgres` database (default).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can validate this by running the following against the database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the use of `text()` function that wraps our query. The `text()` constructs
+    a new `TextClause` to represent a textual SQL string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Confirm the data was written to the database by querying the `amzn` table and
+    counting the number of records:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, request additional Amazon stock prices using `get_stock_data`, this time
+    the 2024 data (for example, January 1, 2024, to September 23, 2024), and append
+    it to the existing `amzn` table. Here, you will take advantage of the `if_exists`
+    parameter in the `to_sql()` writer function.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make sure to pass `append` to the `if_exists` parameter, as shown in the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Count the total number of records to ensure we have appended all 182 to the
+    original 1258 records. You will run the same query that was executed earlier,
+    as shown in the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Indeed, you can observe that all of the 1440 records were written to the `amzn`
+    table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Using the `DataFrame.to_sql()` writer function, SQLAlchemy handles many details
+    under the hood, such as creating the table schema, inserting our records, and
+    committing to the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with pandas and SQLAlchemy to write and read to a relational database
+    is very similar. We discussed using SQLAlchemy for reading data in the *Reading
+    data from a relational database* recipe in *Chapter 3*, *Reading Time Series Data
+    from Databases*. Many of the concepts discussed apply here as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We always start with `create_engine` and specify the **dialect** (backend database).
+    The `to_sql()` function will map the DataFrame data types to the appropriate PostgreSQL
+    data types. The advantage of using an **Object Relational Mapper (ORM)** such
+    as SQLAlchemy is that it gives you an abstraction layer, so you do not have to
+    worry about *converting* the DataFrame schema into a specific database schema.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the preceding example, you used the `if_exists` parameter in the `DataFrame.to_sql()`
+    function with two different arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Initially, you set the value to `replace`, which would overwrite the table if
+    it existed. If we translate this overwrite operation into SQL commands, it will
+    execute a `DROP TABLE` followed by `CREATE TABLE`. This can be dangerous if you
+    already have a table with data and you intend to append to it. Because of this
+    concern, the default value is set to `fail` if you do not pass any argument. This
+    default behavior would throw an error if the table existed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the second portion of the recipe, the plan was to insert additional records
+    into the existing table, and you updated the argument from `replace` to `append`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When you pulled the stock data using `yfinance`, it automatically assigned the
+    `Date` field as `DatetimeIndex`. In other words, the `Date` was not a column but
+    an index. The default behavior in `to_sql()` is to write the DataFrame index as
+    a column in the database, which is controlled by the `index` parameter. This is
+    a Boolean parameter, and the default is set to `True`, which writes the DataFrame
+    index as a column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another interesting parameter that can be extremely useful is `chunksize`. The
+    default value is `None`, which writes all the rows in the DataFrame at once. If
+    your dataset is extremely large, you can use the `chunksize` parameter to write
+    to the database in batches; for example, a `chunksize` of 500 would write to the
+    database in batches of 500 rows at a time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When using the pandas `read_sql`, `read_sql_table`, `read_sql_query`, and `to_sql`
+    I/O functions, they expect a SQLAlchemy connection object (SQLAlchemy engine).
+    To use SQLAlchemy to connect to a database of choice, you need to install the
+    appropriate Python DBAPI (driver) for that specific database (for example, Amazon
+    Redshift, Google BigQuery, MySQL, MariaDB, PostgreSQL, or Oracle). This gives
+    you the advantage of writing your script once and still having it work with other
+    dialects (backend databases) supported by SQLAlchemy. To demonstrate this, let's
+    extend the last example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Amazon Redshift**, a popular cloud data warehouse database, is based on PostgreSQL
+    at its core, and it has several enhancements, including columnar storage for fast
+    analytical queries. You will explore the simplicity of SQLAlchmey, as well as
+    other options for writing a pandas DataFrame to Amazon Redshift.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing to Amazon Redshift with SQLAclhemy
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: You will use the same code but write to an Amazon Redshift database this time.
+    The only requirement, aside from a running MySQL instance, is installing a Python
+    DBAPI (driver) for
+  prefs: []
+  type: TYPE_NORMAL
+- en: Amazon Redshift. Note, that `sqlalchemy-redshift` requires `psycopgy2`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install using **conda**, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using **pip**, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will use the same code for PostgreSQL; the only difference is the SQLAlchemy
+    engine, which uses Amazon Redshift DBAPI. Start by loading the connection parameters
+    from your configuration file. In this example, the configurations are stored in
+    a database.cfg file
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using `ConfigParser` and `URL` to extract the parameters and construct the
+    URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can now create the engine using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the `yfinance` library create a new `amzn_hist` DataFrame based on the
+    past **5-years** of stock data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Before writing our DataFrame, we need to reset the index. This will give us
+    back our Date column. We do this because Amazon Redshift does not support traditional
+    indexes since it is a columnar database (instead, you can define a **sort key**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the index=False in the preceding code. This is done because `to_sql`
+    will write the index object in a DataFrame since the default is `index=True`.
+    When you reset the DataFrame index, it moves the DatetimeIndex to a Date column
+    and replaces the index with a `RangeIndex` (ranging from 0 to 1257). Using `index=False`
+    ensures we do not attempt to write the `RangeIndex` in Amazon Redshift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, you can validate the total number of records written:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Writing to Amazon Redshift using the redshift_connector
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: In this example, you will utilize a different library, the `redshift_connector`.
+    You will first need to install the library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can install it with **conda** using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also install it with **pip** using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note, the `redshift_connector` expets a `user` parameter, unlike SQLAclhemy
+    which expects a `username` parameter. For this, you can create a new section in
+    your configuration file. An example is shown below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The following code reads the parameters from a `database.cfg` file, and passes
+    these parameters to `redshift_connector.connect()` to create a connection object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will create a cursor object which gives access to the `write_dataframe`
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finally, you will commit the transaction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Do note that the `write_dataframe` does not provide arguments for specifying
+    append, replace/overwrite, or fail behaviors, as you have seen with SQLAclehmy.
+    The `write_dataframe` method expects an existing table in Amazon Redshift to append
+    to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing to Amazon Redshift with AWS SDK for pandas
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The **awswrangler** library or AWS SDK for pandas make integrating with several
+    AWS services such as Athena, Glue, Redshift, Neptune, DynamoDB, EMR, S3, and others
+    easy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can install the library using **conda**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also install it using **pip**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can utilize the `conn` object created in the previous section, *Writing
+    to Amazon Redshift using the redshift_connector*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note the mode parameter supports three (3) different options: `overwrite`,
+    `append`, or `upsert`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Here are some additional resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To learn more about the `DataFrame.to_sql()` function, you can visit [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To learn more about **SQLAlchemy** features, you can start by reading their
+    features page: [https://www.sqlalchemy.org/features.html](https://www.sqlalchemy.org/features.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To learn about `awswrangler` you can visit their GitHub repo here [https://github.com/aws/aws-sdk-pandas](https://github.com/aws/aws-sdk-pandas)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing time series data to MongoDB
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**MongoDB** is a document database system that stores data in **BSON** format.
+    When you query data from MongoDB, the data will be represented in JSON format.
+    BSON is similar to JSON; it is the binary encoding of JSON. Unlike JSON, though,
+    it is not in a human-readable format. JSON is great for transmitting data and
+    is system-agnostic. BSON is designed to store data and is associated with MongoDB.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will explore writing a pandas DataFrame to MongoDB.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You should refer to the recipe “*Reading data from a document database*” in
+    *Chapter 3*, *Reading Time Series Data from Databases* as a refresher on the different
+    ways to connect to MongoDB.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: In the *Reading data from a document database recipe* in *Chapter 3*, *Reading
+    Time Series Data from Databases*, we installed `pymongo`. For this recipe, you
+    will be using that same library again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install using **conda**, run the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using **pip**, run the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The file is provided in the GitHub repository for this book, which you can
+    find here: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To store data in MongoDB, you will create a **database** and a **collection**.
+    A database contains one or more collections, which are like tables in relational
+    databases. Once a collection is created, you will write your data as documents.
+    A collection contains documents, which are equivalent to rows in relational databases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the necessary libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a `MongoClient` instance to establish a connection to the database:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: Create a new database named `stock_data` and a **time series collection** named
+    `daily_stock`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'First, we create a **regular collection** in MongoDB:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will create a new database called `stock_data` and a collection named amazon.
+    If `stock_data` already exists, it will add the `amazon` collection to the existing
+    database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, since we are working with time series data, we can use a more efficient
+    way to store and query our data by creating a **time series collection.** Starting
+    with MongoDB version 5.0, time series collections are optimized for time-stamped
+    data. We can modify the previous code to create a `daily_stock` time series collection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: With this update, we are now using a time series collection, which improved
+    storage efficiency and query performance for time-based data like our stock prices.
+    Moving forward, we’ll use the `ts` reference to interact with the time series
+    collection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will utilize the `get_stock_data` function created in the Technical Requirements
+    section to pull Amazon stock data from January 1, 2019, to August 31, 2024:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: In pandas, we work with data in a tabular format, where each column represents
+    a variable, and each row represents a data point. MongoDB, however, stores data
+    as documents in a JSON-like format (BSON), where each document is an independent
+    record that can include timestamp, metadata, and other key-value pairs.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Before inserting data into MongoDB, you need to transform the DataFrame into
+    a list of dictionaries where each dictionary (or document) represents a stock
+    data point. Each dictionary will include a timestamp (`Date`), stock information
+    (e.g. `High`, `Low`), and metadata (e.g. `"ticker": "AMZN"`)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will explore two options: the fist option utilizing the `to_dict()` method,
+    and a second option were you iterate over the DataFrame.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s explore the first option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we assumed that all the data have the same metadata information (e.g.
+    `"ticker": "AMZN`).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The default value for the `orient` parameter in the `to_dict()` method is `dict`
+    which produces a **dictionary** that follows the `{column -> {index -> value}}`
+    pattern.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: On the other hand, using `records` as the value, produces a **list** that follows
+    the `[{column -> value}, … , {column -> value}]` pattern.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'Now, let’s explore the second option which provides more flexibility for adding
+    specific fields or applying transformation to individual records, for example,
+    a different ticker value based:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You now have a Python list of length `1426` (a dictionary for each record):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, you are ready to write to the time series `daily_stock` collection using
+    the `insert_many()` method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can validate that the database and collection are created with the following
+    code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, pull Microsoft stock data (MSFT) and add it to the same `daily_stock`
+    time series collection. Later, you will explore how the metadata can be used to
+    distinguish between different stock symbols (AMZN vs MSFT) when querying the data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can check the total number of documents written by querying the database,
+    as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, the collection contains data for two stock symbols. You can use metadata
+    to filter for each symbol in your queries. You will start by querying the `daily_stock`
+    collection to retrieve only the Microsoft (MSFT) stock data. This is where the
+    `metadata` field becomes useful, allowing you to filter by the stock symbol. Let's
+    first define a date range and then query for MSFT data only.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also perform an aggregation to calculate the average `Close` price
+    per ticker (symbol):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`PyMongo` provides two insert functions to write our records as documents into
+    a collection. These functions are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`insert_one()` inserts one document into a collection.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`insert_many()` inserts multiple documents into a collection.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the preceding example, you used `insert_many()` and passed the data to be
+    written as documents simultaneously. However, before doing so, it was essential
+    to convert the DataFrame to a list of dictionaries format that follows the `[{column
+    -> value}, … , {column -> value}]` pattern. This was accomplished with `orient='records'`
+    in the `to_dict()` DataFrame method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When documents are inserted into the database, they are assigned a unique `_id`
+    value. MongoDB will automatically generate one during the insert operation if
+    the document does not already have an `_id`. You can capture the generated `_id`
+    because the insert functions return a result object—either an `InsertOneResult`
+    for single inserts or an `InsertManyResultfor` bulk inserts. The following code
+    demonstrates how this works using `insert_one` and the `InsertOneResult` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The returned object is an instance of `InsertOneResult`; to see the actual
+    value, you can use the `insert_id` property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you have ticker data in minutes, you can take advantage of the `granularity`
+    attribute, which can be `seconds`, `minutes`, or `hours`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the previous example, if you run the following code to query the database
+    to list the collections available, you will see three collections:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: You created the `daily_stock` collection, so what are the other two collections?
+    Let’s first explore the **Bucket Pattern** in MongoDB.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The bucket patterns is a data modeling technique to optimize how data is stored
+    in the database. By default, when you convert your DataFrame into a list of dictionaries,
+    you are essentially inserting each DataFrame record (data point) as a separate
+    MongoDB document. This creates a 1-on-1 mapping between records and documents.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, the **bucket strategy** allows you to group related data points into
+    a single document. For example, if you have hourly data, you can group it into
+    a bucket, such as 24-hour period, and store all the data for that range in one
+    document. Similarly, if we have sensor data from multiple devices, you can use
+    the bucket pattern to group the data (for example, by device ID and by a time
+    range) and insert them as a single document. This will reduce the number of documents
+    in the database, improve overall performance, and simplify querying.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you create a time series collection, MongoDB automatically applies the
+    bucket pattern to store the data in an efficient format. Let’s break it down:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`daily_stock`: This is the main time series collection you created. It acts
+    as a view that allows you to interact with your time series data using standard
+    MongoDB operations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`system.buckets.daily_stock`: This is an internal collection where MongoDB
+    stores the actual time series data using the bucket pattern. MongoDB automatically
+    implements this strategy for time series collections to improve storage and query
+    performance. Here''s how it works:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Documents are grouped into "buckets" based on timestamps and metadata fields
+    (e.g., the stock symbol).
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each bucket contains data points close together in time and share the same metadata
+    values.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This bucketing strategy significantly reduces the number of documents stored,
+    improving query efficiency and reducing disk usage.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`system.views`: This is a system collection that MongoDB uses to store information
+    about all views in the database, including the view for your time series collection.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To better understand how the bucket pattern is applied, let’s explore the technique
+    by creating a new collection (a regular collection, not a time series collection)
+    and bucket the daily stock data by year and month:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let’s create a new DataFrame and add two additional columns: **month**
+    and **year**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the preceding code, you added a `month` and `year` columns to the DataFrame
+    and initiated a new collection as `stocks_bucket`. In the next code segment, you
+    will loop through the data and write your groups (by year and month) as a single
+    document:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the code, you looped through the unique year and month combinations, then
+    for each combination you create a record dictionary containing the month, year,
+    symbol, and a list of Close prices. The record is then inserted into the `stock_bucket`
+    collection, effectively bucketing the data by month and year.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate the difference in number of documents, run the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the `stock_bucket` collection contains 72 documents, representing the
+    data grouped by year and month.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To query the database for the year 2024 and the month of June and see how the
+    document is represented, use the following code example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also run the same query using MongoDB Compass, and you should get similar
+    results as shown in the figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure – Using MongoDB Compass to query the stock_bucket collection](img/file41.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure – Using MongoDB Compass to query the stock_bucket collection
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information on storing time series data and bucketing in MongoDB,
+    you can refer to this MongoDB blog post: [https://www.mongodb.com/blog/post/time-series-data-and-mongodb-part-2-schema-design-best-practices](https://www.mongodb.com/blog/post/time-series-data-and-mongodb-part-2-schema-design-best-practices)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Check out the MongoDB manual to learn more about **time series collections**
+    [https://www.mongodb.com/docs/manual/core/timeseries-collections/](https://www.mongodb.com/docs/manual/core/timeseries-collections/)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing time series data to InfluxDB
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When working with large time series data, such as a sensor or **Internet of
+    Things** (**IoT**) data, you will need a more efficient way to store and query
+    such data for further analytics. This is where **time series databases** shine,
+    as they are built exclusively to work with complex and very large time series
+    datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will work with **InfluxDB** as an example of how to write
+    to a time series database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You should refer to the recipe “*Reading data from a time series database*”
+    in Chapter 3 “*Reading Time Series Data from Databases*” as a refresher on the
+    different ways to connect to InfluxDB.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'You will be using the `ExtraSensory` dataset, a mobile sensory dataset made
+    available by the University of California, San Diego: *Vaizman, Y., Ellis, K.,
+    and Lanckriet, G. "Recognizing Detailed Human Context In-the-Wild from Smartphones
+    and Smartwatches". IEEE Pervasive Computing, vol. 16, no. 4, October-December
+    2017, pp. 62-74\. doi:10.1109/MPRV.2017.3971131*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can download the dataset here: [http://extrasensory.ucsd.edu/#download](http://extrasensory.ucsd.edu/#download)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The dataset consists of 60 files, each representing a participant, each identified
+    by a unique identifier (UUID). Each file contains a total of 278 columns: 225
+    (features), 51 (labels), and 2 (timestamp and label_source).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This recipe aims to demonstrate how to write a time series DataFrame to InfluxDB.
+    In this recipe, two columns are selected: the timestamp (date ranges from `2015-07-23`
+    to `2016-06-02`, covering 152 days) and the watch accelerometer reading (measured
+    in milli G-forces or milli-G).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before you can interact with InfluxDB in Python, you will need to install the
+    InfluxDB Python library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can install the library with **pip** by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using **conda** use the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You will start this recipe by reading a file from the **ExtraSensory** dataset
+    (for a specific UUID) focusing on one feature column - the watch accelerometer.
+    You will be performing some data transformations to prepare the data before writing
+    the time series DataFrame to InfluxDB:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading the required libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: The data consists of 60 compressed CSV files `(csv.gz`), which you can read
+    using `pandas.read_csv()`. The default `compression` parameter in `read_csv` is
+    set to `infer`. This means that pandas will infer based on the file extension
+    which compression or decompression protocol to use. The files have a (`gz`) extension,
+    which will be used to infer which decompression protocol to use. Alternatively,
+    you can indicate which compression protocol to use with `compression='gzip'`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the following code, you will read one of these files, select both `timestamp`
+    and `watch_acceleration:magnitude_stats:mean` columns, rename the columns, and,
+    finally, perform a **backfill** operation for all **na** (missing) values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the preceding output, you have `3960` sensor readings from that one file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To write the data to InfluxDB, you need at least one `measurement` column and
+    a `timestamp` column. Currently, the timestamp is a Unix timestamp (**epoch**)
+    captured in seconds, which is an acceptable format for writing out data to InfluxDB.
+    For example`, 2015-12-08 7:06:37 PM` is stored as `1449601597` in the dataset.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**InfluxDB** stores timestamps in epoch nanoseconds on disk, but when querying
+    data, InfluxDB will display the data in **RFC3339 UTC format** to make it more
+    human-readable. So, `1449601597` in **RFC3339** would be represented as `2015-12-08T19:06:37+00:00.000Z`.
+    Note the precision in InfluxDB is in *nanoseconds*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following step, you will convert the Unix timestamp to a format that
+    is more human readable for your analysis in **pandas**, which is also an acceptable
+    format with InfluxDB:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code, the `unit` parameter is set to `'s'` for **seconds**.
+    This instructs pandas to calculate the number of seconds based on the origin.
+    The `origin` parameter is set to `unix` by default, so the conversion will calculate
+    the number of seconds to the Unix epoch start provided. The `utc` parameter is
+    set to `True`, which will return a **UTC** `DatetimeIndex` type. The `dtype` of
+    our DataFrame index is now `datetime64[ns, UTC]`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can learn more about Unix epoch timestamps in the recipe, *Working with
+    Unix epoch timestamps*, from *Chapter 6*, *Working with Date and Time in Python*
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'Next, you will need to establish a connection with the InfluxDB database instance
+    running. All you need is to pass your API read/write token. When writing to the
+    database, you will need to specify the bucket and organization name as well:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Initialize the `write_api` and configure `WriterOptions`. This includes specifying
+    `writer_type` as `SYNCHRONOUS`, `batch_size`, and `max_retries` before it fails:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To verify that the data is written properly you can query the database using
+    the `query_data_frame` method as shown in the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Inspect the returned DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that the DataFrame has two `datetime64[ns, UTC]` type columns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that you are done, you can close your writer object and shut down the client
+    as shown:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Before writing a pandas DataFrame to InfluxDB using the `write_api` you will
+    need to define few things required in InfluxDB. This includes the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Measurement**: These are the values you are tracking. InfluxDB accepts one
+    measurement per data point.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Field**: We do not need to specify fields per se, since any columns not in
+    the tag definition will be marked as fields. Fields are metadata objects stored
+    as key-value pairs. Fields are not indexed, unlike tags.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Tag** (optional): A metadata object in which you specify the columns that
+    would get indexed for improved query performance. This is stored as a key-value
+    pair as well.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **WriteAPI** supports *synchronous* and *asynchronous* writes. Additionally,
+    the **WriteAPI** also provides several options when writing to InfluxDB (such
+    as line protocol strings, line protocol bytes, data point structure, dictionary
+    style, as well as support for pandas DataFrames). In the *Reading data from time
+    series database* recipe in Chapter 3, *Reading Time Series Data from Databases*,
+    you used the `query_data_frame()` method to specify that the results of the query
+    should be returned as a **pandas DataFrame**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, `write_api` provides additional parameters when writing a pandas
+    DataFrames to InfluxDB:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`data_frame_measurement_name`: The name of the measurement for writing pandas
+    DataFrames'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`data_frame_tag_columns`: The list of DataFrame columns that are tags; the
+    rest of the columns will be fields'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the previous example, we had to manually flush the data using `writer.close()`
+    and terminate the connection using `client.close()`. For better resource management
+    (for example, automatically closing the connection) and exception handling, you
+    can benefit from using the `with` statement. The following example shows how you
+    can rewrite the same code in a cleaner and more efficient format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about the InfluxDB line protocol, please refer to their documentation
+    here: [https://docs.influxdata.com/influxdb/v2.0/reference/syntax/line-protocol/](https://docs.influxdata.com/influxdb/v2.0/reference/syntax/line-protocol/).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To learn more about the Python API for InfluxDB 2.x, please refer to the official
+    documentation here: [https://docs.influxdata.com/influxdb/cloud/tools/client-libraries/python/](https://docs.influxdata.com/influxdb/cloud/tools/client-libraries/python/).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing time series data to Snowflake
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Snowflake** has become a very popular cloud database option for building
+    big data analytics, due to its scalability, performance, and being SQL-oriented
+    (a columnar-stored relational database).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Snowflake's connector for Python simplifies the interaction with the database
+    whether it's for reading or writing data, or, more specifically, the built-in
+    support for `pandas` DataFrames. In this recipe, you will use the sensor IoT dataset
+    prepared in the *Writing time series data to InfluxDB* recipe. The technique applies
+    to any `pandas` DataFrame that you plan to write to Snowflake.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You should refer to the recipe *Reading data from a Snowflake* in *Chapter 3*,
+    *Reading Time Series Data from Databases* as a refresher on the different ways
+    to connect to Snowflake.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'The recommended approach for the `snowflake-connector-python` library is to
+    install it using **pip** allowing you to install *extras* such as `pandas` as
+    shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can also install with **conda**, but if you want to use `snowflake-connector-python`
+    with pandas you will need to use the pip install.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a configuration, for example `database.cfg` to store your Snowflake
+    connection information as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using `ConfigParser`, extract the content under the `[SNOWFLAKE]` section to
+    avoid exposing or hardcoding your credentials. Read parameters under the `[SNOWFLAKE]`
+    section and convert to a Python dictionary as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will utilize the `get_stock_data` function created in the *Technical Requirements*
+    section to pull **Amazon** stock data from January 1, 2019 to August 31, 2024:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `amzn_hist` DataFrame does not have a **Date** column, instead it has a
+    `DatetimeIndex` . You will need to convert the index into a column since the API
+    do not support writing index objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will be referencing the `amzn_hist` DataFrame and the object `params` throughout
+    this recipe,
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We will explore three (3) methods and libraries to connect to the Snowflake
+    database. You will start by using the **Snowflake Python connector**, then explore
+    the **Snowflake** **SQLAlchemy**, and finally you will explore the **Snowpark
+    Python API**. Let’s get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using snowflake-connector-python (write_pandas)
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The recipe in this section will utilize the snowflake-connector-python library
+    for connecting and writing data to a Snowflake database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the required libraries for this recipe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `pands_tools` module provides several functions for working with pandas
+    DataFrames, this includes two writer methods (`write_pandas` and `pd_writer`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `write_pandas` is a method for writing pandas DataFrame to a Snowflake database.
+    Behind the scenes, the function will store the data to **Parquet** files, uploads
+    the files to a **temporary stage**, and finally inserts the data from the files
+    to the specified table via `COPY INTO` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, the `pd_writer` method, is an insertion method for inserting
+    data into a Snowflake database with the `DataFrame.to_sql()` method and passing
+    a SQLAlchemy engine. You will explore `pd_writer` in the *Using SQLAlchemy* section
+    following this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Establish a connection to your Snowflake database instance and create a cursor
+    object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `cursor` object will be used to execute a SQL query to verify the dataset
+    has been properly written to the Snowflake database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Write the amzn_hist DataFrame to Snowflake using the writer_pandas method. The
+    method takes the connection object con, the DataFrame, destination table name,
+    and other optional arguments such as auto_create_table, and table_type to name
+    a few.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When using write_pandas it returns a tuple. In the previous code we unpacked
+    the tuple into: success, nchunks, nrows, and copy_into. Let’s inspect the values
+    inside these objects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `success` objects is a boolean (True or False) to indicate whether the function
+    successfully write the data to the specified table. The `nchunks` represents the
+    number of chunks during the write process, which in this case, the entire data
+    was written as one chunk. The `nrows` represents the number of rows inserted by
+    the function. Lastly, the `copy_into` object contains the output of the `COPY
+    INTO` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice the use of `auto_create_table=True`, if this is not set to True and the
+    table AMAZON did not already exist in Snowflake, `write_pandas` will through an
+    error. When it is set to `True` we are explicitly asking `write_pandas` to create
+    the table. Additionally, if the table exists, you can specify if you want to overwrite
+    the existing table with the parameter `overwrite=True`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `table_type` supports **permanent**, **temporary**, and **transient** table
+    types in Snowflake. The parameter can take on of these values: `''temp''`, `''temporary''`,
+    and `''transient''`. If an empty string is passed `table_type='''',` then it will
+    create a **permanent** table (the default behavior).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can further validate that all 1426 are written in the temporary table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs: []
+  type: TYPE_PRE
+- en: Indeed, you have all 1426 records written into the `AMAZON` table in Snowflake.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using SQLAlchmey
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The recipe in this section will utilize snowflake-sqlalchemy and the snowflake-connector-python
+    libraries for connecting and writing data to a Snowflake database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the required libraries for this recipe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will use the `URL` function from the Snowflake SQLAlchemy library to construct
+    the connection string and create the SQLAlchemy **engine** to establish a connection
+    to your Snowflake instance:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Write the DataFrame to the Snowflake database using the `to_sql()` writer function.
+    You will need to pass an **insertion method**; in this case, you will pass `pd_writer`
+    :'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code uses standard `SQL INSERT` clauses one per row. The Snowflake
+    connector API provides an insertion method, `pd_writer`, that you can pass to
+    the method parameter in the `to_sql` method as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs: []
+  type: TYPE_PRE
+- en: Behind the scenes, the `pd_writer` function will use the `write_pandas` function
+    to write the DataFrame to the Snowflake database instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To read and verify that the data was written, you can use `pandas.read_sql()`
+    to query the table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE86]'
+  prefs: []
+  type: TYPE_PRE
+- en: The new DataFrame contains all 1426 records and exact number of columns expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using snowflake-snowpark-python
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The recipe in this section will utilize the Snowpark API for writing a pandas
+    DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the required libraries for this recipe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE87]'
+  prefs: []
+  type: TYPE_PRE
+- en: Create a session by establishing a connection with the Snowflake database
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE88]'
+  prefs: []
+  type: TYPE_PRE
+- en: Before writing the DataFrame, you must convert the pandas DataFrame to a Snowpark
+    DataFrame.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE89]'
+  prefs: []
+  type: TYPE_PRE
+- en: Snowpark DataFrames uses lazy evaluation and provides many advantages over Panda
+    DataFrames.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To write the Snowpark DataFrame, you can use the `write` and `save_as_table`
+    methods:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE90]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To read and verify that the data was written, you can use `session.table` to
+    query the table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE91]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you are more comfortable with pandas, then you can convert the Snowpark
+    DataFrame to a pandas DataFrame using the `to_pandas` method as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE92]'
+  prefs: []
+  type: TYPE_PRE
+- en: The DataFrame contains all 1426 records and all six (6) columns as expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The Snowflake Python API provides two mechanisms for writing pandas DataFrames
+    to Snowflake, which are provided to you in the `pandas_tools` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE93]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the recipe, you used `pd_writer` and passed it as an **insertion method**
+    to the `DataFrame.to_sql()` writer function. When using `pd_writer` within `to_sql()`,
+    you can change the insertion behavior through the `if_exists` parameter, which
+    takes three arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`fail`, which raises `ValueError` if the table exists'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`replace`, which drops the table before inserting new values'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`append`, which inserts the data into the existing table'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the table doesn't exist, SQLAlchemy takes care of creating the table for
+    you and maps the data types from pandas DataFrames to the appropriate data types
+    in the Snowflake database. This is also true when reading the data from Snowflake
+    using the SQLAlchemy engine through `pandas.read_sql()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that `pd_writer` uses the `write_pandas` function behind the scenes. They
+    both work by dumping the DataFrame into Parquet files, uploading them to a temporary
+    stage, and, finally, copying the data into the table via `COPY INTO`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You used the `write.mode()` method when using the Snowpark API to write the
+    DataFrame. The `mode()` method accepts different write mode options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`append`: Append data of the DataFrame to the existing table. If the table
+    does not exist, it will be created.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`overwrite`: Overwrite the existing table by **dropping** the old table.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`truncate`: Overwrite the existing table by **truncating** the old table.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`errorifexists`: Throw an exception **error** if the table already exists.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ignore`: Ignore the operation if the table already exists.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Keep in mind the default value is `errorifexists`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'There is a useful method in Snowpark to write a pandas DataFrame directly without
+    the need to convert it into a Snowpark DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE94]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `write_pandas` function writes the pandas DataFrame to Snowflake and returns
+    a Snowpark DataFrame object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Visit the Snowflake documentation to learn more about `write_pandas` and `pd_write`
+    methods: [https://docs.snowflake.com/en/user-guide/python-connector-api.html#write_pandas](https://docs.snowflake.com/en/user-guide/python-connector-api.html#write_pandas).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can learn more about the `pandas DataFrame.to_sql()` function here: [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To learn more about the write_pandas method from the Snowpark API refer to the
+    official documentation here [https://docs.snowflake.com/en/developer-guide/snowpark/reference/python/1.22.1/snowpark/api/snowflake.snowpark.Session.write_pandas](ch006.xhtml)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

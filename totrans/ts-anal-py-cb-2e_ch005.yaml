@@ -1,0 +1,1350 @@
+- en: 4 Persisting Time Series Data to Files
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Join our book community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '![](img/file0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[https://packt.link/zmkOY](https://packt.link/zmkOY)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will use the **pandas** library to persist your **time
+    series DataFrames** to different file formats, such as **CSV**, **Excel**, **Parquet**,
+    and **pickle** files. When performing analysis or data transformations on DataFrames,
+    you essentially leverage pandas' in-memory analytics capabilities, offering great
+    performance. However, being in memory means the data can easily be lost since
+    it has not yet persisted in disk storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When working with DataFrames, you will need to persist your data for future
+    retrieval, creating backups, or sharing your data with others. The **pandas**
+    library is bundled with a rich set of writer functions to persist your in-memory
+    DataFrame (or series) to disk in various file formats. These writer functions
+    allow you to store data on a local drive or a remote server location, such as
+    a cloud storage filesystem, including **Google Drive**, **AWS S3**, **Azure Blob
+    Storage**, and **Dropbox**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will explore writing to different file formats locally
+    (on-premises) and cloud storage locations like on Amazon Web Services (AWS), Google
+    Cloud, and Azure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the recipes that will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time series data serialization with `pickle`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing to CSV and other delimited files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing data to an Excel file
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Storing Data to a Cloud Storage (AWS, GCP, and Azure)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing Large Datasets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this chapter and beyond, we will extensively use pandas 2.2.2 (released April
+    10, 2023).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throughout our journey, you will be installing several Python libraries to work
+    in conjunction with pandas. These are highlighted in the *Getting ready* section
+    for each recipe. You can also download Jupyter notebooks from the GitHub repository
+    ([https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook))
+    to follow along. You can download the datasets used in this chapter here [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch4](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch4)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serializing time series data with pickle
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When working with data in Python, you may want to persist Python data structures
+    or objects, such as a pandas DataFrame, to disk instead of keeping it in memory.
+    One technique is to serialize your data into a byte stream to store it in a file.
+    In Python, the **pickle** module is a popular approach to object serialization
+    and de-serialization (the reverse of serialization), also known as *pickling*
+    and *unpickling*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The `pickle` module comes with Python, so no additional installation is needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will explore two different methods for serializing the data,
+    commonly referred to as **pickling**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will be using the COVID-19 dataset provided by the *COVID-19 Data Repository
+    by the Center for Systems Science and Engineering (CSSE)* at *Johns Hopkins University*,
+    which you can download from the official GitHub repository here: [https://github.com/CSSEGISandData/COVID-19](https://github.com/CSSEGISandData/COVID-19).
+    Note that John Hopkins University is no longer updating the dataset as of March
+    10, 2023.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: You will write to a **pickle** file using pandas' `DataFrame.to_pickle()` function
+    and then explore an alternative option using the `pickle` library directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing to a pickle file using pandas
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: 'You will start by reading the COVID-19 time series data into a DataFrame, making
+    some transformations, and then persisting the results to a `pickle` file for future
+    analysis. This should resemble a typical scenario for persisting data that is
+    still a work in progress (in terms of analysis):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To start, let''s load the CSV data into a pandas DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code will display the first five rows of the DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.1: The first five rows of the COVID-19 confirmed global cases](img/file32.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.1: The first five rows of the COVID-19 confirmed global cases'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can observe from the output that this is a wide DataFrame with 1147 columns,
+    where each column represents the data's collection date, starting from **1/22/20**
+    to **3/9/23**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s assume that part of the analysis is to focus on United States and only
+    data collected in the summer of 2021 (June, July, August, and September). You
+    will transform the DataFrame by applying the necessary filters, and then unpivot
+    the data so that the dates are in rows as opposed to columns (converting from
+    a wide to a long format):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Inspect the `df_usa_summer_unpivoted` DataFrame and print the first five records:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: You filtered the dataset and transformed it from a wide DataFrame to a long
+    time series DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s say you are now satisfied with the dataset and ready to pickle (serialize)
+    the dataset. You will write the DataFrame to a `covid_usa_summer_2020.pkl` file
+    using the `DataFrame.to_pickle()` function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Pickling preserves the schema of the DataFrame. When you ingest the pickled
+    data again (de-serialization), you will return the DataFrame in its original construct,
+    for example, with a `DatetimeIndex` type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Read the pickle file using the `pandas.read_pickle()` reader function and inspect
+    the DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the preceding example, you were able to de-serialize the data using `pandas.read_pickle()`
+    into a DataFrame, with all the previously committed transformations and datatypes
+    preserved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing a pickle file using the pickle library
+  prefs:
+  - PREF_H5
+  type: TYPE_NORMAL
+- en: Python comes shipped with the **pickle** library, which you can import and use
+    to serialize (pickle) objects using `dump` (to write) and `load` (to read). In
+    the following steps, you will use `pickle.dump()` and `pickle.load()` to serialize
+    and then de-serialize the `df_usa_summer_unpivoted` DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the `pickle` library:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You then persist the `df_usa_summer_unpivoted` DataFrame using the `dump()`
+    method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the mode used is `“wb”` because we are writing in binary mode (written
+    as raw bytes).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can read the file and inspect the DataFrame using the `load()` method.
+    Notice in the following code that the ingested object is a pandas DataFrame, even
+    though you used `pickle.load()` instead of `Pandas.read_pickle()`. This is because
+    pickling preserved the schema and data structures:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the mode used is `“rb”` because we are reading in binary mode (read as
+    raw bytes).
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: In Python, pickling is the process of serializing any Python object. More concretely,
+    it uses a binary serialization protocol to convert objects into binary information,
+    which is not a human-readable format. The protocol allows us to reconstruct (de-serialize)
+    the pickled file, binary format, into its original content without losing valuable
+    information. As in the preceding examples, we confirmed that a time series DataFrame,
+    when reconstructed (de-serialization), returned to its exact form (schema).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The pandas `DataFrame.to_pickle()` function has two additional parameters that
+    are important to know. The first is the `compression` parameter, which is also
+    available in other writer functions such as `to_csv()`, `to_json()`, and `to_paraquet()`,
+    to name a few.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the case of the `DataFrame.to_pickle()` function, the default compression
+    value is set to `infer`, which lets pandas determine which compression mode to
+    use based on the file extension provided. In the previous example, we used `DataFrame.to_pickle(output)`,
+    where `output` was defined with a `.pkl` file extension, as in `covid_usa_summer_2020.pkl`.
+    If you change it to `covid_usa_summer_2020.zip`, the output will be a compressed
+    binary serialized file stored in ZIP format. You can try the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Other supported compression modes include **gzip**, **bz2**, **tar**, and **xz**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second parameter is **protocol**. By default, the `DataFrame.to_pickle()`
+    writer function uses the highest protocol, which, as of this writing, is set to
+    5\. According to the Pickle documentation, there are six (6) different protocols
+    to choose from when pickling, starting from protocol version 0 to the latest protocol
+    version, 5.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Outside of pandas, you can check what is the highest protocol configuration
+    by using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Similarly, by default, `pickle.dump()` uses the `HIGHEST_PROTOCOL` value if
+    no other value was provided. The construct looks like the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding two code snippets are equivalent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: One of the advantages of pickling a binary serialization method is that we can
+    pretty much pickle most Python objects, whether a Python dictionary, a machine
+    learning model, a Python function, or a more complex data structure, such as a
+    pandas DataFrame. However, there are some limitations on certain objects, such
+    as lambda and nested functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s examine how you can pickle a function and its output. You will create
+    a `covid_by_country` function that takes three arguments: *the CSV file to read*,
+    the *number of days back*, and the *country*. The function will return a time
+    series DataFrame. You will then pickle both the function, the function''s output,
+    and it’s plot as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The function would output the following plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.:– Output of the covid_by_country function](img/file33.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.:– Output of the covid_by_country function
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before pickling your objects, you can further enhance the content by adding
+    additional information to remind you what the content is all about. In the following
+    code, you will serialize the function and the returned DataFrame with additional
+    information (known as **metadata**) encapsulated using a Python dictionary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To gain a better intuition on how this works, you can load the content and
+    de-serialize using `pickle.load()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can retrieve and use the function, as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also retrieve the previous DataFrame stored for the US:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also load the view of the figure you just stored. The following code
+    will display the plot like that in *Figure 4.2*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding examples demonstrate how pickling can be useful to store objects
+    and additional **metadata** information. This can be helpful when storing a work-in-progress
+    or performing multiple experiments and wanting to keep track of them and their
+    outcomes. A similar approach can be taken when working with machine learning experiments,
+    as you can store your model and any related information around the experiment
+    and its outputs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'For more information about `Pandas.DataFrame.to_pickle`, please visit this
+    page: [https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_pickle.html](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_pickle.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For more information about the Python Pickle module, please visit this page:
+    [https://docs.python.org/3/library/pickle.html](https://docs.python.org/3/library/pickle.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing to CSV and other delimited files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, you will export a DataFrame as a CSV file and leverage the different
+    parameters in the `DataFrame.to_csv()` writer function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The file is provided in the GitHub repository for this book, which you can
+    find here: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook).
+    The file you will be working with is named `movieboxoffice.csv` which you read
+    first to create your DataFrame.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To prepare for this recipe, you will read the file into a DataFrame with the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: You now have a time series DataFrame with an index of type `DatetimeIndex`
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Writing a DataFrame to a CSV file is pretty straightforward with pandas. The
+    DataFrame object has access to many writer methods, such as `.to_csv`, which is
+    what you will be using in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will use the pandas DataFrame writer method to persist the DataFrame as
+    a CSV file. The method has several parameters, but at a minimum, all you need
+    is to pass a file path and filename:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The CSV file created is **comma-delimited** by default.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To change the delimiter, use the `sep` parameter and pass in a different argument.
+    In the following code, you are creating a pipe `(|)` delimited file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Read the pipe-delimited file and inspect the resulting DataFrame object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice from the preceding output that some information was lost when reading
+    the CSV file. For example, the `Date` column in the original DataFrame “`movies`”
+    was not a column but an index of type `DatetimeIndex`. The current DataFrame “`moveis_df`”
+    does not have an index of type `DatetimeIndex` (the index is now a `RangeIndex`
+    type, which is just a range for the row numbers). This means you will need to
+    configure the `read_csv()` function and pass the necessary arguments to parse
+    the file appropriately (this is in contrast to when reading a **pickled** file,
+    as demonstrated from the preceding recipe, *Serializing time series data with
+    pickle*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, CSV file formats do not preserve index type or column datatype information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The default behavior for `DataFrame.to_csv()` is to write a **comma-delimited**
+    CSV file based on the default `sep` parameter, which is set to `","`. You can
+    overwrite this by passing a different delimiter, such as tab `("\t")`, `pipe ("|")`,
+    or semicolon `(";")`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code shows examples of different **delimiters** and their representations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Notice in the preceding example that the comma-separated string values are not
+    encapsulated within double quotes (`""`). What will happen if our string object
+    contains commas (`,`) and we write it to a comma-separated CSV file? Let's see
+    how pandas handles this scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following code, we will create a `person` DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, export the DataFrame to a CSV file. You will specify `index=False` to
+    ignore the index (row numbers) when exporting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you inspect a `person_a.csv` file, you will see the following representation
+    (notice the double quotes added by pandas):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `to_csv()` function has a `quoting` parameter with a default value set to
+    `csv.QUOTE_MINIMAL`. This comes from the Python `csv` module, which is part of
+    the Python installation. The `QUOTE_MINIMAL` argument only quotes fields that
+    contain special characters, such as a comma (`","`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `csv` module provides four constants we can pass as arguments to the `quoting`
+    parameter within the `to_csv()` function. These include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`csv.QUOTE_ALL`: Quotes all the fields, whether numeric or non-numeric'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`csv.QUOTE_MINIMAL`: The default option in the `to_csv()` function, which quotes
+    values that contain special characters'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`csv.QUOTE_NONNUMERIC`: Quotes all non-numeric fields'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`csv.QUOTE_NONE`: To not quote any field'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To better understand how these values can impact the output CSV, you will test
+    passing different quoting arguments in the following example. This is done using
+    the `person` DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if you open and inspect these files, you should see the following representations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that in the preceding example, when using `csv.QUOTE_NONE`, you must provide
+    an additional argument for the `escapechar` parameter; otherwise, it will throw
+    an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information on the `Pandas.DataFrame.to_csv()` function, please refer
+    to this page: [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For more information on the CSV module, please refer to this page: [https://docs.python.org/3/library/csv.html](https://docs.python.org/3/library/csv.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing data to an Excel file
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, you will export a DataFrame as an Excel file format and leverage
+    the different parameters available in the `DataFrame.to_excel()` writer function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the *Reading data from an Excel file* recipe in *Chapter 2*, *Reading Time
+    Series Data from Files*, you had to install `openpyxl` as the engine for reading
+    Excel files with `pandas.read_excel()`. For this recipe, you will use the same
+    `openpyxl` as the engine for writing Excel files with `DataFrame.to_excel()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install `openpyxl` using `conda`, run the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also use `pip`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The file is provided in the GitHub repository for this book, which you can
+    find here: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook).
+    The file is named `movieboxoffice.csv`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To prepare for this recipe, you will read the file into a DataFrame with the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To write the DataFrame to an Excel file, you need to provide the writer function
+    with `filename` and `sheet_name` parameters. The file name contains the file path
+    and name. Make sure the file extension is `.xlsx` since you are using openpyxl.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `DataFrame.to_excel()` method will determine which engine to use based
+    on the file extension, for example, `.xlsx` or `.xls`. You can also explicitly
+    specify which engine to use with the `engine` parameter, as shown in the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Determine the location of file output and create the file path, desired sheet
+    name, and engine to the `DataFrame.to_excel()` writer function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code will create a new Excel file in the specified location.
+    You can open and inspect the file, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.3: Example output from the daily_boxoffice.xlsx file](img/file34.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.3: Example output from the daily_boxoffice.xlsx file'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the sheet name is `movies_data`. In the Excel file, you will notice
+    that the `Date` is not in the format you would expect. Let's say the expectation
+    was for the `Date` column to be in a specific format, such as `MM-DD-YYYY`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading the same file using `read_excel` will read the `Date` column properly,
+    as expected.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'To achieve this, you will use another pandas-provided class, the `pandas.ExcelWriter`
+    class gives us access to two properties for date formatting: `datetime_format`
+    and `date_format`. These two parameters work nicely when using the `xlsxwriter`
+    engine, but as of this writing, there is an open bug with the openpyxl integration.
+    The openpyxl has several advantages over xlsxwriter, specifically for appending
+    existing Excel files. We will utilize openpyxl `number_format` property for the
+    Date cell to fix this issue. The following code shows how this can be achieved:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is a representation of what the new output would look like. This
+    was accomplished by passing `MM-DD-YYYY` to the `datetime_format` property of
+    the `writer` object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.4: Using pd.ExcelWriter and number_format to update the Date column
+    format to MM-DD-YYYY](img/file35.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.4: Using pd.ExcelWriter and number_format to update the Date column
+    format to MM-DD-YYYY'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `DataFrame.to_excel()` method by default creates a new Excel file if it
+    doesn't exist or overwrites the file if it exists. To append to an existing Excel
+    file or write to multiple sheets, you will need to use the `Pandas.ExcelWriter`
+    class. The `ExcelWriter()` class has a `mode` parameter that can accept either
+    `"w"` for write or `"a"` for append. As of this writing, xlsxwriter does not support
+    the append mode, while the openpyxl supports both modes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that in `ExcelWriter` the default mode is set to `"w"` (write mode)
+    and, thus, if `"a"` (append mode) is not specified, it will result in overwriting
+    the Excel file (any existing content will be erased).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Additionally, when using append mode (`mode="a"`) you will need to specify
+    how to handle existing sheets through the `if_sheet_exists` parameter, which accepts
+    one of three values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`error`, which raises a `ValueError` exception.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`replace`, which overwrites the existing worksheet.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`new`, which creates a new worksheet with a new name. If you re-execute the
+    preceding code and update `if_sheet_exists=''new''`, then a new sheet will be
+    created and named `movies_fixed_dates1`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you need to create multiple worksheets in the same Excel file, then `ExcelWriter`
+    can be used to achieve this. For example, assume the goal is to split each month's
+    data into its own sheet and name the sheet accordingly. In the following code,
+    you will add a `Month` column and use that to split that DataFrame by month, using
+    `groupby` to write each group into a new sheet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s create our helper function `sheet_date_format` to format our `Date`
+    column in each sheet to MM-DD-YYYY format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next piece of code will add a Month column to the movies DataFrame, and
+    then write each month to individual sheets and name each sheet with the corresponding
+    month name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code will create a new Excel file named `boxoffice_by_month.xlsx`
+    with five sheets for each month, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.5: Each month in the movies DataFrame was written to its own sheet
+    in Excel](img/file36.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.5: Each month in the movies DataFrame was written to its own sheet
+    in Excel'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The pandas `to_excel()` method and `ExcelWriter` class make writing DataFrames
+    to an Excel file very convenient. If you want a more granular control outside
+    of pandas DataFrames, you should consider exploring the `openpyxl` library you
+    installed as the reader/writer engine. For example, the `openpyxl` library has
+    a dataframe module (`openpyxl.utils.dataframe`) for working with pandas DataFrames.
+    An example is the `dataframe_to_rows()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To learn more about `Pandas.DataFrame.to_excel()`, please refer to [https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To learn more about `Pandas.ExcelWriter()`, please refer to [https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.ExcelWriter.html#pandas.ExcelWriter.](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.ExcelWriter.html#pandas.ExcelWriter.)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To learn more about `openpyxl`, please refer to [https://openpyxl.readthedocs.io/en/stable/index.html](ch005.xhtml).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To learn more about `openpyxl.utils.dataframe`, please refer to [https://openpyxl.readthedocs.io/en/stable/pandas.html#working-with-pandas-dataframes](https://openpyxl.readthedocs.io/en/stable/pandas.html#working-with-pandas-dataframes)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Storing Data to a Cloud Storage (AWS, GCP, and Azure)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, you will use pandas to write to cloud storage such as Amazon
+    S3, Google Cloud Storage, and Azure Blob Storage. Several of the pandas writer
+    functions support writing to cloud storage through the `storage_options` parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the Reading data from a URL recipe in *Chapter 2*, *Reading Time Series Data
+    from Files*, you were instructed to install `boto3` and `s3fs` to read from AWS
+    S3 buckets. In this recipe, you will be leveraging the same libraries in addition
+    to the needed libraries for Google Cloud Storage (`gcsfs`) and Azure Blob Storage
+    (`adlfs`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install using `pip`, you can use this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install using `conda`, you can use this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will work with the `boxoffice_by_month.xlsx` file we created in the previous
+    recipe, *Writing data to an Excel file*. The file is provided in the GitHub repository
+    for this book, which you can find here: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To prepare for this recipe, you will read the file into a DataFrame with the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the movie DataFrame has two columns (Daily and Month) and a DatetimeIndex
+    (Date).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, you will store your AWS, Google Cloud, and Azure credentials in a config
+    `cloud.cfg` file outside your Python script. Then, use `configparser` to read
+    and store the values in Python variables. You do not want your credentials exposed
+    or hard coded in your code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then load an `aws.cfg` file using `config.read()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Several of the pandas writer functions support writing directly to a remote
+    or cloud storage filesystem using, for example, AWS's `s3://`, Google's `gs://`,
+    and Azure’s `abfs://` and `az://` protocols. These writer functions provide the
+    `storage_options` parameter to support working with remote file storage systems.
+    This is in part because pandas utilized `fsspec` to handle system non HTTP(s)
+    URLs such as those specific for each cloud storage. For each cloud, you will need
+    to use the specific filesystem implementation, for example, `s3fs` for AWS S3,
+    `gcsfs` for Google Cloud, and `adlfs` for Azure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `storage_options` parameter takes a Python dictionary to provide additional
+    information such as credentials, tokens, or any information the cloud provider
+    requires as a key-value pair.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing to Amazon S3 using pandas
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In this section, you will write the `movies` DataFrame to the `tscookbook-private`
+    S3 bucket as CSV and Excel files using pandas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Several pandas writer functions such as `to_csv`, `to_parquet`, and `to_excel`
+    allow you to pass AWS S3-specific credentials (`key` and `sercret`) as specified
+    in s3fs through the `storage_accounts` parameter. The following code shows how
+    you can utilize `to_csv` and `to_excel` to write your movies DataFrame to `tscookbook`
+    S3 bucket as `movies_s3.csv` and `movies_s3.xlsx`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following figure shows the content of the `tscookbook-private` bucket:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.6: movies_s3.csv and movie_s3.xlsx successfully written to AWS S3
+    using pandas](img/file37.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.6: movies_s3.csv and movie_s3.xlsx successfully written to AWS S3
+    using pandas'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing to Google Cloud Storage using pandas
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In this section, you will write the `movies` DataFrame to the `tscookbook`
+    bucket on Google Cloud Storage as CSV and Excel files using pandas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When working with Google Cloud you will use a **service account private key**
+    stored as a JSON file. This is generated and downloaded from Google Cloud. In
+    `storage_options,` you will pass the file path. The following code shows how you
+    can utilize `to_csv` and `to_excel` to write your movies DataFrame to `tscookbook`
+    bucket as `movies_gs.csv` and `movies_gs.xlsx`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following figure shows the content of the `tscookbook` bucket:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.7: movies_gs.csv and movie_gs.xlsx successfully written to Google
+    Cloud Storage using pandas](img/file38.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.7: movies_gs.csv and movie_gs.xlsx successfully written to Google
+    Cloud Storage using pandas'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing to Azure Blob Storage using pandas
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In this section, you will write the `movies` DataFrame to Azure Blob Storage
+    in a container named `objects` as a CSV file using pandas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When working with Azure Blob Storage, you use either the `abfs://` or `az://`
+    protocols. In `storage_options` you will pass the account_key, this is your API
+    Key for the Storage Account on Azure. The following code shows how you can utilize
+    `to_csv` to write your movies DataFrame to `objects` container. The three code
+    snippets below are equivalent and illustrate the different URI and `storage_options`
+    you will need to pass:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following figure shows the content of the `objects` container:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.8: movies_abfs.csv, movies_az.csv, and movie_az2.csv successfully
+    written to Azure Blob Storage using pandas](img/file39.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.8: movies_abfs.csv, movies_az.csv, and movie_az2.csv successfully
+    written to Azure Blob Storage using pandas'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the preceding code section, we used the `DataFrame.to_csv()` and `DataFrame.to_excel()`
+    methods to write to Amazon S3, Azure Blob Storage, and Google Cloud Storage. The
+    `storage_options` parameter allows passing a key-value pair containing the information
+    required for the storage connection; for example, AWS S3 requires passing a `key`
+    and a `secret`, GCP requires `token`, and Azure requires an `account_key`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Examples of pandas DataFrame writer functions that support `storage_options`
+    include:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Pandas.DataFrame.to_excel()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Pandas.DataFrame.to_json()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Pandas.DataFrame.to_parquet()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Pandas.DataFrame.to_pickle()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Pandas.DataFrame.to_markdown()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Pandas.DataFrame.to_pickle()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Pandas.DataFrame.to_stata()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Pandas.DataFrame.to_xml()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For more granular control, you can use the specific Python SDK for AWS (`boto3`),
+    Google Cloud (`google-cloud-storage`), or Azure (`azure-storage-blob`) to write
+    your data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, let’s store our movie DataFrame in CSV format for uploading the data
+    to the various cloud storage services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the `index=True` because our Date column is an index, and we need
+    to ensure it is included as a column when written as a CSV file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing to Amazon S3 using boto3 library
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: You will explore both the **Resource API** and **Client API.** The Resource
+    API is a higher-level abstraction that simplifies the code and interactions with
+    AWS services. At the same time, the Client API provides a low-level abstraction,
+    allowing for more granular control over AWS services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When using the resource API with `boto3.resource("s3"),` you will first need
+    create an Object resource using the Object method by supplying the S3 bucket name
+    and an Object key (file name). Once defined, you will have access to several methods,
+    including `copy`, `delete`, `put`, `download_file`, `load`, `get`, and `upload,`
+    to name a few. The `put` method will add an object to the S3 bucket defined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When using the client API with `boto3.client("s3"),` you have access to many
+    methods at the Bucket and Object levels, including `create_bucket`, `delete_bucket`,
+    `download_file`, `put_object`, `delete_object`, `get_bucket_llifecycle`, `get_bucket_location`,
+    `list_buckets` and much more. The `put_object` method will add an object to the
+    S3 bucket defined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: Writing to Google Cloud Storage using google-cloud-storage library
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: You will first need to create a client object, an instance of the Client class
+    from the storage module. You will authenticate using the service account JSON
+    key file. This is specified using the `from_service_account_json` method. You
+    will use the `bucket` and `blob` methods to create a reference to the blob object
+    you want to place in the `tscookbook` bucket in Google Storage. Finally, you can
+    upload the data using the `upload_from_string` method into the blob object specified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Writing to Azure Blob Storage using azure-storage-blob library
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: You will start by creating a `BlobServiceClient` object and authenticate using
+    your Azure Storage Account API key. You then create the blob object for the specified
+    container using `get_blob_client` and upload that data into the specified object
+    using the `upload_blob` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To learn more about managing cloud storage with Python, explore the official
+    documentation for these popular libraries
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Amazon S3 (Boto3)** [https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Azure Blob Storage** [https://learn.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Google Cloud Storage** [https://cloud.google.com/python/docs/reference/storage/latest](https://cloud.google.com/python/docs/reference/storage/latest)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing Large Datasets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, you will explore how the choice of the different file formats
+    can impact the overall write and read performance. You will explore Parquet, Optimized
+    Row Columnar (ORC), and Feather and compare their performance to other popular
+    file formats such as JSON and CSV.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The three file formats, ORC, Feather, and Parquet, are columnar file formats,
+    making them efficient for analytical needs, and showing improved querying performance
+    overall. The three file formats are also supported in Apache Arrow (PyArrow),
+    which offers an in-memory columnar format for optimized data analysis performance.
+    To persist this in-memory columnar and store it, you can use pandas `to_orc`,
+    `to_feather`, and `to_parquet` writer functions to persist your data to disk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Arrow provides the in-memory representation of the data as a columnar format
+    while Feather, ORC, and Parquet allows us to store this representation to disk.
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Getting Ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this recipe, you will be working with the New York Taxi data set from ([https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page))
+    and we will be working with Yellow Taxi Trip Records for 2023.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following examples, we will be using one of these files, `yellow_tripdata_2023-01.parquet`,
+    but you can select any other file to follow along. In the recipe *Reading data
+    from Parquet files* from *Chapter 2*, you installed **PyArrow**. Below are the
+    instructions for installing PyArrow using either Conda or Pip.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install PyArrow using `conda,` run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To install PyArrow using `pip` run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To prepare for this recipe, you will read the file into a DataFrame with the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You will write the DataFrame into different file formats and then compare the
+    output in terms of compression efficiency (file size), write, and read speed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To accomplish this, you will need to create a function that returns the file
+    size:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: The function will take the file you created and return the size in megabytes.
+    The `os.path.getsize()` will return the size in bytes and the line `size_bytes
+    / (1024**2)` will convert it into megabytes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will be writing these files into a `formats` folder so later we can read
+    from that folder to evaluate read performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing as JSON and CSV
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'You will use the `DataFrame.to_json()` method to write a `yellow_tripdata.json`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note the file size is around 1.16 GB and took around 5.24 seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will use the `DataFrame.to_csv()` method to write a `yellow_tripdata.csv`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note the file size is around 307 MB and took around 17.1 seconds,
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing as Parquet
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The `to_parquet` writer function supports several compression algorithms, including
+    `snappy`, `GZIP`, `brotli`, `LZ4`, `ZSTD`. You will use the `DataFrame.to_parquet()`
+    method to write three files to compare `snappy`, `LZ4`, and `ZSTD` compression
+    algorithms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that the three compression algorithms produce similar compression results
+    (file size) and speed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing as Feather
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'You will use the `DataFrame.to_feather()` method to write three feather files
+    using the two supported compression algorithms `LZ4` and `ZSTD.` The last file
+    format will be the uncompressed format for comparison:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the difference in file size between uncompressed, using LZ4 and ZSTD
+    compression algorithms. You can further explore the `compression_level` to find
+    the optimal output. Overall, LZ4 offers great performance on write and read (*compression*
+    and *decompression* speed). The ZSTD algorithm may offer a higher compression
+    ratio, resulting in much smaller files, but it may not be faster than LZ4.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Writing as ORC
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Similar to the Feather and Parquet file formats, ORC supports different compression
+    algorithms, including uncompressed, `snappy`, `ZLIB`, `LZ4`, and `ZSTD`. You will
+    use the `DataFrame.to_orc()` method to write three ORC files to explore ZSTD and
+    LZ4 compression algorithms and an uncompressed file for comparison:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that the LZ4 algorithm did not offer better compression when compared
+    with the uncompressed version. The ZSTD algorithm did offer better compression
+    but took a bit longer to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Often, when working with large datasets that need to persist into disk after
+    completing your transformations, deciding which file format to opt for can significantly
+    impact your overall data storage strategy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, JSON and CSV formats are human-readable choices, and pretty much
+    any commercial or open-source data visualization or analysis tools can handle
+    such formats. Both CSV and JSON formats do not offer compression for large file
+    sizes and can lead to poor performance on both write and read operations. On the
+    other hand, Parquet, Feather, and ORC are binary file formats (not human-readable)
+    but support several compression algorithms and are columnar-based, which are optimized
+    for analytical applications with fast read performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The pandas library supports Parquet, Feather, and ORC thanks to PyArrow, a Python
+    wrapper to Apache Arrow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You have evaluated different file formats' write performance (and size). Next,
+    you will compare read time performance and the efficiency of the various file
+    formats and compression algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To do this, you will create a function (`measure_read_performance`) that reads
+    all files in a specified folder (for example, the `formats` folder). The function
+    will evaluate each file extension (for instance, *.feather*, *.orc*, *.json*,
+    .*csv*, *.parquet*) to determine which pandas read function to use. The function
+    will then capture the performance time for each file format, append the results,
+    and return a DataFrame containing all results sorted by read time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can execute the function by specifying the folder, in this case, the `formats`
+    folder, to display the final results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: Overall, the results for read performance indicate that Parquet file formats
+    perform the best, followed by Feather, then ORC. The time `read_time` is measured
+    in seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To learn more about file formats for efficient data storage with pandas
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Parquet**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'pandas documentation: [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_parquet.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_parquet.html)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Feather**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'pandas documentation: [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_feather.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_feather.html)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Additional arguments in Arrow documentation: [https://arrow.apache.org/docs/python/generated/pyarrow.feather.write_feather.html](https://arrow.apache.org/docs/python/generated/pyarrow.feather.write_feather.html)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**ORC**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'pandas documentation: [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_orc.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_orc.html)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Additional arguments in Arrow documentation: [https://arrow.apache.org/docs/python/generated/pyarrow.orc.write_table.html](https://arrow.apache.org/docs/python/generated/pyarrow.orc.write_table.html)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Apache Arrow**: [https://arrow.apache.org/overview/](https://arrow.apache.org/overview/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

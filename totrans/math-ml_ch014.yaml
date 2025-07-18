@@ -1,0 +1,803 @@
+- en: '8'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Matrices and Graphs
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have gotten past the hard part (that is, the singular value decomposition
+    and other matrix factorizations), it’s time to finish our journey through linear
+    algebra with a bang. In my teaching experience, one of students’ most common concerns
+    is the apparent disconnect between practice and theory. Among machine learning
+    practitioners and software engineers, there’s often a reluctance to touch anything
+    that is not immediately valuable in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a mathematician, I completely get where this dread comes from. We are often
+    taught arcane topics of no practical importance, taking valuable time away from
+    hacking and slashing our way through data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we’ll look at a subject that is not immediately useful for
+    your machine learning practice, but will pay serious dividends in the future.
+    Considering how beautiful it is, it might be the inspiration for your next genius
+    idea. (No promises, though.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let me introduce you to the single most undervalued fact of linear algebra:
+    matrices are graphs, and graphs are matrices. Encoding matrices as graphs is a
+    cheat code, making complex behavior simple to study.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check out Figure [8.1](#) below.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file806.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.1: A matrix and its directed graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Can you figure out how it was constructed? Can you guess why it is useful?
+    We’ll answer these questions in the next couple of pages. Specifically, we’ll
+    see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What the relationship between graphs and matrices is
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How matrix multiplication can be translated to walks on the graph
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What the connectivity structure of a graph reveals about its corresponding matrix
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s get to it!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.1 The directed graph of a nonnegative matrix
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you look carefully at Figure [8.1](#), you can probably figure out how to
+    construct a weighted graph from a matrix. Just compare each row and the outgoing
+    edge weights for nodes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each row is a node, and each element represents a directed and weighted edge.
+    Edges of zero elements are omitted. The element in the i-th row and j-th column
+    corresponds to an edge going from i to j. The resulting graph is called the directed
+    graph (or digraph) of the matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To unwrap the definition a bit, let’s check out the previous graph of the matrix
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ ⌋ 0.5 1 0 | | 3×3 A = |⌈0.2 0 2.2|⌉ ∈ ℝ . 1.8 2 0 ](img/file807.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here’s the first row, corresponding to the edges coming out from the first node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file808.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.2: The first row corresponds to the edges coming out from the first
+    node'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similarly, the first column corresponds to the edges coming into the first node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file809.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.3: The first column corresponds to the edges coming into the first
+    node'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, we can put all of this together. Figure 8.4 shows the full picture, with
+    the nodes explicitly labeled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file810.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.4: Constructing the graph of a matrix'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s time to check the formal definition, which we’ll split into two parts.
+    First, let’s talk about weighted and directed graphs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition 29\.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let V = {v[1],v[2],…,v[n]} be an arbitrary finite set. We say that G = (V,E,w)
+    is a weighted and directed graph, if
+  prefs: []
+  type: TYPE_NORMAL
+- en: '(a) V represents the set of vertices (also called nodes). (b) E ⊆V ×V represents
+    the set of directed edges. (c) The function w : E →ℝ represents the edge weights.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, check out Figure 8.4, which we can formalize as (V,E,w) with V
+    = {v[1],v[2],v[3]},
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![E = {(v1,v1),(v1,v2), (v2,v1),(v2,v3), (v3,v1),(v3,v2)}, ](img/file811.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: and
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![w(v1,v1) = 0.5, w (v1,v2) = 1, w(v2,v1) = 0.2, w (v2,v2) = 2.2, w(v3,v1)
+    = 1.8, w (v3,v2) = 2\. ](img/file812.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now, we are ready to talk about matrices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition 30\. (Irreducible and reducible matrices)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let A ∈ℝ^(n×n) be a nonnegative matrix, i.e., a matrix with only nonnegative
+    elements. The directed weighted graph G = (V,E,w) is said to be the directed graph
+    (or digraph for short) of A if:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (a) V = {1,2,…,n}, (b) (i,j) ∈E if, and only if, a[i,j]/span>0, (c) w(i,j) =
+    a[i,j].
+  prefs: []
+  type: TYPE_NORMAL
+- en: (Sometimes, for illustrative purposes, we’ll just omit the weights and assume
+    all of them to be equal to 1.) Again, why is this useful? Because this way, we
+    can translate algebraic questions into graph-theoretic ones. Thus, we gain access
+    to the vast toolkit of graph theory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.2 Benefits of the graph representation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let’s talk about the concrete advantages that the graph representation offers.
+    For one, the powers of the matrix correspond to walks in the graph. Say, for any
+    let ![A = (ai,j)ni,j=1 ∈ ℝn×n ](img/file813.png). Its square is denoted by ![A2
+    = (a(2))ni,j=1 ∈ ℝn ×n i,j ](img/file814.png), where the elements ![ (2) ai,j
+    ](img/file815.png) are defined by
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ n a(2) = ∑ a a . i,j i,k k,j k=1 ](img/file816.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: (Note that the (2) in the superscript of a[i,j]^((2)) is not an exponent; this
+    is just an index indicating that a[i,]^((2)) is the element of A².)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 8.5 shows the elements of the square matrix and its graph: all possible
+    two-step walks are accounted for in the sum defining the elements of A².'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file817.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.5: Powers of the matrix describe walks on its directed graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is much more to this connection; for instance, it gives us a deep insight
+    into the structure of nonnegative matrices. To see how, let’s talk about the concept
+    of strongly connected components.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.2.1 The connectivity of graphs
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Intuitively, we can think of connectivity as the ability to reach every node
+    from the others. To formalize this, we’ll need a couple of definitions. First,
+    the “reach every node from the others” part.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition 31\. (Walks on a graph)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let G = (V,E,w) be a weighted and directed graph. The sequence v[k[1]]v[k[2]]…v[k[l]]
+    is a (directed) walk on G if (v[k[i]],v[k[i+1]]) ∈E for all i.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (For consistency, we define walks for weighted and directed graphs, but the
+    definition holds for simple graphs – i.e., graphs without edges and directional
+    edges – as well. The same goes for most of the upcoming concepts.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, we say that the walk v[k[1]]v[k[2]]…v[k[l]] starts at v[k[1]] and
+    ends at v[k[l]].
+  prefs: []
+  type: TYPE_NORMAL
+- en: The term walk is surprisingly descriptive, as it truly describes a walk on the
+    directed edges, going from node to node. However, a graph-theoretic walk is a
+    properly defined mathematical object, not just a vague intuition. Pick up a pen
+    and a paper once again and sketch up a graph, then a couple of its walks, to understand
+    the concept better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What do walks have to do with connectivity? Simple: If you can reach every
+    node from every other node, the graph is said to be connected. Since we are talking
+    about directed graphs, let’s add a bit of nuance to the discussion and conjure
+    up a formal definition.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition 32\.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (Strong connectivity)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let G = (V,E,w) be a weighted and directed graph. We say that G is strongly
+    connected if for every u,v ∈V , there exists a walk that starts at u and ends
+    at v.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, a directed graph is strongly connected if every node can be
+    reached from every other node. If this is not true, the graph is not strongly
+    connected. Figure 8.6 shows you an example of both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.6 also illustrates that strong connectivity does not match the connectivity
+    concept for simple graphs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s not enough to reach u from v; you have to be able to go back as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file818.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.6: Connected vs. strongly connected'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s translate what we’ve learned to the language of matrices. Matrices
+    that correspond to strongly connected graphs are called irreducible. All other
+    nonnegative matrices are called reducible. Soon, we’ll see why, but first, here’s
+    the formal definition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition 33\.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (Irreducible and reducible matrices)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let A ∈ℝ^(n×n) be a nonnegative matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (a) A is called irreducible if its digraph is strongly connected. (b) A is called
+    reducible if it is not irreducible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s see an example! Figure 8.7 shows an irreducible matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file819.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.7: Strongly connected digraphs and their matrices'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Back to the general case! Even though not all digraphs are strongly connected,
+    we can partition the nodes into strongly connected components (as Figure 8.8 illustrates).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file820.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.8: Strongly connected components'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s label the nodes of this graph and construct the corresponding matrix!
+    If you assume that the weights are simply equal to 1 and translate all the edges
+    into rows and columns as we have learned, you’ll get
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ ⌋ |0 1 1 0 0 0| ||0 0 1 0 0 0|| | | ||1 0 0 1 0 0|| A = ||0 0 0 0 1 1||.
+    || || |⌈0 0 0 0 0 1|⌉ 0 0 0 1 0 0 ](img/file821.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'That’s just a big block of ones and zeroes, but you shouldn’t be disappointed:
+    there is a pattern! By dividing A into blocks, the matrix of our example graph
+    can be reduced to a simpler form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ | ⌋ 0 1 1 |0 0 0 || | || || 0 0 1 |0 0 0 || ⌊ | ⌋ || 1 0 0 |1 0 0 || A1,1|A1,2
+    A = ||---------|--------|| = ⌈ -----|-----⌉ , | 0 0 0 |0 1 1 | A2,1|A2,2 || 0
+    0 0 |0 0 1 || ⌈ | ⌉ 0 0 0 |1 0 0 ](img/file822.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: where
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ ⌋ ⌊ ⌋ 0 1 1 0 0 0 || || || || A1,1 = ⌈ 0 0 1⌉, A1,2 = ⌈0 0 0⌉ , 1 0 0
+    1 0 0 ⌊ ⌋ ⌊ ⌋ 0 0 0 0 1 1 A = || ||, A = || || . 2,1 ⌈ 0 0 0⌉ 2,2 ⌈0 0 1⌉ 0 0
+    0 1 0 0 ](img/file823.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The diagonal blocks A[1,1] and A[2,2] represent graphs that are strongly connected
+    (that is, the blocks are irreducible). Furthermore, the block below the diagonal
+    is 0\. Is this true for all nonnegative matrices?
+  prefs: []
+  type: TYPE_NORMAL
+- en: You bet. Let’s see!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.3 The Frobenius normal form
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In general, the block-matrix structure that we have just seen is called the
+    Frobenius normal form. Here’s the precise definition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition 34\.
+  prefs: []
+  type: TYPE_NORMAL
+- en: (Frobenius normal form)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let A ∈ℝ^(n×n) be a nonnegative matrix. A is said to be in Frobenius normal
+    form if it can be written in the block matrix form
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![L(U,V ) = {f : U → V | f is linear}](img/equation_(15).png)'
+  prefs: []
+  type: TYPE_IMG
+- en: where A[1],…,A[k] are irreducible matrices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s reverse the question: can we transform an arbitrary nonnegative matrix
+    into the Frobenius normal form? Yes, and with the help of directed graphs, this
+    is much easier to show than purely using algebra. Here is the famous theorem in
+    full form.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Theorem 54\. (The existence of the Frobenius normal form)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let A ∈ℝ^(n×n) be a nonnegative matrix. There exists a permutation matrix P
+    ∈ℝ^(n×n) such that P^T AP is in Frobenius normal form.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rigorously spelling out the proof of Theorem [54](ch014.xhtml#x1-137003r54)
+    is quite complicated. However, the ideas behind the proof are simple to show.
+    Thus, we’ll take the less rigorous, more fun route.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, why is the Frobenius normal form a big deal and what on Earth is a permutation
+    matrix? Let’s dive into it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.3.1 Permutation matrices
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Mathematics is often done from concrete to abstract. That’s why we are often
+    start with special cases: what happens if we multiply a 2 x 2 matrix by'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ ⌋ P1,2 = ⌈0 1⌉ , 1 0 ](img/file825.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: a simple zero-one matrix? With a quick calculation, we can verify that
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![⌊ ⌋ ⌊ ⌋ ⌊ ⌋ ⌈0 1⌉ ⌈a b⌉ = ⌈c d⌉ , 1 0 c d a b ⌊ ⌋ ⌊ ⌋ ⌊ ⌋ a b 0 1 b a ⌈ ⌉
+    ⌈ ⌉ = ⌈ ⌉ , c d 1 0 d c ](img/file826.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: that is,
+  prefs: []
+  type: TYPE_NORMAL
+- en: it switches the rows when multiplied from the left,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: and it switches the columns when multiplied from the right.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Multiplying by P from both the left and right compounds the effects: it switches
+    rows and columns, as'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![⌊ ⌋ ⌊ ⌋ ⌊ ⌋ ⌊ ⌋ 0 1 a b 0 1 d c ⌈ ⌉ ⌈ ⌉ ⌈ ⌉ = ⌈ ⌉ 1 0 c d 1 0 b a ](img/file827.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: shows. (By the way, this is a similarity transformation, as our special zero-one
+    matrix is its own inverse. This is not an accident; more about it later.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why are we looking at this? Because behind the scenes, this transformation doesn’t
+    change the underlying graph structure, just relabels its nodes!
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can easily verify this by hand, but Figure 8.9 illustrates this as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file828.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.9: Relabeling the nodes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A similar phenomenon is true in the general n×n case. Here, we define the so-called
+    transposition matrices by switching the i-th and j-th rows of the identity matrix,
+    for example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ ⌋ ⌊ ⌋ |0 1 0 0 0| |1 0 0 0 0| ||1 0 0 0 0|| ||0 1 0 0 0|| || || 5×5 ||
+    || 5×5 P1,2 = |0 0 1 0 0| ∈ ℝ , P3,5 = |0 0 0 0 1| ∈ ℝ . ||0 0 0 1 0|| ||0 0 0
+    1 0|| ⌈ ⌉ ⌈ ⌉ 0 0 0 0 1 0 0 1 0 0 ](img/file829.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The two most important properties of the permutation matrices are P[i,j]^T =
+    P[i,j] and P[i,j]^T P[i,j] = I. That is, their inverse is their transpose.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Multiplication with a transposition matrix has the same effect: it switches
+    rows from the left and columns from the right. To be precise,'
+  prefs: []
+  type: TYPE_NORMAL
+- en: P[i,j]A switches the i-th and j-th rows of A,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: and AP[i,j] switches the i-th and j-th columns of A.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Most importantly, the similarity transformation
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Pi,jAPi,j ](img/file830.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: relabels the i-th and j-th nodes of A’s digraph, leaving the graph structure
+    invariant.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, about the aforementioned permutation matrices. A permutation matrix is
+    simply a product of transposition matrices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![P = Pi1,i2Pi3,i4 ...Pi2k−1,i2k. ](img/file831.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Permutation matrices inherit some properties from their building blocks. Most
+    importantly,
+  prefs: []
+  type: TYPE_NORMAL
+- en: their inverse is their transpose,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: and a similarity transformation with them is just a relabeling of nodes that
+    leave the graph structure invariant.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To see this latter one, consider that
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![P TAP = (Pi1,i2Pi3,i4 ...Pi2k−1,i2k)TA (Pi1,i2Pi3,i4 ...Pi2k− 1,i2k) = (Pi2k−
+    1,i2k ...(Pi1,i2APi1,i2)...Pi2k−1,i2k), ](img/file832.png)='
+  prefs: []
+  type: TYPE_NORMAL
+- en: succesively relabeling the nodes. (Recall that transposing a matrix product
+    switches up the order, and transposition matrices are their own transposes.) Conversely,
+    every node relabeling is equivalent to a similarity transformation with a well-constructed
+    permutation matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why are we talking about this? Because the proper labeling of nodes is key to
+    the Frobenius normal form.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.3.2 Directed graphs and their strongly connected components
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now, let’s talk about graphs. We’ll see how every digraph decomposes into strongly
+    connected components. Let’s see a concrete example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file833.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.10: A directed graph (that is complex enough for us to study)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This’ll be our textbook example. How many nodes can be reached from a given
+    node? Not necessarily all. Say, for the point highlighted in Figure 8.11, only
+    a portion of the graph is accessible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file834.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.11: Downstream nodes for a single starting point'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, the set of mutually reachable nodes is much smaller: Figure 8.12 shows
+    that in our example, it consists of only two points.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file835.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.12: Mutually reachable nodes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Algebraically speaking, “![a ](img/file836.png) and ![b ](img/file837.png) are
+    mutually reachable from each other“ is a special relation that partitions the
+    set of nodes into disjoint subsets such that
+  prefs: []
+  type: TYPE_NORMAL
+- en: two nodes from the same subset are mutually reachable from each other,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: and two nodes from different subsets are not mutually reachable.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The subsets of this partition are called the strongly connected components,
+    and we can always decompose a directed graph in this way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file838.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.13: Strongly connected components of our example graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s connect everything together (not in a graph way but, you know, in
+    a wholesome mathematical one)!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.3.3 Putting graphs and permutation matrices together
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We are two steps away from proving that every nonnegative square matrix can
+    be transformed into the Frobenius normal form with a permutation matrix. Here
+    is the plan.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Construct the graph for our nonnegative matrix.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Find the strongly connected components.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Relabel the nodes in a clever way.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'And that’s it! Why? Because, as we have seen, relabeling is the same as a similarity
+    transform with a permutation matrix. There’s just one tiny snag: what is the clever
+    way? I’ll show you.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we “skeletonize” the graph: merge the components together, as well as
+    any edges between them.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider each component as a black box: we don’t care what’s inside, only about
+    their external connections.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file839.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.14: Strongly connected components'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this skeleton, we can find components that cannot be entered from other components.
+    These will be our starting points, the zeroth-class components. In our example,
+    we only have one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file840.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.15: Finding the ”zeroth” component'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, things get a bit tricky. We number each component by the longest path from
+    the farthest zero-class component from which it can be reached.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is hard to even read, let alone understand. Figure 8.16 illustrates the
+    process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file841.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.16: Numbering the components'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The gist is that if you can reach an m-th class from an n-th class, then n <m.
+    In the end, we have something like Figure 8.17.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file842.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.17: Numbered components'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This defines an ordering on the components (a partial ordering, if you would
+    like to be precise).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, we label the nodes inside such that
+  prefs: []
+  type: TYPE_NORMAL
+- en: higher-order classes come first,
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: and consecutive indices are labeling nodes from the same component if possible.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This is how it goes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file843.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.18: Labeling the nodes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the matrix in this particular example, with zeros and ones for simplicity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![⌊ | | | | ⌋ 0 1 1 |1 0 0 0 |0 0 | 0 |0 0 0 || | | | | || || 0 0 1 |0 0 1
+    0 |0 0 | 1 |0 0 0 || || 1 0 0 |0 0 0 0 |1 0 | 0 |0 0 0 || | ---------|-----------|----|---|-------|
+    || 0 0 0 |0 1 0 1 |0 0 | 0 |0 0 0 || || 0 0 0 |0 0 1 0 |0 0 | 0 |0 0 0 || || |
+    | | | || || 0 0 0 |1 0 0 0 |0 0 | 0 |0 0 0 || || 0 0 0 |0 1 1 0 |0 0 | 0 |0 0
+    0 || | ---------|-----------|----|---|-------| || 0 0 0 |0 0 0 0 |0 1 | 1 |0 0
+    0 || || 0 0 0 |0 0 0 0 |1 0 | 0 |0 0 0 || || ---------|-----------|----|---|-------||
+    || -0--0--0-|0--0--0--0-|0-0-|-0-|1-0--0-|| || 0 0 0 |0 0 0 0 |0 0 | 0 |0 1 0
+    || | | | | | | || 0 0 0 |0 0 0 0 |0 0 | 0 |0 0 1 || || 0 0 0 |0 0 0 0 |0 0 | 0
+    |1 0 0 || ⌈ ⌉ ](img/file844.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'With that, the ideas behind the proof of Theorem [54](ch014.xhtml#x1-137003r54)
+    are clear! Now, we also finally understand why irreducible matrices are called
+    irreducible: as they describe strongly connected graphs, they cannot be further
+    decomposed into smaller blocks in a meaningful way.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.4 Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: With the study of the connections between linear algebra and graph theory, our
+    journey through linear algebra is over.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this and the previous seven chapters, we have learned that vectors and matrices
+    are not merely data structures that store observations and measurements. Vectors
+    and matrices possess a rich and beautiful geometric structure, describing data
+    and their transformations at the same time!
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we learned that vectors live in so-called vector spaces, the high-dimensional
+    generalizations of the three-dimensional space we are living in (which might be
+    26-dimensional, according to some string theorists, but let’s stick to the Earth
+    for now). We can measure lengths and distances via norms, most often defined by
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ∑n ∥x ∥ = x2, x ∈ ℝn, i=1 i ](img/file845.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: or measure angles (among others) via inner products, most often defined by
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ∑n ⟨x, y⟩ = xiyi i=1 = cos(α)∥x ∥∥y∥. ](img/file846.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'From a mathematical perspective, matrices originate from the linear transformation
+    of vector spaces, i.e., functions of the form f : U →V , satisfying the linearity
+    relation f(ax + by) = af(x) + bf(y). Matrices arise from the algebraic representation
+    of linear transformations by expressing them in the form'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ ⌋ ⌊ ∑n ⌋ ⌊a a ... a ⌋| x1| | i=1 a1,ixi| | 1,1 1,2 1,m ||| x2|| || ∑n
+    a2,ixi|| ||a2,1 a2,2 ... a2,m ||| .| | i=1\. | f(x) = Af x = || .. .. .. .. ||||
+    ..|| = || .. || , ⌈ . . . . ⌉|| x || || ∑n a x || an,1 an,2 ... an,m, ⌈ n⌉ ⌈ i=1
+    n,i i⌉ ](img/file847.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'allowing us to reason about data transformations from a geometric perspective.
+    This is an extremely powerful tool in machine learning. Think about it: Ax can
+    be a regression model, a layer in a neural network, or various other machine learning
+    building blocks. Ultimately, this is why we want to study vector spaces: the data
+    lives there, and data transformations are described by matrices.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, building a model doesn’t stop at linear algebra. To capture more complex
+    patterns, we need nonlinearities. For instance, consider the famous Sigmoid function,
+    defined by
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![σ(x) = ---1---. 1+ e− x ](img/file848.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The transformation defined by σ(Ax) (where σ is applied elementwise) is a simple
+    logistic regression model, allowing us to perform binary classification on our
+    multidimensional feature space. Iterating on this idea, the expression
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![N (x) = σ(B σ(Ax)) ](img/file849.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: defines a two-layer neural network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, the next part of our journey is into the domain of calculus, where we’ll
+    learn what functions really are, how we build predictive models from them, and
+    how we fit these models by tuning the parameters with gradient descent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s go!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.5 Problems
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Problem 1\. Let G = (V,E) be a directed graph and let u,v ∈V be two of its nodes.
+    Show that if there exists a walk from u to v, then there exists a walk without
+    repeated edges and repeated vertices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Problem 2\. Let G = (V,E) be a strongly connected directed graph. Show that
+    jEj ≥jV j, where jSj denotes the number of elements in the set S. (In other words,
+    show that in order to be strongly connected, G must have at least as many edges
+    as nodes.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Problem 3\. Let A ∈ℝ^(n×n) be an irreducible matrix. Is A² also reducible? (If
+    yes, prove it. If no, show a counterexample.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Problem 4\. Let A ∈ℝ^(4×4) be the matrix defined by
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ⌊ ⌋ | 0 0 1 0| | 0 0 0 1| A = || || . |⌈ 1 0 0 0|⌉ 0 1 0 0 ](img/file850.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Find the permutation matrix P that transforms A to a Frobenius normal form!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Join our community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read this book alongside other users, Machine Learning experts, and the author
+    himself. Ask questions, provide solutions to other readers, chat with the author
+    via Ask Me Anything sessions, and much more. Scan the QR code or visit the link
+    to join the community. [https://packt.link/math](https://packt.link/math)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

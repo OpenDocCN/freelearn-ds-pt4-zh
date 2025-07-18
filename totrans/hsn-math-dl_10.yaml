@@ -1,0 +1,468 @@
+- en: Regularization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we learned about (deep) feedforward neural networks
+    and how they are structured. We learned how these architectures can leverage their
+    hidden layers and non-linear activations to learn to perform well on some very
+    challenging tasks, which linear models aren't able to do. We also saw that neural
+    networks tend to overfit to the training data by learning noise in the dataset,
+    which leads to errors in the testing data. Naturally, since our goal is to create
+    models that generalize well, we want to close the gap so that our models perform
+    just as well on both datasets. This is the goal of regularization—to reduce test
+    error, sometimes at the expense of greater training error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will cover a variety of methods used in regularization,
+    how they work, and why certain techniques are preferred over others. This includes
+    limiting the capacity of a neural network, applying norm penalties and dataset
+    augmentation, and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The need for regularization
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Norm penalties
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Early stopping
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Parameter typing and sharing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Dataset augmentation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Dropout
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adversarial training
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The need for regularization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous chapters, we learned how feedforward neural networks are basically
+    a complex function that maps an input to a corresponding target/label by learning
+    the underlying distribution using the training data. We can recall that during
+    training, after an error has been calculated during the forward pass, backpropagation
+    is used to update the parameters in order to reduce the loss and better approximate
+    the data distribution. We also learned about the capacity of neural networks,
+    the bias-variance trade-off, and how neural networks can underfit or overfit to
+    the training data, which prevents it from being able to perform well on unseen
+    data or test data (that is, a generalization error occurs).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we get into what exactly regularization is, let's revisit overfitting
+    and underfitting. Neural networks, as we know, are universal function approximators.
+    Deep neural networks have many hidden layers, which means there are a lot of parameters
+    that need to be trained. As a general rule, the more parameters a model has, the
+    more complex it is, which means there's a greater risk of it overfitting to the
+    training data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This means that our model has perfectly learned all the patterns that exist
+    in the data, including the noise, and has zero loss on the training data, but
+    has a high loss on the test data. Additionally, overfitted models, in general,
+    have a lower bias and a very high variance. Conversely, models with fewer parameters
+    tend to be simpler, which means they are more likely to underfit to the training
+    data because they observe a small portion of the data that doesn''t differ much.
+    Therefore, they tend to have a much greater bias, which also leads to high variance.
+    The following diagram illustrates the preceding explanation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/165391af-7a2f-46ab-ae26-0993b3440a6d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Somewhere in between overfitting and underfitting is a sweet spot where we have
+    the optimal capacity; that is, the model hyperparameters that are perfectly suited
+    to the task and data at hand—this is what we are aiming for. This tells us that
+    the goal of regularization is to prevent our model from overfitting and that we
+    prefer simpler models over vastly complex ones. However, the best model is one
+    that is large and properly regularized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know the purpose of regularization, let's explore some of the many
+    ways that we can regularize our deep neural networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Norm penalties
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Adding a parameter norm penalty to the objective function is the most classic
+    of the regularization methods. What this does is limit the capacity of the model.
+    This method has been around for several decades and predates the advent of deep
+    learning. We can write this as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e8bc159d-b7cf-44a3-824e-064daec6d725.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, [![](img/535e6a8d-0d2d-47bc-8ad3-07bcbb01091e.png)]. The *α* value, in
+    the preceding equation, is a hyperparameter that determines how large a regularizing
+    effect the regularizer will have on the regularized cost function. The greater the
+    value of *α* is, the more regularization is applied, and the smaller it is, the
+    less of an effect regularization has on the cost function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of neural networks, we only apply the parameter norm penalties to
+    the weights since they control the interaction or relationship between two nodes
+    in successive layers, and we leave the biases as they are since they need less
+    data in comparison to the weights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a few different choices we can make when it comes to what kind of
+    parameter norm to use, and each has a different effect on the solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: L2 regularization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The L2 regularization method is often referred to as **ridge regression** (but
+    more commonly known as **weight decay**). It forces the weights of the network
+    in the direction of the origin through the following regularization term to the
+    objective function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ec96d3c7-c42a-4279-9a24-3d58349d85e2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: For simplicity, we will assume that *θ* = *w* and that all the letters are matrices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The regularized objective function, in this case, will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/aab6dd33-f3d6-4e56-8f1d-de0206215020.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If we take its gradient, then it becomes the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ad2c2931-b5b2-4137-ae9b-3346f20ea6df.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Using the preceding gradient, we can calculate the update for the weights at
+    each gradient step, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/48b66bb6-9b56-4820-ac10-bdac9cae0707.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can expand and rewrite the right-hand side of the preceding update as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b96ed906-1d3e-4008-a0a9-d1f1bed34247.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'From this equation, we can clearly see that the modified learning rule causes
+    our weight to shrink by [![](img/436ce41e-e6f7-4bc4-a7b1-a2221ec84250.png)] at
+    every step, as in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/09e2fc82-bb08-45e9-a9eb-18ec80d4362d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding diagram, we can see the effect that L2 regularization has on
+    our weights. The solid circles toward the top-right side represent contours of
+    equal value of the original object function, [![](img/78025785-3209-4d95-8579-e7deeb0a9c6f.png)],
+    which we have not yet applied our regularizer to. The dotted circles, on the other
+    hand, represent the contours of the regularizer term, ![](img/b633427d-d029-4083-99b0-bdcd65bd2202.png).
+    Finally, ![](img/33f695a7-3bd0-4db4-a59b-d0a340606de8.png), the point where both
+    the contours meet, represents when competing objectives reach equilibrium.
+  prefs: []
+  type: TYPE_NORMAL
+- en: L1 regularization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another form of norm penalty is to use L1 regularization, which is sometimes
+    referred to as **least absolute shrinkage and selection operator** (**lasso**)
+    regression. In this case, the regularization term is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c3058fed-c4ca-4434-888a-e2ea1c42cb6d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: What this does is it sums together the absolute values of the parameters. The
+    effect that this has is that it introduces sparsity to our model by zeroing out
+    some of the values, telling us that they aren't very important. This can be thought
+    of as a form of feature selection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similar to the preceding L2 regularization, in L1 regularization, the *α* hyperparameter controls
+    how much of an effect the regularization has on the objective function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/187af489-baa7-4607-afea-0ac2a430fd27.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This is illustrated as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ae903d9e-0c3c-47d3-b14f-b793ae1cb04c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see in the preceding diagram, the contours of the objective function
+    now meet at the axes instead of at a point away from it, as was the case in L2
+    regularization, which is where the sparsity in this method comes from.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have learned how we can regularize our deep neural networks, let's
+    have a look at what early stopping is in the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Early stopping
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: During training, we know that our neural networks (which have sufficient capacity
+    to learn the training data) have a tendency to overfit to the training data over
+    many iterations, and then they are unable to generalize what they have learned
+    to perform well on the test set. One way of overcoming this problem is to plot
+    the error on the training and test sets at each iteration and analytically look
+    for the iteration where the error from the training and test sets is the closest.
+    Then, we choose those parameters for our model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another advantage of this method is that this in no way alters the objective
+    function in the way that parameter norms do, which makes it easy to use and means
+    it doesn''t interfere with the network''s learning dynamics, which is shown in
+    the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/28316bfe-c660-4d02-90b0-ce7936d2fdaf.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: However, this approach isn't perfect—it does have a downside. It is computationally
+    expensive because we have to train the network longer than is needed and collect
+    more data for it, and then observe the point where the performance started to
+    degrade.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parameter tying and sharing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The preceding parameter norm penalties work by penalizing the model parameters
+    when they deviate from 0 (a fixed value). But sometimes, we may want to express
+    prior knowledge about which parameters would be better suited to the model. Although
+    we may not know what those parameters are, thanks to domain knowledge and the
+    architecture of the model, we know that there are likely to be some dependencies
+    between the parameters of the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These dependencies could be some specific parameters that are closer to some
+    than to others. Let''s suppose we have two different models for a classification
+    task and detect the same number of classes. Their input distributions, however,
+    are not the same. Let''s name the first model *A* with *θ^((A))* parameters and
+    the second model *B* with *θ^((B))* parameters. Both of these models map their
+    respective inputs to the outputs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/03ecf77a-5b1e-43e1-84ab-d086d87e5109.png) and ![](img/4f0c1b9e-d87a-4b67-8bd6-e4385eaadc24.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Naturally, since both of these models are working on relatively similar (maybe
+    even the same) task(s) and so likely have similar (or the same) input distributions,
+    both model *A* and model *B*'s parameters should be close to each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use a parameter norm penalty, such as the L2 penalty, to determine the
+    closeness of the *θ^((A))* and *θ^((B))* parameters, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/589248e9-de5a-45ad-9edb-660777b80a8e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can use other metrics besides the L2 norm to measure the distance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This method of forcing parameters to be close to each other is referred to as
+    **parameter sharing**. The reason for this is that this can be interpreted as
+    the different models sharing a set of parameters. This approach is preferred to
+    parameter norm penalties because it requires less memory since we only have to
+    store a unique set of shared parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dataset augmentation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Deep feedforward networks, as we have learned, are very data-hungry and they
+    use all this data to learn the underlying data distribution so that they can use
+    their gained knowledge to make predictions on unseen data. This is because the
+    more data they see, the more likely it is that what they encounter in the test
+    set will be an interpolation of the distribution they have already learned. But
+    getting a large enough dataset with good-quality labeled data is by no means a
+    simple task (especially for certain problems where gathering data could end up
+    being very costly). A method to circumvent this issue is using data augmentation;
+    that is, generating synthetic data and using it to train our deep neural network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The way synthetic data generation works is that we use a generative model (more
+    on this in [Chapter 12](916c9cb2-14fa-44d9-a899-90948a342c52.xhtml), *Generative
+    Models*) to learn the underlying distribution of the dataset that we will use
+    to train our network for the task at hand, and then use the generative model to
+    create synthetic data that is similar to the ground-truth data so that it appears
+    to have come from the same dataset. We can also add small variations to the synthetic
+    data to make the model more robust to noise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This method has proven to be very effective in the case of computer vision—particularly
+    object detection/classification—which we make use of in convolutional neural networks
+    (which we will learn about in [Chapter 9](2c830a26-9964-47fb-8d69-904e4f087b95.xhtml),
+    *Convolutional Neural Networks*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another type of data augmentation that is often used in image recognition is
+    image cropping and image rotation, where we either crop a large segment of the
+    input image or rotate it by some angle. These methods have also been proven to
+    increase robustness and improve generalization on unseen data. We could also corrupt,
+    blur, or add in some Gaussian noise to the images to make the network more robust
+    since a lot of real-world data tends to be noisy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, there are limitations to this. For example, in the case of optical
+    character recognition (where we want to recognize letters and numbers), horizontal
+    flips and 180-degree rotations can affect the class. After a transformation, a
+    *b* can turn into a *d* and a *6* can turn into a *9*. There are also some problems
+    where data augmentation simply isn't an option; an example of this is in the medical
+    domain where we could be trying to work with MRI and CT scans. However, what we
+    could do, in this case, is apply affine transformations, such as rotations and
+    translations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's focus for a moment on noise injection. There are two ways we can do this—the
+    first is to inject noise to the input data and the second is to inject noise into
+    the hidden units. In fact, it has been found that the addition of noise to hidden
+    units can be a much better regularizer than parameter shrinking because it encourages
+    stability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dropout
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the preceding section, we learned about applying penalties to the norm of
+    the weights to regularize them, as well as other approaches, such as dataset augmentation
+    and early stopping. However, there is another effective approach that is widely used
+    in practice, known as dropout.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, when training neural networks, all the weights have been learned together.
+    However, dropout alters this idea by having the network only learn a fraction
+    of the weights during each iteration. The reason for this is to avoid co-adaptation.
+    This occurs when we train the entire network over all the training data and some
+    connections end up stronger than others, thereby contributing more toward the
+    network's predictive capabilities because the stronger connections overpower the
+    weaker connections, effectively ignoring them. As we train the network with more
+    iterations, some of the weaker connections essentially die out and are no longer
+    trainable, so only a subnetwork ends up being trained, putting part of the network
+    to waste. This is something that the preceding norm penalties are unable to address.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The way that dropout overcomes overfitting is by randomly (according to some
+    predefined probability) removing (dropping out) neurons from a hidden layer; that
+    is, we temporarily zero out some of the incoming and outgoing edges of a node
+    so that it does not have an impact on the network during that training iteration.
+    For example, if we have a **multilayer perceptron** (**MLP**) with one hidden
+    layer that consists of 10 neurons and we have dropout with *p *= 0.5, then half
+    the neurons are set to 0\. If *p *= 0.2, then 20 percent of the neurons are dropped:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a5a6f686-7382-40c4-8525-104420cec101.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s consider an MLP with *L* hidden layers, such that [![](img/114466dd-a33d-42f4-88b2-9b7b9e0e84fe.png)],
+    where the vector input to each layer is *z^((l))* and the output vector of each
+    layer is *y^((l))* (for the sake of simplicity, *y^((0) )*= *x*). The weights
+    and biases of each layer are denoted by *W^((l))* and *b^((l))*, respectively.
+    Then, we get the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5623174a-02fd-42c4-9fc8-e11f03bd3582.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *f* is any activation function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, with dropout, the feedforward operations become the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0333e648-262e-4b49-91fb-8b0655e27aa6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, we find that *p *= 0.5 has the best regularizing effect during training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adversarial training
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Nowadays, neural networks have started to reach human-level accuracy on a number
+    of tasks, and in some, they can be seen to have even surpassed humans. But have
+    they really surpassed humans or does it just seem this way? In production environments,
+    we often have to deal with noisy data, which can cause our model to make incorrect
+    predictions. So, we will now learn about another very important method of regularization—**adversarial
+    training**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we get into the what and the how of adversarial training, let''s take
+    a look at the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e3badced-6166-43aa-b615-25a0bf7b13b8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: What we have done, in the preceding diagram, is added in negligible Gaussian
+    noise to the pixels of the original image. To us, the image looks exactly the
+    same, but to a convolutional neural network, it looks entirely different. This
+    is a problem, and it occurs even when our models are perfectly trained and have
+    almost no error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What we do is find a data point, *x''*, which is near to *x*, but the model
+    predicts *x''* to be part of a different class. Now, to add noise to our image,
+    we can do so as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/06453a6a-bb69-4ffc-af11-cbbae42e4790.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The reason this interests us is that adding adversarially perturbed data samples
+    to our training dataset can help reduce the error on our test set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered a variety of methods that are used to regularize
+    the parameters of a neural network. These methods are very important when it comes
+    to training our models because they help ensure that they can generalize to unseen
+    data by preventing overfitting, thereby performing well on the tasks we want to
+    use them for. In the following chapters, we will learn about different types of
+    neural networks and how each one is best suited for certain types of problems.
+    Each neural network has a form of regularization that it can use to help improve
+    performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will learn about convolutional neural networks, which
+    are used for computer vision.
+  prefs: []
+  type: TYPE_NORMAL

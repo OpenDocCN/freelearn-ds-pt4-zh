@@ -1,0 +1,913 @@
+- en: Producing Publication and Web-Ready Visualizations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Designing and producing publication-quality visualizations is a key task and
+    one of the most rewarding things bioinformaticians gets to do with data. R is
+    not short of excellent packages for creating graphics, that is, beyond the powerful
+    base graphics system and `ggplot2`. In the recipes in this chapter, we'll look
+    at how to create plots for many different data types that aren't of the typical
+    bar/scatter plot type. We'll also look at networks, interactive and 3D graphics,
+    and circular genome plots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following recipes will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing multiple distributions with ridgeplots
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating colormaps for two-variable data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Representing relational data as networks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating interactive web graphics with plotly
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Constructing three-dimensional plots with plotly
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Constructing circular genome plots of polyomic data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sample data you'll need for this chapter is available in this book's GitHub
+    repository: [https://github.com/danmaclean/R_Bioinformatics_Cookbook](https://github.com/danmaclean/R_Bioinformatics_Cookbook)[.](https://github.com/danmaclean/R_Bioinformatics_Cookbook) If
+    you want to use the code examples as they are written, then you will need to make
+    sure that the data is in a subdirectory of your working directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the R packages that you''ll need. You can install them with `install.packages("package_name")`.
+    The packages listed under `Bioconductor` need to be installed with a dedicated
+    installer, which is also described in this section. If you need to do anything
+    else, the installation steps will be described in the recipes in which the packages
+    are used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`circlize`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dplyr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ggplot2`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ggridges`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`gplots`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`plotly`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`RColorBrewer`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`readr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`magrittr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`tidyr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`viridis`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Bioconductor` is huge and has its own installation manager. You can install
+    the manager with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you can install the packages with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further information is available at [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, in R, a user will load a library and use the functions directly by
+    name. This is great in interactive sessions, but it can cause confusion when many
+    packages are loaded. To clarify which package and function I'm using at a given
+    moment, I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, in the middle of a recipe, I''ll interrupt the flow of code so that
+    you can see some intermediate output or the structure of an object that''s important
+    to understand. Whenever that happens, you''ll see a code block where each line
+    begins with ## double hash symbols. Consider the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`letters[1:5]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will give us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`## a b c d e`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the output lines are prefixed with `##`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing multiple distributions with ridgeplots
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Visualizing distributions of some measured quantity is an extremely common task
+    in bioinformatics, and one that base R handles admirably with its `hist()` and
+    `density()` functions and the generic `plot()` methods, which can create plots
+    of the objects. The `ggplot` graphics system has a neat way of plotting many density
+    graphs in a per factor level manner, resulting in a compact and very readable
+    graphic—a so-called ridgeplot. In this recipe, we'll look at how to create a ridgeplot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we'll use the `ggplot` and `ggridges` packages. For the dataset,
+    we'll use one from the `datasets` package that usually comes preinstalled with
+    R. We're going to use the `airquality` data. You can see this if you type `airquality`
+    straight into the R console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Visualizing multiple distributions with ridgeplots can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build a `ggplot` description:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Explicitly make `Month` a factor:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Color the ridges:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Reshape the dataframe and add facets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: After loading the libraries we needed in *Step 1*, in *Step 2*, we created a
+    standard `ggplot` description using the `geom_ridges()` function from the `ggridges`
+    package. If you haven't seen a ggplot plot before, they're very straightforward.
+    A ggplot plot has three layers, built up using at least three functions—the `ggplot()` function
+    is always the first and allows us to specify the dataset. The next, which is added
+    on top with the `+` operator, is the `aes()` function or aesthetic function, which
+    we can think of as being the things we want to see in the plot. The first argument
+    represents the thing on the *x* axis, while the second argument represents the
+    thing on the *y *axis. The `group = Month` argument is specific to the ridgeplot
+    and tells the plotting function how to group data points. It is needed here since
+    the `Month` data is numeric, not a factor. Finally, we add `geom_density_ridges()`
+    to create the right sort of plot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 3*, we followed the same sort of procedure as *Step 2*, but this time,
+    as an alternative, we use `as.factor(Month)`, which explicitly converts the `Month`
+    data into a factor before processing and rendering the group. This deems the `Month`
+    step unnecessary. The plots from these steps look as follows, with *Step 2* on
+    the left and *Step 3* on the right:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/386fb9ba-2bec-45cf-bb1f-3203c30ae6c8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 4*, we added color to the ridges. Essentially, the `ggplot` construction
+    is the same, except it has the addition of `fill = ..x..` in the `aes()` function,
+    which tells the plot that color should be filled in the *x* axis direction. We
+    then use a slightly different `geom` function, `geom_density_ridges_gradient()`,
+    which is capable of coloring its ridges. In the last new layer, with `scale_fill_viridis()`,
+    we chose a color scale from the viridis color scale library (loaded at the top).
+    The `"C"` option specifies the particular color scale, while `name` specifies
+    the name for the scale. The resulting plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3cf10b88-19e3-4d92-bcf4-f03969c0e5f7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finally, in *Step 5*, we split the data by a further dimension and added facets
+    containing different aspects of the same dataset in the same style of plot. The
+    `airquality` data needs to be preprocessed a little for this to be possible. We
+    load the `tidyr` package and use the `gather()` function to take the values named
+    columns (specifically Ozone, Solar.R, Wind, and Temp) into a single column called
+    value and add a new column called Measurement that records the original column
+    that the observation came from. Then, we pipe the result into `ggplot()`. The
+    construction is nearly identical to before (note that our *x* axis is now value,
+    not Temp, as this is where the temperatures are stored in the reshaped dataframe),
+    with the addition of the `facet_wrap()` function at the end, which uses formula
+    notation to select the subsets of the data to display in individual facets. The
+    option scales are `"free"` and allow each of the resulting facets to have their
+    own scales. The result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4ddd1065-e5d0-4614-acf0-91f5f9d3c55b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating colormaps for two-variable data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Colormaps, also known as heatmaps, are plots of two-dimensional matrices in
+    which the numeric values are converted into a color at a particular scale. There
+    are numerous various ways in which we can plot these in R; most graphics packages
+    have some way of doing this. In this recipe, we'll use the base package's `heatmap()` function
+    to visualize some matrices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll need just the `ggplot` packages, as well as the built-in `WorldPhones` dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Creating colormaps for two-variable data can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a basic heatmap:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Remove the dendrogram:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add a color scale to the groups:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Change the palette:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Rescale the data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In *Step 1*, we passed the base `heatmap()` function a matrix, which returns
+    a plot that looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e6e8d896-0aa1-4eba-991f-c749b2933354.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 2*, we used the `Rowv` and `Colv` arguments to remove the dendrogram.
+    Note that, in the resulting plot, the columns are in the same order as in the
+    matrix. By using the dendrograms, we can rearrange the columns and rows. The treeless
+    plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/984dd795-1719-45b8-b22e-de1f7b48d9ee.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 3*, we created a palette object using the `rainbow()` function, which
+    returns the colors for a plot. The first argument to `rainbow()` is the number
+    of colors. Here, we are using `ncol(WorldPhones)` to get one color per column
+    for the dataset. The start and end arguments specify where to start and end the
+    color selection in the rainbow. We can then use the **CC** palette object in the
+    `ColSideColors` argument to get a color key for the columns. We can use more similar
+    columns to get more similar colors, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/171a8ed7-dbd4-4093-88a9-de35fa1e9abb.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 4*, we provided a palette object to the `col` argument to change the
+    overall palette of the heatmap. We used the `colorRampPalette()` function to make
+    a sequential palette from a smaller list of specific colors. This will interpolate
+    the colors to make a full palette. We passed `colorRampPalette()` the `RColorBrewer`
+    package function known as `brewer.pal()`, which, with the provided options, will
+    return eight colors from the **pink-yellow-green** (**PiYG**) pallete. The resulting
+    heatmap is colored like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/62b784e1-0480-40db-a5c6-6bf8c09948d9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finally, in *Step 5*, we applied a numeric transformation to the data within
+    the visualization step. We use the `scale` option of `heatmap()` to normalize
+    the data in the plot. Note that setting the value to **column** does this column-wise
+    while setting it to `row` does this row-wise. The default base package `scale()` function
+    is used for this. Rescaling the numbers in the plot is what is responsible for
+    the color change, and is not the result of a direct selection from a palette.
+    The plot is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cb43c3e2-11a7-49d8-9b0b-c6b7bc0d6725.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `heatmap()` function has been followed up by other packages that follow
+    a similar syntax but extend its capabilities. Try `heatmap.2()` and `heatmap.3()`
+    in the `gplots` package. A `heatmap.2()` plot can be seen in the following histogram.
+    It''s very similar to `heatmap()`, but has an added color key and histogram plot
+    by default:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/fe5afabd-d1d9-45ab-b0e9-089e40921f89.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Representing relational data as networks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Networks, or graphs, are extremely powerful data representations for relationships
+    between entities that are central to a large number of biological studies. Network
+    analysis can reveal a lot about community structures in ecological studies, reveal
+    potential drug targets in protein-protein interactions, and help us understand
+    the interactions involved in complex metabolic reactions. The underlying data
+    structures that represent networks can be complex. Thankfully, R has got some
+    very powerful packages, in particular, `igraph` and `ggraph`, that we can use
+    to access information about our networks and make plots. In this recipe, we'll
+    look at some ways of generating plots for a reasonably sized network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we'll need the `ggraph` and `igraph` packages and dependencies,
+    including `magrittr`, `readr`, and `dplyr`. We'll need the `bio-DM-LC.edges` file
+    from the `datasets/ch7` folder of this book repository. This is a file that contains
+    some gene functional associations from WormNet. The network contains ~1,100 edges
+    and ~650 nodes. You can read more about the data here: [http://networkrepository.com/bio-DM-LC.php](http://networkrepository.com/bio-DM-LC.php).
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Representing relational data as networks can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the packages and prepare the dataframe:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create an `igraph` object and use it in a basic plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Color the edges according to their value or type:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add the node attributes and color nodes accordingly:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we loaded the libraries we needed and then prepared the dataframe
+    from the file of edges. The input file is basically an edge list. Each row describes
+    a connection with one of the target nodes in the first column and one in the second.
+    The third column contains a value representing the strength of the interaction
+    between those two nodes, which we'll think of as an edge weight. The fields are
+    separated by a single space and the file has no header with column names. As such,
+    we set the values of the `delim` and `col_names` arguments appropriately. We pipe
+    the dataframe to the `dplyr::mutate()` function to add an extra column called
+    `edge_type`. In this column, we randomly assign either `"A"` or `"B"` to each
+    row using the `sample()` function. The resulting object is saved in the `df` variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we created the igraph object from `df` using the `igraph::graph_from_data_frame()`
+    function and saved it to the `graph` variable. We passed the `igraph` graph object
+    as the first object to the `ggraph()` function, which works analogously to `ggplot()`*.*
+    It takes the `graph` object and a layout argument. (Here, we use `"kk"`, but the
+    exact one to use will be heavily dependent on the data itself.) Then, we added
+    layers with the `+` operator. First, we added the `geom_edge_link()` layer, which
+    draws the edges, then `geom_node_point()`, which draws the nodes, and finally,
+    we add `theme_void()`, which removes the background gray panel and white lines
+    and leaves a clear background for the network. The initial plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2cc1a139-5b20-4d55-88fc-754f5213eb3b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 3*, we added some data-based customizations. We started by changing
+    the layout algorithm to `"fr"`, which gives a nicer and more spread out view.
+    Then, we used the `aes()` function in `geom_edge_link()` to set the edge color
+    to be mapped to the `edge_type` value. The remaining layers were added like they
+    were previously. By doing this, we get the following plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/772fcbe4-3dab-4b75-8f60-0a43e50b9507.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 4*, we set up some attributes for the nodes. This is simpler than
+    it looks. The `V()` function from `igraph` returns a simple vector of the node
+    IDs in the `graph` object (nodes are called vertices in igraph jargon), so we
+    calculate the length of the vector and use it to make a random vector of the `Nucleus`,
+    `Mitochondrion`, and `Cytoplasm` values. We can then assign these new values to
+    the nodes by using the `V()` function with `$` indexing. We can create any attribute
+    we like, so `igraph::V(graph)$category` creates a new attribute called **category**.
+    We can assign the new values straight to the attribute using the standard `*<-*` assignment
+    operator. The next step is similar; `igraph::V(graph)$degree` creates an attribute
+    called **degree**. In our case, we assign the result of the `igraph::degree()`
+    function. Degree is the graph jargon term for the number of edges that meet at
+    a node. We now have new attributes and can color our graph accordingly. The `ggraph()`
+    construction proceeds as it did previously, but in the `geom_node_point()` layer,
+    we use `aes()` to map color to our new category attribute and size to our new
+    `degree` attribute. The resulting plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/29ba5b4d-1884-41ee-bdbe-c1758200658b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Hive plots are a nice way of plotting networks, especially when you have three
+    node types or some sort of directional structure. You can create a hive plot out
+    of the same sort of data we already have, like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we set up the layout type to be `hive` and specify the attribute on which
+    to make the axis `category`. The edge description in `geom_edge_hive()` is pretty
+    much like it was previously, with an `alpha` argument called `..index..` that
+    adds a transparency element to the edges based on how early they are plotted.
+    The `geom` node is replaced with `geom_axis_hive()`, in which we use `aes()` to
+    map a color to the category. The resultant plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c88697a7-7aab-4240-8c29-eb4b1abc601a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating interactive web graphics with plotly
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Exploring a dataset interactively through a graphical user interface can be
+    a rewarding and enlightening way to analyze and interrogate data. Dynamically
+    adding and removing data from a plot, zooming in and out of specific parts, or
+    allowing the plot to change with time-dependent on underlying data can allow us
+    to see trends and features we could not see with static plots. In this recipe,
+    we'll look at using the `plotly` library to create interactive graphics in R,
+    building up from a basic plot to a more involved one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we'll use the built-in Orange data, which describes changes
+    in the circumference of orange trees' trunks over time. This is part of the (usually)
+    preinstalled `datasets` package, so you should be able to access it straight away.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Creating interactive web graphics with `plotly` can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library and make a basic plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Map the color and size of markers and hover over text to data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add a second series/trace:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add a drop-down menu so that you can select the plot type:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'After loading the library in *Step 1*, we used the core `plot_ly()` function
+    to create the simplest plot possible. We passed `plot_ly()` the name of the dataframe,
+    and the columns for the *x* and *y* axes as formulae—hence the `~` sign. At this
+    point, we haven''t explicitly specified the trace type, what `plotly` calls its
+    series or data tracks, so it guesses and makes a scatter plot, as shown in the
+    following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6861dbc2-2587-4488-8c0d-0d405cd4e12d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Note the menu icons at the top of the plot and the hover text that appears when
+    you mouse over a data point. These figures can be interacted with perfectly well
+    within an interactive R session but are better suited to HTML-based documents
+    such as compiled R markdown.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we mapped the features in the plot to aspects of the data. We
+    set the size and color to map to the Tree ID and age columns, again as a formula
+    with the `~` syntax. We also set the hover text for each point and used `paste()` to
+    compile the exact format. Note that the hover text is HTML-based and that we can
+    use tags such as `<br>` to format the hover as we choose. Our plot is now improved
+    to look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b17950f4-e633-40ba-a6ad-339251331123.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 3*, our major change is to explicitly specify the trace data. To highlight
+    that traces can carry data outside of the original dataframe, we created a new
+    data vector called `trace_1` using `rnorm()`, which contains 35 random numbers
+    with a mean of 120 and a standard deviation of 1\. We created our plot in the
+    same way as we created the plot in *Step 2*, but this time we used the `magrittr` pipe
+    to send the plot object to the `add_trace()` function. Here, we pass the new `trace_1`
+    object as our `y` value and set `mode` to `"lines"` to get a line graph. Again,
+    we piped that to another `add_trace()` function (we can build up a plot from multiple
+    trace series in this way), but this time used the original dataframe column circumference
+    and set `mode` to `"markers"`. The resulting plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/65b6953c-b853-42f4-a768-d1a6741e6542.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 4*, we introduced menus into our plot. The menu we implemented will
+    allow us to switch between trace types—from lines to markers and back. The step
+    started with the same basic call to `plot_ly()` and then piping to just one trace
+    this time. Next, we piped to the `layout` function, which takes a plot title in
+    the `title` argument and a complicated list of options for the `updatemenus` argument.
+    You must pass a list of lists to `updatemenus` that has three members – `type`,
+    `y`, and `buttons`. `type` sets the type of menu—in this case, we want a dropdown; `y`
+    sets the position of the menu on the *y* axis as a value between 0 and 1, and
+    `buttons` requires another list of lists in which each sublist describes a menu
+    option. Each sublist has the `members` method, as well as `args` and `labels`.
+    The `setting` method is used to `"restyle"`, which means the plot will update
+    on menu selection. The `args` member requires another list specifying the `"mode"`
+    and `"type"` for the current menu option. Finally, `label` specifies the text
+    that will appear in the menu itself for this menu option. The plot looks as follows
+    when we select **Marker** in the dropdown, which renders on the left:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3ae09760-4a47-4a46-9a18-1c78a8a9e5ef.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Constructing three-dimensional plots with plotly
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Most plots we generate in bioinformatics are static and stuck in a two-dimensional
+    plane, but modern web technologies allow us to interact with three-dimensional
+    objects with dynamic rendering. The `plotly` library has tools for rendering different
+    kinds of 3D plots and in this recipe, we'll look at how to construct a 3D surface
+    plot and a scatter plot with *x*, *y*, and *z* axes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we'll use the `plotly` library again and the built-in `longley`
+    dataset of economic data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Constructing three-dimensional plots with `plotly` can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Set up the data objects:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create the basic surface plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add a reactive contour plot layer:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In *Step 1*, we begin by building a dataset that''s appropriate for the type
+    of plot. For the surface 3D plot, we need a dataframe of *x* and *y* coordinates,
+    which we create directly using `data.frame()` and save in a variable called `d`.
+    The dataframe, `d`, contains a sequence of 20 values between 0 and 10 in the x
+    and y columns (10 values each). You should think of this dataframe as specifying
+    the width and length of the 3D field, and not the actual data values. The data
+    values come in a distinct matrix object with the dimensions specified by the dataframe.
+    We created a matrix of appropriate dimension using the `matrix()` function with
+    random normal values from the `rnorm()` function. Once we have these two structures,
+    we can use them in `plot_ly()` while specifying `d`, `x`, and `y`, like we did
+    for two-dimensional plots, and with the new *z *axis, which gets our matrix. The
+    result is piped to the `add_surface()` function, which renders the data as a three-dimensional
+    surface. The plot will look something like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/937a3979-ea5e-45ba-9899-98ff241c9740.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Note that by clicking and dragging within the plot area, you can adjust the
+    camera view.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we elaborate on the plot by adding a reactive contour plot under
+    (or over) the 3D surface. We used the contours option in the `add_surface()` function.
+    This takes a list of options. The first `z` specifies what to do with the contour.
+    It takes a further list with members to control the appearance of the contour
+    map, the most important being `highlightcolor`, which specifies the color to draw onto
+    the contour plot to show the current level of the 3D plot the mouse is hovering
+    over. The rendered image looks something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2e83eb40-202c-4423-be61-9b5b2f8558cf.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 3*, we changed tack and drew a scatter plot in three dimensions. This
+    is more straightforward. We passed the Longley data to the `plot_ly()` function,
+    along with the dimensions and the data columns to map to. We also added a marker
+    option to map color to the GNP column. Finally, we piped the basic plot object
+    to the `add_markers()` function to get the final plot, which renders like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/eccfaa8a-99e6-482b-b01c-87726e45f6a8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Constructing circular genome plots of polyomic data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A whole genome analysis of multiple data series is often presented in a circular
+    manner with concentric circles, each showing different kinds of data with a different
+    representation in each. These plots, called Circos plots, are extremely powerful
+    and can show a lot of dense information in a compact form. In this recipe, we'll
+    look at constructing such plots in R from common genomics data files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To make Circos plots, we'll use the `circlize` package and the four files prefixed
+    with `arabidopsis` in the `datasets/ch7/` folder of this book's repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Constructing circular genome plots of polyomic data can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library and read the chromosome length information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Initialize the plot and chromosome track, and then add links:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load in link information from the file and draw it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load in the gene positions and add a density track:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load in the heatmap data. Then, add a heatmap track:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Combine the tracks:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we begin by reading in the `arabidopsis.gff` file, a file that
+    describes the lengths of the chromosomes we'd like to use in our plot. We only
+    needed the name, start, and end columns, so we piped the data to the `dplyr::select()`
+    function to keep the appropriate columns, that is, `X1`, `X4`, and `X5`. As a
+    `.gff` file has no column headings, the `read_tsv()` functions give the column
+    names X1 ... Xn. We saved the result in the `df` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we started building the plot. We used the `circos.genomicInitialize()`
+    function with `df` to create the plot''s backbone and coordinate system and then
+    manually added a single link. The `circos.link()` function allows us to create
+    a single origin and destination using the chromosome''s name, c(start, end) format,
+    thereby coloring the link in the requested color. The plot currently looks like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ce859647-57e4-40da-887e-055c9c9ff227.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'At the start of *Step 3*, we used `circos.clear()` to completely reset the
+    plot. Resetting is only necessary for the purposes of this tutorial as we want
+    to build things step-wise; you can likely ignore it in your own coding. The next
+    stage is to load in a file of genomic regions that represent the source of some
+    links and a separate file of genomic regions that represent the target of some
+    links. These two files should be in BED format and row N in the source file must
+    correspond to row N in the target file. Then, we reinitialized the plot with `circos.genomicInitialize()` and
+    used `circos.genomicLink()` to add many links in one command, passing it the objects
+    of the source link data and the target data before coloring them all blue. The
+    plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/678fa268-b228-4375-883b-f933cf5b2d0d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 4*, after clearing the plot, we read in another BED file of gene positions
+    from `arabidopsis_genes.bed`. We want to add this information as a density track
+    that counts the number of features in the windows of user-specified length and
+    plots them as a density curve. To do this, we use the `circos.genomicDensity()` function,
+    passing it the dataframe of `gene_positions`, selecting a window size of 1 million,
+    a color (note the color is in the eight-digit HEX format that allows us to add
+    transparency to the color), and `track.height`, which specifies the proportion
+    of the plot to use for this track. The track looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7a08f401-61ce-4069-9ec2-1cd1b20bbe70.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 5*, we added a more complex track—a heatmap that can represent many
+    columns of quantitative data. The file format here is extended BED format, with
+    a chromosome name, start, and end with data in any further columns. We have three
+    extra columns of data in our sample `arabidopsis_quant_data.bed` file. We load
+    the bed file into `heatmap_data` with `read.delim()`. Next, we created a color
+    function and saved it as `col_fun` to help draw the heatmap. The `colorRamp2()` function
+    takes a vector of the minimum, middle, and maximum values of the data as its argument,
+    for which the colors specified in the second argument should be used. So, with
+    `10`, `12`, and `15` and `green`, `red`, and `black`, we drew 10 in green, 12
+    in black, and 15 in red, respectively. The colors for the values in-between those
+    points are calculated automatically by `colorRamp2()`. To draw the heatmap, we
+    used the `circos.genomicHeatmap()` function, passing `col_fun` to the `col` argument.
+    The `side` argument specifies whether to draw inside or outside the circle, while
+    the `border` argument specifies the color of the lines between heatmap elements.
+    The plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9cd724a1-0585-4cd5-95f6-80b48894a4c7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finally, in *Step 6*, we put all of this together. By clearing and reinitializing
+    the plot, we specified the order of the tracks from outside to in by calling the
+    relevant functions in outside first to inside last order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/45d052d2-678b-4bee-9ba8-30f3f2adca7e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The final plot, as seen in the preceding image, gets `circos.genomicHeatmap()`,
+    then `circos.genomicDensity()`, and then `circos.genomicLink()`to give us the
+    circular genome plot.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,1194 @@
+- en: '6'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Optimizing Continuous Functions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter describes how **continuous search-space** optimization problems
+    can be solved by genetic algorithms. We will start by describing the chromosomes
+    and genetic operators commonly used for genetic algorithms with real number-based
+    populations and go over the tools offered by the **Distributed Evolutionary Algorithms
+    in Python** (**DEAP**) framework for this domain. We will then cover several hands-on
+    examples of continuous function optimization problems and their Python-based solutions
+    using the DEAP framework. These include the optimization of the *Eggholder function*,
+    *Himmelblau’s function*, as well as the constrained optimization of *Simionescu’s
+    function*. Along the way, we will learn about finding multiple solutions using
+    **niching** and **sharing** and handling **constraints**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of this chapter, you will be able to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understand chromosomes and genetic operators used for real numbers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use DEAP to optimize continuous functions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Optimize the Eggholder function
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Optimize Himmelblau’s function
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Perform constrained optimization with Simionescu’s function
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be using Python 3 with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**deap**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**numpy**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**matplotlib**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**seaborn**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you use the **requirements.txt** file we provide (see [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091)),
+    these libraries are already included in your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The programs used in this chapter can be found in the book’s GitHub repository
+    at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_06](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_06)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the code in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/OEBOd](https://packt.link/OEBOd)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Chromosomes and genetic operators for real numbers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous chapters, we focused on search problems that inherently deal with
+    the methodic evaluation of states and transitions between states. Consequently,
+    the solutions for these problems were best represented by lists (or arrays) of
+    binary or integer parameters. In contrast to that, this chapter covers problems
+    where the solution space is **continuous**, meaning the solutions are made up
+    of real (floating-point) numbers. As we mentioned in [*Chapter 2*](B20851_02.xhtml#_idTextAnchor053),
+    *Understanding the Key Components of Genetic Algorithms*, representing real numbers
+    using binary or integer lists was found to be far from ideal and, instead, lists
+    (or arrays) of real-valued numbers are now considered to be a simpler and better
+    approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Reiterating the example from [*Chapter 2*](B20851_02.xhtml#_idTextAnchor053),
+    if we have a problem involving three real-valued parameters, the chromosome will
+    look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[x 1, x 2, x 3]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, x 1, x 2, x 3 represent real numbers, such as the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[1.23, 7.2134, -25.309] or [-30.10, 100.2, 42.424]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, we mentioned that while the various *selection* methods work the
+    same for either integer-based or real-based chromosomes, specialized *crossover*
+    and *mutation* methods are needed for the real-coded chromosomes. These operators
+    are usually applied on a dimension-by-dimension basis, illustrated as follows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Suppose we have two parent chromosomes: paren t x = [x 1, x 2, x 3] and paren
+    t y = [y 1, y 2, y 3]. As the crossover operation is applied separately to each
+    dimension, an offspring [o 1, o 2, o 3] will be created, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: o 1 is the result of a crossover operator between x 1 and y 1
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: o 2 is the result of a crossover operator between x 2 and y 2
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: o 3 is the result of a crossover operator between x 3 and y 3
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Similarly, the *mutation* operator will be individually applied to each dimension
+    so that each of the components o 1, o 2, and o 3 can be subject to mutation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some commonly used real-coded operators are the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Blend Crossover** (also known as **BLX**), where each offspring is randomly
+    selected from the following interval created by its parents:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[paren t x − α(paren t y − paren t x), paren t y + α(paren t y − paren t x)]'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The α value is commonly set to 0.5, resulting in a selection interval twice
+    as wide as the interval between the parents.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**Simulated Binary Crossover** (**SBX**), where two offspring are created from
+    two parents using the following formula, guaranteeing that the average of the
+    offspring values is equal to that of the parents’ values:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: offsprin g 1 =  1 _ 2 [(1 + β)paren t x + (1 − β)paren t y]
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: offsprin g 2 =  1 _ 2 [(1 − β)paren t x + (1 + β)paren t y]
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The value of β, also known as the *spread factor*, is calculated using a combination
+    of a randomly chosen value and a pre-determined parameter known as η (eta), *distribution
+    index*, or *crowding factor*. With larger values of η, offspring will tend to
+    be more similar to their parents. Common values of η are between 10 and 20.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**Normally distributed** (or **Gaussian**) **mutation**, where the original
+    value is replaced with a random number that is generated using a normal distribution,
+    with predetermined values for mean and standard deviation.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the next section, we will see how real-coded chromosomes and genetic operators
+    are supported by the DEAP framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using DEAP with continuous functions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The DEAP framework can be used for optimizing continuous functions in a very
+    similar manner to what we have seen so far, when we solved discrete search problems.
+    All that’s needed are a few subtle modifications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the chromosome encoding, we can use a list (or array) of floating-point
+    numbers. One thing to keep in mind, though, is that the existing genetic operators
+    of DEAP will `numpy.ndarray` class due to the way these objects are being sliced,
+    as well as the way they are being compared to each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using `numpy.ndarray`-based individuals will require redefining the genetic
+    operators accordingly. This is further covered in the DEAP documentation, under
+    *Inheriting from NumPy*. For this reason, as well as for performance reasons,
+    **ordinary** Python lists or arrays of floating-point numbers are generally **preferred**
+    when using DEAP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As for real-coded genetic operators, the DEAP framework offers several implementations
+    out of the box, contained in the crossover and the mutation modules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**cxBlend()** is DEAP’s implementation of *Blend Crossover*, using the **alpha**
+    argument as the α value'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**cxSimulatedBinary()** implements *Simulated Binary Crossover*, using the
+    **eta** argument as the η (crowding factor) value'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**mutGaussian()** implements *normally distributed mutation*, using the **mu**
+    and **sigma** arguments as the values for the mean and standard deviation, respectively'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In addition, since the optimization of continuous functions is typically done
+    on a particular **bounded region** rather than on the entire space, DEAP provides
+    a couple of operators that accept boundary parameters and guarantee that the resulting
+    individuals will reside within these boundaries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**cxSimulatedBinaryBounded()** is a bounded version of the **cxSimulatedBinary()**
+    operator, accepting the **low** and **up** arguments as the lower and upper boundaries
+    of the search space, respectively.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**mutPolynomialBounded()** is a bounded *mutation* operator that uses a polynomial
+    function (instead of Gaussian) for the probability distribution. This operator
+    also accepts the **low** and **up** arguments as the lower and upper boundaries
+    of the search space. In addition, it uses the **eta** parameter as a crowding
+    factor, where a high value will yield a mutant close to its original value, while
+    a small value will produce a mutant very different from its original value.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the next section, we will demonstrate the usage of bounded operators when
+    optimizing a classic benchmark function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing the Eggholder function
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The Eggholder function, depicted in the following diagram, is often used as
+    a benchmark for function optimization algorithms. Finding the single **global
+    minimum** of this function is considered a difficult task due to the large number
+    of local minima, which give it the eggholder shape:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.1: The Eggholder function ](img/B20851_06_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.1: The Eggholder function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source: [https://en.wikipedia.org/wiki/File:Eggholder_function.pdf](https://en.wikipedia.org/wiki/File:Eggholder_function.pdf)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The function can be mathematically expressed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: f(x, y) = − (y + 47) ⋅ sin √ ___________ | x _ 2  + (y + 47)|  − x ⋅ sin √ ___________ |x
+    − (y + 47)|
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is usually evaluated on the search space bounded by [-512, 512] in each dimension.
+    The global minimum of the function is known to be at *x=512, y = 404.2319*, where
+    the function’s value is *-959.6407*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next subsection, we will attempt to find the global minimum using the
+    genetic algorithms method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing the Eggholder function with genetic algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The genetic algorithm-based program we created for optimizing the Eggholder
+    function resides in the `01_optimize_eggholder.py` Python program located at the
+    following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/01_optimize_eggholder.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/01_optimize_eggholder.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps highlight the main parts of this program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program starts by setting the function constants, namely the number of
+    input dimensions (2, as this function is defined over the *x*-*y* plane), and
+    the search space boundaries that were mentioned previously:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since we are dealing with floating-point numbers confined by certain boundaries,
+    we next define a helper function that creates random floating-point numbers, uniformly
+    distributed within the given range:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: This function assumes that the upper and lower boundaries are the same for all
+    dimensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We next define the **attrFloat** operator. This operator utilizes the previous
+    helper function to create a single, random floating-point number within the given
+    boundaries. The **attrFloat** operator is then used by the **individualCreator**
+    operator to create random individuals. This is followed by **populationCreator**,
+    which can generate the desired number of individuals:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Given that the object to be minimized is the Eggholder function, we use it
+    directly as the fitness evaluator. As the individual is a list of floating-point
+    numbers with a dimension (or length) of 2, we extract the **x** and **y** values
+    from the individual accordingly, and then calculate the function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next are the genetic operators. Given that the *selection* operator is independent
+    of the individual type, and we’ve had a good experience so far using the *tournament
+    selection* with a tournament size of 2, coupled with the *elitist approach*, we’ll
+    continue to use it here. The *crossover* and *mutation* operators, on the other
+    hand, need to be specialized for floating-point numbers within given boundaries,
+    and therefore we use the DEAP-provided **cxSimulatedBinaryBounded** operator for
+    crossover and the **mutPolynomialBounded** operator for mutation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As we have done multiple times, we use our modified version of DEAP’s simple
+    genetic algorithm flow, where we added *elitism*—keeping the best individuals
+    (members of the hall of fame) and moving them to the next generation, untouched
+    by the genetic operators:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We will start with the following parameters for the genetic algorithm settings.
+    As the Eggholder function may be somewhat difficult to optimize, we use a relatively
+    large population size considering the low dimension count:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In addition to the previous ordinary genetic algorithm constants, we now need
+    a new one, the **crowding factor** (eta) that is used by both the crossover and
+    mutation operations:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is also possible to define separate crowding factors for crossover and mutation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are finally ready to run the program. The results obtained with these settings
+    are shown as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: This means that we have found the global minimum.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we examine the statistics plot generated by the program, shown next, we
+    can tell that the algorithm found some local minima values right away and then
+    made small incremental improvements until it eventually found the global minima:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.2: Stats of the first program optimizing the Eggholder function](img/B20851_06_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.2: Stats of the first program optimizing the Eggholder function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One interesting area is around generation 180—let’s explore it further in the
+    next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving the speed with an increased mutation rate
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If we zoom in at the lower part of the fitness axis, we will notice a relatively
+    large improvement of the best result found (red line) around generation 180, accompanied
+    by a large swing of the average results (green line):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.3: Enlarged section of the first program’s stats graph](img/B20851_06_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.3: Enlarged section of the first program’s stats graph'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One way to interpret this observation is that perhaps introducing more noise
+    can lead to better results faster. This could be another manifestation of the
+    familiar principle of **exploration versus exploitation** we’ve discussed several
+    times before—increasing the exploration (which manifests itself as noise in the
+    diagram) may help us locate the global minimum faster. An easy way to increase
+    the measure of exploration is to boost the probability of mutations. Hopefully,
+    the use of elitism—keeping the best results untouched—will keep us from over-exploring,
+    which leads to random search-like behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To test this idea, let’s increase the probability of mutation from 0.1 to 0.5:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the modified program, we again found the global minimum, but much faster,
+    as is evident from the output, as well as from the statistic plot shown next,
+    where the red line (the best result) reaches the optimum quickly, while the average
+    score (green) is noisier than before and is more distanced from the best result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.4: Stats of the program optimizing the Eggholder function with an
+    increased mutation probability](img/B20851_06_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.4: Stats of the program optimizing the Eggholder function with an
+    increased mutation probability'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will keep this idea in mind when dealing with our next benchmark function,
+    known as Himmelblau’s function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing Himmelblau’s function
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another frequently used function for benchmarking optimization algorithms is
+    Himmelblau’s function, depicted in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.5: Himmelblau’s function ](img/B20851_06_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.5: Himmelblau’s function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source: [https://commons.wikimedia.org/wiki/File:Himmelblau_function.svg](https://commons.wikimedia.org/wiki/File:Himmelblau_function.svg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image by Morn the Gorn
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The function can be mathematically expressed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: f(x, y) = (x 2 + y − 11) 2 + (x + y 2 − 7) 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is usually evaluated on the search space bounded by [-5, 5] in each dimension.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Although this function seems simpler in comparison to the Eggholder function,
+    it draws interest as it is **multi-modal**; in other words, it has more than one
+    global minimum. To be exact, the function has four global minima evaluating to
+    0, which can be found in the following locations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: x=3.0, y=2.0
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: x=−2.805118, y=3.131312
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: x=−3.779310, y=−3.283186
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: x=3.584458, y=−1.848126
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'These locations are depicted in the following function contour diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.6: Contour diagram of Himmelblau’s function ](img/B20851_06_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.6: Contour diagram of Himmelblau’s function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source: [https://commons.wikimedia.org/wiki/File:Himmelblau_contour.svg](https://commons.wikimedia.org/wiki/File:Himmelblau_contour.svg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image by Nicoguaro
+  prefs: []
+  type: TYPE_NORMAL
+- en: When optimizing multi-modal functions, we are often interested in finding all
+    (or most) minima locations. However, let’s start with finding one, which we are
+    going to do in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing Himmelblau’s function with genetic algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The genetic algorithm-based program we created for finding a single minimum
+    of Himmelblau’s function resides in the `02_optimize_himmelblau.py` Python program,
+    located at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/02_optimize_himmelblau.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/02_optimize_himmelblau.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program is similar to the one we used for optimizing the Eggholder function,
+    with a few differences highlighted as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We set the boundaries for this function to [-5.0, 5.0]:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We now use Himmelblau’s function as the fitness evaluator:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since the function we optimize has several minima, it may be interesting to
+    observe the distribution of the solutions found at the end of the run. We, therefore,
+    add a scatter graph containing the locations of the four global minima and the
+    final population on the same *x*-*y* plane:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We also print the members of the hall of fame—the best individuals found during
+    the run:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Running the program, the results indicate that we found one of the four minima
+    (x=3.0, y=2.0):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The printout of the hall-of-fame members suggests they all represent the same
+    solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following diagram, illustrating the distribution of the entire population,
+    further confirms that the genetic algorithms have converged to one of the four
+    functions’ minima—the one residing at (x=3.0, y=2.0):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.7: Scatter graph of the population at the end of the first run,
+    alongside the four functions’ minima](img/B20851_06_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.7: Scatter graph of the population at the end of the first run, alongside
+    the four functions’ minima'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, it is evident that many of the individuals in the population have
+    either the `x` or the `y` component of the minima we found.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These results represent what we generally expect from the genetic algorithm—to
+    identify a global optimum and converge to it. Since, in this case, we have several
+    minima, it is expected to converge to one of them. Which one it will be is largely
+    based on the random initialization of the algorithm. As you may recall, in all
+    our programs so far, we have been using a fixed random seed (of value 42):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is done to enable the repeatability of the results; however, in real life,
+    we will typically use different random seed values for different runs, either
+    by commenting out these lines or by explicitly setting the constant to different
+    values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, if we set the seed value to 13, we will end up with the solution
+    (x=−2.805118, y=3.131312), as illustrated in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.8: Scatter graph of the population at the end of the second run,
+    alongside the four functions’ minima](img/B20851_06_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.8: Scatter graph of the population at the end of the second run, alongside
+    the four functions’ minima'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we proceed to change the seed value to 17, the program execution will yield
+    the solution (x=3.584458, y=−1.848126), as illustrated by the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 6.9: Scatter graph of the population at the end of the third run,\
+    \ alongside the four fu\uFEFFnctions’ minima](img/B20851_06_09.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.9: Scatter graph of the population at the end of the third run, alongside
+    the four functions’ minima'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, what if we wanted to find *all* global minima in a single run? As we
+    will see in the next subsection, genetic algorithms offer us a way to pursue this
+    goal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using niching and sharing to find multiple solutions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In [*Chapter 2*](B20851_02.xhtml#_idTextAnchor053), *Understanding the Key Components
+    of Genetic Algorithms*, we mentioned that **niching** and **sharing** in genetic
+    algorithms mimic the way a natural environment is divided into multiple sub-environments
+    or *niches*. These niches are populated by different species, or sub-populations,
+    taking advantage of the unique resources available in each niche, while specimens
+    that coexist in the same niche have to compete over the same resources. Implementing
+    a sharing mechanism within the genetic algorithm will encourage individuals to
+    explore new niches and can be used for finding several optimal solutions, each
+    considered a niche. One common way to accomplish sharing is to divide the raw
+    fitness value of each individual with (some function of) the combined distances
+    from all the other individuals, effectively penalizing a crowded population by
+    sharing the local bounty between its individuals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s try to apply this idea to Himmelblau’s function optimization process
+    and see whether it can help locate all four minima in a single run. This attempt
+    is implemented in the `03_optimize_himmelblau_sharing.py` program, located at
+    the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/03_optimize_himmelblau_sharing.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/03_optimize_himmelblau_sharing.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program is based on the previous one, but we had to make some important
+    modifications, described as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For starters, the implementation of a sharing mechanism usually requires us
+    to optimize a function that produces positive fitness values and to look for *maxima*
+    values rather than *minima*. This enables us to divide the raw fitness values
+    as a way to decrease fitness and practically share the resources between neighboring
+    individuals. As Himmelblau’s function produces values between 0 and (roughly)
+    2,000, we can instead use a modified function that returns 2,000 minus the original
+    value, which will guarantee that all function values are positive, while transforming
+    the minima points into maxima points that return the value of 2,000\. As the locations
+    of these points are not going to change, finding them will still serve our original
+    purpose:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To complete the conversion, we redefine the fitness strategy to be a *maximizing*
+    one:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To enable the implementation of *sharing*, we first create two additional constants:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we need to implement the sharing mechanism. One convenient location for
+    this implementation is within the *selection* genetic operator. The selection
+    operator is where the fitness values of all individuals are examined and used
+    to select the parents for the next generation. This enables us to inject some
+    code that recalculates these fitness values just before the selection takes place
+    and then retrieves the original fitness values before continuing, for the purpose
+    of tracking. To make this happen, we implemented a new **selTournamentWithSharing()**
+    function, which has the same signature as the original **tools.selTournament()**
+    function we have been using until now:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This function starts by setting the original fitnesses aside so that they can
+    be retrieved later. It then iterates over each individual and calculates a number,
+    `sharingSum`, by which its fitness value will be divided. This sum value is accumulated
+    by calculating the distance between the location of the current individual and
+    the location of each of the other individuals in the population. If the distance
+    is smaller than the threshold defined by the `DISTANCE_THRESHOLD` constant, the
+    following value is added to the accumulating sum:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 1 −  𝒹𝒾𝓈𝓉𝒶𝓃𝒸ℯ  ___________________  DISTANC E − THRESHOLD  ×  1 _______________  SHARIN
+    G − EXTENT
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This means that the *reduction* in the fitness value will be greater in the
+    following scenarios:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The (normalized) distance between the individuals is smaller
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The value of the **SHARING_EXTENT** constant is larger
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'After recalculating the fitness value for each individual, *tournament selection*
+    is conducted using the new fitness values:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Lastly, the original fitness values are retrieved:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As a final touch, we added a plot showing the locations of the best individuals—the
+    hall-of-fame members—on the *x*-*y* plane, alongside the known optima location,
+    similar to what we already do for the entire population:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When we run this program, the results don’t disappoint. Examining the members
+    of the hall of fame, it seems that we have located all four optima locations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following diagram, illustrating the distribution of the hall-of-fame members,
+    further confirms that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.10: Scatter graph of the best solutions at the end of the run, alongside
+    the four functions’ minima, when using niching](img/B20851_06_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.10: Scatter graph of the best solutions at the end of the run, alongside
+    the four functions’ minima, when using niching'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Meanwhile, the diagram depicting the distribution of the *entire* population
+    demonstrates how the population is scattered around the four solutions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.11: Scatter graph of the population at the end of the run, alongside
+    the four functions’ minima, when using niching](img/B20851_06_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.11: Scatter graph of the population at the end of the run, alongside
+    the four functions’ minima, when using niching'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As impressive as this may seem, we need to remember that what we did here can
+    prove harder to implement in real-life situations. For one, the modifications
+    we added to the selection process increase the calculation complexity and the
+    time consumed by the algorithm. In addition, the population size usually needs
+    to be increased so that it can sufficiently cover all areas of interest. The values
+    of the sharing constants may be difficult to determine in some cases—for example,
+    if we don’t know in advance how close together the various peaks may be. However,
+    we can always use this technique to roughly locate areas of interest and then
+    further explore each one of them using the standard version of the algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An alternative approach for finding several optima points falls within the realm
+    of **constrained optimization**, which is the subject of the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Simionescu’s function and constrained optimization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: At first glance, Simionescu’s function may not look particularly interesting.
+    However, it has a constraint attached to it that makes it intriguing to work with
+    as well as pleasant to look at.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The function is usually evaluated on the search space bounded by [-1.25, 1.25]
+    in each dimension and can be mathematically expressed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: f(x, y) = 0.1xy
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, the values of *x, y* are subject to the following condition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: x 2 + y 2 ≤ [1 + 0.2 ⋅ cos(8 ⋅ arctan  x _ y )] 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This constraint effectively limits the values of *x* and *y* that are considered
+    valid for this function. The result is depicted in the following contour diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.12: Contour diagram of the constrained Simionescu’s function](img/B20851_06_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.12: Contour diagram of the constrained Simionescu’s function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Source: [https://commons.wikimedia.org/wiki/File:Simionescu%27s_function.PNG](https://commons.wikimedia.org/wiki/File:Simionescu%27s_function.PNG)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image by Simiprof
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The flower-shaped border is created by the constraint, while the colors of
+    the contours denote the actual value—red for the highest values and purple for
+    the lowest. If it weren’t for the constraint, the minima points would have been
+    at (1.25, -1.25) and (-1.25, 1.25). However, after applying the constraint, the
+    global minima of the function are located at the following locations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*x*=0.84852813, *y*=–0.84852813'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*x*=−0.84852813, *y*=0.84852813'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These represent the tips of the two opposite petals containing the purple contours.
+    Both minima evaluate to the value of -0.072.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next subsection, we will attempt to find these minima using our real-coded
+    genetic algorithms approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Constrained optimization with genetic algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We have already dealt with constraints in [*Chapter 5*](B20851_05.xhtml#_idTextAnchor177),
+    *Constraint Satisfaction*, when we tackled constraints within the realm of search
+    problems. However, while search problems presented us with invalid states or combinations,
+    here we need to address constraints in the continuous space, defined as mathematical
+    inequalities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The approaches for both cases, however, are similar, and the differences lie
+    in the implementation. Let’s revisit these approaches:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The best approach, when available, is to eliminate the possibility of a constraint
+    violation. We have actually been doing it all along in this chapter as we have
+    used bounded regions for our functions. These are actually simple constraints
+    on each input variable. We were able to go around them by generating initial populations
+    within the given boundaries and by utilizing bounded genetic operators such as
+    **cxSimulatedBinaryBounded()**, which produced results within the given boundaries.
+    Unfortunately, this approach can prove difficult to implement when the constraints
+    are more complex than just the upper and lower bounds for an input variable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Another approach is to discard candidate solutions that violate any given constraint.
+    As we mentioned before, this approach leads to the loss of information contained
+    in these solutions and can considerably slow down the optimization process.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The next approach is to repair any candidate solution that violates a constraint
+    by modifying it so it will no longer violate the constraint(s). This can prove
+    difficult to implement and, at the same time, may lead to significant loss of
+    information.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finally, the approach that worked for us in [*Chapter 5*](B20851_05.xhtml#_idTextAnchor177),
+    *Constraint Satisfaction*, was to penalize candidate solutions that violated a
+    constraint by degrading the solution’s score and making it less desirable. For
+    search problems, we implemented this approach by creating a cost function that
+    added a fixed cost to each constraint violation. Here, in the continuous space
+    case, we can either use a fixed penalty or increase the penalty based on the degree
+    to which the constraint was violated.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When taking the last approach—penalizing the score for constraint violations—we
+    can utilize a feature offered by the DEAP framework, namely the **penalty function**,
+    as we will demonstrate in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing Simionescu’s function using genetic algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The genetic algorithm-based program we created for optimizing Simionescu’s
+    function resides in the `04_optimize_simionescu.py` Python program, located at
+    the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/04_optimize_simionescu.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/04_optimize_simionescu.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program is very similar to the first one we used in this chapter, created
+    originally for the Eggholder function, with the following highlighted differences:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The constants setting the boundaries are adjusted to match the domain of Simionescu’s
+    function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In addition, a new constant determines a fixed penalty (or cost) for violating
+    the constraint:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The fitness is now determined by the definition of Simionescu’s function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is where the interesting part begins: we now define a new **feasible()**
+    function that specifies the valid input domain using the constraints. This function
+    returns a value of **True** for *x, y* values that comply with the constraints,
+    and a value of **False** otherwise:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We then use DEAP’s **toolbox.decorate()** operator in combination with the
+    **tools.DeltaPenalty()** function to modify (*decorate*) the original fitness
+    function so that the fitness values will be penalized whenever the constraints
+    are not satisfied. **DeltaPenalty()** accepts the **feasible()** function and
+    the fixed penalty value as parameters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **DeltaPenalty()** function can also accept a third parameter that represents
+    the distance from the feasible region, causing the penalty to increase with the
+    distance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, the program is ready to use! The results indicate that we have indeed
+    found one of the two known minima locations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: What about the second location? Read on—we will be looking for it in the next
+    subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using constraints to find multiple solutions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Earlier in this chapter, when optimizing Himmelblau’s function, we were looking
+    for more than one minimum location, and observed two possible ways to do that—one
+    was changing the random seed, and the other was using **niching and sharing**.
+    Here, we will demonstrate a third option, powered by... constraints!
+  prefs: []
+  type: TYPE_NORMAL
+- en: The niching technique we used for Himmelblau’s function is sometimes called
+    *parallel niching* as it attempts to locate several solutions at the same time.
+    As we already mentioned, it is prone to several practical drawbacks. *Serial niching*
+    (or *sequential niching*), on the other hand, is a method used to find one solution
+    at a time. To implement serial niching, we use the genetic algorithm as usual
+    and find the best solution. We then update the fitness function so that the area
+    of the solution(s) already found is penalized, thereby encouraging the algorithm
+    to explore other areas of the problem space. This can be repeated multiple times
+    until no additional viable solutions are found.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interestingly, penalizing the areas around the previously found solutions can
+    be implemented by imposing constraints on the search space and, as we just learned
+    how to apply constraints to the function at hand, we can use this knowledge to
+    implement serial niching, demonstrated as follows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To find the second minimum for Simionescu’s function, we created the `05_ optimize_simionescu_second.py`
+    Python program, located at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/05_optimize_simionescu_second.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_06/05_optimize_simionescu_second.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The program is almost identical to the previous one, with a couple of changes,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first add a constant that defines the *distance threshold* from previously
+    found solutions—new solutions that are closer than this threshold value to any
+    of the old ones will be penalized:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We then add a second constraint to the definition of the **feasible()** function
+    using a conditional statement with multiple clauses. The new constraint applies
+    to input values closer than the threshold to the already found solution (x=0.848,
+    y = -0.848):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When running this program, the results indicate that we have indeed found the
+    second minimum:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: You are encouraged to add this minimum point as another constraint to the `feasible()`
+    function and verify that running the program again does *not* find any other equally
+    minimum-valued locations in the input space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you were introduced to continuous search-space optimization
+    problems and how they can be represented and solved using genetic algorithms,
+    specifically by utilizing the DEAP framework. We then explored several hands-on
+    examples of continuous function optimization problems—the Eggholder function,
+    Himmelblau’s function, and Simionescu’s function—along with their Python-based
+    solutions. In addition, we covered approaches for finding multiple solutions and
+    for handling constraints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next four chapters of the book, we will demonstrate how the various techniques
+    we’ve learned so far in this book can be applied when solving **machine learning**
+    (**ML**)- and **artificial intelligence** (**AI**)-related problems. The first
+    of these chapters will provide a quick overview of **supervised learning** (**SL**)
+    and then demonstrate how genetic algorithms can improve the outcome of learning
+    models by selecting the most relevant portions of the given dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For more information, please refer to the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Mathematical optimization: finding minima* *of functions*:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://scipy-lectures.org/advanced/mathematical_optimization/](http://scipy-lectures.org/advanced/mathematical_optimization/)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '*Optimization Test Functions* *and Datasets*:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://www.sfu.ca/~ssurjano/optimization.html](https://www.sfu.ca/~ssurjano/optimization.html)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '*Introduction to* *Constrained Optimization*:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://web.stanford.edu/group/sisl/k12/optimization/MO-unit3-pdfs/3.1introandgraphical.pdf](https://web.stanford.edu/group/sisl/k12/optimization/MO-unit3-pdfs/3.1introandgraphical.pdf)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Constraint handling in DEAP:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://deap.readthedocs.io/en/master/tutorials/advanced/constraints.html](https://deap.readthedocs.io/en/master/tutorials/advanced/constraints.html)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL

@@ -1,0 +1,1372 @@
+- en: '[*Chapter 10*](B16777_10_Final_VK_ePub.xhtml#_idTextAnchor147): Understanding
+    Model Results'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn how to analyze the results of your machine learning
+    models to interpret why the model made the inference it did. Understanding why
+    the model predicted a value is the key to avoiding black box model deployments
+    and to be able to understand the limitations your model may have. In this chapter,
+    you will learn about the available interpretation features of Azure Machine Learning
+    and visualize the model explanation results. You will also learn how to analyze
+    potential model errors and detect cohorts where the model is performing poorly.
+    Finally, you will explore tools that will help you assess your model's fairness
+    and allow you to mitigate potential issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''re going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating responsible machine learning models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Interpreting the predictions of the model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing model errors
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting potential model fairness issues
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need to have access to an Azure subscription. Within that subscription,
+    you will need a `packt-azureml-rg`. You will need to have either a `Contributor`
+    or `Owner` `packt-learning-mlw`. These resources should be available to you if
+    you followed the instructions in [*Chapter 2*](B16777_02_Final_VK_ePub.xhtml#_idTextAnchor026),
+    *Deploying Azure Machine Learning Workspace Resources*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will also need to have a basic understanding of the **Python** language.
+    The code snippets in this chapter target Python version 3.6 or later. You should
+    also be familiar with working in the notebook experience within Azure Machine
+    Learning Studio, something that was covered in the previous chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter assumes you have created a compute cluster named `cpu-sm-cluster`,
+    as described in the *Working with compute targets* section of [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The AzureML Python SDK*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find all the notebooks and code snippets for this chapter in this book's
+    repository at [http://bit.ly/dp100-ch10](http://bit.ly/dp100-ch10).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating responsible machine learning models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Machine learning allows you to create models that can influence decisions and
+    shape the future. With great power comes great responsibility, and this is where
+    AI governance becomes a necessity, something commonly referred to as responsible
+    AI principles and practices. Azure Machine Learning offers tools to support the
+    responsible creation of AI under the following three pillars:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Understand**: Before publishing any machine learning model, you need to be
+    able to interpret and explain the model''s behavior. Moreover, you need to assess
+    and mitigate potential model unfairness against specific cohorts. This chapter
+    focuses on the tools that assist you in understanding your models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Protect**: Here, you put mechanisms in place to protect people and their
+    data. When training a model, data from real people is used. For example, in [*Chapter
+    8*](B16777_08_Final_VK_ePub.xhtml#_idTextAnchor117), *Experimenting with Python
+    Code*, you trained a model on top of medical data from diabetic patients. Although
+    the specific training dataset didn''t have any **Personally Identifiable Information**
+    (**PII**), the original dataset contained this sensitive information. There are
+    open source libraries such as **SmartNoise** that offer basic building blocks
+    that can be used to implement data handling mechanisms using vetted and mature
+    differential privacy research techniques.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For example, a querying engine built with SmartNoise could allow data scientists
+    to perform aggregate queries on top of sensitive data and add statistical *noise*
+    in the results to prevent accidental identification of a single row within the
+    dataset. Other open source libraries, such as **presidio**, offer a different
+    approach to data protection, allowing you to quickly identify and anonymize private
+    information such as credit card numbers, names, locations, financial data, and
+    more. These libraries are more focused on raw text inputs, inputs you generally
+    use when building **Natural Language Processing** (**NLP**) models. They offer
+    modules you can use to anonymize your data before using them to train a model.
+    Another approach to protecting people and their data is to encrypt the data and
+    perform the entire model training process using the encrypted dataset without
+    decrypting it. This is feasible through **Homomorphic Encryption** (**HE**), which
+    is an encryption technique that allows certain mathematical operations to be performed
+    on top of the encrypted data without requiring access to the private (decryption)
+    key. The results of the computations are encrypted and can only be revealed by
+    the owner of the private key. This means that using **HE**, you can add two encrypted
+    values, **A** and **B**, and get the value **C**, which can only be decrypted
+    by the private key that encrypted values **A** and **B**, as shown in the following
+    diagram:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.1 – Using HE to perform operations on top of encrypted data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.1 – Using HE to perform operations on top of encrypted data
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Control**: Controlling and documenting the end-to-end process is an essential
+    principle in all software engineering activities. DevOps practices are commonly
+    used to ensure end-to-end process automation and governance. One of the key practices
+    in DevOps is to document the right information in each step of the process, allowing
+    you to make responsible decisions at each stage. An Azure Machine Learning workspace
+    allows you to tag and add descriptions to the various artifacts you create in
+    your end-to-end machine learning process. The following diagram shows how you
+    can add a description to the **AutoML** run you performed in [*Chapter 9*](B16777_09_Final_VK_ePub.xhtml#_idTextAnchor136),
+    *Optimizing the ML Model*:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 10.2 – Adding descriptions to runs to document them'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_002.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.2 – Adding descriptions to runs to document them
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similar to adding descriptions to runs, you can add tags to the various artifacts
+    you produce, such as the models. Tags are key/value pairs, such as `PyTorch` being
+    the value of the `Framework` tag key. You might want to document the following
+    information as part of a model **datasheet**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The intended use of the model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The model architecture, including the framework used
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Training and evaluation data used
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Trained model performance metrics
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fairness information, which you will read about in this chapter
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This information can be part of tags, and the **datasheet** can be a Markdown
+    document that's automatically generated through these tags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you got an overview of the tools and the technologies that
+    can help you create responsible AI. All three pillars are equally important, but
+    for the DP100 exam, you will focus on the tools in the understand category, starting
+    with model interpretability, which you will learn more about in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interpreting the predictions of the model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Being able to interpret the predictions of a model helps data scientists, auditors,
+    and business leaders understand model behavior by looking at the top important
+    factors that drive the model's predictions. It also enables them to perform what-if
+    analysis to validate the impact of features on predictions. The Azure Machine
+    Learning workspace integrates with **InterpretML** to provide these capabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'InterpretML is an open source community that provides tools to perform model
+    interpretability. The community contains a couple of projects. The most famous
+    ones are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Interpret** and **Interpret-Community** repositories, which focus on interpreting
+    models that use tabular data, such as the diabetes dataset you have been working
+    on within this book. You are going to work with the interpret-community repository
+    in this section.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**interpret-text** extends the interpretability efforts into text classification
+    models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Diverse Counterfactual Explanations** (**DiCE**) for machine learning allows
+    you to detect the minimum number of changes that you need to perform in a data
+    row to change the model''s output. For example, suppose you have a loan approval
+    model that just rejected a loan application. The customer asks what can be done
+    to get the loan approved. **DiCE** could provide the minimum changes to approve
+    the loan, such as reducing the number of credit cards or increasing the annual
+    salary by 1%.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'There are two approaches when it comes to interpreting machine learning models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`DecisionTreeClassifier` offers the `feature_importances_` attribute, which
+    allows you to understand how features affect the model''s predictions. The **InterpretML**
+    community provides a couple more advanced **glassbox** model implementations.
+    These models, once trained, allow you to retrieve an explainer and review which
+    feature is driving what result, also known as **interpretability results**. Explainers
+    for these models are lossless, meaning that they explain the importance of each
+    feature accurately.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Black box explanations**: If the model you are training doesn''t come with
+    a native explainer, you can create a black box explainer to interpret the model''s
+    results. You must provide the trained model and a test dataset, and the explainer
+    observes how the value permutations affect the model''s predictions. For example,
+    in the loan approval model, this may tweak the age and the income of a rejected
+    record to observe whetherthat changes the prediction. The information that''s
+    gained by performing these experiments is used to produce interpretations of the
+    feature''s importance. This technique can be applied to any machine learning model,
+    so it is considered model agnostic. Due to their nature, these explainers are
+    lossy, meaning that they may not accurately represent each feature''s importance.
+    There are a couple of well-known black-box techniques in the scientific literature,
+    such as **Shapley Additive Explanations** (**SHAP**), **Local Interpretable Model-Agnostic
+    Explanations** (**LIME**), **Partial Dependence** (**PD**), **Permutation Feature
+    Importance** (**PFI**), **feature interaction**, and **Morris sensitivity analysis**.
+    A subcategory of the black box explainers is the **gray box explainers**, which
+    utilize information regarding the model''s structure to get better and faster
+    explanations. For example, there are specialized explainers for tree models (**tree
+    explainer**), linear models (**linear explainer**), and even deep neural networks
+    (**deep explainer**).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Model explainers can provide two types of explanations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Local-** or **instance-level feature importance** focuses on the contribution
+    of features for a specific prediction. For example, it can assist in answering
+    why the model denied a particular customer''s loan. Not all techniques support
+    local explanations. For instance, **PFI**-based ones do not support instance-level
+    feature importance.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Global-** or **aggregate-level feature importance** explains how the model
+    performs overall, considering all predictions done by the model. For example,
+    it can answer which feature is the most important one regarding loan approval.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that you have the basic theory behind model interpretation, it is time for
+    you to get some hands-on experience. You will start by training a simple **sklearn**
+    model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training a loans approval model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this section, you will train a classification model against a loans approval
+    dataset that you will generate. You will use this model in the upcoming sections
+    to analyze its results. Let''s get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to the `chapter10` and then create a notebook called `chapter10.ipynb`,
+    as shown here:![Figure 10.3 – Creating the chapter10 notebook in the chapter10
+    folder
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_003.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.3 – Creating the chapter10 notebook in the chapter10 folder
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You will need to install the latest packages of the `interpret-community` library,
+    Microsoft's responsible AI widgets, and `#` or delete the cell:![Figure 10.4 –
+    Restarting the Jupyter kernel after installing the necessary packages
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_004.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.4 – Restarting the Jupyter kernel after installing the necessary packages
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After restarting you kernel, add a new cell in the notebook. Generate a loans
+    dataset using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This code will generate a dataset with the following normally distributed features:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`income` with a minimum value of `0` and a maximum value of `10000`.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`credit_cards` with a minimum value of `0` and a maximum value of `10`.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`age` with a minimum value of `18` and a maximum value of `85`.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The label you will be predicting is `approved_loan`, which is a Boolean, and
+    only 30% (`weights`) of the 500 samples (`n_samples`) are approved loans.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Later in this chapter, you are going to run an **AutoML** experiment against
+    this dataset. Register the dataset, as you saw in [*Chapter 7*](B16777_07_Final_VK_ePub.xhtml#_idTextAnchor102),
+    *The AzureML Python SDK*. Add the following code in your notebook:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'If you visit the registered dataset, you can view the profile of the dataset,
+    as shown here:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.5 – Generated dataset profile'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_005.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.5 – Generated dataset profile
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'To be able to train and evaluate the model, you will need to split the dataset
+    into train and test datasets. Use the following code to do so:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: First, you split the dataset into two, one with the features and one with the
+    label you are trying to predict. Then, you use the `train_test_split` method to
+    split the 500-sample data into one that contains 500 * 0.2 = 100 test records
+    and the train set, which contains the remaining 400 samples.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The next step is to initialize the model and fit it against the training dataset.
+    In [*Chapter 9*](B16777_09_Final_VK_ePub.xhtml#_idTextAnchor136), *Optimizing
+    the ML Model*, you learned how Azure Machine Learning's `datatransformer` step
+    is a `ColumnTransformer` that applies `MinMaxScaler` to all features. This transformer
+    scales each feature's values.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The `model` step is the actual model you are training, which is a `RandomForestClassifier`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, you must call the `fit` method of the instantiated pipeline to train it
+    against the training dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: You do not need to use `Pipeline` to benefit from the interpretability features
+    discussed in this chapter. Instead of creating a pipeline, you could have used
+    the model directly by assigning it to the `model_pipeline` variable; for example,
+    `model_pipeline=RandomForestClassifier()`. The addition of the `datatransformer`
+    step was done to help you understand how AutoML constructs its pipelines. Using
+    `MinMaxScaler` also increases the accuracy of the resulting model. Feel free to
+    try different scalers to observe the differences in the resulting model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that you have a trained model, you can test it. Let''s test against three
+    fictional customers:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: A 45-year-old who has two credit cards and a monthly income of `2000`
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A 45-year-old who has nine credit cards and a monthly income of `2000`
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A 45-year-old who has two credit cards and a monthly income of `10000`
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To do that, use the following code in a new notebook cell:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The printed result is `[0 1 1]`, which means that the first customer's loan
+    will be rejected while the second and the third ones will be approved. This indicates
+    that the `income` and `credit_cards` features may play an important role in the
+    prediction of the model.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Since the trained model is a decision tree and belongs to the glassbox model
+    category, you can get the importance of the features that were calculated during
+    the training process. Use the following code in a new notebook cell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This code gets a reference to the actual `RandomForestClassifier` instance and
+    invokes a `feature_importances_`. The output of this is something like `array([0.66935129,
+    0.11090936, 0.21973935])`, which shows that `income` (the first value) is the
+    most important feature, but it seems that `age` (the third value) is more important
+    than `credit_cards` (the second value) in contrast to the observations we made
+    in *Step 7*.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The model's training process is not deterministic, meaning that your results
+    will be different from the results seen in this book's examples. The numbers should
+    be similar but not the same.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In this section, you trained a simple `feature_importances_` attribute. In the
+    next section, you will use a more advanced technique that allows you to explain
+    any model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the tabular explainer
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'So far, you have used the capabilities of the **sklearn** library to train
+    and understand the results of the model. From this point on, you will use the
+    interpret community''s package to interpret your trained model more accurately.
+    You will use **SHAP**, a black box technique that tells you which features play
+    what role in moving a prediction from **Rejected** to **Approved** and vice versa.
+    Let''s get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In a new notebook cell, add the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This code creates a `TabularExplainer`, which is a wrapper class around the
+    SHAP interpretation techniques. This means that this object will select the best
+    SHAP interpretation method, depending on the passed-in model. In this case, since
+    the model is a tree-based one, it will choose the **tree explainer**.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Using this explainer, you are going to get the **local** or **instance-level
+    feature importance** to gain more insights into why the model gave the results
+    it did in *Step 7* of the *Training a loans approval model* section. In a new
+    notebook cell, add the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This code produces the results shown in the following screenshot. If you focus
+    on **Test sample number 2**, you will notice that it shows that the **credit_cards**
+    feature was the most important reason (see the **0.33** value) for the specific
+    sample to be predicted as **Approved** (**The prediction was 1**). The negative
+    values for **income** (whose value is approximately **-0.12**) in the same sample
+    indicate that this feature was pushing the model to **reject** the loan:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.6 – Local importance features show the importance of each feature
+    for each test sample'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_006.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.6 – Local importance features show the importance of each feature
+    for each test sample
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'You can also get the `income`, `age`, and then `credit_cards`, whose corresponding
+    importance values are approximately `0.28`, `0.09`, and `0.06`, respectively (the
+    actual values may differ in your execution). Note that these values are not the
+    same as the ones you got in *Step 8* of the *Training a loans approval model*
+    section, although the order remains the same. This is normal since `Method used:
+    shap.tree`, which indicates that `TabularExplainer` interpreted the model using
+    the **tree explainer**, as mentioned in *Step 1* of this section.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Finally, you must render the explanation dashboard to review the `global_explanation`
+    results you generated in *Step 3*. Add the following code in your notebook:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This will render an interactive widget that you can use to understand your
+    model''s predictions against the test dataset that you provided. Clicking on the
+    **Aggregate feature importance** tab, you should see the same results you saw
+    in *Step 3*:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.7 – The explanation dashboard provided by the interpret community'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_007.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.7 – The explanation dashboard provided by the interpret community
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will explore this dashboard in more detail in the *Reviewing the interpretation
+    results* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have trained a model and used the **SHAP** interpretation technique
+    to explain the feature importance of your model's predictions, either at a global
+    or local level for specific inferences. In the next section, you will learn more
+    about the alternative interpretation techniques available in the Interpret-Community
+    package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the tabular data interpretation techniques
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the previous section, you used the tabular explainer to automatically select
+    one of the available **SHAP** techniques. Currently, the interpret community supports
+    the following SHAP explainers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Tree explainer** is used to explain decision tree models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Linear explainer** explains linear models and can also explain inter-feature
+    correlations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Deep explainer** provides approximate explanations for deep learning models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Kernel explainer** is the most generic and the slowest one. It can explain
+    any function''s output, making it suitable for any model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'An alternative to the **SHAP** interpretation techniques is to build an easier-to-explain
+    surrogate model, such as the **glassbox** models that the interpret community
+    offers, to reproduce the output of the given black box and then explain that surrogate.
+    This technique is used by the **Mimic** explainer, and you need to provide one
+    of the following glass box models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**LGBMExplainableModel**, which is a **LightGBM** (a fast, high-performance
+    framework based on decision trees) explainable model'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**LinearExplainableModel**, which is a linear explainable model'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**SGDExplainableModel**, which is a stochastic gradient descent explainable
+    model'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**DecisionTreeExplainableModel**, which is a decision tree explainable model'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you wanted to use Mimic explainer in *Step 1* of the previous section, the
+    code for this would look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can select any surrogate model from the `import` statement you can see
+    in *line 1*. In this sample, you are using the `DecisionTreeExplainableModel`
+    one. To get the global explanations, the code is the same as the code you wrote
+    in *Step 3* and looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Although the order of the feature importance is the same, the calculated feature
+    importance values are different, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.8 – Mimic explainer feature importance calculated using the decision
+    tree glassbox model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_008.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.8 – Mimic explainer feature importance calculated using the decision
+    tree glassbox model
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similar to the `mimic_explainer` to calculate **local** or **instance-level
+    feature importance** using the same code as in *Step 2* in the previous section.
+    The explanations can be seen in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.9 – Local feature importance calculated using the decision'
+  prefs: []
+  type: TYPE_NORMAL
+- en: tree glassbox model of the Mimic explainer
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_009.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.9 – Local feature importance calculated using the decision tree glassbox
+    model of the Mimic explainer
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last interpretation technique offered by the interpret community is the
+    one based on **PFI**. This technique permutates the values of each feature and
+    observes how the model''s predictions change. To create a PFI explainer to interpret
+    your model, you will need the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Getting the global explanations requires passing in the `true_labels` parameter,
+    which is the ground truth for the dataset, which are the actual values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result of this code can be seen here. Due to the way `credit_cards` and
+    `age` features may be the other way around in your results, since they have very
+    similar feature importance values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.10 – Global feature importance calculated by the PFI explainer'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_010.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.10 – Global feature importance calculated by the PFI explainer
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Due to the nature of the **PFI** explainer, you *cannot* use it to create **local**
+    or **instance-level feature importance**. Keep that in mind if, during the exam,
+    you are asked whetherthis technique could provide local explanations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you looked at all the interpretation techniques that are supported
+    by the Interpret-Community package. In the next section, you will explore the
+    capabilities that the explanation dashboard offers and how this dashboard is embedded
+    within Azure Machine Learning Studio.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reviewing the interpretation results
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Azure Machine Learning offers rich integration with the interpret community''s
+    efforts. One of those integration points is the explanation dashboard, which is
+    embedded in every run. You can use `ExplanationClient` from the `azureml.interpret`
+    package to upload and download model explanations to and from your workspace.
+    To upload the global explanations that you created using `TabularExplainer` in
+    the *Using the tabular explainer* section, navigate to the `chapter10.ipynb` notebook,
+    and add a new cell at the end of the file with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: This code starts a new run within the `chapter10` experiment. From that run,
+    you create an `ExplanationClient`, which you use to upload the model explanations
+    you generated and the ground truth (`true_ys`), which helps the dashboard evaluate
+    the model's performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you visit the portal link that this code prints out, you will navigate to
+    a run, where, in the **Explanations** tab, you will need to select **Explanation
+    ID** on the left and then review the explanation dashboard by visiting the **Aggregate
+    feature importance** tab, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.11 – Reviewing the global explanations stored within the Azure
+    Machine Learning workspace'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_011.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.11 – Reviewing the global explanations stored within the Azure Machine
+    Learning workspace
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ExplanationClient` is used by Azure Machine Learning''s `chapter10.ipynb`
+    notebook and add the following code block in a new cell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This code looks very similar to the code you used in [*Chapter 9*](B16777_09_Final_VK_ePub.xhtml#_idTextAnchor136),
+    *Optimizing the ML Model*, in the *Running AutoML experiments with code* section.
+    In this code block, you are getting a reference to the Azure Machine Learning
+    workspace, the `loans` dataset, and then you are splitting the dataset into training
+    and validation sets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the same or a new cell, add the following code block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this code block, you are kicking off `model_explainability` (which is `True`
+    by default). This option schedules a model explanation of the best model once
+    the **AutoML** process concludes. Once the run completes, navigate to the run''s
+    UI and open the **Models** tab, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.12 – Explanations become available for the best model in the AutoML
+    run'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_012.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.12 – Explanations become available for the best model in the AutoML
+    run
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click on the **View explanation** link of the best model to navigate to the
+    **Explanations** tab of the child run that trained the specific model. Once you
+    land in the **Explanations** tab, you will notice that **AutoML** stored two global
+    explanations: one for the raw features and one for the engineered features. You
+    can switch between those two explanations by selecting the appropriate ID on the
+    left-hand side of the screen, as shown in the following screenshot. Raw features
+    are the ones from the original dataset. Engineered features are the ones you get
+    after preprocessing. The engineered features are the internal inputs to the model.
+    If you select the lower **explanation ID** and visit the **Aggregate feature importance**
+    area, you will notice that **AutoML** has converted the credit card number into
+    a categorical feature. Moreover, the model''s input is 12 features compared to
+    the three features you produced in your model training.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can review those features and their corresponding feature importance here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.13 – Global explanations for engineered features'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_013.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.13 – Global explanations for engineered features
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since the engineered features are more difficult to understand, go to the top
+    **explanation ID**, which is where you have the three raw features you have worked
+    with so far. Navigate to the **Dataset explorer** tab, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.14 – Dataset explorer in the raw features explanations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_014.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.14 – Dataset explorer in the raw features explanations
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we can see the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **Mimic** explainer was used to explain the specific model (which is an
+    **XGBoostClassifier**, as seen in *Figure 10.12*). The **glassbox** model that
+    was used as a surrogate model was an **LGBMExplainableModel**, as shown at the
+    top left of the preceding screenshot.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You can edit the cohorts or define new ones to be able to focus your analysis
+    on specific subgroups by selecting them from the **Select a dataset cohort to
+    explore** dropdown. To define a new cohort, you need to specify the dataset filtering
+    criteria you want to apply. For example, in the preceding screenshot, we have
+    defined a cohort named **age_45**, which has a single filter (age == 45). There
+    are **4 datapoints** in the test dataset that are used by this explanation dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You can modify the *x*-axis and *y*-axis fields by clicking on the highlighted
+    areas marked as **3** in the preceding screenshot. This allows you to change the
+    view and get insights about the correlations of the features with the predicted
+    values or the ground truth, the correlation between features, and any other view
+    that makes sense for your model understanding analysis.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the **Aggregate feature importance** tab, as shown here, you can view the
+    feature importance for all the data or for the specific cohorts you have defined:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.15 – Aggregate feature importance for the raw features with'
+  prefs: []
+  type: TYPE_NORMAL
+- en: the cohorts and dependency of the rejected loans based on income
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_015.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.15 – Aggregate feature importance for the raw features with the cohorts
+    and dependency of the rejected loans based on income
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, the **income** feature is more important for the **age_45**
+    cohort than the general public, which is represented by **All data**. If you click
+    on a feature importance bar, the graph below updates to show you how this feature
+    is affecting the model's decision to reject a loan request (**Class 0**). In this
+    example, you can see that incomes that are from 0 up to a bit more than 5,000
+    *push* the model to reject the loan, while incomes from 6,000 onward have a negative
+    impact, which means that they try to *push* the model to approve the loan.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are plenty of features in the explanation dashboard, and new features
+    appear all the time as contributions to the interpret community. In this section,
+    you reviewed the most important features of the dashboard, which have helped you
+    understand why the model makes the predictions it does and how to potentially
+    debug corner cases where it performs poorly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, you will learn about error analysis, which is part of Microsoft's
+    overall responsible AI widgets package. This tool allows you to understand the
+    blind spots of your models, which are the cases where your model is performing
+    poorly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Analyzing model errors
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Error analysis** is a model assessment/debugging tool that enables you to
+    gain a deeper understanding of your machine learning model errors. Error analysis
+    helps you identify cohorts within your dataset with higher error rates than the
+    rest of the records. You can observe the misclassified and erroneous data points
+    more closely to investigate whether any systematic patterns can be spotted, such
+    as whether no data is available for a specific cohort. Error analysis is also
+    a powerful way to describe the current shortcomings of the system and communicate
+    that to other stakeholders and auditors.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The tool consists of several visualization components that can help you understand
+    where the errors appear.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Navigate to the `chapter10.ipynb` notebook. From **Menu**, in the **Editors**
+    sub-menu, click **Edit in Jupyter** to open the same notebook in Jupyter and continue
+    editing it there, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.16 – Editing a notebook in Jupyter for better compatibility with
+    the widget'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_016.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.16 – Editing a notebook in Jupyter for better compatibility with the
+    widget
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the time of writing this book, the error analysis dashboard doesn't work
+    on the Notebooks experience due to security restrictions imposed by the Notebooks
+    experience that prevent certain features from working properly. If you try to
+    run it within Notebooks, it doesn't produce the necessary visualizations. This
+    is why you are going to open the notebook in Jupyter, something that may not be
+    needed by the time you read this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Jupyter environment, add a new cell at the end of the file with the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that this code is very similar to the code you used to trigger the explanation
+    dashboard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Make sure that you close the notebook from any other editing experience you
+    may have, such as the Notebooks experience within Azure Machine Learning Studio.
+    If the file is modified accidentally from another editor, you may lose some of
+    your code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The tool opens in the global view, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.17 – The error analysis dashboard loaded within the Jupyter environment'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_017.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.17 – The error analysis dashboard loaded within the Jupyter environment
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this view, you are looking at the model's error rates on overall data. In
+    this view, you can see a binary tree that depicts data partitions between interpretable
+    subgroups, which have unexpectedly high or low error rates. In our example, all
+    the errors of the model occur for incomes less than or equal to **6144**, which
+    accounts for a **7.25%** error rate, meaning that **7.25%** of the loans with
+    monthly incomes less than **6144** were misclassified. Error coverage is the portion
+    of all errors that fall into the node, and in this case, all the errors are located
+    in this node (**100%**). The numbers within the node show the data representation.
+    Here, **5** samples were wrong out of **69** records that belong in that node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you have selected a node in **Tree map**, you can click on **Cohort settings**
+    or **Cohort info** and save those records as a cohort of interest. This cohort
+    can be used in the explanation dashboard. By clicking on the **Explanation** button,
+    you will be taken to the **Data explorer** view, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.18 – The data explorer for the specific cohort selected in the
+    tree map'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_018.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.18 – The data explorer for the specific cohort selected in the tree
+    map
+  prefs: []
+  type: TYPE_NORMAL
+- en: This view has preselected the node's cohort. It has similar functionality to
+    the explanation dashboard, such as seeing the feature importance that impacts
+    the overall model predictions for a selected cohort. This view also offers the
+    **Local explanation** tab, which allows you to understand individual error records
+    and even perform what-if analysis to understand when the model would classify
+    that record correctly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By clicking on the **Error explorer** link at the top-left corner of the widget,
+    you will navigate back to the **Tree map** view. From the **Error explorer:**
+    dropdown, select **Heat map** instead of **Tree map**, which is currently selected.
+    This will lead you to the error heat map view, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.19 – Error heat map view'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_019.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.19 – Error heat map view
+  prefs: []
+  type: TYPE_NORMAL
+- en: This view slices the data in a one- or two-dimensional way based on the features
+    selected on the top left-hand side. The heat map visualizes cells with higher
+    errors with a darker red color to bring the user's attention to regions with high
+    error discrepancies. The cells with stripes indicate that no samples were evaluated,
+    potentially indicating hidden pockets of errors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you were provided with an overview of the capabilities of the
+    error analysis dashboard and how it can help you understand where your model is
+    making errors. This tool can help you identify those error pockets and mitigate
+    them by designing new features, collecting better data, discarding some of the
+    current training data, or performing better hyperparameter tuning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, you will learn about Fairlearn, a tool that will help you
+    assess your model's fairness and mitigate any observed unfairness issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting potential model fairness issues
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Machine learning models can behave unfairly due to multiple reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Historical bias in society may be reflected in the data that was used to train
+    the model.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The decisions made by the developers of the model may have been skewed.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Lack of representative data used to train the model. For example, there may
+    be too few data points from a specific group of people.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Since it is hard to identify the actual reasons that cause the model to behave
+    unfairly, the definition of a model behaving unfairly is defined by its impact
+    on people. There are two significant types of harm that a model can cause:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Allocation harm**: This happens when the model withholds opportunities, resources,
+    or information from a group of people. For example, during the hiring process
+    or the loan lending example we have been working on so far, you may not have the
+    opportunity to be hired or get a loan.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Quality-of-service harm**: This happens when the system doesn''t offer everyone
+    the same quality of service. For example, it has reduced accuracy in terms of
+    face detection for specific groups of people.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Based on that, it is evident that model fairness issues cannot be solved automatically
+    because there is no mathematical formulation. **Fairlearn** is a toolkit that
+    provides tools that help assess and mitigate the fairness of the predictions of
+    classification and regression models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our case, if we treat age groups as a sensitive feature, we can analyze
+    the model''s behavior based on its accuracy with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code gets the predictions of the model you trained in the *Training a
+    loans approval model* section and creates the predictions for the `x_test` dataset.
+    Then, it assigns all values from the `x_test[''age'']` feature to the `age` variable.
+    Then, by using `MetricFrame`, we can calculate the `accuracy_score` metric of
+    the model either for the entire test dataset, which is stored in the `overall`
+    attribute, or the accuracy by group, which is stored in the `by_group` attribute.
+    This code prints the overall accuracy score and the accuracy score for the groups
+    with less than 1\. The results are shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.20 – The model has a 0.96 accuracy but for 65-year-olds its accuracy
+    is 0.5'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_020.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.20 – The model has a 0.96 accuracy but for 65-year-olds its accuracy
+    is 0.5
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although the dataset was generated, you can see that the model's accuracy for
+    65-year-olds is only 50%. Note that although the model was trained with ages 18
+    to 85, only 35 subgroups were detected in the dataset, indicating that we may
+    not be testing it accurately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similar to `ExplanationDashboard` and `ErrorAnalysisDashboard`, the responsible
+    AI widgets (`raiwidgets`) package offers a `FairnessDashboard`, which can be used
+    to analyze the fairness of the model results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the time of writing this book, `FairnessDashboard` works in Jupyter. In the
+    Notebooks experience, there are some technical glitches. Open your notebook in
+    Jupyter to get the best experience out of `FairnessDashboard`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In a new cell, add the following code to invoke the fairness dashboard using
+    the age-sensitive feature you defined in the preceding code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After the launch, the widget will guide you through the fairness assessment
+    process, where you will need to define the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Sensitive features**: Here, you must configure the sensitive features. Sensitive
+    features are used to split your data into groups, as we saw previously. In this
+    case, it will prompt you to create five bins for the age groups (18-29, 30-40,
+    41-52, 53-64, and 64-75), and you can modify the binning process or even request
+    it to treat each age on its own by selecting the **Treat as categorical** option
+    it provides.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Performance metrics**: Performance metrics are used to evaluate the quality
+    of your model overall and in each group. In this case, you can select accuracy
+    as we did previously. You can change this even after the wizard finishes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fairness metrics**: Fairness metrics represent either the difference or ratio
+    between the extreme values of a performance metric, or simply the worst value
+    of any group. An example of such a metric is **Accuracy score ratio**, which is
+    the minimum ratio accuracy score between any two groups. You can change this even
+    after the wizard finishes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The resulting dashboard allows you to drill through your model''s impact on
+    the subgroups. It consists of two areas – the summarization table and the visualization
+    area – where you can select different graphical representations, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.21 – Fairness dashboard showing the accuracy of the model in various
+    age groups'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B16777_10_021.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.21 – Fairness dashboard showing the accuracy of the model in various
+    age groups
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you have identified a fairness issue with your model, you can use the
+    **Fairlearn** library to mitigate them. The **Fairlearn** library offers two approaches:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ThresholdOptimizer`, adjust the output of the underlying model to achieve
+    an explicit constraint, such as the constrain of equalizing odds. Equalizing odds
+    in our binary classification model means that true-positive and false-positive
+    rates should match across groups.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`sample_weight` parameter that the `fit` **sklearn** method accepts.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using these techniques, you can balance the fairness of your model by sacrificing
+    some of your model's performance to meet the needs of your business.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **Fairlearn** package is constantly evolving and has been integrated within
+    the Azure Machine Learning SDK and the Studio web experience, enabling data scientists
+    to upload model fairness insights into the Azure Machine Learning run history
+    and observe the **Fairlearn** dashboard within Azure Machine Learning Studio.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you learned how to detect potential unfair behaviors that your
+    model may have. You also read about the possible mitigation techniques that can
+    be implemented within the **Fairlearn** package. This concludes the tools provided
+    by the Azure Machine Learning workspace and the open source communities that allow
+    you to understand your models and assist you in creating AI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you were given an overview of the various tools that can help
+    you understand your models. You started with the Interpret-Community package,
+    which allows you to understand why the model is making its predictions. You learned
+    about the various interpretation techniques and explored the explanation dashboard,
+    which provides views such as feature importance. You then saw the error analysis
+    dashboard, which allows you to determine where the model is performing poorly.
+    Finally, you learned about the fairness evaluation techniques, the corresponding
+    dashboard that enables you to explore potentially unfair results, and the methods
+    you can use to mitigate potential fairness issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will learn about Azure Machine Learning pipelines,
+    which allow you to orchestrate model training and model results interpretation
+    in a repeatable manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Questions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In each chapter, you will find a couple of questions to help you conduct a
+    knowledge check regarding the topics that have been discussed in each chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You are using `TabularExplainer` to interpret a `DecisionTreeClassifier`. Which
+    underlying SHAP explainer will be used?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. `DecisionTreeExplainer`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. `TreeExplainer`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. `KernelExplainer`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: d. `LinearExplainer`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You want to interpret a `DecisionTreeClassifier` using `MimicExplainer`. Which
+    of the following models can you use for the `explainable_model` parameter?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. `LGBMExplainableModel`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. `LinearExplainableModel`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: c. `SGDExplainableModel`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: d. `DecisionTreeExplainableModel`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: e. All of the above
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Can you use `PFIExplainer` to produce local feature importance values?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: a. Yes
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b. No
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This section offers a list of useful web resources that will help you augment
+    your knowledge of the Azure Machine Learning SDK and the various code snippets
+    that were used in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**The SmartNoise** library for differential privacy: [https://github.com/opendp/smartnoise-core](https://github.com/opendp/smartnoise-core)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'HE resources: [https://www.microsoft.com/en-us/research/project/homomorphic-encryption/](https://www.microsoft.com/en-us/research/project/homomorphic-encryption/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Deploying an encrypted inference web service: [https://docs.microsoft.com/en-us/azure/machine-learning/how-to-homomorphic-encryption-seal](https://docs.microsoft.com/en-us/azure/machine-learning/how-to-homomorphic-encryption-seal)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Presidio**, the data protection and anonymization API: [https://github.com/Microsoft/presidio](https://github.com/Microsoft/presidio)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Sample repository for aDevOps process in data science projects, also known
+    as **MLOps**: [https://aka.ms/mlOps](https://aka.ms/mlOps)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Model Cards for Model Reporting**: [https://arxiv.org/pdf/1810.03993.pdf](https://arxiv.org/pdf/1810.03993.pdf)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The **InterpretML** website, with links to the GitHub repository of the community:
+    [https://interpret.ml/](https://interpret.ml/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The **Error Analysis** home page, including guides on how to use the toolkit:
+    [https://erroranalysis.ai/](https://erroranalysis.ai/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The **Fairlearn** home page: [https://fairlearn.org/](https://fairlearn.org/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

@@ -1,0 +1,1084 @@
+- en: '1'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An Introduction to Delta Live Tables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we will examine how the data industry has evolved over the
+    last several decades. We’ll also look at why real-time data processing has significant
+    ties to how a business can react to the latest signals in data. We’ll address
+    why trying to build your own streaming solution from scratch may not be sustainable,
+    and why the maintenance does not easily scale over time. By the end of the chapter,
+    you should completely understand the types of problems the **Delta Live Tables**
+    ( **DLT** ) framework solves and the value the framework brings to data engineering
+    teams.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The emergence of the l akehouse
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The importance of real-time data in the l akehouse
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The maintenance predicament of a streaming application
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What is the Delta Live Tables framework?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How are Delta Live Tables related to Delta Lake?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An introduction to Delta Live Tables concepts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A quick Delta Lake primer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A hands-on example – creating your first Delta Live Tables pipeline
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It’s recommended to have access to a Databricks premium workspace to follow
+    along with the code examples at the end of the chapter. It’s also recommended
+    to have Databricks workspace permissions to create an all-purpose cluster and
+    a DLT pipeline using a cluster policy. Users will create and attach a notebook
+    to a cluster and execute the notebook cells. All code samples can be downloaded
+    from this chapter’s GitHub repository, located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter01](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter01)
+    . This chapter will create and run a new DLT pipeline using the Core product edition.
+    As a result, the pipeline is estimated to consume around 5–10 **Databricks** **Units**
+    ( **DBUs** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The emergence of the lakehouse
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: During the early 1980s, the data warehouse was a great tool for processing structured
+    data. Combined with the right indexing methods, data warehouses allowed us to
+    serve **business intelligence** ( **BI** ) reports at blazing speeds. However,
+    after the turn of the century, data warehouses could not keep up with newer data
+    formats such as JSON, as well as new data modalities such as audio and video.
+    Simply put, data warehouses struggled to process semi-structured and unstructured
+    data that most businesses used. Additionally, data warehouses struggled to scale
+    to millions or billions of rows, common in the new information era of the early
+    2000s. Overnight, batch data processing jobs soon ran into BI reports scheduled
+    to refresh during the early morning business hours.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the same time, cloud computing became a popular choice among organizations
+    because it provided enterprises with an elastic computing capacity that could
+    quickly grow or shrink, based on the current computing demand, without having
+    to deal with the upfront costs of provisioning and installing additional hardware
+    on-premises.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Modern **extract, transform, and load** ( **ETL** ) processing engines such
+    as Apache Hadoop and Apache Spark™ addressed the performance problem of processing
+    big data ETL pipelines, ushering in a new concept, a **data lake** . Conversely,
+    data lakes were terrible for serving BI reports and oftentimes offered degrading
+    performance experiences for many concurrent user sessions. Furthermore, data lakes
+    had poor data governance. They were prone to sloppy data wrangling patterns, leading
+    to many expensive copies of the same datasets that frequently diverged from the
+    source of truth. As a result, these data lakes quickly earned the nickname of
+    *data swamps* . The big data industry needed a change. The lakehouse pattern was
+    this change and aimed to combine the best of both worlds – fast BI reports and
+    fast ETL processing of structured, semi-structured, and unstructured data in the
+    cloud.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Lambda architectural pattern
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the early 2010s, data streaming took a foothold in the data industry, and
+    many enterprises needed a way to support both batch ETL processing and append-only
+    streams of data. Furthermore, data architectures with many concurrent ETL processes
+    needed to simultaneously read and change the underlying data. It was not uncommon
+    for organizations to experience frequent conflicting write failures that led to
+    data corruption and even data loss. As a result, in many early data architectures,
+    a two-pronged Lambda architecture was built to provide a layer of isolation between
+    these processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.1 – A Lambda architecture was oftentimes created to support both
+    real-time streaming workloads and batch processes such as BI reports](img/B22011_01_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.1 – A Lambda architecture was oftentimes created to support both real-time
+    streaming workloads and batch processes such as BI reports
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Lambda architecture, downstream processes such as BI reports or **Machine
+    Learning** ( **ML** ) model training could execute calculations on a snapshot
+    of data, while streaming processes could apply near real-time data changes in
+    isolation. However, these Lambda architectures duplicated data to support concurrent
+    batch and streaming workloads, leading to inconsistent data changes that needed
+    to be reconciled at the end of each business day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing the medallion architecture
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In an effort to clean up data lakes and prevent bad data practices, data lake
+    architects needed a data processing pattern that would meet the high demands of
+    modern-day ETL processing. In addition, organizations needed a simplified architecture
+    for batch and streaming workloads, easy data rollbacks, good data auditing, and
+    strong data isolation, while scaling to process terabytes or even petabytes of
+    data daily.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a result, a design pattern within the lakehouse emerged, commonly referred
+    to as the medallion architecture. This data processing pattern physically isolates
+    data processing and improves data quality by applying business-level transformations
+    in successive data hops, also called **data layers** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.2 – The lakehouse medallion architecture](img/B22011_01_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.2 – The lakehouse medallion architecture
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A typical design pattern for organizing data within a lakehouse (as shown in
+    *Figure 1* *.2* ) includes three distinct data layers – a bronze layer, a silver
+    layer, and finally, a gold layer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The bronze layer serves as a landing zone for raw, unprocessed data .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Filtered, cleaned, and augmented data with a defined structure and enforced
+    schema will be stored in the silver layer .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Lastly, a refined, or gold layer, will deliver pristine, business-level aggregations
+    ready to be consumed by downstream BI and ML systems .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Moreover, this simplified data architecture unifies batch and streaming workloads,
+    by storing datasets in a big data format that supports concurrent batch and streaming
+    data operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Databricks lakehouse
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Databricks lakehouse combines the processing power of a new high-performance
+    processing engine, called the Photon Engine, with the augmentation of Apache Spark.
+    Combined with open data formats for data storage, and support for a wide range
+    of data types, including structured, semi-structured, and unstructured data, the
+    Photon engine can process a wide variety of workloads using a single, consistent
+    snapshot of the data in cheap and resilient cloud storage. I n addition, the Databricks
+    lakehouse simplifies data architecture by unifying batch and streaming processing
+    with a single API – the Spark DataFrame API. Lastly, the Databricks lakehouse
+    was built with data governance and data security in mind, allowing organizations
+    to centrally define data access patterns and consistently apply them across their
+    businesses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this book, we’ll cover three major features that the Databricks lakehouse
+    is anchored in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Delta Lake format
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The Photon Engine
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Unity Catalog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: While Delta Lake can be used to process both batch and streaming workloads concurrently,
+    most data teams choose to implement their ETL pipelines using a batch execution
+    model, mainly for simplicity’s sake. Let’s look at why that might be the case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The maintenance predicament of a streaming application
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Spark Structured Streaming provides near-real-time stream processing with fault
+    tolerance, and exactly-once processing guarantees through the use of a DataFrame
+    API that is near-identical to batch processing in Spark. As a result of a common
+    DataFrame API, data engineering teams can convert existing batch Spark workloads
+    to streaming with minimal effort. However, as the volume of data increases and
+    the number of ingestion sources and data pipelines naturally grows over time,
+    data engineering teams face the burden of augmenting existing data pipelines to
+    keep up with new data transformations or changing business logic. In addition,
+    Spark Streaming comes with additional configuration maintenance such as updating
+    checkpoint locations, managing watermarks and triggers, and even backfilling tables
+    when a significant data change or data correction occurs. Advanced data engineering
+    teams may even be expected to build data validation and system monitoring capabilities,
+    adding even more custom pipeline features to maintain. Over time, data pipeline
+    complexity will grow, and data engineering teams will spend most of their time
+    maintaining the operation of data pipelines in production and less time gleaning
+    insights from their enterprise data. It’s evident that a framework is needed that
+    allows data engineers to quickly declare data transformations, manage data quality,
+    and rapidly deploy changes to production where they can monitor pipeline operations
+    from a UI or other notification systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is the DLT framework?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: DLT is a declarative framework that aims to simplify the development and maintenance
+    operations of a data pipeline by abstracting away a lot of the boilerplate complexities.
+    For example, rather than declaring how to transform, enrich, and validate data,
+    data engineers can declare what transformations to apply to newly arriving data.
+    Furthermore, DLT provides support to enforce data quality, preventing a data lake
+    from becoming a data swamp. DLT gives data teams the ability to choose how to
+    handle poor-quality data, whether that means printing a warning message to the
+    system logs, dropping invalid data, or failing a data pipeline run altogether.
+    Lastly, DLT automatically handles the mundane data engineering tasks of maintaining
+    optimized data file sizes of the underlying tables, as well as cleaning up obsolete
+    data files that are no longer present in the Delta transaction log ( **Optimize**
+    and **Vacuum** operations are covered later in the *A quick Delta Lake primer*
+    section). DLT aims to ease the maintenance and operational burden on data engineering
+    teams so that they can focus their time on uncovering business value from the
+    data stored in their lakehouse, rather than spending time managing operational
+    complexities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How is DLT related to Delta Lake?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The DLT framework relies heavily on the Delta Lake format to incrementally process
+    data at every step of the way. For example, streaming tables and materialized
+    views defined in a DLT pipeline are backed by a Delta table. Features that make
+    Delta Lake an ideal storage format for a streaming pipeline include support for
+    **Atomicity, Consistency, Isolation, and Durability** ( **ACID** ) transactions
+    so that concurrent data modifications such as inserts, updates, and deletions
+    can be incrementally applied to a streaming table. Plus, Delta Lake features scalable
+    metadata handling, allowing Delta Lake to easily scale to petabytes and beyond.
+    If there is incorrect data computation, Delta Lake offers time travel – the ability
+    to restore a copy of a table to a previous snapshot. Lastly, Delta Lake inherently
+    tracks audit information in each table’s transaction log. Provenance information
+    such as what type of operation modified the table, by what cluster, by which user,
+    and at what precise timestamp are all captured alongside the data files. Let’s
+    look at how DLT leverages Delta tables to quickly and efficiently define data
+    pipelines that can scale over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing DLT concepts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The DLT framework automatically manages task orchestration, cluster creation,
+    and exception handling, allowing data engineers to focus on defining transformations,
+    data enrichment, and data validation logic. Data engineers will define a data
+    pipeline using one or more dataset types. Under the hood, the DLT system will
+    determine how to keep these datasets up to date. A data pipeline using the DLT
+    framework is made up of the streaming tables, materialized views, and views dataset
+    types, which we’ll discuss in detail in the following sections. We’ll also briefly
+    discuss how to visualize the pipeline, view its triggering method, and look at
+    the entire pipeline data flow from a bird’s-eye view. We’ll also briefly understand
+    the different types of Databricks compute and runtime, and Unity Catalog. Let’s
+    go ahead and get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Streaming tables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Streaming tables leverage the benefits of Delta Lake and Spark Structured Streaming
+    to incrementally process new data as it arrives. This dataset type is useful when
+    data must be ingested, transformed, or enriched at a high throughput and low latency.
+    Streaming tables were designed specifically for data sources that append new data
+    only and do not include data modification, such as updates or deletes. As a result,
+    this type of dataset can scale to large data volumes, since it can incrementally
+    apply data transformations as soon as new data arrives and does not need to recompute
+    the entire table history during a pipeline update.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Materialized views
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Materialized views leverage Delta Lake to compute the latest changes to a dataset
+    and materialize the results in cloud storage. This dataset type is great when
+    the data source includes data modifications such as updates and deletions, or
+    a data aggregation must be performed. Under the hood, the DLT framework will perform
+    the calculations to recompute the latest data changes to the dataset, using the
+    full table’s history. The output of this calculation is stored in cloud storage
+    so that future queries can reference the pre-computed results, as opposed to re-performing
+    the full calculations each time the table is queried. As a result, this type of
+    dataset will incur additional storage and compute costs each time the materialized
+    view is updated. Furthermore, materialized views can be published to Unity Catalog,
+    so the results can be queried outside of the DLT data pipeline. This is great
+    when you need to share the output of a query across multiple data pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Views also recompute the latest results of a particular query but do not materialize
+    the results to cloud storage, which helps save on storage costs. This dataset
+    type is great when you want to quickly check the intermediate result of data transformations
+    in a data pipeline or apply other ad hoc data validations. Furthermore, the results
+    of this dataset type cannot be published to Unity Catalog and are only available
+    within the context of the data pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following table summarizes the differences between the different dataset
+    types in the DLT framework and when it’s appropriate to use one dataset type versus
+    the other:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Dataset type** | **When to** **use it** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Streaming t able | Ingestion workloads, when you need to continuously append
+    new data to a target table with high throughput and low latency. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Materialized v iew | Data operations that include data modifications, such
+    as updates and deletions, or you need to perform aggregations on the full table
+    history. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| View | When you need to query intermediate data without publishing the results
+    to Unity Catalog (e.g., perform data quality checks on intermediate transformations)
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: Table 1.1 – Each dataset type in DLT serves a different purpose
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipeline
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A DLT pipeline is the logical data processing graph of one or more streaming
+    tables, materialized views, or views. The DLT framework will take dataset declarations,
+    using either the Python API or SQL API, and infer the dependencies between each
+    dataset. Once a pipeline update runs, the DLT framework will update the datasets
+    in the correct order using a dependency graph, called a **dataflow graph** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipeline triggers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A pipeline will be executed based on some triggering event. DLT offers three
+    types of triggers – manual, scheduled, and continuous triggers. Once triggered,
+    the pipeline will initialize and execute the dataflow graph, updating each of
+    the dataset states.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Workflow
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Databricks workflows is a managed orchestration feature of the **Databricks
+    Data Intelligence Platform** that allows data engineers to chain together one
+    or more dependent data processing tasks. For more complex data processing use
+    cases, it may be necessary to build a data pipeline using multiple, nested DLT
+    pipelines. For those use cases, Databricks workflows can simplify the orchestration
+    of these data processing tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Types of Databricks compute
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are four types of computational resources available to Databricks users
+    from the Databricks Data Intelligence Platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Job computes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A job compute is an ephemeral collection of **virtual machines** ( **VMs** )
+    with the **Databricks Runtime** ( **DBR** ) installed that are dynamically provisioned
+    for the duration of a scheduled job. Once the job is complete, the VMs are immediately
+    released back to the cloud provider. Since job clusters do not utilize the UI
+    components of the Databricks Data Intelligence Platform (e.g., notebooks and the
+    query editor), job clusters assess a lower **Databricks Unit** ( **DBU** ) for
+    the entirety of their execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All-purpose computes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: An all-purpose compute is a collection of ephemeral VMs with the DBR installed
+    that is dynamically provisioned by a user, directly from the Databricks UI via
+    a button click, or via the Databricks REST API (using the **/api/2.0/clusters/create**
+    endpoint, for example), and they remain running until a user, or an expiring auto-termination
+    timer, terminates the cluster. Upon termination, the VMs are returned to the cloud
+    provider, and Databricks stops assessing additional DBUs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instance pools
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Instance pools are a feature in Databricks that helps reduce the time it takes
+    to provision additional VMs and install the DBR. Instance pools will pre-provision
+    VMs from the cloud provider and hold them in a logical container, similar to a
+    valet keeping your car running in a valet parking lot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For some cloud providers, it can take 15 minutes or more to provision an additional
+    VM, leading to longer troubleshooting cycles or ad hoc development tasks, such
+    as log inspection or rerunning failed notebook cells during the development of
+    new features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, instance pools improve efficiency when many jobs are scheduled
+    to execute closely together or with overlapping schedules. For example, as one
+    job finishes, rather than releasing the VMs back to the cloud provider, the job
+    cluster can place the VMs into the instance pool to be reused by the next job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before returning the VMs to the instance pool, the Databricks container installed
+    on the VM is destroyed, and a new container is installed on the VM containing
+    the DBR when the next scheduled job requests the VM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Databricks will not assess additional DBUs while VM(s) are up and running. However,
+    the cloud provider will continue to charge for as long as the VMs are held in
+    the instance pools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To help control costs, instance pools provide an autoscaling feature that allows
+    the size of the pool to grow and shrink, in response to demand. For example, the
+    instance pool might grow to 10 VMs during peak hours but shrink back to 1 or 2
+    during lulls in the processing demand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Databricks SQL warehouses
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The last type of computational resource featured in the Databricks Data Intelligence
+    Platform is **Databricks SQL** ( **DBSQL** ) warehouses. DBSQL warehouses are
+    designed to run SQL workloads such as queries, reports, and dashboards. Furthermore,
+    DBSQL warehouses are pre-configured computational resources designed to limit
+    the configuration that a data analyst or SQL analyst would need to optimize for
+    ad hoc data exploration and query execution. DBSQL warehouses are preconfigured
+    with the latest DBRs, leverage the Databricks Photon engine, and have advanced
+    Spark configuration settings preconfigured to optimize performance. A DBSQL warehouse
+    also includes additional performance features such as results caching and disk
+    caching, which can accelerate workloads by moving data closer to the hardware
+    performing the query calculations. Combined with the processing speed of the Photon
+    engine, the DBSQL warehouse achieves cloud warehouse speeds that Apache Spark
+    once struggled to meet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Databricks Runtime
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Databricks Runtime is a set of libraries pre-installed on the driver and
+    worker nodes of a cluster during cluster initialization. These libraries include
+    popular Java, R, and Python libraries to assist end users with ad hoc data wrangling
+    or other development tasks. The libraries include core components that interface
+    with the Databricks backend services to support rich platform features, such as
+    collaborative notebooks, workflows, and cluster metrics. Furthermore, DBR includes
+    other performance features such as data file caching (known as disk caching),
+    the Databricks Photon engine for accelerated Spark processing, and other computational
+    speed-ups. DBR comes in two varieties, Standard and ML, which are tailored to
+    assist with the workloads anticipated to be run, based on the end user persona.
+    For example, DBR for ML would have popular Python libraries such as TensorFlow
+    and scikit-learn pre-installed to assist end users with the training of ML models,
+    feature engineering, and other ML development tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unity Catalog
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As the name suggests, Unity Catalog is a centralized governance store that is
+    intended to span multiple Databricks workspaces. Rather than repeatedly defining
+    the data governance policies for users and groups within each Databricks workspace,
+    Unity Catalog allows data administrators to define access policies once in a centralized
+    location. As a result, Unity Catalog acts as a single source of truth for data
+    governance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to data access policies, Unity Catalog also features data auditing,
+    data lineage, data discovery, and data sharing capabilities, which will be covered
+    in *Chapters 5* , *6* , and *7* .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unity Catalog is tightly integrated into the Databricks lakehouse, making it
+    easy to build near-real-time data pipelines with strong data security in mind,
+    using an open lakehouse storage format such as Delta Lake.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A quick Delta Lake primer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Delta Lake is a big data file protocol built around a multi-version transaction
+    log that provides features such as ACID transactions, schema enforcement, time
+    travel, data file management, and other performance features on top of existing
+    data files in a l akehouse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Originally, big data architectures had many concurrent processes that both read
+    and modified data, leading to data corruption and even data loss. As previously
+    mentioned, a two-pronged Lambda architecture was created, providing a layer of
+    isolation between processes that applied streaming updates to data and downstream
+    processes that needed a consistent snapshot of the data, such as BI workloads
+    that generated daily reports or refreshed dashboards. However, these Lambda architectures
+    duplicated data to support these batch and streaming workloads, leading to inconsistent
+    data changes that needed to be reconciled at the end of each business day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, the Delta Lake format provides a common storage layer for a lakehouse
+    across disparate workloads and unifies both batch and streaming workloads. As
+    such, a Delta table serves as the foundation for a Delta Live Table. Under the
+    hood, a Delta Live Table is backed by a Delta table that is added to a dataflow
+    graph, and whose state is updated by the DLT system whenever a DLT pipeline update
+    is executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The architecture of a Delta table
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Delta transaction log is a key piece of the architecture for this big data
+    format. Each Delta table contains a transaction log, which is a directory name,
+    **_delta_log** , located at a ta ble’s root directory. The transaction log is
+    a multi-version system of records that keeps track of the table’s state over a
+    linear period of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.3 – The Delta transaction log sits alongside the partition directories
+    and data files in a separate directory titled _delta_log](img/B22011_01_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.3 – The Delta transaction log sits alongside the partition directories
+    and data files in a separate directory titled _delta_log
+  prefs: []
+  type: TYPE_NORMAL
+- en: The transaction log informs the Delta Lake engine which data files to read to
+    answer a particular query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Within each transaction log directory, there will be one or more files stored
+    in the JSON format, as well as other metadata information to help quickly and
+    efficiently calculate the Delta table’s state (covered in the following section).
+  prefs: []
+  type: TYPE_NORMAL
+- en: As new data is appended, updated, or even deleted from a Delta table, these
+    changes are recorded, or committed, to this directory as metadata information,
+    stored as atomic JSON files. The JSON files are named using an ordered integer,
+    starting with **00…0.json** and incrementing by one after each successful transaction
+    commit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If a Delta table is partitioned, there will be one or more subdirectories containing
+    the partitioning column information within the table’s root directory. Hive-style
+    table partitioning is a very common performance technique that can speed up a
+    query by collocating similar data within the same directory. The data is collocated
+    by a particular column’s value (e.g., **"date=2024-01-05"** ). Optionally, there
+    can be even more subdirectories nested within these partition directories, depending
+    upon how many columns a table is partitioned by.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Within these partition subdirectories are one or more data files, stored using
+    the Apache Parquet format. Apache Parquet is a popular columnar storage format,
+    with efficient data compression and encoding schemes that yield fast data storage
+    and retrieval for big data workloads. As a result, this open format was chosen
+    as a foundation to store the data files that make up a Delta table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The contents of a transaction commit
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As mentioned earlier, the transaction log is the single source of truth for
+    a Delta table. Each committed transaction (the JSON file under the **_delta_log**
+    directory) will contain metadata information about the operation, or action, being
+    applied to a particular Delta table. These JSON files can be viewed as a set of
+    actions. Although there can be many concurrent transactions, the history of transaction
+    commits is replayed in a linear order by table readers, and the result is the
+    latest state of the Delta table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each JSON file could contain any of the following actions, as outlined by the
+    Delta Lake protocol:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Change metadata** : This type of action is used to update the name, schema,
+    or partitioning information of a table.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Add file** : Perhaps the most frequent action applied, this action adds a
+    new data file to a table along with statistical information about the first 32
+    columns of a Delta table.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Remove file** : This action will logically delete a particular data file.
+    Note that the physical data file will remain in cloud storage even after this
+    transaction is committed (there’s more about this topic in the *Tombstoned data*
+    *files* section).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Add Change Data Capture (CDC) information** : This action is used to add
+    a CDC file that will contain all the data that has changed as a result of a particular
+    table transaction.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Transaction identifiers** : This action is used for Structured Streaming
+    workloads and will contain the unique identifier for a particular stream, as well
+    as the epoch identifier for the most recently committed Structured Streaming micro-batch.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Protocol evolution** : Provides backward compatibility and ensures that old
+    Delta Lake table readers can read the metadata information within the transaction
+    log.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Commit provenance information** : This type of action will conta in information
+    about the process of committing a particular data transaction to a table. This
+    will include information including the timestamp, the operation type, cluster
+    identifier, and user information.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Domain metadata** : This type of action sets the configuration for a particular
+    domain. There are two types of domain metadata – system domain and user-controlled
+    domain.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Sidecar file information** : This type of action will commit a separate metadata
+    file to the transaction log, which contains summary information about the checkpoint
+    file that was created (checkpoints are covered in the following section).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Supporting concurrent table reads and writes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are two types of concurrency control methods in storage systems – pessimistic
+    concurrency control and optimistic concurrency control. A pessimistic concurrency
+    control will attempt to thwart possible table conflicts by locking an entire table
+    until an ongoing transaction has been completed. Conversely, optimistic concurrency
+    control does not lock a table and will permit potential transaction conflicts
+    to happen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The authors of the Delta Lake protocol chose to implement the Delta Lake format
+    using optimistic concurrency control. The reason why this design choice was made
+    is that most big data workloads will append new data to an existing table, as
+    opposed to modifying existing data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As an example, let’s look at how Delta Lake will deal with a concurrent write
+    conflict between two table writers – Table Writer A and Table Writer B:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.4 – Delta Lake implements an optimistic concurrency scheme to handle
+    concurrent write conflicts](img/B22011_01_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.4 – Delta Lake implements an optimistic concurrency scheme to handle
+    concurrent write conflicts
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imagine that the two table writers modify the same data files and attempt to
+    commit the data changes that conflict with one another. Let’s look at how Delta
+    Lake handles this type of scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writer A will first record the starting version identifier of the transaction
+    that it will attempt to commit to the transaction log.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Writer A will then write all the data files for the transaction that it would
+    like to commit.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, Writer A will attempt to commit the transaction to the Delta transaction
+    log.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: At the same time, Writer B has already committed their transaction using the
+    same table version identifier.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Writer A detects Writer B’s commit and replays the commit information to determine
+    whether any of the underlying data files have changed (e.g., the data has been
+    updated).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If no data has changed (for example, both Writer A and Writer B commit append-only
+    operations to the transaction log), then Writer A will increment the version identifier
+    by 1 and attempt to recommit the transaction to the transaction log.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the data has changed, then Writer A will need to recompute the transaction
+    from scratch, increment the version identifier, and attempt to recommit the transaction.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Tombstoned data files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When an update is applied to a Delta table that requires the data within a file
+    to be updated, a new file using the **AddFile** operation will be created. Similarly,
+    the file containing the out-of-date data will be logically deleted, using a **RemoveFile**
+    operation. Then, both actions will be committed to the transaction log.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, Delta Lake will retain the table metadat a (transaction log data)
+    for 30 days before being automatically removed from cloud storage. When a particular
+    data file is removed from the Delta transaction log, this is often referred to
+    as a **tombstoned file** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: To help control cloud storage costs, these tombstoned files, or files that no
+    longer make up the latest Delta table state and are no longer referenced in the
+    transaction log, can be removed from cloud storage altogether. A separate Delta
+    Lake file management utility, called the **Vacuum** command, can be run as a separate
+    process to identify all the tombstoned data files and remove them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Furthermore, the **Vacuum** command is configurable, and the length of time
+    to remove the table files can be specified as an optional input parameter. For
+    example, the following code snippet will execute the **Vacuum** command on the
+    Delta table, **yellow_taxi** , remov ing data files from the last 14 days of table
+    history:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we’ll see in the upcoming chapter, this process is automatically run and
+    managed for DLT pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculating Delta table state
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As alluded to in the previous section, Delta Lake will automatically compact
+    metadata in a transaction log. As you can imagine, in big data workloads with
+    thousands or even millions of transactions each day, a Delta table can rapidly
+    grow in size. Similarly, the commit information in the transaction log will also
+    grow comparatively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For every 10th commit, Delta Lake will create a checkpoint file, using the Apache
+    Parquet format, that contains the latest table state information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.5 – For every 10th commit, Delta Lake will write a checkpoint file](img/B22011_01_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.5 – For every 10th commit, Delta Lake will write a checkpoint file
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under the hood, a Delta Lake reader creates a separate Apache Spark Job to efficiently
+    read the Delta table’s commit logs. For example, to calculate the latest table
+    state, a Delta Lake reader will begin by reading the latest checkpoint file and
+    applying the transaction commits that may have occurred after the file was created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storing the table state information in checkpoint files alongside the data files
+    in cloud storage was another pivotal design choice for the Delta Lake format.
+    By using this method, calculating a table’s state could scale much better than
+    other methods, such as using the Hive Metastore to serve table metadata information.
+    Traditional big data metastores, such as the Hive Metastore, struggle to scale
+    when many large, heavily active tables are queried concurrently and the table
+    metadata information needs to be retrieved to answer queries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To further speed up queries, Delta Lake readers will also cache the table state
+    in local memory; that way, table readers can calculate which data files will answer
+    a particular table query much faster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time travel
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Another file management utility in Delta Lake is the time travel feature that
+    allows end users to query a table’s state from a previous version. Time travel
+    offers two methods to specify table state – using the table version number assigned
+    in the transaction log or by using a timestamp.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Users can query a previous Delta table’s state directly using the SQL syntax:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Similarly, Python users on the Databricks Data Intelligence Platform can use
+    the Python API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: It’s important to note that, by default, the **Vacuum** utility will remove
+    all data files from a particular Delta table, from the last seven days of table
+    versions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a result, if the **Vacuum** command is run and a user attempts to query table
+    history beyond the last seven days, the end user will receive a runtime exception,
+    specifying that the data referenced in the transaction log no longer exists.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, Delta Lake’s time travel feature was designed to correct recent
+    data issues, so it should not be used for long-term data storage requirements,
+    such as implementing an auditing system with a history spanning years.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tracking table changes using change data feed
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Delta Lake’s **Change Data Feed** ( **CDF** ) feature tracks row-level changes
+    that have been made to a Delta table, as well as metadata about those changes.
+    For example, CDF will capture information about the operation type, the timestamp
+    confirming that the change was made, and other provenance information such as
+    cluster identification and user information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For update operations, CDF will capture a snapshot of the row before an update,
+    as well as a snapshot of the row after the update has been applied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.6 – CDF captures the operation type, commit version, and timestamp](img/B22011_01_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.6 – CDF captures the operation type, commit version, and timestamp
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This feature is not enabled by default but can be configured by updating a
+    Delta table’s properties. For example, CDF can be enabled on an existing table
+    by altering the table, using a SQL **ALTER** statement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Similarly, CDF can also be enabled when a table is created by including the
+    table property as a part of the **CREATE** **TABLE** statement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we’ll see in the next chapter, this feature is important in how DLT can efficiently
+    apply changes from a source table to downstream datasets and implement **slowly
+    changing** **dimensions** ( **SCDs** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: A hands-on example – creating your first Delta Live Tables pipeline
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll use a NYC taxi sample dataset to declare a data pipeline,
+    using the DLT framework, and apply a basic transformation to enrich the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get the most value out of this section, it’s recommended to have Databricks
+    workspace permissions to create an all-purpose cluster and a DLT pipeline, using
+    a cluster policy. In this section, you will attach a notebook to a cluster, execute
+    notebook cells, as well as create and run a new DLT pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s start by creating a new all-purpose cluster. Navigate to the Databricks
+    Compute UI by selecting the **Compute** button from the sidebar navigation on
+    the left side.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.7 – Navigate to the Compute UI from the left-hand sidebar](img/B22011_01_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.7 – Navigate to the Compute UI from the left-hand sidebar
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click the button titled **Create compute** at the top right. Next, provide a
+    name for the cluster. For this exercise, the cluster can be a small, single-node
+    cluster. Click the **Single node** radio button for the cluster type. Select the
+    latest DBR in the runtime dropdown. Accept the defaults and click the **Create
+    compute** button once again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a cluster up and running, we can begin the development of our
+    very first data pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s first start by creating a new Databricks notebook under your workspace
+    home directory. Create a new notebook by clicking the **Workspace** button on
+    the left sidebar, clicking on the **Add** dropdown, and selecting **Notebook**
+    . Give the notebook a meaningful name, such as **My First DLT Pipeline** . This
+    new notebook is where we will declare the datasets and dependencies that will
+    make up our Delta Live Table pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All Databricks workspaces come with a set of sample datasets, located at **/databricks-datasets**
+    in the Databricks FileSystem. You can browse the list of available datasets by
+    listing the directory contents, using the Databricks FileSystem utility:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, we need to import the **dlt** Python module. The **dlt** module contains
+    function decorators that will instruct the DLT system on how to build our data
+    pipeline, the dependencies, and an internal data processing graph, called a dataflow
+    graph.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Add the following line to a new notebook cell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'DLT is built on top of PySpark, so we can leverage Spark DataFrames to define
+    how to ingest data from cloud storage and how to apply data transformations. Let’s
+    start by defining a function that will use Spark to read the NYC taxi sample dataset
+    from the **/** **databricks-datasets** directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we’ve declared a simple function with a meaningful name, and
+    when invoked, the function will use Spark to read the raw data stored in the yellow
+    taxi dataset and return it as a streaming DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we need to tell the DLT framework that we should use this declared function
+    as a part of a data pipeline. We can do this by adding the **@dlt.table()** function
+    decorator. This function decorator will create a Delta Live Table from the function
+    and add it to the pipeline’s dataflow graph. Let’s also add some descriptive text
+    to the optional **comment** parameter of this function decorator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: After executing the notebook cell, the Databricks Data Intelligence Platform
+    will detect a DLT table, print the output schema, and prompt you to create a new
+    DLT pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.8 – Databricks will parse the DLT table declaration and print the
+    output schema](img/B22011_01_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.8 – Databricks will parse the DLT table declaration and print the output
+    schema
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s click the **Create Pipeline** button to generate a new DLT pipeline. Give
+    the data pipeline a meaningful name, such as **Yellow Taxi Cab Pipeline** . Select
+    **Core** as the product edition and **Triggered** as the pipeline execution mode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.9 – Create a new DLT pipeline using the Core product edition](img/B22011_01_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.9 – Create a new DLT pipeline using the Core product edition
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, under the **Target Location** settings, select the Unity Catalog radio
+    button, and specify the target catalog and schema where you would like to store
+    the dataset. Under the **Compute** settings, set **Min workers** to **1** and
+    **Max workers** to **1** . Then, accept the defaults by clicking the **Create**
+    button. Finally, click the **Start** button to execute the data pipeline. You
+    will be taken to a visual representation of the dataflow graph.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.10 – The dataflow graph will contain the streaming table we declared
+    in our notebook](img/B22011_01_010.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.10 – The dataflow graph will contain the streaming table we declared
+    in our notebook
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, our dataflow graph consists of a single streaming table, which
+    is a new dataset that will ingest raw NYC taxi trip data from the **/databricks-datasets/**
+    location on the Databricks FileSystem. While a trivial example, this example shows
+    the declarative nature of DLT framework, as well as how quickly we can declare
+    a data pipeline using the familiar PySpark API. Furthermore, you should now have
+    a feel for how we can monitor and view the latest state of our data pipeline from
+    the DLT UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we examined how and why the data industry has settled on a
+    lakehouse architecture, which aims to merge the scalability of ETL processing
+    and the fast data warehousing speeds for BI workloads under a single, unified
+    architecture. We learned how real-time data processing is essential to uncovering
+    value from the latest data as soon as it arrives, but real-time data pipelines
+    can halt the productivity of data engineering teams as complexity grows over time.
+    Finally, we learned the core concepts of the Delta Live Tables framework and how,
+    with just a few lines of PySpark code and function decorators, we can quickly
+    declare a real-time data pipeline that is capable of incrementally processing
+    data with high throughput and low latency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll take a deep dive into the advanced settings of Delta
+    Live Tables pipelines and how the framework will optimize the underlying datasets
+    for us. Then, we’ll look at more advanced data transformations, using a real-world
+    use case to develop a data pipeline.
+  prefs: []
+  type: TYPE_NORMAL

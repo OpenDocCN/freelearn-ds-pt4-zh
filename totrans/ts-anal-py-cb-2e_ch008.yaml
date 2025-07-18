@@ -1,0 +1,1731 @@
+- en: 7 Handling Missing Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Join our book community on Discord
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '![](img/file0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[https://packt.link/zmkOY](https://packt.link/zmkOY)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a data scientist, data analyst, or business analyst, you have probably discovered
+    that hoping to obtain a *perfect* clean dataset is too optimistic. What is more
+    common, though, is that the data you are working with suffers from flaws such
+    as missing values, erroneous data, duplicate records, insufficient data, or the
+    presence of outliers in the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time series data is no different, and before plugging the data into any analysis
+    or modeling workflow, you must investigate the data first. It is vital to understand
+    the *business context around the time series data* to detect and identify these
+    problems successfully. For example, if you work with stock data, the context is
+    very different from COVID data or sensor data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having that intuition or domain knowledge will allow you to anticipate what
+    to expect and what is considered acceptable when analyzing the data. Always try
+    to understand the business context around the data. For example, why is the data
+    collected in the first place? How was the data collected? What business rules,
+    logic, or transformations have been applied to the data? Were these modifications
+    applied during the data acquisition process or built into the systems that generate
+    the data?
+  prefs: []
+  type: TYPE_NORMAL
+- en: During the discovery phase, such prior knowledge will help you determine the
+    best approach to clean and prepare your dataset for analysis or modeling. Missing
+    data and outliers are two common problems that need to be dealt with during data
+    cleaning and preparation. You will dive into outlier detection in *Chapter 8*,
+    *Outlier Detection Using Statistical Methods*, and *Chapter 14*, *Outlier Detection
+    Using Unsupervised Machine Learning*. In this chapter, you will explore techniques
+    to handle missing data through **imputation** and **interpolation**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the list of recipes that we will cover in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Performing data quality checks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling missing data with univariate imputation using pandas
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling missing data with univariate imputation using scikit-learn
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling missing data with multivariate imputation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling missing data with interpolation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can download the Jupyter notebooks and the requisite datasets from the
+    GitHub repository to follow along:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Jupyter notebooks: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch7/Chapter%207.ipynb](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./blob/main/code/Ch7/Chapter%207.ipynb)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Datasets: [https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch7](https://github.com/PacktPublishing/Time-Series-Analysis-with-Python-Cookbook./tree/main/datasets/Ch7)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this chapter and beyond, you will extensively use pandas 2.1.3 (released
+    November 10, 2023). There will be four additional libraries that you will be using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: numpy (1.26.0)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: matplotlob (3.8.1)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: statsmodels (0.14.0)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: scikit-learn (1.3.2)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: SciPy (1.11.3)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you are using `pip`, then you can install these packages from your terminal
+    with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you are using `conda`, then you can install these packages with the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this chapter, two datasets will be used extensively for the imputation and
+    interpolation recipes: the *CO2 Emissions* dataset, and the *e-Shop Clickstream*
+    dataset. The source for the Clickstream dataset comes from *clickstream data for
+    online shopping* from the *UCI machine learning repository*, which you can find
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://archive.ics.uci.edu/ml/datasets/clickstream+data+for +online+shopping](https://archive.ics.uci.edu/ml/datasets/clickstream+data+for)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The source for the CO2 emissions dataset comes from the Annual *CO2 emissions*
+    report from *Our World in Data*, which you can find here: [https://ourworldindata.org/co2-emissions](https://ourworldindata.org/co2-emissions).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For demonstration purposes, the two datasets have been modified by removing
+    observations (missing data). The original versions are provided, in addition to
+    the modified versions, to be used for evaluating the different techniques discussed
+    in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Throughout this chapter, you will follow similar steps for handling missing
+    data: ingest the data into a DataFrame, identify missing data, impute missing
+    data, evaluate it against the original data, and finally, visualize and compare
+    the different imputation techniques.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These steps can be translated into functions for reusability. You can create
+    functions for these steps in the process: a function to read the data into a DataFrame,
+    a function to evaluate using the RMSE score, and a function to plot the results.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading the standard libraries that you will be using throughout this
+    chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Function 1 – read_datasets
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `read_datasets` function takes a path to the folder, CSV filename, and the
+    column name that contains the date variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `read_datasets` function is defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Function 2 – plot_dfs
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The `plot_dfs()` function takes two DataFrames: the original DataFrame (`df1`)
+    with no missing data (as the baseline), and the imputed DataFrame (`df2`) to compare
+    against. The function creates multiple time series subplots using the specified
+    response column (`col`). Note that the imputed DataFrame will contain additional
+    columns (a column for the output of each imputation technique), and the plotting
+    function accommodates this fact. This is done by looping through the columns.
+    The function will plot each imputation technique for visual comparison and will
+    be utilized throughout this chapter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This `plot_dfs` function is defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Function 3 – rmse_score
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In addition to a visual comparison between imputation techniques using the `plot_dfs`
+    function, you will need a method to compare the different imputation techniques
+    numerically (using a statistical measure).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is where the `rmse_score` function will come in handy. It takes two DataFrames:
+    the original DataFrame (`df1`) as the baseline and the imputed DataFrame (`df2`)
+    to compare against. The function allows you to specify which column contains the
+    response column (`col`) used as the basis for the calculation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `rmse_score` function is defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Understanding missing data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Data can be missing for a variety of reasons, such as unexpected power outages,
+    a device that got accidentally unplugged, a sensor that just became defective,
+    a survey respondent declined to answer a question, or the data was intentionally
+    removed for privacy and compliance reasons. In other words, missing data is inevitable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, missing data is very common, yet sometimes it is not given the proper
+    level of attention in terms of formulating a strategy on how to handle the situation.
+    One approach for handling rows with missing data is to drop those observations
+    (delete the rows). However, this may not be a good strategy if you have limited
+    data in the first place, for example, if collecting the data is a complex and
+    expensive process. Additionally, the drawback of deleting records, if done prematurely,
+    is that you will not know if the missing data was due to censoring (an observation
+    is only partially collected) or due to bias (for example, high-income participants
+    declining to share their total household income in a survey).
+  prefs: []
+  type: TYPE_NORMAL
+- en: A second approach may involve tagging the rows with missing data by adding a
+    column describing or labeling the missing data. For example, suppose you know
+    that there was a power outage on a particular day. In that case, you can add Power
+    Outage to label the missing data and differentiate it from other missing data
+    labeled with Missing Data if the cause is unknown.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A third approach, which this chapter is about, is estimating the missing data
+    values. The methods can range from simple and naive to more complex techniques
+    leveraging machine learning and complex statistical models. But how can you measure
+    the accuracy of the estimated values for data missing in the first place?
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are different options and measures to consider, and the answer is not
+    as simple. Therefore, you should explore different approaches, emphasizing a thorough
+    evaluation and validation process to ensure the selected method is ideal for your
+    situation. In this chapter, you will use **Root Mean Squared Error** (**RMSE**)
+    to evaluate the different imputation techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The process to calculate the RMSE can be broken down into a few simple steps:
+    first, computing the error, which is the difference between the actual values
+    and the predicted or estimated values. This is done for each observation. Since
+    the errors may be either negative or positive, and to avoid having a zero summation,
+    the errors (differences) are squared. Finally, all the errors are summed and divided
+    by the total number of observations to compute the mean. This gives you the **Mean
+    Squared Error (MSE)**. RMSE is just the square root of the MSE.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The RMSE equation can be written as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/file61.jpg)In our estimate of the missing observations,![](img/file62.png)is
+    the imputed value,![](img/file63.png)is the actual (original) value, and *N* is
+    the number of observations.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: RMSE FOR EVALUATING MULTIPLE IMPUTATION METHODS
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: I want to point out that RMSE is commonly used to measure the performance of
+    *predictive* models (for example, comparing regression models). Generally, a *lower*
+    RMSE is desirable; it tells us that the model can fit the dataset. Simply stated,
+    it tells us the average distance (error) between the predicted value and the actual
+    value. You want this distance minimized.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: When comparing different imputation methods, we want our imputed values to resemble
+    (as close as possible) the actual data, which contains random effects (uncertainty).
+    This means we are not seeking a perfect prediction, and thus a lower RMSE score
+    does not necessarily indicate a better imputation method. Ideally, you would want
+    to find a balance, hence, in this chapter, the use of RMSE is combined with visualization
+    to help illustrate how the different techniques compare and work.
+  prefs:
+  - PREF_BQ
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: As a reminder, we have intentionally removed some values (synthetically causing
+    missing data) but retained the original data to compare against for when using
+    RMSE.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Performing data quality checks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Missing data** are values not captured or not observed in the dataset. Values
+    can be missing for a *particular feature* (column), or an *entire observation*
+    (row). When ingesting the data using pandas, missing values will show up as either
+    `NaN`, `NaT`, or `NA`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes, in a given data set, missing observations are replaced with other
+    values from the source system; for example, this can be a numeric filler such
+    as `99999` or `0`, or a string such as `missing` or `N/A`. When missing values
+    are represented by `0`, you need to be cautious and investigate further to determine
+    whether those zero values are legitimate or if they are indicative of missing
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will explore how to identify the presence of missing data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and requisite datasets from the GitHub
+    repository. Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will be using two datasets from the `Ch7` folder: `clicks_missing_multiple.csv`
+    and `co2_missing.csv`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The `pandas` library provides convenient methods for discovering missing data
+    and for summarizing data in a DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by reading the two CSV files (`co2_missing.csv` and `clicks_missing.csv`)
+    using the `read_dataset()` function :'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should display the first five rows from the `ecom_df` DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.1: First five rows from the ecom_df DataFrame showing NaN and NaT](img/file64.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.1: First five rows from the ecom_df DataFrame showing NaN and NaT'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The output from the preceding code shows that there are five missing values
+    from the source dataset. `NaN` is how pandas represents empty *numeric* values
+    (`NaN` is short for **Not a Number**). `NaT` is how pandas represents missing
+    `Datetime` values (`NaT` is short for **Not a Time**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To count the number of missing values in both DataFrames, you can use the `DataFrame.isnull()`
+    or `DataFrame.isna()` methods. This will return `True` (if missing) or `False`
+    (if not missing) for each value. For example, to get the total count of missing
+    values for each column, you can use `DataFrame.isnull().sum()` or `DataFrame.isna().sum()`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In Python, Booleans (`True` or `False`) are a subtype of integers. `True` is
+    equivalent to `1`, and `False` is equivalent to `0`. To validate this concept,
+    try the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let''s get the total number of missing values for each DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice in the preceding code that both `.isnull()` and `.isna()` were used.
+    They both can be used interchangeably since `.isnull()` is an alias of `.isna()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the previous step, the `year` column from the `co2_df` and the `date` column
+    from the `ecom_df` were not included in the counting result set. This is because
+    `isnull()` or `isna()` focuses on the DataFrame’s columns and does not include
+    the index. Our `read_datasets()` function from the *Technical Requirements* section
+    was setting them as **index** columns. One simple approach is to reset the index
+    to become a column as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now if you execute the `isnull().sum()` you should see the year column from
+    the `co2_df` and date column from the `ecom_df` included in the counts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the results, `co2_df` has `25` missing values from the `co2` column, while
+    `ecom_df` has `20` missing values in total (`4` from the `date` column, `1` from
+    the `price` column, `1` from the `location` column, and `14` from the `clicks`
+    column).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get the grand total for the entire `ecom_df` DataFrame, simply just chain
+    another `.sum()` function to the end of the statement:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Similarly, for `co2_df` you can chain another .sum()
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you inspect the `co2_missing.csv` file using a text/code editor (such as
+    Excel, or Jupyter Lab) and scroll down to *rows 192-194*, you will notice that
+    there are string placeholder values in there: `NA`, `N/A`, and `null`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.2: co2_missing.csv shows string values that were converted to NaN
+    (missing) by pandas](img/file65.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.2: co2_missing.csv shows string values that were converted to NaN
+    (missing) by pandas'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure 7.2* shows the three string values. Interestingly, `pandas.read_csv()`
+    interpreted the three string values as `NaN`. This is the default behavior in
+    `read_csv()`, which can be modified through the `na_values` parameter. To see
+    how pandas represents these values, you can run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.3: pandas.read_csv() interpreted the NA, N/A, and null strings as
+    a NaN type](img/file66.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.3: pandas.read_csv() interpreted the NA, N/A, and null strings as
+    a NaN type'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If all you need is to check whether the DataFrame contains any missing values,
+    use `isnull().values.any()`. This will output `True` if there are any missing
+    values in the DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: So far, `isnull()` helped identify all the missing values in the DataFrames.
+    But what if the missing values were masked or replaced by other placeholder values
+    such as `?` or `99999`. The presence of these values will be skipped and considered
+    missing (NaN) in pandas. Technically, they are not empty cells (missing) and hold
+    values. On the other hand, domain or prior knowledge will tell us that the CO2
+    emission dataset is measured annually and should have values greater than 0.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Similarly, we expect the number of clicks to be numeric for the Clickstream
+    data. If the column is not numeric, it should trigger an investigation as to why
+    pandas could not parse the column as numeric. For example, this could be due to
+    the presence of string values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To gain a better insight into the DataFrame schema and data types, you can
+    use `DataFrame.info()` to display the schema, total records, column names, column
+    dtypes, count of non-missing values per column, index dtype, and the DataFrame''s
+    total memory usage:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `co2_df` summary output looks reasonable, confirming that we have `25` missing
+    values (226 total records less the 221 non-null give us 25) for the `co2` column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, the summary for `ecom_df` indicates that the `clicks` column
+    is of the `object` dtype (indicating mixed types), and not the expected `float64`.
+    Let's investigate further using basic summary statistics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get the summary statistics for a DataFrame, use the `DataFrame.describe()`
+    method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.4: co2_df summary statistics indicating zero values present in the
+    data](img/file67.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.4: co2_df summary statistics indicating zero values present in the
+    data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note the use of `include='all'` to replace the default value `include=None`
+    . The default behavior is to show summary statistics for only numeric columns.
+    By changing the value to `'all'`, the results will include all column types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The summary statistics for the `co2_df` DataFrame confirms that we have zero
+    values under the `co2` column (min = 0.00). As pointed out earlier, prior knowledge
+    tells us that `0` represents a null (or missing) value. Therefore, the zeros will
+    need to be replaced with `NaN` to include such values in the imputation process.
+    Now, review the summary statistics for `ecom_df`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.5: ecom_df summary statistics indicating the ? value in the clicks
+    column](img/file68.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.5: ecom_df summary statistics indicating the ? value in the clicks
+    column'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, the summary statistics for the `ecom_df` DataFrame indicate
+    that we have a `?` value under the `clicks` column. This explains why pandas did
+    not parse the column as numeric (due to mixed types). Similarly, the `?` values
+    will need to be replaced with `NaN` to be treated as missing values for imputation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Convert the instances of `0` and `?` values to `NaN` types. This can be accomplished
+    using the `DataFrame.replace()` method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To validate, run `DataFrame.isnull().sum()` and you should notice that the
+    missing value counts have increased:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: The new numbers do a better job of reflecting the number of actual missing values
+    in both DataFrames.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When reading the CSV files using `pandas.read_csv()`, the default behavior is
+    to recognize and parse certain string values, such as `NA`, `N/A`, and `null`,
+    to the `NaN` type (missing). Thus, once these values became a `NaN`, the CSV reader
+    could parse the `co2` column as `float64` (numeric) based on the remaining non-null
+    values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is possible due to two parameters: `na_values` and `keep_default_na`.
+    The `na_values` parameter, by default, contains a list of strings that are interpreted
+    as `NaN`. The list includes `#N/A`, `#N/A N/A`, `#NA`, `-1.#IND`, `-1.#QNAN`,
+    `-NaN`, `-nan`, `1.#IND`, `1.#QNAN`, `<NA>`, `N/A`, `NA`, `NULL`, `NaN`, `n/a`,
+    `nan`, and `null`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can append to this list by providing additional values to the `na_values`
+    parameter. Additionally, `keep_default_na` is set to `True` by default, thus using
+    (appending) `na_values` with the default list for parsing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you change `keep_default_na` to `False` without providing new values to `na_values`,
+    then none of the strings (`NA`, `N/A`, and `null`) would be parsed to `NaN` unless
+    you provide a custom list. For example, if `keep_default_na` was set to `False`
+    and no values provided to `na_values`, then the entire `co2` column would be parsed
+    as a `string` (object), and any missing values will show up as strings; in other
+    words, they will be coming in as `''`, which is an empty string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice that we did not lose any data (`226` records) but showed no `NaN` (or
+    missing) values. Let''s inspect the DataFrame structure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice the change in *dtype* for the `co2` columns. Let''s check the data from
+    index `190` to `195` again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.6: Output from the co2_df DataFrame without NaN parsing](img/file69.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.6: Output from the co2_df DataFrame without NaN parsing'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, you can check how the missing values were handled:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will notice all seven rows have blank values (empty string).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this recipe you explored the `.isna()` method. Once the data is read into
+    a DataFrame or series, you get access to the `.isna()` and `.isnull()` interchangeable
+    methods, which return `True` if data is missing and `False` otherwise. To get
+    the counts for each column, we just chain a `.sum()` function, and to get the
+    grand total, we chain another `.sum()` function following that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If you know that the data will always contain `?`, which should be converted
+    to `NaN` (or any other value), then you can utilize the `pd.read_csv()` function
+    and update the `na_values` parameter. This will reduce the number of steps needed
+    to clean the data after creating the DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will replace all instances of `?` with `NaN`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about the `na_values` and `keep_default_na` parameters from `pandas.read_csv()`,
+    please visit the official documentation here: [https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html](https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To learn more about the `DataFrame.isna()` function, please visit the official
+    documentation here: [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.isna.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.isna.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling missing data with univariate imputation using pandas
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Generally, there are two approaches to imputing missing data: `univariate imputation`
+    and `multivariate imputation`. This recipe will explore univariate imputation
+    techniques available in pandas.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In univariate imputation, you use non-missing values in a single variable (think
+    a column or feature) to impute the missing values for that variable. For example,
+    if you have a sales column in the dataset with some missing values, you can use
+    a univariate imputation method to impute missing sales observations using average
+    sales. Here, a single column (`sales`) was used to calculate the mean (from non-missing
+    values) for imputation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some basic univariate imputation techniques include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imputing using the **mean**.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Imputing using the last observation forward (**forward fill**). This can be
+    referred to as **Last Observation Carried Forward** (**LOCF**).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Imputing using the next observation backward (**backward fill**). This can be
+    referred to as **Next Observation Carried Backward** (**NOCB**).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You will use two datasets to impute missing data using different techniques
+    and then compare the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and requisite datasets from the GitHub
+    repository. Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will be using four datasets from the `Ch7` folder: `clicks_original.csv`,
+    `clicks_missing.csv`, `clicks_original.csv`, and `co2_missing_only.csv`. The datasets
+    are available from the GitHub repository.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You will start by importing the libraries and then read all four CSV files.
+    You will use the original versions of datasets to compare the results of the imputations
+    to gain a better intuition of how they perform. For the comparison measure, you
+    will use *RMSE* to evaluate each technique and then visualize the outputs to compare
+    the imputation results visually:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `read_dataset()` function to read the four datasets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Visualize the CO2 DataFrames (original and missing) and specify the column
+    with missing values (`co2`):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `plot_dfs` function will produce two plots: the original CO2 dataset without
+    missing values, and the altered dataset with missing values.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.7: CO2 dataset showing a comparison between the missing values and
+    the original](img/file70.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.7: CO2 dataset showing a comparison between the missing values and
+    the original'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From *Figure 7.7*, you can see a noticeable upward trend in CO2 levels over
+    time. There is missing data in three different spots. Now, visualize the Clickstream
+    DataFrames:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `plot_dfs` function will produce two plots: the original Clickstream dataset
+    without missing values, and the altered dataset with missing values.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.8: Clickstream dataset showing a comparison between the missing
+    values and the original](img/file71.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.8: Clickstream dataset showing a comparison between the missing values
+    and the original'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice, the output shows missing data from May 15 to May 30\. You can confirm
+    this by running the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now you are ready to perform your first imputation. You will use the `.fillna()`
+    method which has a `value` parameter that takes either a numeric or a string value
+    to substitute for all the `NaN` instances. Additionally you will use `.ffill()`
+    for forward fill, and `.bfill()` for backward fill.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s impute the missing values utilizing the `method` parameter and append
+    the results as new columns in the DataFrame. Start with the CO2 DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use the `rmse_score` function to get the scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, visualize the results using the `plot_dfs` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code produces the results as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.9: Comparison between the three imputation methods for the CO2 DataFrame](img/file72.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.9: Comparison between the three imputation methods for the CO2 DataFrame'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the results in *Figure 7.9* with the original data in *Figure 7.7*.
+    Notice that both `ffill` and `bfill` produce better results than when using the
+    `mean`. Both techniques have favorable RMSE scores and visual representation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, perform the same imputation methods on the Clickstream DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, calculate the RMSE scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Interestingly, for the Clickstream dataset, the mean imputation had the lowest
+    RMSE score, in contrast to the results from the CO2 dataset. Let''s visualize
+    the results to get another perspective on performance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You get the plots as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.10: Comparison between the three imputation methods for the Clickstream
+    DataFrame](img/file73.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.10: Comparison between the three imputation methods for the Clickstream
+    DataFrame'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the results in *Figure 7.10* with the original data in *Figure 7.8*.
+    Notice that from imputing two different datasets (CO2 and Clickstream), there
+    is no *one-size-fits-all strategy* when it comes to handling missing data. Instead,
+    each dataset requires a different strategy. Therefore, you should always inspect
+    your results and align the outputs with the expectations based on the nature of
+    your data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Using `DataFrame.fillna()` is the simplest imputation method. In the previous
+    section you used the `value` parameter within `.fillna()` where you passed the
+    mean (a scalar numeric value) to use to fill for all missing values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other options used were **backward filling** with`.bfill()`, which uses the
+    next observation, after the missing spot(s) and fills the gaps backward. You also
+    used **forward filling** with `.ffill()`, which uses the last value, before the
+    missing spot(s) and fills the gaps forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `value` parameter in `.fillna()` can also take a Python **dictionary**,
+    a pandas **Series**, or a pandas **DataFrame** and not just a **scalar**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a Python Dictionary
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Let’s demonstrate this with another example how we can use a Python dictionary
+    to impute missing values for multiple columns. Start by reading the `clicks_missing_more.csv`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should produce the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here we have three columns with missing values. We can use a dictionary to
+    define a mapping in which each **key-value** pair corresponds to a column in the
+    `clicks_missing` DataFrame. We can define different statistical measures (*median*,
+    *mean*, and *mode*) for the imputation strategy for different columns. This is
+    illustrated in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce the following results indicating all three
+    columns have their missing values filled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `inplace=True` argument modifies the `clicks_missing` DataFrame in place,
+    meaning the changes are applied directly to the DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using another DataFrame
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: You can also use another pandas DataFrame (or Series) to impute missing values,
+    the column names need to match in order to map the columns appropriately. In the
+    following example you will read the `clicks_missing_more.csv` file and the `clicks_original.csv`
+    file for demonstration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will use the `clicks_original` DataFrame to impute missing values in the
+    `clicks_missing` DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce the following results indicating all three
+    columns have their missing values filled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about `DataFrame.fillna()`, please visit the official documentation
+    page here: [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.fillna.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.fillna.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following recipe, you will perform similar univariate imputation, but
+    this time using the `Scikit-Learn` library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Handling missing data with univariate imputation using scikit-learn
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`Scikit-Learn` is a very popular machine learning library in Python. The `scikit-learn`
+    library offers a plethora of options for everyday machine learning tasks and algorithms
+    such as classification, regression, clustering, dimensionality reduction, model
+    selection, and preprocessing.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, the library offers multiple options for univariate and multivariate
+    data imputation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and requisite datasets from the GitHub
+    repository. Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This recipe will utilize the three functions prepared earlier (`read_dataset`,
+    `rmse_score`, and `plot_dfs`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will be using four datasets from the `Ch7` folder: `clicks_original.csv`,
+    `clicks_missing.csv`, `co2_original.csv`, and `co2_missing_only.csv`. The datasets
+    are available from the GitHub repository.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You will start by importing the libraries and then read all four CSV files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will be using the `SimpleImputer` class from the scikit-learn library to
+    perform univariate imputation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`SimpleImputer` accepts different values for the `strategy` parameter, including
+    `mean`, `median`, and `most_frequent`. Let''s explore all three strategies and
+    see how they compare. Create a list of tuples for each method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can loop through the `Strategy` list to apply the different imputation
+    strategies. `SimpleImptuer` has a `fit_transform` method. It combines two steps
+    into one: fitting to the data (`.fit`), and then transforming the data (`.transform`).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Keep in mind that `SimpleImputer` accepts a NumPy array, so you will need to
+    use the `Series.values` property followed by the `.reshape(-1, 1)` method to create
+    a 2D NumPy array. Simply, what this is doing is transforming the 1D array from
+    `.values` of shape `(226, )` to a 2D array of shape `(226, 1)`, which is a column
+    vector:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, both the `clicks_missing` and `co2_missing` DataFrames have three additional
+    columns, one for each of the imputation strategies implemented.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the `rmse_score` function, you can now evaluate each strategy. Start
+    with the CO2 data. You should get an output like the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For the Clickstream data, you should get an output like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice how the RMSE strategy rankings vary between the two datasets. For example,
+    the `Mean` strategy performed best on the CO2 data, while the `Median` strategy
+    did best on the Clickstream data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, use the `plot_dfs` function to plot the results. Start with the CO2
+    dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It produces the following plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.11: Comparing three SimpleImputer strategies for the CO2 dataset](img/file74.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.11: Comparing three SimpleImputer strategies for the CO2 dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Compare the results in *Figure 7.11* with the original data in *Figure 7.7*.
+    For the Clickstream dataset, you should use the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should plot all three strategies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.12: Comparing three SimpleImputer strategies for the Clickstream
+    dataset](img/file75.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.12: Comparing three SimpleImputer strategies for the Clickstream dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the results in *Figure 7.12* with the original data in *Figure 7.8*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`SimpleImputer` provides basic strategies that may be suitable with some data
+    but not others. The advantage of these simple imputation strategies (including
+    the ones from the previous *Handling missing data with univariate imputation using
+    pandas* recipe) is that they are fast and straightforward to implement.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You used the `SimpleImputer` class to implement three simple strategies to
+    impute missing values: mean, median, and most frequent (mode).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a univariate imputation technique, meaning only one feature or column
+    was used to compute the mean, median, and most frequent value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `SimpleImptuer` class has three parameters that you need to know:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`missing_values`, which, by default, is set to `nan`, and, more specifically,
+    `np.nan`. NumPy `nan` and pandas `NaN` are similar, as you can see from the following
+    example:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`SimpleImputer` will impute all occurrences of the `missing_values`, which
+    you can update with `pandas.NA`, an integer, float, or a string value.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`strategy`, which defaults to `mean`, and takes string values.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`fill_value` can be used to replace all instances from `missing_values` with
+    a specific value. This can either be a string or a numeric value. If the `strategy`
+    was set to `constant`, then you will need to provide your custom `fill_value`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In Scikit-Learn, a common workflow for preprocessing data, such as imputation,
+    involves two main steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Fitting the Imputer**: First, you **fit** the imputer to the data using the
+    `.fit()` method. This step involves "**training**" the imputer, which in the context
+    of imputation means calculating the necessary statistics (like mean, median, etc.)
+    from the provided data. The fitting process usually is done on the training dataset.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Applying the Transform**: After fitting, you apply the imputer to the data
+    with the `.transform()` method. This step actually performs the imputation, replacing
+    missing values with the computed statistics.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In our example, these two steps were combined into one using the `.fit_transform()`
+    method. This method first fits the imputer on the data (i.e., computes the necessary
+    statistics) and then immediately applies the transformation (i.e., replaces missing
+    values). Using `.fit_transform()` is a convenient approach, especially during
+    the initial data preprocessing phase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, the pandas DataFrame, `.fillna()`, can provide the same functionality
+    as `SimpleImputer`. For example, the `mean` strategy can be accomplished by using
+    the pandas `DataFrame.mean()` method and passing it to `.fillna()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following example illustrates this and compares the two outcomes from Scikit-Learn
+    and pandas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice how you were able to accomplish the same results as the `SimpleImputer`
+    class from scikit-learn. The `.fillna()` method makes it easier to scale the imputation
+    across the entire DataFrame (column by column). For example, if you have a `sales_report_data`
+    DataFrame with multiple columns containing missing data, you can perform a mean
+    imputation with a single line, `sales_report_data.fillna(sales_report_data.mean()).`
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The add_indicator option in scikit-learn’s SimpleImputer is a useful feature
+    for enhancing the imputation process. What it does, is add a MissingIndicator
+    transform into the output (adds an additional binary column either indicating
+    if original data was missing with 1 or observed with 0\. This can be useful for
+    encoding missing information as a feature which can provide additional insights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is an example on how to enable this feature with `add_indicator=True`.
+    You will use the `.fit()` followed by `.transform()` in this example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can then use `.transform()` and add the two columns to the original `co2_missing`
+    DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code should produce the following output
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.13: Updating the co2_missing DataFrame with two columns](img/file76.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.13: Updating the co2_missing DataFrame with two columns'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice how the indicator column is added in which 0 indicates original observed
+    value and 1 indicates missing value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about scikit-learn''s `SimpleImputer` class, please visit the
+    official documentation page here: [https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html#sklearn.impute.SimpleImputer](https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html#sklearn.impute.SimpleImputer).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, you have been dealing with univariate imputation. A more powerful approach
+    is multivariate imputation, which you will learn in the following recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Handling missing data with multivariate imputation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Earlier, we discussed the fact that there are two approaches to imputing missing
+    data: **univariate** **imputation** and **multivariate** **imputation**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you have seen in the previous recipes, univariate imputation involves using
+    one variable (column) to substitute for the missing data, disregarding other variables
+    in the dataset. Univariate imputation techniques are usually faster and simpler
+    to implement, but a multivariate approach may produce better results in most situations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead of using a single variable (column), in a multivariate imputation,
+    the method uses multiple variables within the dataset to impute missing values.
+    The idea is simple: Have more variables within the dataset chime in to improve
+    the predictability of missing values.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, univariate imputation methods handle missing values for a particular
+    variable in isolation of the entire dataset and just focus on that variable to
+    derive the estimates. In multivariate imputation, the assumption is that there
+    is some synergy within the variables in the dataset, and collectively, they can
+    provide better estimates to fill in for the missing values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will be working with the `Clickstream` dataset since it
+    has additional variables (`clicks`, `price`, and `location` columns) to perform
+    multivariate imputation for *clicks*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and requisite datasets from the GitHub
+    repository. Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, you will leverage the three functions defined earlier in the chapter
+    (`read_dataset`, `rmse_score`, and `plot_dfs`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this recipe, you will use scikit-learn for the multivariate imputation.
+    The library provides the `IterativeImputer` class, which allows you to pass a
+    regressor to predict the missing values from other variables (columns) within
+    the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the necessary libraries, methods, and classes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load the two Clickstream datasets into DataFrames:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With `IterativeImputer`, you can test different estimators. So, let''s try
+    different regressors and compare the results. Create a list of the regressors
+    (estimators) to be used in `IterativeImputer`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Loop through the estimators and train on the dataset using `.fit()`, thereby
+    building different models, and finally apply the imputation using `.transform()`
+    on the variable with missing data. The results of each estimator will be appended
+    as a new column to the `clicks_missing` DataFrame so that it can be used for scoring
+    and compare the results visually:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the `rmse_score` function, evaluate each estimator:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should print the following scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: Observe that Bayesian Ridge, ElasticNet, and Linear Regression produce similar
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, plot the results for a visual comparison between the different estimators:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.14: Comparing different estimators using IterativeImputation](img/file77.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.14: Comparing different estimators using IterativeImputation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the results in *Figure 7.14* with the original data in *Figure 7.8*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the beginning of the chapter, we discussed that using RMSE (*Root Mean Square
+    Error)* for evaluating imputation methods can be somewhat misleading. This is
+    because our objective with imputation is not necessarily to achieve the 'best'
+    score (i.e., the smallest RMSE value), as we would aim for in predictive modeling.
+    Instead, our goal with imputation is to fill missing data in a way that closely
+    resembles the true nature and distribution of the original dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While RMSE does have limitations, it can still provide valuable insights when
+    comparing different imputation methods. It helps us understand which method estimates
+    the missing values more closely to their actual values, based on the available
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, it's crucial to recognize that a lower RMSE doesn't always mean a more
+    'accurate' imputation in the context of real-world data. This is because real
+    datasets often contain noise and randomness, which some imputation methods might
+    fail to capture, especially those that produce the lowest RMSE scores. Methods
+    like `BayesianRidge`, `ElasticNet`, and `Linear Regression` might yield lower
+    RMSE values but could **oversmooth** the data (see *Figure 7.14* for those three
+    estimators), failing to reflect the inherent randomness and variability present
+    in real datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Later, when using the imputed data for building predictive models (like forecasting
+    models), we need to acknowledge that some level of imperfection in the imputed
+    values is acceptable. This is because we often don't know the true nature of the
+    missing data, and our aim is to create a dataset that provides a 'good enough'
+    representation for model training and analysis. In essence, the objective is to
+    achieve a balance – an imputation that provides a reasonable estimate of missing
+    values while preserving the overall characteristics of the data, including its
+    randomness and variability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The R MICE package inspired the `IterativeImputer` class from the scikit-learn
+    library to implement `Multivariate Imputation by Chained Equation` ([https://www.jstatsoft.org/article/view/v045i03](https://www.jstatsoft.org/article/view/v045i03)).
+    `IterativeImputer` does differ from the original implementation, which you can
+    read more about here: [https://scikit-learn.org/stable/modules/impute.html#id2](https://scikit-learn.org/stable/modules/impute.html#id2).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that `IterativeImputer` is still in experimental mode. In the next
+    section, you will use another implementation of `MICE` from the `statsmodels`
+    library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `statsmodels` library has an implementation of `MICE` that you can use to
+    compare with `IterariveImputer`. This implementation is closer to the `MICE` implementation
+    in R.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will use the same DataFrames (`clicks_original` and `clicks_missing`) and
+    append the `statsmodels` MICE imputation output to the `clicks_missing` DataFrame
+    as an additional column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by loading the required libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since your goal is to impute missing data, you can use the `MICEData` class
+    to wrap the `clicks_missing` DataFrame. Start by creating an instance of `MICEData`
+    and store it in a `mice_data` variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `MICEData` prepares the dataset for MICE imputation and the `update_all()`
+    method is called in a loop (20 times) to perform multiple iterations of imputations,
+    each time refining the imputed values based on the other variables in the dataset.
+    The `perturbation_method='gaussian'` specifies the method used for perturbing
+    the missing data during the imputation process. The `'gaussian'` method adds noise
+    drawn from a normal (gaussian) distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Store the results in a new column and call it `MICE`. This way, you can compare
+    the scores with results from `IterativeImputer`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, visualize the results for a final comparison. This will include some
+    of the imputations from `IterativeImputer`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.15 Comparing the statsmodels MICE implementation with the scikit-learn
+    IterativeImputer](img/file78.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.15 Comparing the statsmodels MICE implementation with the scikit-learn
+    IterativeImputer
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the results in *Figure 7.15* with the original data in *Figure 7.8*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overall, multivariate imputation techniques generally produce better results
+    than univariate methods. This is true when working with more complex time-series
+    datasets in terms of the number of features (columns) and records. Though univariate
+    imputers are more efficient in terms of speed and simplicity to interpret, there
+    is a need to balance complexity, quality, and analytical requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about `IterativeImputer`, please visit the official documentation
+    page here: [https://scikit-learn.org/stable/modules/generated/sklearn.impute.IterativeImputer.html#sklearn.impute.IterativeImputer](https://scikit-learn.org/stable/modules/generated/sklearn.impute.IterativeImputer.html#sklearn.impute.IterativeImputer).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To learn more about `statsmodels` MICE implementation, please visit the official
+    documentation page here: [https://www.statsmodels.org/dev/imputation.html](https://www.statsmodels.org/dev/imputation.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'An interesting library, `FancyImpute`, that originally inspired scikit-learn''s
+    `IterativeImputer` offers a variety of imputation algorithms that you can check
+    out here: [https://github.com/iskandr/fancyimpute](https://github.com/iskandr/fancyimpute).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling missing data with interpolation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Another commonly used technique for imputing missing values is *interpolation*.
+    The pandas library provides the `DataFrame.interpolate()` method for more complex
+    univariate imputation strategies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, one of the interpolation methods available is linear interpolation.
+    **Linear interpolation** can be used to impute missing data by drawing a straight
+    line between the two points surrounding the missing value (in time series, this
+    means for a missing data point, it looks at a prior past value and the next future
+    value to draw a line between them). A polynomial interpolation, on the other hand,
+    will attempt to draw a curved line between the two points. Hence, each method
+    will have a different mathematical operation to determine how to fill in for the
+    missing data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The interpolation capabilities in pandas can be extended further through the
+    **SciPy** library, which offers additional univariate and multivariate interpolations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, you will use the pandas `DataFrame.interpolate()` function to
+    examine different interpolation methods, including linear, polynomial, quadratic,
+    nearest, and spline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can download the Jupyter notebooks and requisite datasets from the GitHub
+    repository. Please refer to the *Technical requirements* section of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will utilize the three functions prepared earlier (`read_dataset`, `rmse_score`,
+    and `plot_dfs`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will be using four datasets from the `Ch7` folder: `clicks_original.csv`,
+    `clicks_missing.csv`, `co2_original.csv`, and `co2_missing_only.csv`. The datasets
+    are available from the GitHub repository.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You will perform multiple interpolations on two different datasets and then
+    compare the results using RMSE and visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start by importing the libraries and reading the data into DataFrames:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a list of the interpolation methods to be tested: `linear`, `quadratic`,
+    `nearest`, and `cubic`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will loop through the list to run different interpolations using `.interpolate()`.
+    Append a new column for each interpolation output to be used for comparison:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There are two additional methods that it would be interesting to test: *spline*
+    and *polynomial*. To use these methods, you will need to provide an integer value
+    for the order parameter. You can try `order = 2` for the spline method, and `order
+    = 5` for the polynomial method. For the spline method, for example, it would look
+    like this: `.interpolate(method="spline", order = 2)`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use the `rmse_score` function to compare the results from the different interpolation
+    strategies. Start with CO2 data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let''s check the Clickstream data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, visualize the results to gain a better idea of how each interpolation
+    worked. Start with the CO2 dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should plot the selected columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.16: Comparing the different interpolation strategies on the CO2
+    dataset](img/file79.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.16: Comparing the different interpolation strategies on the CO2 dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the results in *Figure 7.16* with the original data in *Figure 7.7*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both the `linear` and `nearest` methods seem to have a similar effect regarding
+    how the missing values were imputed. This can be seen from the RMSE scores and
+    plot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, create the plots for the Clickstream dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should plot the selected columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.17: Comparing the different interpolation strategies on the Clickstream
+    dataset](img/file80.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.17: Comparing the different interpolation strategies on the Clickstream
+    dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare the results in *Figure 7.17* with the original data in *Figure 7.8*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the output, you can see how the `polynomial` method exaggerated the curve
+    when using `5` as the polynomial order. On the other hand, the `Linear` method
+    attempts to draw a straight line.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One thing to note is that between the strategies implemented, only linear interpolation
+    ignores the index, while the rest use numerical values for the index.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Overall, the interpolation technique detects patterns in neighboring data points
+    (to the missing points) to predict what the missing values should be. The simplest
+    form is linear interpolation, which assumes a straight line between two neighboring
+    data points. On the other hand, a polynomial defines a curve between the two adjacent
+    data points. Each interpolation method uses a different function and mechanism
+    to predict the missing data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In pandas, you will use the `DataFrame.interpolate` function. The default interpolation
+    method is the linear interpolation (`method = "linear"`). There are additional
+    parameters to provide more control over how the imputation with interpolation
+    is done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `limit` parameter allows you to set the maximum number of consecutive `NaN`
+    to fill. Recall in the previous recipe, *Performing data quality checks*, that
+    the Clickstream dataset had `16` consecutive missing points. You can limit the
+    number of consecutive `NaN`, for example, to `5`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: Only 5 data points were imputed; the remaining 11 were not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Other libraries also offer interpolation, including the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'SciPy provides a more extensive selection covering univariate and multivariate
+    techniques: [https://docs.scipy.org/doc/scipy/reference/interpolate.html](https://docs.scipy.org/doc/scipy/reference/interpolate.html).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'NumPy offers a couple of interpolation options; the most widely used is the
+    `numpy.interp()` function: [https://numpy.org/doc/stable/reference/generated/numpy.interp.html?highlight=interp#numpy.interp.](https://numpy.org/doc/stable/reference/generated/numpy.interp.html?highlight=interp#numpy.interp.)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To learn more about `DataFrame.interpolate`, please visit the official documentation
+    page here: [https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html).'
+  prefs: []
+  type: TYPE_NORMAL

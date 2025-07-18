@@ -1,0 +1,586 @@
+- en: '15'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Evolutionary Image Reconstruction with Genetic Algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we are going to experiment with one of the most popular ways
+    genetic algorithms have been applied to image processing – the reconstruction
+    of an image with a set of semi-transparent polygons. Along the way, we will gain
+    useful experience in **image processing**, coupled with a visual insight into
+    the evolutionary process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start with an overview of image processing in Python and get acquainted
+    with two useful libraries – *Pillow* and *OpenCV-Python*. Then, we will find out
+    how an image can be drawn from scratch using polygons and how the difference between
+    two images can be calculated. Next, we will develop a genetic algorithm-based
+    program to reconstruct a segment of a famous painting using polygons and examine
+    the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting familiar with several image processing libraries for Python
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding how to programmatically draw an image using polygons
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding out how to programmatically compare two given images
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using genetic algorithms, in combination with image processing libraries, to
+    reconstruct an image using polygons
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will start this chapter by providing an overview of the image reconstruction
+    task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be using Python 3 with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**deap**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**numpy**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**matplotlib**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**seaborn**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**pillow** – introduced in this chapter'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**opencv-python (cv2)** – introduced in this chapter'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you use the **requirements.txt** file we provide (see [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091)),
+    these libraries are already included in your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The programs that will be used in this chapter can be found in this book’s GitHub
+    repository at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_15](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_15).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the code in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/OEBOd](https://packt.link/OEBOd)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reconstructing images with polygons
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the most captivating applications of genetic algorithms in image processing
+    is reconstructing a given image using a collection of semi-transparent, overlapping
+    shapes. This approach is not only enjoyable and educational in terms of image
+    processing experience but also offers a compelling visual representation of the
+    evolutionary process. Furthermore, these experiments can lead to a deeper understanding
+    of visual arts and potentially contribute to advancements in image analysis and
+    compression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In these image reconstruction experiments – multiple variations of which can
+    be found on the internet – a familiar image, often a famous painting or a fragment
+    of it, is used as a reference. The goal is to construct a similar image by assembling
+    a collection of overlapping shapes, typically polygons, of varying colors and
+    transparencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we will address this challenge by utilizing the genetic algorithms approach
+    and the `deap` library, just like we’ve done for numerous types of problems throughout
+    this book. However, since we will need to draw images and compare them to a reference
+    image, let’s get acquainted with the basics of image processing in Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image processing in Python
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To achieve our goal, we will need to carry out various image processing operations;
+    for example, we will need to create an image from scratch, draw shapes onto an
+    image, plot an image, open an image file, save an image to a file, compare two
+    images, and possibly resize an image. In the following sections, we will explore
+    some of the ways these operations can be performed when using Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python image processing libraries
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Out of the wealth of image processing libraries available for Python programmers,
+    we chose to use two of the most prominent ones. These libraries will be briefly
+    discussed in the following subsections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Pillow library
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '*Pillow* is a currently maintained fork of the original *Python Imaging Library*
+    (`PIL`). It offers support for opening, manipulating, and saving image files of
+    various formats. Since it allows us to handle image files, draw shapes, control
+    their transparency, and manipulate pixels, we will use it as our main tool in
+    creating the reconstructed image.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The home page of this library can be found at [https://python-pillow.org/](https://python-pillow.org/).
+    A typical installation of Pillow uses the `pip` command, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The Pillow library uses the `PIL` namespace. If you have the original `PIL`
+    library already installed, you will have to uninstall it first. More information
+    can be found in the documentation, which is located at [https://pillow.readthedocs.io/en/stable/index.html](https://pillow.readthedocs.io/en/stable/index.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The OpenCV-Python library
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '*OpenCV* is an elaborate library that provides numerous algorithms related
+    to computer vision and machine learning. It supports a wide variety of programming
+    languages and is available on different platforms. *OpenCV-Python* is the Python
+    API for this library. It combines the speed of the C++ API with the ease of use
+    of the Python language. Here, we will mainly make use of this library to calculate
+    the difference between two images, since it allows us to represent an image as
+    a numeric array. We will also use its `GaussianBlur` function, which produces
+    a blurred version of an image.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The home page of OpenCV-Python can be found here: [https://github.com/opencv/opencv-python](https://github.com/opencv/opencv-python)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The library consists of four different packages, all of which use the same
+    namespace (`cv2`). Only one of these packages should be selected to be installed
+    in a single environment. For our purposes, we can use the following command, which
+    only installs the main modules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: More information can be found in the OpenCV documentation, which is located
+    at [https://docs.opencv.org/master/](https://docs.opencv.org/master/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drawing images with polygons
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To draw an image from scratch, we can use *Pillow*’s `Image` and `ImageDraw`
+    classes as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: draw.polygon([(x1, y1), (x2, y2), (x3, y3)], (red, green, blue,
+  prefs: []
+  type: TYPE_NORMAL
+- en: alpha))
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: MSE = np.sum(
+  prefs: []
+  type: TYPE_NORMAL
+- en: (cv2Image1.astype("float") -
+  prefs: []
+  type: TYPE_NORMAL
+- en: cv2Image2.astype("float"))**2)/float(numPixels)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[0.1499488467959301, 0.3812631075049196, 0.000439458056299,'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 0.9988170920722447, 0.9975357316889601, 0.9997461395379549,
+  prefs: []
+  type: TYPE_NORMAL
+- en: '...'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 0.9998952203500615, 0.48148512088979356, 0.083285509827404]
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: POLYGON_SIZE = 3
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: NUM_OF_POLYGONS = 100
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: imageTest = image_test.ImageTest(MONA_LISA_PATH, POLYGON_SIZE)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: BOUNDS_LOW, BOUNDS_HIGH = 0.0, 1.0
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'def randomFloat(low, up):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: return [random.uniform(l, u) for l, u in zip([low] * \
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: NUM_OF_PARAMS, [up] * NUM_OF_PARAMS)]
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: toolbox.register("attrFloat", randomFloat, BOUNDS_LOW,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: BOUNDS_HIGH)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: toolbox.register("individualCreator",
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: tools.initIterate,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: creator.Individual,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox.attrFloat)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'def getDiff(individual):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: return imageTest.getDifference(individual, METRIC),
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox.register("evaluate", getDiff)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: toolbox.register("select", tools.selTournament, tournsize=2)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: toolbox.register("mate",
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: tools.cxSimulatedBinaryBounded,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: low=BOUNDS_LOW,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: up=BOUNDS_HIGH,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: eta=CROWDING_FACTOR)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox.register("mutate",
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: tools.mutPolynomialBounded,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: low=BOUNDS_LOW,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: up=BOUNDS_HIGH,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: eta=CROWDING_FACTOR,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: indpb=1.0/NUM_OF_PARAMS)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: population, logbook = \
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: elitism_callback.eaSimpleWithElitismAndCallback(
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: population,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: cxpb=P_CROSSOVER,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: mutpb=P_MUTATION,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: ngen=MAX_GENERATIONS,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: callback=saveImage,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: stats=stats,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: halloffame=hof,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: verbose=True)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: best = hof.items[0]
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print("Best Solution = ", best)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print("Best Score = ", best.fitness.values[0])
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: imageTest.plotImages(imageTest.polygonDataToImage(best))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'with multiprocessing.Pool(processes=20) as pool:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox.register("map", pool.map)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: def eaSimpleWithElitismAndCallback(population,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: toolbox, cxpb, mutpb, ngen, callback=None,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'stats=None, halloffame=None, verbose=__debug__):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'if callback:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: callback(gen, halloffame.items[0])
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'if gen % 100 == 0:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: RESULTS_PATH = os.path.join(BASE_PATH, "results",
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: f"run-{POLYGON_SIZE}-{NUM_OF_POLYGONS}")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '...'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'if not os.path.exists(RESULTS_PATH):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: os.makedirs(RESULTS_PATH)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: imageTest.imageTest.saveImage(polygonData,
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: os.path.join(RESULTS_PATH, f"after-{gen}-gen.png"),
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: f"After {gen} Generations")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: POLYGON_SIZE = 3
+  prefs: []
+  type: TYPE_NORMAL
+- en: NUM_OF_POLYGONS = 100
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'def getMseBlur(self, image):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: return np.sum(
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: (self.blur(image).astype("float") -
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: self.refImageCv2.astype("float")) ** 2
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: ) / float(self.numPixels)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE

@@ -1,0 +1,954 @@
+- en: '8'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Deploying, Maintaining, and Administrating DLT Pipelines Using Terraform
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we’re going to explore how an automation tool such as Terraform
+    can be used to express data pipelines as code, commonly referred to as **Infrastructure
+    as Code** ( **IAC** ), in Databricks. We’ll look at how to set up a local Terraform
+    development environment using popular code editors such as VS Code so that we
+    can experiment with deploying different resources to a Databricks workspace. Next,
+    we’ll dive into how to represent data pipelines using Terraform and how to configure
+    different aspects of a **Delta Live Tables** ( **DLT** ) pipeline. We’ll also
+    look at how we can automate the validation and deployment of IaC to different
+    Databricks workspaces, including a production workspace. Lastly, we’ll examine
+    industry best practices and future considerations along the way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing the Databricks provider for Terraform
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up a local environment
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configuring DLT pipelines using Terraform
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Automating DLT pipeline deployment
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hands-on exercise – deploying a DLT pipeline using VS Code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with the examples provided in this chapter, you’ll need Databricks
+    workspace permissions to create and start an all-purpose cluster so that you can
+    import and execute the chapter’s accompanying notebooks. All code samples can
+    be downloaded from this chapter’s GitHub repository located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter08](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter08)
+    . This chapter will create and run several new notebooks, as well as run a new
+    DLT pipeline using the product’s **Advanced** edition, estimated to consume around
+    10—15 **Databricks** **Units** ( **DBUs** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing the Databricks provider for Terraform
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Terraform is an open source deployment automation tool that can be used to
+    automate the deployment of cloud infrastructure in a repeatable and predictable
+    manner. One reason Terraform is such a popular deployment tool is that it supports
+    deploying infrastructure to the three major cloud providers: **Amazon Web Services**
+    ( **AWS** ), **Azure** , and **Google Cloud Platform** ( **GCP** ). Terraform
+    is centered around the concept of defining IaC where, rather than manually deploying
+    cloud components such as network objects, virtual machines, or storage containers,
+    they are expressed using code files. Furthe rmore, Terraform files are configuration-driven.
+    Rather than expressing *how* to deploy the infrastructure, cloud administrators
+    focus on expressing *what* changes between environments through configuration.
+    Lastly, Terraform maintains the state of your architecture, meaning that the tool
+    will keep track of the state of cloud resources and will update the state accordingly
+    for each new execution of a Terraform configuration file.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, Terraform files can be executed directly from your local machine, allowing
+    you to interact with cloud resources remotely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.1 – Terraform will reflect environment changes using configuration
+    files](img/B22011_08_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.1 – Terraform will reflect environment changes using configuration
+    files
+  prefs: []
+  type: TYPE_NORMAL
+- en: Terraform configuration files define the cloud infrastructure that is applied
+    in the cloud provider, and the infrastructure state is synced back to the local
+    environment. Furthermore, Databricks provides a Terraform provider for deploying
+    Databricks workspaces and workspace objects to the major cloud providers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A Terraform provider is a plugin for the Terraform tool that enables users to
+    interact with specific APIs. In this case, the Terraform provider interacts with
+    the Databricks REST API, allowing workspace administrators to automate the deployment
+    of even the most complex data processing environments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are many advantages to using Terraform to automate the deployment of
+    data pipelines within your organization, including the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is easy to deploy infrastructure between the major cloud providers, making
+    it trivial to migrate between clouds if need be.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is easy to scale to hundreds of data pipelines by focusing on defining configuration
+    rather than manually deploying and maintaining data pipelines.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pipeline definition is concise, allowing cloud administrators to focus on expressing
+    what should change, rather than how to deploy infrastructure.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s look at how easy it is to get started defining Databricks resources and
+    applying them to targeted workspaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up a local Terraform environment
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before we can begin deploying data pipeline objects to our Databricks workspace,
+    we need to install the Terraform **command-line interface** ( **CLI** ) tool.
+    If you haven’t already done so, you will need to download the Terraform CLI, which
+    can be downloaded for free from the HashiCorp website ( [https://developer.hashicorp.com/terraform/install](https://developer.hashicorp.com/terraform/install)
+    ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we want to organize the Terraform configuration files into a single directory.
+    Let’s create a new directory called **chp8_databricks_terraform** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Within the newly created directory, let’s create a brand new Terraform configuration
+    file where we will define our data pipeline and other related workspace objects.
+    Create a new file, naming it **main.tf** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Terraform configuration files use the Terraform language and end with the **.**
+    **tf** extension.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Importing the Databricks Terraform provider
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first step to using Terraform to deploy Databricks workspace objects is
+    to import the Databricks Terraform provider. If it’s your first time using the
+    Terraf orm provider, Terraform will take care of downloading the Databricks provider
+    from the Terraform Registry. The Terraform Registry is a public hub for downloading
+    third-party providers, modules, and security policies that aid in developing Terraform
+    configuration files to deploy your cloud infrastructure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Add the following code snippet at the top of the new Terraform configuration
+    file, **main.tf** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: This code snippet will instruct the Terraform CLI tool to download and import
+    a Terraform provider called **databricks** that has been published to the Terraform
+    Registry by the Databricks organization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we’ve imported the Databricks Terraform provider, we can begin deploying
+    data pipeline objects to our Databricks workspace. But before we can do that,
+    we must first authenticate with our Databricks workspace to make changes, such
+    as creating a new DLT pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring workspace authentication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you recall, the Databricks Terraform provider will interact with the Databricks
+    REST API behind the scenes. As a result, the same authentication mechanisms that
+    are used to authenticate with the Databricks REST API and make workspace changes
+    can be applied using Terraform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In total, there are about nine supported methods for authenticating with a
+    Databricks workspace using the Terraform provider (the latest list can be found
+    here: [https://registry.terraform.io/providers/databricks/databricks/latest/docs#authentication](https://registry.terraform.io/providers/databricks/databricks/latest/docs#authentication)
+    ). A few of the popular authentication methods include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a workspace administrator username and password
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using a Databricks **Personal Access** **Token** ( **PAT** )
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the Azure CLI or Google Cloud CLI
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If using the Azure cloud provider, using a service principal or managed service
+    identity
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the Databricks CLI ( user-to-machine authentication)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we are doing local development and testing, in the following example,
+    we’ll be generating an OAuth token using the Databricks CLI and logging in to
+    our Databricks workspace manually. However, for production deployments, it’s recommended
+    to securely store workspace credentials in a secrets manager such as Azure Key
+    Vault, AWS Secrets Manager, or HashiCorp Vault, to name a few.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a couple of options for storing authentication tokens that are used
+    with Terraform – directly within the Terraform configuration file as a part of
+    the Databricks provider import, or on the local machine within a configuration
+    file. We would recommend the latter option to avoid accidental exposure of credentials
+    when checking in code artifacts to your code repository. The easiest method for
+    populating this configuratio n file is by using the Databricks CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Databricks CLI supports Windows, Linux, or macOS operating systems, making
+    it a cross-platform-compatible and versatile tool. If your local machine uses
+    macOS or Linux operating systems, you can download the Databricks CLI using the
+    Homebrew package manager using a shell prompt. Or you can easily upgrade the version
+    of an existing Databricks CLI installation. For example, the following commands
+    will install or upgrade an existing Databricks CLI installation using Homebrew
+    on a Mac:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On a Windows machine, you can install the Databricks CLI using the popular
+    package manager, **winget** ( [https://learn.microsoft.com/windows/package-manager/winget/](https://learn.microsoft.com/windows/package-manager/winget/)
+    ). The following commands will download and install the Databricks CLI using the
+    **winget** utility:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once downloaded, you can configure authentication by executing the **configure**
+    command in the Databricks CLI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: When applying a Terraform configuration file to a target environment, the Terraform
+    CLI will first check to see whether authentication details are provided directly
+    within the configuration file. Otherwise, the Terraform CLI will look for the
+    local Databricks configuration file, which gets stored in a special hidden file
+    called **.databrickscfg** under your user’s home folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also specify a profile name, which is helpful when you have multiple
+    Databricks workspaces and you need to deploy infrastructure components between
+    the different workspaces. Using the profiles, you can store authentication details
+    separately and easily reference them during deployment. You can learn more about
+    creating/testing a profile here: [https://docs.databricks.com/dev-tools/cli/profiles.html](https://docs.databricks.com/dev-tools/cli/profiles.html)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining a DLT pipeline source notebook
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the next example, we’re going to define a notebook that will contain the
+    start of a simple DLT pipeline and deploy the notebook to your user’s workspace
+    directory in a target Databricks workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To construct the workspace location of where to deploy the notebook, we’ll
+    need to get your current user in Databricks. Rather than hardcoding this value,
+    we can use the **databricks_current_user** data source, which retrieves the current
+    user’s Databricks username at deployment time. Add the following configuration
+    block to the **main.tf** file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we’ll use the **databricks_notebook** resource to define a new Python
+    notebook, using the previous data source to construct the notebook path. Since
+    the notebook is fairly simple, containing only a single DLT dataset definition,
+    we’ll define the notebook contents inline. Add the following configuration block
+    to the **main.tf** file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, let’s add one last block to the **main.tf** configuration that prints
+    the URL to the deployed notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Click **Save** to save the configuration file. In a terminal window, navigate
+    to the directory containing the **main.tf** configuration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying workspace changes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The first command that should be run is the **terraform init** command, which
+    executes several initialization steps to prepare the current working directory
+    to deploy cloud resources using Terraform. Execute the following command from
+    a terminal window or shell prompt:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, the Terraform CLI provides a way for us to validate the effects of a
+    Terraform configuration file before applying the changes. Execute the **validate**
+    com mand:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, we can view the proposed infrastructure changes by listing all of the
+    planned changes in the Terraform plan. Execute the following command to view the
+    proposed Terraform plan:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: You’ll notice that there will be a single resource defined in the plan. In this
+    case, it will be the new Databricks notebook containing our DLT dataset definition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we validate that the plan looks good, we can then apply the changes to
+    the target Databricks workspace. Apply the Terraform plan by executing the **apply**
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output will be the full notebook URL to the newly created notebook. Copy
+    the output URL and paste it into a browser window. Verify that there is a new
+    notebook with Python set as the default programming language, containing a single
+    notebook cell with the definition of a single DLT dataset, **yellow_taxi_raw**
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Congratulations! You’ve written your first Terraform configuration file and
+    you are well on your way to automating the deployment of your Databricks assets
+    across environments. In the next section, we’ll expand on the previous example
+    to see how the Databricks Terraform provider can be used to deploy DLT pipelines
+    to workspaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring DLT pipelines using Terraform
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will use the **databricks_pipeline** resource in the Databricks Terraform
+    provider to deploy a DLT pipeline to a target Databricks workspace. The **databricks_pipeline**
+    resource is the main building block for our Terraform configuration files. Within
+    this Terraform resource, we can specify many different configuration options that
+    will affect the deployment of our DLT pipeline. For example, we can configure
+    the DLT production edition, a target Unity Catalog location, library dependencies,
+    update cluster sizes, and more. Let’s dive into the exact configurations to get
+    a better idea of the type of control you have over the DLT pipeline that gets
+    deployed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are several arguments used to define the configuration and behavior of
+    a DLT pipeline using the Databricks provider for Terraform. To get a better picture
+    of the types of arguments, the following sections cover all the available arguments
+    in the Databricks provider for Terraform (the latest version can be found here:
+    [https://registry.terraform.io/providers/databricks/databricks/latest/docs/resources/pipeline](https://registry.terraform.io/providers/databricks/databricks/latest/docs/resources/pipeline)
+    ).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Generally speaking, the **databricks_pipeline** arguments can be thought about
+    as falling into one of three possible categories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Runtime configuration** : **name** , **channel** , **development** , **continuous**
+    , **edition** , **photon** , **configuration** , and **library**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Pipeline compute** **configuration** : **cluster**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Pipeline dataset storage configuration** : **catalog** , **target** , and
+    **storage**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s go through each argument in greater detail to get a better understanding
+    of the effect that our Terraform configuration can have on a target DLT pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: name
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **name** argument assigns an alphanumeric name to identify a DLT pipeline.
+    The **name** argument should be a String that can contain mixed-case characters,
+    numbers, spaces, and special characters (including emoji characters). Furthermore,
+    the pipeline **name** argument doesn’t necessarily need to be unique; name uniqueness
+    is not enforced by the Databricks Terraform provider. Upon creation of a DLT pipeline,
+    the Databricks Data Intelligence Platform will assign a unique pipeline identifier
+    to each pipeline, so the **name** argument is solely used as a convenient way
+    for data engineers to distinguish their DLT pipelines from other pipelines from
+    the DLT UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: notification
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **notification** argument is used to specify a list of email recipients
+    who will receive an email notification during specific pipeline events. The types
+    of DLT pipeline events that will trigger a notification include **on-update-success**
+    , **on-update-failure** , **on-update-fatal-failure** , and **on-flow-failure**
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: channel
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **channel** argument controls the type of Databricks runtime a DLT pipeline
+    update cluster should use. There are only two options to choose from: **CURRENT**
+    and **PREVIEW** . **CURRENT** selects the latest stable Databricks runtime release
+    and is the default option. You may want to choose **PREVIEW** if your DLT pipeline
+    is operating in a development environment, and you’d like to experiment with upcoming
+    performance features and optimizations that haven’t made their way into the current
+    Databricks runtime yet.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: development
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **development** argument is a Boolean flag that controls whether you want
+    to execute your DLT pipeline in Development mode or not. When set to **true**
+    , Terraform will deploy a DLT pipeline, with the pipeline mode set to **Development**
+    . This will also be reflected on the DLT UI by a toggle button at the top right
+    of the DLT UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.2 – Development mode is visible from the DLT UI as a toggle button](img/B22011_8_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.2 – Development mode is visible from the DLT UI as a toggle button
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similarly, when this argument is set to **false** , Terraform will set the pipeline
+    mode to **Production** . If you recall from [*Chapter 2*](B22011_02.xhtml#_idTextAnchor052)
+    , we mentioned that in Development mode, DLT will not retry pipeline updates in
+    the event of a runtime exception and will also keep the update cluster up and
+    running to help data engineers triage and fix bugs, thereby shortening debugging
+    cycles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: continuous
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **continuous** argument is a Boolean flag that controls the frequency of
+    pipeline update executions. When set to **true** , Terraform will deploy a DLT
+    pipeline that will continuously update datasets within a DLT pipeline. Similarly,
+    when set to **false** , the DLT pipeline will be deployed with a triggered execution
+    mode. In this type of execution mode, a data engineer will need to trigger the
+    start of a pipeline update either by clicking the **Start** button on the DLT
+    UI or by invoking the Pipelines REST API to start a pipeline update.
+  prefs: []
+  type: TYPE_NORMAL
+- en: edition
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **edition** argument selects which product edition you would like to use
+    when deploying a DLT pipeline. There are only three options to choose from: **CORE**
+    , **PRO** , and **ADVANCED** . If you recall from [*Chapter 2*](B22011_02.xhtml#_idTextAnchor052)
+    , the product edition selects the feature set that you would like to enable when
+    running a DLT pipeline. As a result, the pipeline pricing is reflected in the
+    number of features enabled with an edition. For example, the **PRO** product edition
+    will enable data engineers to use expectations to enforce data quality but will
+    also incur the highest operational pricing. On the other hand, the **CORE** product
+    edition may be used to append incoming data to streaming tables and will incur
+    the least amount of operation charges to update.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: photon
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **photon** argument is a Boolean flag that controls whether to use a Photon
+    processing engine to update a DLT pipeline. When set to **true** , Terraform will
+    deploy a DLT pipeline with an update cluster having the Photon engine enabled.
+    During the dataset updates, your DLT pipeline can take advantage of this fast,
+    vectorized processing engine that makes joins, aggregations, windows, and sorting
+    much faster than the default cluster. When set to **false** , DLT will create
+    an update cluster using the traditional Catalyst engine in Spark. Due to faster
+    processing and improved performance, enabling Photon execution will incur higher
+    DBU pricing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: configuration
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **configuration** argument allows data engineers to deploy a DLT pipeline
+    with optional runtime configuration. The configuration argument is an optional
+    list of key-value pairs. This argument can be used to populate environment variables,
+    cloud storage locations, or cluster shutdown settings, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: library
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **library** argument can be used to install cluster libraries that a DLT
+    pipeline update might depend on in order to apply updates to a pipeline. The **library**
+    argument also adds support for referencing local notebook or arbitrary file dependencies,
+    if data engineers wish to include dependent code artifacts using local files as
+    opposed to build artifacts. For example, the following **library** block could
+    be used to include a custom date utility defined as a Python file in the user’s
+    home directory in their workspace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: cluster
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **cluster** argument controls what cluster is used by the pipeline during
+    an update, maintenance activities, or the default cluster type to use in both
+    update and maintenance tasks. If no **cluster** block is specified, DLT will create
+    a default cluster to use to apply updates to a pipeline’s datasets. Furthermore,
+    the **cluster** argument will also contain a **mode** parameter where you can
+    specify what type of autoscaling to use. If you recall, in [*Chapter 2*](B22011_02.xhtml#_idTextAnchor052)
+    , we described two autoscaling modes in DLT: **LEGACY** and **ENHANCED** . For
+    example, the following configuration will create an update cluster that will autoscale
+    from a minimum of three worker nodes to a maximum of eight nodes using the **ENHANCED**
+    autoscaling algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: catalog
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **catalog** argument determines the catalog to store the output datasets
+    of a DLT pipeline in Unity Catalog. As a DLT pipeline executes the definitions
+    for datasets outlined in a DLT pipeline, these datasets need to have some destination
+    location specified. You can specify a combination of a catalog and a schema (covered
+    in the next section, *target* ) or you can specify a cloud storage location –
+    but not both. This argument is mutually exclusive to the following argument, the
+    **storage** argument. Alternatively, data engineers can continue to store a DLT
+    pipeline’s datasets in the legacy Hive Metastore specifying the following configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If either the **catalog** or **storage** arguments are changed in a Terraform
+    configuration file and the changes are applied, Terraform will recreate the entire
+    DLT pipeline with the new changes. These values cannot be updated in the original
+    DLT pipeline once deployed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: target
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **target** argument specifies the schema in which to store the output datasets
+    defined in a DLT pipeline. This argument, combined with the previous **catalog**
+    argument, specifies a fully qualified schema in Unity Catalog or the legacy Hive
+    Metastore. Data engineers may choose to use the values set in the **catalog**
+    and **target** arguments as a convenient means for querying the intermediate datasets
+    of a DLT pipeline. This may be for common tasks such as data validation, debugging,
+    or general data wrangling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: storage
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **storage** argument can be used to specify a cloud storage location to
+    store the output datasets and other related metadata for a DLT pipeline. It’s
+    important to keep in mind that this argument is mutually exclusive to the preceding
+    argument, the **catalog** argument. The **storage** argument may contain a fully
+    qualified storage location path, a volumes location, or a location in the **Databricks
+    File System** ( **DBFS** ). For example, the following configuration block would
+    create a DLT pipeline whose output datasets would be stored in the DBFS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **storage** and **catalog** arguments are mutually exclusive to one another.
+    You may only specify one when authoring a Terraform configuration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, you should feel confident in using the **databricks_pipeline** resource
+    to declare DLT pipelines using the Databricks provider for Terraform. You should
+    also have a greater understanding of the different types of configuration options
+    available to customize a target DLT pipeline. In the next section, we’ll look
+    at how we can automate the deployment of DLT pipelines using existing version
+    control systems so that the latest changes are synchronized across target workspaces
+    as soon as they are made available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automating DLT pipeline deployment
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Terraform can be combined with automated **Continuous Integration/Continuous
+    Deployment** ( **CI/CD** ) tools, such as GitHub Actions or Azure DevOps Pipelines
+    to automatically deploy code changes to your Databricks workspaces. Since Terraform
+    is cross-platform, the target Databricks workspace can be in one of the major
+    cloud providers: GCP, AWS, or Azure. This allows your development team to maintain
+    infrastructure in a single set of code artifacts while also being agile enough
+    to apply the same resources to alternate cloud providers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s walk through a typical CI/CD process that uses the Databricks provider
+    for Terraform to deploy Databricks resources to target workspaces. The CI/CD process
+    will contain two automated build pipelines – one that will be used to validate
+    changes made in feature branches, and a second that will be used to deploy changes
+    that have been approved and merged into the main code branch to Databricks workspaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, a team member creates a new feature branch to track changes to their
+    organization’s IaC code base. Once finished, the engineer will open a pull request,
+    requesting one or more peers from their team to review the changes, leave feedback,
+    and approve or reject the changes. Upon opening a pull request, the build pipeline
+    will be triggered to run, which will check out the feature branch, initialize
+    the current working directory using the Terraform **init** command, validate the
+    Terraform plan using the Terraform **validate** command, and generate an output
+    in the form of a Terraform plan. Optionally, this Terraform plan can be automatically
+    included in the pull request as a comment for peers to review.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the pull request has been approved by their team members, the feature branch
+    can be merged into the main code repository branch – or the **main** branch, for
+    short.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the feature branch has been merged into the **main** branch, the build
+    release pipeline is triggered to run. The build release pipeline will check out
+    the latest copy of the **main** branch and apply the changes using the Terraform
+    **apply** command. Upon applying the Terraform plan, new changes to the organization’s
+    infrastructure will be reflected in the target Databricks workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.3 – Automatic deployment of Databricks resources using build tools](img/B22011_08_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.3 – Automatic deployment of Databricks resources using build tools
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, you should have a complete understanding of how to design an automatic
+    Databricks deployment using tools such as Azure DevOps to synchronize infrastructure
+    changes through Terraform. Let’s combine everything that we’ve learned in the
+    preceding sections to deploy our very own DLT pipeline to a target Databricks
+    workspace using a typical development environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hands-on exercise – deploying a DLT pipeline using VS Code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this hands-on exercise, we’ll be using the popular code editor, **Visual
+    Studio Code** ( **VS Code** ), to author new Terraform configuration files for
+    deploying a DLT pipeline to a target Databricks workspace. VS Code has gained
+    immense popularity over the years due to its ease of use, light memory footprint,
+    friendly code navigation, syntax highlighting, and code refactoring, as well as
+    a great community of extensions. Plus, VS Code is built around an open source
+    community, meaning it’s free to download and use. Furthermore, VS Code is a cross-platform
+    code editor, supporting Windows, macOS, and Linux operating systems. In this hands-on
+    exercise, we’ll be using one of the community extensions, the Terraform plugin
+    for VS Code, which is authored by HashiCorp to help assist in the development
+    of Terraform configuration files. For example, the Terraform plugin for VS Code
+    features Terraform syntax highlighting, auto-completion, code formatting, access
+    to Terraform commands from the VS Code command palette, and overall, provides
+    an easy experience navigating Terraform configuration files for deploying Databricks
+    workspace objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up VS Code
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: VS C [ode can be downloaded from its websit](https://code.visualstudio.com/download)
+    e located at [https://code.visualstudio.com/download](https://code.visualstudio.com/download)
+    . If you haven’t installed VS Code yet, select the installer download for the
+    operating system that matches your local machine. The installer may take a few
+    minutes to download, depending on your network connection speed. Once the installer
+    has been downloaded, unzip the ZIP file to reveal the downloaded contents. Next,
+    double-click the application file, **Visual Studio Code** , to launch the code
+    editor. Alternatively, you can move the application file to the **Applications**
+    directory of your local operating system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let’s install the Terraform extension by HashiCorp. In a web browser window,
+    navigate to the Terraform extension in the Visual Studio Marketplace website located
+    at [https://marketplace.visualstudio.com/items?itemName=HashiCorp.terraform](https://marketplace.visualstudio.com/items?itemName=HashiCorp.terraform)
+    . Or you can search for the extension in the Marketplace search box in VS Code.
+    Click the **Install** button to download and install the Terraform extension for
+    VS Code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.4 – The Terraform extension for VS Code by HashiCorp can be installed
+    from the Visual Studio Marketplace](img/B22011_08_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.4 – The Terraform extension for VS Code by HashiCorp can be installed
+    from the Visual Studio Marketplace
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may be prompted to allow your web browser to open the VS Code application
+    on your local machine. If so, click the **Allow** button to open VS Code and install
+    the extension. The extension will be downloaded and installed in just a few minutes.
+    Once the installation has been completed, you should now see menu items for HashiCorp
+    Terraform on the left-hand side navigation bar of VS Code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.5 – The HashiCorp Terraform extension will create new menu items
+    in the left-hand side navigation bar](img/B22011_08_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.5 – The HashiCorp Terraform extension will create new menu items in
+    the left-hand side navigation bar
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that the Terraform extension has been successfully installed, the extension
+    will automatically be activated when the code editor detects a Terraform file.
+    You can verify that the extension is activated by a Terraform logo, which will
+    appear in the bottom right-hand corner of the opened Terraform file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a new Terraform project
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s create a new directory for our hands-on exercise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create an empty Terraform configuration file, titled **main.tf** , either from
+    a shell prompt or using VS Code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Optionally, you can clone the sample project from this chapter’s GitHub repo,
+    located at [https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter08](https://github.com/PacktPublishing/Building-Modern-Data-Applications-Using-Databricks-Lakehouse/tree/main/chapter08)
+    . Next, open the directory in VS Code by selecting **File** | **Open Folder**
+    and navigating to the directory’s location.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining the Terraform resources
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let’s start by expanding the Terraform example introduced in the *Setting up
+    a local Terraform environment* section at the beginning of this chapter. Either
+    copy the existing **main.tf** file or feel free to directly edit the body of the
+    existing **main.tf** configuration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s begin by adding a second dataset to the DLT pipeline definition
+    in the **databricks_notebook** resource definition (the code from the *Defining
+    a DLT pipeline source notebook* section has been truncated for brevity in the
+    following code block). We will now have a data pipeline containing two datasets
+    – a bronze layer followed by a silver layer. Update the **databricks_notebook**
+    resource definition in the **main.tf** file with the following definition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, before we can create a new DLT pipeline, we’ll want to define a location
+    in Unity Catalog in which to store the pipeline datasets. Add the following catalog
+    and schema resource definitions to the bottom of the **main.tf** file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have an updated source notebook containing the definition of our
+    DLT pipeline, as well as a location to store the pipeline datasets, we can define
+    a DLT pipeline. Add the following pipeline definition to the **main.tf** file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: You’ll notice that we’ve defined the location for the notebook containing the
+    DLT pipeline definition, a default cluster to use for pipeline updates and maintenance
+    tasks, as well as other runtime settings such as the Development mode, product
+    edition, channel, and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we’ll want to orchestrate the updates to our DLT pipeline so that we
+    can trigger runs on a repeated schedule, configure alert notifications, or set
+    timeout thresholds. Add the following workflow definition to the bottom of the
+    **main.tf** file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, we’ll want to output the workflow URL of the deployed resource so that
+    we can open the workflow UI easily from a browser. Add the following output definition
+    to the **main.tf** file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Deploying the Terraform project
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before we can begin deploying new resources, the first step is to initialize
+    the Terraform project. Execute the Terraform **init** command in the parent directory
+    either from the VS Code command palette or from a shell prompt:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, preview the changes in the Terraform file by executing the Terraform
+    **plan** command to view the proposed infrastructure changes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: In total, there should be five new resources created, including the **databricks_notebook**
+    resource, which represents the notebook containing the DLT pipeline definition,
+    the target Unity Catalog’s catalog, the target Unity Catalog schema, the **databricks_pipeline**
+    resource, which represents our DLT pipeline, and the **databricks_job** resource,
+    which represents the workflow that will trigger pipeline updates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After we’ve validated the plan, we can now deploy our DLT pipeline to a Databricks
+    workspace. Next, execute the Terraform **apply** command to deploy the new infrastructure
+    changes to our workspace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once all resource changes have been applied, you should expect Terraform to
+    output the URL to the Databricks workflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Copy and paste the workflow URL into a browser window and ensure that the address
+    resolves to the newly created workflow in the target workspace. You’ll notice
+    that the new workflow contains a single task for updating the DLT pipeline. The
+    workflow is paused, as outlined in the Terraform configuration. Optionally, you
+    can click the blue **Run now** button to trigger a new, immediate run of the workflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 8.6 – Terraform will output the \uFEFFworkflow URL for updating the\
+    \ DLT pipeline](img/B22011_08_6.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.6 – Terraform will output the workflow URL for updating the DLT pipeline
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As simple as it was to deploy our changes to the target Databricks workspace,
+    it’s just as easy to undeploy the changes. Execute the following command to remove
+    all the resource changes from the target Databricks workspace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Confirm the decision by entering the word **yes** . It may take a few minutes
+    to fully undeploy all of the resources from your Databricks workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you saw, with just a few keystrokes and a few clicks of the button, it was
+    fast and easy to provision and deprovision resources in a Databricks workspace
+    using the Databricks Terraform provider. Rather than instructing Terraform how
+    to deploy the resources to our target Databricks workspace, we focused on what
+    changes to make through configuration and let the Terraform tool handle the heavy
+    lifting for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered how to use the Databricks provider for Terraform
+    to implement a CI/CD process for deploying data pipelines across workspaces. We
+    saw how easy it was to set up a local development environment for working with
+    Terraform configuration files and how easy it was to test our Terraform plans
+    before applying them to a target environment. We also installed the Databricks
+    Terraform provider from the Terraform Registry and imported the provider into
+    Terraform configuration files. Next, we dove into the details of the **databricks_pipeline**
+    resource, which is used by the Databricks Terraform provider to deploy a DLT pipeline
+    to a target workspace. We inspected each argument in the resource specification
+    and saw how we coul d control the DLT pipeline runtime configuration, the compute
+    settings, and even the location of the output datasets from our pipeline. Lastly,
+    we saw how easy it was to automate our Terraform configuration files by storing
+    them in a version control system such as GitHub and automating the deployment
+    using a build tool such as Azure DevOps Pipelines. We concluded the chapter with
+    a hands-on example of using the Terraform extension with the popular code editor
+    VS Code to deploy a DLT pipeline from your local development environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, Terraform isn’t for everyone and it may be the case that it’s too complex
+    or too difficult to use for your use case. In the next chapter, we’ll dive into
+    **Databricks Asset Bundles** ( **DABs** ), which is another CI/CD tool that makes
+    it simple to package and deploy Databricks code artifacts for data and machine
+    learning workloads.
+  prefs: []
+  type: TYPE_NORMAL

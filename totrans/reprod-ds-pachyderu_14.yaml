@@ -1,0 +1,1029 @@
+- en: '*Chapter 11*: Using Pachyderm Notebooks'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 10*](B17085_10_Final_SB_Epub.xhtml#_idTextAnchor220), *Pachyderm
+    Language Clients*, we learned how to use Pachyderm language clients, including
+    the Pachyderm Go client and Pachyderm Python client. The latter is probably more
+    popular among data scientists as Python is the language that a lot of data scientists
+    use. And if you write in Python, you are likely familiar with the open source
+    tool, **JupyterLab**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JupyterLab is an open source platform that provides an **Interactive Development
+    Environment** (**IDE**) in which you can not only author your code but also execute
+    it. This advantage makes JupyterLab an ideal tool for data science experiments.
+    However, while JupyterLab provides a basic version control system for its notebooks,
+    it's not to the level of data provenance that Pachyderm offers. Pachyderm Hub,
+    the SaaS version of Pachyderm, provides a way to integrate your Pachyderm cluster
+    with Pachyderm Notebooks, a built-in version of JupyterLab coupled with Pachyderm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter is intended to demonstrate how to configure a Pachyderm cluster
+    in Pachyderm Hub and use Pachyderm Notebooks. By the end of this chapter, we will
+    learn how to run basic Pachyderm operations in Pachyderm Notebooks and will create
+    a sentiment analysis pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter covers the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling Pachyderm Notebooks in Pachyderm Hub
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Running basic Pachyderm operations in Pachyderm Notebooks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating and running an example pipeline in Pachyderm Notebooks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You should have already installed the following components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`pachctl` 2.0.0 or later'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Access to Pachyderm Hub
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A GitHub or Gmail account
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Downloading the source files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: All code samples used in this section are stored in the GitHub repository created
+    for this book at [https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/tree/main/Chapter11-Using-Pachyderm-Notebooks](https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/tree/main/Chapter11-Using-Pachyderm-Notebooks).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Dockerfile` used in this section is stored at [https://hub.docker.com/repository/docker/svekars/pachyderm-ide](https://hub.docker.com/repository/docker/svekars/pachyderm-ide).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling Pachyderm Notebooks in Pachyderm Hub
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before you can take advantage of Pachyderm Notebooks, you need to create an
+    account in Pachyderm Hub and a Pachyderm workspace. Pachyderm Hub provides a trial
+    period for all users to test its functionality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After the trial period ends, you need to upgrade to the Pachyderm Pro version
+    to continue using Pachyderm Notebooks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a workspace
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In Pachyderm Hub, your work is organized in **workspaces**. A workspace is a
+    grouping in which multiple Pachyderm clusters can run. Your organization might
+    decide to assign each workspace to a team of engineers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before you can create a workspace, you need a Pachyderm Hub account, so let's
+    create one. Pachyderm Hub supports authentication with Gmail and GitHub. You must
+    have either of those to create an account with Pachyderm Hub.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create a Pachyderm Hub account, complete the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to [https://www.pachyderm.com/try-pachyderm-hub#](https://www.pachyderm.com/try-pachyderm-hub#)
+    and fill out the provided form to request a free trial of Pachyderm Hub. It might
+    take some time for your account to be activated and you will receive an email
+    with instructions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log in to your Pachyderm Hub account with the Gmail or GitHub account you have
+    provided in the sign-up form.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Fill out the **Get Started** form and click **Get Started**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click **Create a workspace**, fill out the form that appears as shown in the
+    following screenshot, and click **Create**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.1 – Create a new workspace'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.1 – Create a new workspace
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you create a workspace, you automatically deploy a Pachyderm cluster. If
+    you're using a trial version of Pachyderm, you will have deployed a single-node
+    cluster, which should be enough for testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have created your first workspace, you need to connect to your
+    cluster using `pachctl`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connect to your Pachyderm Hub workspace with pachctl
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If this is not the first chapter that you are reading in this book, you should
+    already have `pacthl` installed on your computer. Otherwise, install `pachctl`
+    as described in [*Chapter 4*](B17085_04_Final_SB_Epub.xhtml#_idTextAnchor096),
+    *Installing Pachyderm Locally*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To connect to your Pachyderm Hub workspace, do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the Pachyderm Hub UI, locate your workspace, and click the CLI link.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Follow the instructions in the UI to switch your Pachyderm context and enable
+    communication between your computer and your workspace on Pachyderm Hub.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'After you authenticate, run the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should get the following response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Check that you have switched to the correct context by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This command should return the name of your Pachyderm Hub workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can now communicate with your cluster deployed on Pachyderm Hub through
+    `pachctl` from a terminal on your computer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have configured our cluster, let's connect to a Pachyderm notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connect to a Pachyderm notebook
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Pachyderm Notebooks** is an **IDE** for data scientists that provides easy
+    access to familiar Python libraries. You can run and test your code in cells while
+    Pachyderm backs your pipeline.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To connect to a Pachyderm notebook, complete the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Pachyderm Hub UI, in your workspace, click **Notebooks**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.2 – Access Pachyderm Notebooks'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_002.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.2 – Access Pachyderm Notebooks
+  prefs: []
+  type: TYPE_NORMAL
+- en: When prompted, click **Sign in with OAuth 2.0** and then sign in with the account
+    that has access to Pachyderm Hub.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'On the **Server Options** screen, select the **Default** server:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.3 – Server Options'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_003.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.3 – Server Options
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click **Start** and then **Launch Server**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'You should see the following screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.4 – Pachyderm Notebooks home'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_004.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.4 – Pachyderm Notebooks home
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have access to Pachyderm Notebooks, we can create Pachyderm pipelines
+    directly from the Pachyderm Notebooks UI, experiment with Python code and `python-pachyderm`,
+    run `pachctl` commands, and even create `Markdown` files to document our experiments.
+    We'll look into this functionality in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running basic Pachyderm operations in Pachyderm Notebooks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The main advantage of Pachyderm Notebooks is that it provides a unified experience.
+    Not only can you run your experiments inside of it, but you can also access your
+    Pachyderm cluster through the integrated terminal by using both `pachctl` and
+    `python-pachyderm`. All the pipelines that you create through the JupyterLab UI
+    will be reflected in your Pachyderm cluster whether it runs locally or on a cloud
+    platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now let's see how we can use Pachyderm Notebooks to access our Pachyderm cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the integrated terminal
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can run the integrated terminal from within Pachyderm Notebooks and use
+    it to execute `pachctl` or any other `UNIX` commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use the integrated terminal, complete the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the Pachyderm Notebooks home page, click **Terminal**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click the **Terminal** icon to start a new Terminal window:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.5 – Start a Terminal within Pachyderm Notebooks'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_005.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.5 – Start a Terminal within Pachyderm Notebooks
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Get the version of Pachyderm:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Try running other Pachyderm commands that you have learned in previous chapters
+    to see how it works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The version of `pachctl` and `pachd` are different than the ones your run directly
+    from your computer terminal as Pachyderm Notebooks has a preinstalled version
+    of `pachctl`, which sometimes might not match the version of your cluster. This
+    should not affect your work with Pachyderm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know how to use the terminal, let's try to create a Pachyderm notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Pachyderm Notebooks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A notebook is an interactive document in which the users can write Python code,
+    run it, and visualize it. These features make notebooks a great experimentation
+    tool that many data scientists use in their work. After the experiment is finished,
+    you might want to export the notebook as a Python script or library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Pachyderm Notebooks supports the following types of notebooks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python notebooks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Julia notebooks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: R notebooks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These three languages seem to be most popular among data scientists. You can
+    create Julia and R notebooks to experiment specifically with the code that you
+    want to use with your pipeline. With Python notebooks, not only you can test your
+    code, but you can also use the `python-pachyderm` client to interact with the
+    Pachyderm cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code described in this section can be found in the [https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/blob/main/Chapter11-Using-Pachyderm-Notebooks/example.ipynb](https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/blob/main/Chapter11-Using-Pachyderm-Notebooks/example.ipynb)
+    file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create a Python notebook and run a few commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the Pachyderm Notebooks home screen, click on the Python 3 notebook icon
+    to create a new notebook.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can use both regular Python and `python-pachyderm` in this notebook. For
+    example, to get the current version of your Pachyderm cluster and list all the
+    repositories, paste the following in the notebook''s cell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Click the run icon to run the script and get the result:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.6 – Running python-pachyderm in Notebooks'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_006.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.6 – Running python-pachyderm in Notebooks
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a repository by pasting the following code in the next cell and running
+    it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the output that you should see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.7 – List repo'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_007.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.7 – List repo
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that you do not need to import `python_pachyderm` and define the client
+    in the second and subsequent cells since you have already defined it in the first
+    cell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s add some files to the data repository:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the output that you should see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.8 – Put file output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_008.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.8 – Put file output
+  prefs: []
+  type: TYPE_NORMAL
+- en: This dataset contains statistics about COVID-19 vaccinations from December 24
+    to 31, 2020\.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can print the contents of the file by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.9 – Total vaccinations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_009.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.9 – Total vaccinations
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This CSV file has the following columns: **location**, **date**, **vaccine**
+    (manufacturer), and **total_vaccinations**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s also print the top five rows of the file to view the names of the columns:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.10 – Top five rows'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_010.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.10 – Top five rows
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, let''s create a simple pipeline that will tell us which country did
+    the most vaccinations in a single given day during the observed period:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.11 – Create pipeline output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_011.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.11 – Create pipeline output
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s get the result of our pipeline by executing the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.12 – Results of the pipeline'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_012.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.12 – Results of the pipeline
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our pipeline has determined that during the period from December 24 to December
+    31, the most vaccinations were done in **Germany** on **December 31**. The number
+    of vaccinations was **206443** and the manufacturer was **Pfizer/BioNTech**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To clean up your cluster, run the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.13 – Cluster clean up'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_013.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.13 – Cluster clean up
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we learned how to perform basic Pachyderm operations in Pachyderm
+    Python Notebooks. Next, we'll create another example pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating and running an example pipeline in Pachyderm Notebooks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we learned how to use Pachyderm Notebooks, create repositories,
+    put data, and even created a simple pipeline. In this section, we will create
+    a pipeline that performs sentiment analysis on a Twitter dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code described in this section can be found in the [https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/blob/main/Chapter11-Using-Pachyderm-Notebooks/sentiment-pipeline.ipynb](https://github.com/PacktPublishing/Reproducible-Data-Science-with-Pachyderm/blob/main/Chapter11-Using-Pachyderm-Notebooks/sentiment-pipeline.ipynb)
+    file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will use a modified version of the International Women's Day Tweets dataset
+    from Kaggle available at [https://www.kaggle.com/michau96/international-womens-day-tweets](https://www.kaggle.com/michau96/international-womens-day-tweets).
+    Our modified version includes only two columns—tweet number **#** and **text**.
+    The dataset includes **51,480** rows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an extract of the first few rows of the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is a diagram of the workflow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.14 – Sentiment analysis pipeline'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_014.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.14 – Sentiment analysis pipeline
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will learn about the methodology that is used to build
+    this pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipeline methodology
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will use `TextBlob`, an open source Python library for text processing, to
+    perform sentiment analysis on the tweets in the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Sentiment analysis** is a technique that helps understand the overall mood
+    of the individuals involved in a specific conversation, discussing specific products
+    and services, or rating a movie. Sentiment analysis is widely used in various
+    types of businesses and industries by marketers and sociologists to get a quick
+    assessment of customer sentiment. In this example, we will be looking at emotions
+    expressed in a selection of tweets about International Women''s Day.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`TextBlob` provides two metrics for sentiment analysis—polarity and subjectivity.
+    Each word in a sentence is assigned a score and then the mean score is assigned
+    to the whole sentence. In this example, we will only determine the polarity of
+    the tweets. Polarity defines the positivity or negativity of a sentence based
+    on a predefined word intensity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Polarity values range from -1 to 1, with -1 meaning negative sentiment, 0 being
+    neutral, and 1 being positive. If we were to show this on a scale, it would look
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.15 – Polarity'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_015.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.15 – Polarity
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we were to put the words into a table and assign them polarity scores, here
+    is what we might get:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.16 – Polarity scores'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/Table_012.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.16 – Polarity scores
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s run a quick `TextBlob` example on a simple sentence to see how it works.
+    Use the code in the `sentiment-test.py` file to try this example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To run this script, complete the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You need to install `TextBlob` in the Pachyderm Notebooks terminal:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the output that you should see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.17 – Installing TextBlob'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_017.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.17 – Installing TextBlob
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run `sentiment-test.py` either in your local terminal or in a Jupyter notebook:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.18 – Output of the sentiment-test.py script'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_018.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.18 – Output of the sentiment-test.py script
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see in the output, `TextBlob` assigns a score for each sentence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have reviewed the methodology of our example, let's create our pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the pipelines
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Our first pipeline will use NLTK to clean the Twitter data in our `data.csv`
+    file. We will create a standard Pachyderm pipeline by using `python-pachyderm`.
+    The pipeline will consume files from the data repository, run the `data-clean.py`
+    script on it, and output the cleaned text to the `data-clean` output repository.
+    The pipeline will use the `svekars/pachyderm-ide:1.0` Docker image to run the
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first part of `data-clean.py` imports the components that are familiar
+    to us from [*Chapter 8*](B17085_08_Final_SB_Epub.xhtml#_idTextAnchor184), *Creating
+    an End-to-End Machine Learning Workflow*. These components include NLTK and `pandas`,
+    which we will use to preprocess our data. We will also import `re` to specify
+    regular expressions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The second part of the script performs the data cleaning using the NLTK `word_tokenize`
+    method, `stopwords` with the `lambda` function, and `re.split` to remove the URLs.
+    Finally, the script saves the cleaned text to `cleaned-data.csv` in the output
+    repository:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our second pipeline will perform sentiment analysis on the cleaned data with
+    the `TextBlob` Python library. The `sentiment.py` script imports the following
+    components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: We'll use `pandas` to manipulate the data frames. We'll use `matplotlib` and
+    `seaborn` to visualize our results, and we'll use `redirect_stdout` to save our
+    results to a file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, our script performs sentiment analysis and creates two new columns—`polarity_score`
+    and `sentiment`. The resulting table is saved to a new CSV file called `polarity.csv`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, the script saves the tweets of sentiment category to its own variable,
+    calculates the total for each category, and saves the totals to the `number_of_tweets.txt`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The last part of the script builds a pie chart with the percentages of tweets
+    in each category and saves them to the `plot.png` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s create these pipelines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a new Pachyderm Python notebook.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a Pachyderm `data` repository:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.19 – Output of the created repository'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_019.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.19 – Output of the created repository
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Put the `data.csv` file in this repository:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This script returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.20 – Put file output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_020.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.20 – Put file output
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'List the files in the data repository:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.21 – List file output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_021.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.21 – List file output
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create the `data-clean` pipeline:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.22 – Create pipeline output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_022.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.22 – Create pipeline output
+  prefs: []
+  type: TYPE_NORMAL
+- en: The output is truncated and shows only the `data-clean` pipeline. You should
+    see similar output for the `sentiment` pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s view the first few lines of the file in the `data-clean` repository
+    that has our cleaned data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This script returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.23 – Cleaned data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_023.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.23 – Cleaned data
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see that the text was broken down into tokens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s get the list of files in the sentiment repository:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see a lengthy output. The files will be under `path:`, similar to
+    the following response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.24 – List of files in the sentiment repository'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_024.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.24 – List of files in the sentiment repository
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There should be three files, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`number_of_tweets.txt`: A text file with the total number of tweets in each
+    category'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`plot.png`: A pie chart with the percentages of tweets in each category'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`polarity.csv`: A new CSV table with the `polarity_score` and `sentiment` columns'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Now, let''s look at the first few rows of the `polarity.csv` table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This script returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.25 – Polarity and sentiment results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_025.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.25 – Polarity and sentiment results
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see the two new columns appended to our original table, giving a polarity
+    score in the range [-1;1] and a sentiment category.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see the total number for each sentiment category:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.26 – Total number of tweets for each category'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_026.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.26 – Total number of tweets for each category
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, let''s look at the pie chart with sentiment category percentages:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This script returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.27 – Percentage of positive, negative, and neutral sentiments'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17085_11_027.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.27 – Percentage of positive, negative, and neutral sentiments
+  prefs: []
+  type: TYPE_NORMAL
+- en: Based on this chart, we can tell that the majority of the tweets contain positive
+    sentiments and the percentage of negative tweets can be considered insignificant.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This concludes our sentiment analysis example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we have learned how to create Pachyderm notebooks in Pachyderm
+    Hub, a powerful addition to Pachyderm that enables data scientists to leverage
+    the benefits of an integrated environment with the Pachyderm data lineage functionality
+    and pipelines. Data scientists spend hours performing exploratory data analysis
+    and do so in notebooks. Combining Pachyderm and notebooks brings data scientists
+    and data engineers together on one platform, letting them speak the same language
+    and use the same tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to the above, we created a pipeline that performs basic sentiment
+    analysis of Twitter data and ran it completely in a Pachyderm notebook. We have
+    expanded our knowledge of Python Pachyderm and how it can be used in conjunction
+    with other tools and libraries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'JupyterLab documentation: https://jupyterlab.readthedocs.io/en/stable/'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`TextBlob` documentation: [https://textblob.readthedocs.io/en/dev/](https://textblob.readthedocs.io/en/dev/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`python-pachyderm` documentation: [https://python-pachyderm.readthedocs.io/en/stable/](https://python-pachyderm.readthedocs.io/en/stable/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

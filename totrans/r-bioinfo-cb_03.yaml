@@ -1,0 +1,1199 @@
+- en: Searching Genes and Proteins for Domains and Motifs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sequences of genes, proteins, and entire genomes hold clues to their function.
+    Repeated subsequences or sequences with a strong similarity to each other can
+    be clues to things such as evolutionary conservation or functional relatedness.
+    As such, sequence analysis for motifs and domains are core techniques in bioinformatics.
+    Bioconductor contains many useful packages for analyzing genes, proteins, and
+    genomes. In this chapter, you will learn how to use Bioconductor to analyze sequences
+    for features of functional interest, such as de novo DNA motifs and known domains
+    from widely used databases. You'll learn about some packages for kernel-based
+    machine learning to find protein sequence features. You will also learn some large-scale
+    alignment techniques for very many, or very long sequences. You will use Bioconductor
+    and other statistical learning packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following recipes will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding DNA motifs with universalmotif
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding protein domains using PFAM and bio3d
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding InterPro domains
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Performing multiple alignments of genes or proteins
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Aligning genomic length sequences with DECIPHER
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Machine learning for novel feature detection in proteins
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 3D structure protein alignment with bio3d
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sample data you'll need is available from this book's GitHub repository: [https://github.com/danmaclean/R_Bioinformatics_Cookbook](https://github.com/danmaclean/R_Bioinformatics_Cookbook)[.](https://github.com/danmaclean/R_Bioinformatics_Cookbook) If
+    you want to use the code examples as they are written, then you will need to make
+    sure that this data is in a sub-directory of whatever your working directory is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following are the R packages that you''ll need. Most of these will install
+    with `install.packages()`*; *others are a little more complicated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ape`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Bioconductor`:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Biostrings`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`biomaRt`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`DECIPHER`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`EnsDb.Rnorvegicus.v79`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`kebabs`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`msa`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`org.At.tair.db`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`org.Eck12.db`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`org.Hs.eg.db`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PFAM.db`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`universalmotif`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`bio3d`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dplyr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`e1071`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: seqinr
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Bioconductor is huge and has its own installation manager. You can install
+    it with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further information is available at [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, in R, a user will load a library and use the functions directly by
+    name. This is great in interactive sessions but it can cause confusion when many
+    packages are loaded. To clarify which package and function I'm using at a given
+    moment, I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, in the middle of a recipe, I''ll interrupt the code so you can see
+    some intermediate output or the structure of an object it''s important to understand.
+    Whenever that happens, you''ll see a code block where each line begins with ##
+    double hash symbols. Consider the command that follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give us output as follows – note that the output lines are prefixed
+    with `##`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Some of the packages that we want to use in this chapter rely on third-party
+    software that must be installed separately. A great way of installing and managing
+    bioinformatics software on any of Windows, Linux, or macOS is the conda package
+    manager in conjunction with the bioconda package channel. You can install lots
+    of software with some simple commands. To install both, start out by reading the
+    current instructions at [https://bioconda.github.io/](https://bioconda.github.io/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding DNA motifs with universalmotif
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A very common task when working with DNA sequences is finding instances of
+    motifs—a short defined sequence—in a longer sequence. These could represent protein—DNA
+    binding sites, such as transcription factor binding sites in a gene promoter or
+    an enhanced region. There are two start points for this analysis: either you have
+    a database of motifs that you wish to use to scan target DNA sequences and extract
+    wherever the motif occurs or you have just the sequences of interest and you want
+    to find out whether there are any repeating motifs in there. We''ll look at ways
+    of doing both of these things in this recipe. We''ll use the `universalmotif` package
+    in both cases.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we need the `datasets/ch3/simple_motif.txt` and `datasets/ch3/promoters.fa` files,
+    a simple matrix describing a simple motif in a **Position Specific Weight Matrix**
+    (**PSWM**) format (see *Appendix* for a brief description), and a set of sequences
+    from upstream of transcriptional start sites.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This recipe also requires a working copy of `MEME` on your system. `MEME` is
+    a program for finding statistically overrepresented sequence motifs in sets of
+    sequences. When used on promoter or upstream gene regions, these motifs can represent
+    transcription factor-binding sites. The web page for `MEME` is at [http://alternate.meme-suite.org/](http://alternate.meme-suite.org/)
+    and if you have conda installed, you can install it with `conda install -c bioconda
+    meme`. The `MEME` package isn't available for Windows systems. If you wish to
+    run it on Windows, then you should look at running it under Cygwin—a Linux emulation
+    layer ([https://www.cygwin.com/](https://www.cygwin.com/)). You may need to install
+    a new version of R under Cygwin as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Finding DNA motifs with `universalmotif` can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, load the libraries and a motif of interest:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, load in sequences to scan with the motif:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Perform a scan of the sequences:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that `motif_hits` contains information about the position of the motif
+    in each of the target sequences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Calculate whether the motif is enriched in the sequences:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that motif info contains information about statistical enrichment in a
+    set of sequences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run `MEME` to find novel motifs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This is really neat code! In just a few lines, we were able to complete a whole
+    analysis. We began by loading in a matrix description of a motif and some sequences
+    we hope to find the promoter in—this happened in steps 1 and 2 and we got a `universalmotif` object
+    and a `DNAStringSet` object to work with. The real work happens next, in steps
+    3 and 4\. The `scan_sequences()` function searches each of the sequences and reports
+    where it finds motifs—check out the `motif_hits` object to see where they are.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When it comes to working out whether a motif is significant, the `enrich_motifs()`
+    function in the `universalmotifs` package does this work for us in step 4 and will
+    result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: It searches the sequences to find likely instances of motifs and counts them,
+    performing Fisher's exact test to compare the frequencies of motifs in our set
+    of sequences with their frequencies in an automatically generated background set.
+    The final `motif_info` output contains a report of the *p* value. To find novel
+    motifs, we run the external software **MEME** in step 5\. The `run_meme()` function
+    needs to know where the **MEME** package is on your system, so we define that
+    in the `meme_path` variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the value for `meme_path` on your system will be different than the
+    value mentioned here—that's an example on my system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We pass that information to the function, along with the `DNAStringSet` object
+    containing our sequences. The function also needs an output directory to write
+    `MEME` results to, since it doesn''t return anything useful to R. The `run_meme()`
+    function executes `MEME` in the background and once the run is finished, we can
+    load in the results from the `meme.txt` file using the `read_meme()` function
+    with a filename. It returns a `universalmotif` object. Finally, here, we quickly
+    inspect the `motifs` object with the `view_motifs()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/51fa1536-9437-4b38-b990-908f51de364f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This gives us a pretty visualization of the motifs found.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Loading in motifs from pre-existing databases such as JASPAR and TRANSFAC is
+    very easy with `universalmotif` as there are straightforward replacements for
+    the `read_matrix()` function. Look at the following functions to load in motifs
+    from various formats: `read_cisbp()`, `read_homer()`, `read_jaspar()`, `read_matrix()`,
+    `read_meme()`, `read_motifs()`, and `read_uniprobe()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding protein domains with PFAM and bio3d
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Discovering the function of a protein sequence is a key task. We can do this
+    in many ways, including by conducting whole sequence similarity searches against
+    databases of known proteins using tools such as BLAST. If we want more informative
+    and granular information, we can instead look for individual functional domains
+    within a sequence. Databases such as `Pfam` and tools such as `hmmer` make this
+    possible. `Pfam` encodes protein domains as profile Hidden Markov Models, which
+    `hmmer` uses to scan sequences and report any likely occurrences of the domains.
+    Often, genome annotation projects will carry out the searches for us, meaning
+    that finding the `Pfam` domains in our sequence is a question of searching a database.
+    Bioconductor does a great job of packaging up the data in these databases in particular
+    packages—usually suffixed with **`.db`**. In this recipe, we'll look at how to
+    work out whether a package contains Pfam domain information, how to extract it
+    for specific genes of interest, and an alternative method for running a Pfam search
+    yourself if there isn't any pre-existing information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this example, we need some Bioconductor `Annotationdbi` database packages—specifically, `org.Hs.eg.db`,
+    `org.EcK12.eg.db`, and `and org.At.tair.db`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You''ll also need the `bio3d` package, which—at the time of writing—only connects
+    to the Pfam server if you use the development version. You can install this version
+    from BitBucket with the `devtools` package:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Finding protein domains with `PFAM.db` and `bio3d` can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the database package and inspect the types of keys in the database:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note the `ENSEMBL` key in this output—we can use this to query the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Get a vector of keys using the `keys()` function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Query the database:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load the `PFAM` database to extract descriptions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get all keys from the `PFAM` database:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Get all descriptions for the `PFAM` IDs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Join the descriptions to `PFAM`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The key to this approach is finding out whether the database we''re using actually
+    carries the PFAM domain information. That''s what we do in step 1—we use the `keytypes()`
+    function to list the search keys available. PFAM can be seen in the results. Once
+    we''ve verified that we can use this database for the information we want, we
+    can follow a fairly standard procedure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Get a list of keys to query with—such as gene names. Here, we pull them from
+    the database directly, but they could come from anywhere. This will result in
+    the following output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Query the database with the `select()` function, which pulls data for the provided
+    keys. The `columns` argument tells it which data to pull. The expression here
+    is going to get PFAM IDs for our genes of interest.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Make a list of all PFAM IDs and descriptions. We load the `PFAM.db` package
+    and use the `PFAMDE` object it provides to get a mapping between IDs and descriptions.
+    This will result in the following output. Note that because we''re pulling data
+    from an external database, changes in that database could be reflected here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can then get the actual descriptions in an object with the `mappedkeys()`
+    function.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we extract and convert the descriptions of the `all_ids` object to a data
+    frame.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'And finally, we join the descriptions of the PFAM domains to the PFAM IDs we
+    got earlier, using the columns with common data—`PFAM` and `ac`. This will result
+    in the following output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'I mentioned that the key to the recipe—in particular, the join in step 6—was
+    to make sure the database contained the right keys, specifically PFAM, to proceed.
+    Depending on the organism and database, the PFAM annotation may not exist. Here''s
+    how to check whether it does exist in the database you''re interested in with
+    two example databases, `org.At.tair.db` and `org.Eck12.eg.db`, an Arabidopsis database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'and an E.coli database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Simply use the `columns()` function to report the data columns in the database.
+    If PFAM shows up, you can follow the procedure. If it doesn''t show up, then as
+    an alternative procedure, it is possible to run PFAM and make the annotations
+    yourself. The following code takes your input protein sequences and runs a PFAM
+    search on the server at EBI using the `bio3d` function, `hmmer()`. The returned
+    object contains the PFAM output in a dataframe in the `hit.tbl` slot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will result in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finding InterPro domains
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: InterPro is a database of predictive models, or signatures, provided by multiple
+    protein databases. InterPro aggregates information from multiple sources to reduce
+    redundancy in annotations and aid interpretability. In this recipe, we'll extend
+    the approach we used for just PFAM domains and look at getting annotations of
+    InterPro domains on sequences of interest. We'll start with Ensembl core databases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll need the `ensembldb`, `Ensdb.Rnorvegicus.v79`, and `biomaRt` Bioconductor
+    packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Finding InterPro protein domains can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries and double-check whether our database package carries the
+    protein data we need:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build a list of genes to query with—note the `keytype` I need here is `GENEID`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use the `select()` function to pull the relevant data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The code is a database lookup on, specifically, the Rattus norvegicus Ensembl
+    Database through the relevant package. The process is similar to that for PFAM
+    domain searches:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We use the `EnsemblDB` package-specific `hasProteinData()` function to check
+    whether the database has the information we need. If the output is `TRUE`, we''re
+    good:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: We again build a list of genes of interest—here, I pull the list from the database,
+    but these IDs can come from anywhere.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Finally, we search the database with the genes of interest as a key. Note that
+    we need the `GeneIdFilter()` function wrapper and the `columns` argument to select
+    which data we want to return.  This will result in a data frame with the following
+    information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The approach we used in this recipe works well for Ensembl core databases,
+    but there are other non-Ensembl core databases that we might want to search; for
+    that, there is biomaRt. biomaRt allows us to define connections to other databases
+    we may know of. Many of these databases expose an API we can use to query them.
+    To do this, load the `biomaRt` library and use the `useMart()` function to define
+    a connection to the appropriate host and dataset. Then, use the `getBM()` function
+    with the connection and the columns and gene IDs to query with. You''ll get the
+    search results for InterPro back if your query is `interpro`. The following example
+    does a search for two *Arabidopsis* genes at `plants.ensembl.org`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you're having trouble working out the names of marts and columns, try the
+    `listMarts()` and `listDatasets()` functions from **bioMart**, which will provide
+    lists of currently available marts and the data they contain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Performing multiple alignments of genes or proteins
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The alignment of sequences as a task prior to building phylogenetic trees or
+    as an end in itself to determine conserved and divergent regions is a mainstay
+    in bioinformatics analysis and is amply covered in R and Bioconductor with the
+    **ape** and **DECIPHER** packages. We'll look at the extremely straightforward
+    procedures for going from sequence to alignment in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that there are different techniques for different sequence lengths. In
+    this first recipe, we'll look at how to align some Kbp-length sequences such as
+    those that represent genes and proteins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This recipe needs the `msa` package. This is a pretty hefty package and includes
+    external software: Clustal, Clustal Omega, and Muscle. The `ape` and `seqinR` packages are
+    also needed. As a test dataset, we''ll use some haemoglobin protein sequences
+    stored in the book''s data and code repository at `datasets/ch3/hglobin.fa`. You''ll
+    need PDFLatex on your system too. You can find installation information here:
+    [https://www.latex-project.org/get/](https://www.latex-project.org/get/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Performing multiple alignments of genes or proteins can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in the libraries and sequences:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Perform the multiple sequence alignment:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns an alignment object as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'View the result using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'View a zoomed-in region using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The recipe here is short and sweet—performing an MSA with `msa` is very straightforward.
+    In step 1, we loaded the packages and sequences using the common `readAAStringSet()`
+    function to give us `seqs`—an `AAStringSet` object, which we can inspect and get
+    the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, in *Step 2*, the `msa()` function is passed the `seqs` object and the
+    name of an alignment method. Here, we use `ClustalOmega` (you can choose `ClustalOmega`,
+    `ClustalW`, or `Muscle`). The method parameter specifies the name of the external
+    program that is used to run the actual alignment. The aligner runs and you get
+    an `MsaMultipleAlignment` object back—this is a container for the aligned sequences
+    and it looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In step 3, we write a visualization of the alignment to a PDF file using the
+    `msaPrettyPrint()` function. The function takes many arguments that describe the
+    layout of the alignment picture. The visualization must be written to a file;
+    it can''t be sent to an interactive session plot window like a normal plot object.
+    The file the picture ends up in is specified with the file argument. The picture
+    looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/87df59f6-0c9c-4679-86cd-cf6bfafe0215.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In step 4, we use the second positional argument to restrict the view to between
+    positions 10 and 30 using the start - end `c(10,30)` vector. We get the following
+    picture:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/448f1f85-e5d0-4ab9-9217-1990dd4cd25f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Unfortunately, because the picture-making process uses Latex in the background,
+    we cannot coerce the picture into a more helpful format than PDF or have it render
+    like other plot objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A tree visualization of sequence similarity is often useful at this stage.
+    We can generate one of these with the `ape` and `seqinr` packages. We can convert
+    our alignment object to a `seqinr distance` object that describes the sequence
+    distances, and from that, use `ape` to create a simple neighbour-joining tree
+    that we can plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/38084986-a3b9-421d-8bab-349b315c6e23.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Aligning genomic length sequences with DECIPHER
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Aligning sequences longer than genes and proteins, such as contigs from assembly
+    projects, chromosomes, or whole genomes is a tricky task and one for which we
+    need different techniques than those for short sequences. The longer sequences
+    get, the harder they are to align. Long alignments are especially costly in terms
+    of the computational time taken, since the algorithms that are effective on short
+    sequences take up exponentially more time with increasing sequence length. Performing
+    longer alignments generally starts with finding short anchor alignments and working
+    the alignment out from there. We typically end up with blocks of synteny—regions
+    that match well between the different genome alignments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we'll look at the `DECIPHER` package for genome length alignments.
+    We'll use some chloroplast genomes—small organelle genomes of about 150 Kbp in
+    length that are pretty well conserved as our sequences of interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Make sure that you have the `DECIPHER` package installed. We'll use the `datasets/ch3/plastid_genomes.fa` file
+    as an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Aligning genomic length sequence with `DECIPHER` can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in the libraries and genome sequences:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Prepare the sequences in a local database:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Find the blocks of `synteny`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will create a dotplot of syntenic blocks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plot the `syntenic` blocks:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, make an actual alignment:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And save the pairwise alignments one-by-one:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The DECIPHER package is very powerful and, as such, there''s a little bit of
+    setup to do before we can move on to the meat of the analysis. In step 1, we load
+    the libraries and the sequence into `long_seqs`, a **DNAStringSet** object; but
+    in step 2, we build a further on-disk SQLite database for the subsequent steps.
+    This is done with the `Seqs2DB()` function, which takes `long_seqs`, an input
+    type (**XStringSet**—the parent class of **DNAStringSet)**, a name for the database
+    (`long_db`), and a vector of sequence names, which we pull with the `names()` function.
+    Once we''ve got the database built, we can use it in the following workflow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Find syntenic blocks in a database with the `FindSynteny()` function. This
+    will result in the following output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: Use the syntenic blocks to seed and perform an actual alignment with the `AlignSynteny()`
+    function.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: These things are done in steps 3 and 5\. `FindSynteny()` needs the name of the
+    database; `AlignSynteny()` needs the `synteny` object and the database name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we can output the results. The `pairs()` function with the `synteny`
+    object will create a dotplot of syntenic blocks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6e4c485b-06c7-40f7-be51-3da141db2acf.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The `plot()` function with the `synteny` object creates a helpful heatmap as
+    a plot of the position of syntenic blocks relative to the first genome. Regions
+    of identical colors across the genomes indicate regions of syntenic sequences:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ec419285-0479-4751-b51d-53ebd60b3363.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The last step, step 6, is the slightly fiddly save process. The `alignment`
+    object is an R list in which each member represents an alignment—itself a list.
+    By extracting and then using `unlist()` on each of the returned elements, you
+    have an object (`blocks`) that can be saved as a typical FASTA alignment with
+    `writeXStringSet()`. Remember that you'll need to do this for every member of
+    the `blocks` object separately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Machine learning for novel feature detection in proteins
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Sometimes, we'll have a list of protein sequences that have come from some analysis
+    or experiment that are in some way biologically related—for example, they may
+    all bind the same target—and we will want to determine the parts of those proteins
+    that are responsible for the action. Domain and motif finding, as we've done in
+    the preceding recipes, can be helpful, but only if we've seen the domains before
+    or the sequence is particularly well conserved or statistically over-represented.
+    A different approach is to try machine learning in which we build a model that
+    can classify our proteins of interest accurately and then use the properties of
+    the model to show us which parts of the proteins result in the classification.
+    We'll take that approach in this recipe; specifically, we'll train a **support
+    vector machine** (**SVM**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we need the `kebabs `and `Biostrings`, `e1071` and `readr`
+    libraries, and two input data files. Machine learning works best with many training
+    examples but they take time to run, so we have a rather small input of 170 *E.coli* proteins
+    for which, according to the `STRING` database ([https://string-db.org/](https://string-db.org/)),
+    there is experimental evidence for interacting with the *pfo* protein. These are
+    the positive training examples. We also need negative training examples—these
+    are another 170 *E.coli* proteins for which there is no evidence of interaction
+    with *pfo,* which have been selected at random. All the protein sequences are
+    in the `datasets/ch3/ecoli_proteins.fa` file. Accompanying this file is a text
+    file of the class of each protein. `datasets/ch3/ecoli_protein_classes.txt` is
+    a single-column text file that describes the class of each protein—a "1" for positive
+    *pfo* interaction, and a "-1" for negative *pfo* interaction. The row index in
+    the class file matches the protein index in the sequence file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Machine learning for novel feature detection in proteins can be done using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries and input files:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Divide the data into a training and test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build the model with the training set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use the model to predict the classes of the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Examine the prediction profile of a sequence:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, plot `prediction_profile` using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The first step here is straightforward: we load in the sequences we''re interested
+    in and the classes they belong to. Because we''re loading the `ecoli_protein_classes.txt` file
+    into a **dataframe**, when we need a simple vector, we use the `$` subset operator to
+    extract the `classes` column from the dataframe. Doing so returns that single
+    column in the vector object we need. After this, the workflow is straightforward:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decide how much of the data should be training and how much should be test: Here,
+    in step 1, we choose 75% of the data as the training set when we create the `training_proportion`
+    variable. This is used in conjunction with `num_seqs` in the `sample()` function
+    to randomly choose indices of the sequences to put into the training set. The`training_set_indices`
+    variable contains integers that we will use to subset data on later. Initially,
+    we make a complementary list of indices, `test_set_indices`, by using the square
+    bracket, `[]`, subset notation and the negation operator, `-`. Basically, this
+    construct is an idiomatic way of creating a vector that contains every index *not*
+    in `training_set_indices`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Construct and train the Support Vector Machine model: In step 2, we build our
+    classifying model. First, we choose a kernel that maps the input data into a matrix
+    space that the Support Vector Machine can learn from. Here, it''s from the `gappyPairKernel()`
+    function—note that there are lots of kernel types; this one is pretty well suited
+    to sequence data. We pass`kernel` along to the `kbsvm()` function along with the
+    `training_set_indices` subset of sequences in `seqs` as the `x` parameter, and
+    the `training_set_indices` subset of classes as the `y` parameter. Other arguments
+    in this function determine the exact model type and package and training parameters.
+    There are lots of options for these and they can have a strong effect on the efficacy
+    of the final model. It''s well worth reading up and doing some scientific experimentation
+    on what works best for your particular data. The final model is saved in the `model`
+    variable.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Test the model on unseen data: Now we have a model, we get to use it to predict
+    classes of unseen proteins. This stage will tell us how good the model is. In
+    step 3, we use the `predict()` function with the model and the sequences we didn''t
+    use to train (the ones in `test_set_indices`) and get a prediction object back.
+    Running the predictions through the `evaluatePrediction()` function along with
+    the real classes from the classes vector and also a vector of all possible class
+    labels using the `allLabels` argument returns a summary of the accuracy and other
+    metrics of the model. We have 62% accuracy in the model here, which is only okay;
+    it''s better than random. But we have a rather small dataset and the model isn''t
+    optimized; with more work, it could be better. Note that if you run the code,
+    you may get different answers. Since the selection of training set sequences is
+    random, the models might do slightly worse or better depending on the exact input
+    data.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Estimate the prediction profile of a sequence: To actually find the regions
+    that are important in classification, and presumably in the function of the protein,
+    we use the `getPredictionProfile()` function on a sequence. We do this in step
+    4 on a small 10 AA fragment extracted from the first sequence using list, double-bracket
+    indexing to get the first sequence and single-bracket indexing to get a range;
+    for example, `seqs[[1]][1:10]`. We do this simply for the clarity of the visualization
+    in the last step. You can use whole sequences just as well. The `getPredictionProfile()` function
+    needs the `kernel` and `model` objects to function. This will give the following
+    output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we can `plot()` the prediction profile: The profile shows the contribution
+    of each amino acid to the overall decision and adds to the interpretability of
+    the learning results. Here, the fourth residue, **D**, makes a strong contribution
+    to the decision made for this protein. By examining this across many sequences,
+    the patterns contributing to the decision can be elucidated. It''s worth noting
+    that you may get a slightly different picture to the one that follows—because
+    of random processes in the algorithms—and its something you should build into
+    your analyses: make sure that any apparent differences aren''t due to random choices
+    made in the running of the code. The strongest contribution should still come
+    from "D" in this example:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/2867de45-fb07-4dc4-a939-602caf4c417e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3D structure protein alignment with bio3d
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Three-dimensional structural alignments between two molecular models can reveal
+    structural properties that are common or unique to either of the proteins. These
+    can suggest evolutionary or functional commonalities. In this recipe, we'll look
+    at how to get an alignment of two protein sequences in three dimensions and view
+    them in 3D-rendering software.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this section, we need at least two external pieces of software—PyMOL and
+    MUSCLE—a 3D structure-rendering program and a sequence aligner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'MUSCLE can be installed with conda as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: A version of MUSCLE is installed with the `msa` package, and bio3d can be referred
+    to that installation instead. We'll use the **msa** version in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PyMOL is absolutely necessary for visualization and can be installed with conda
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: To find the install path for this software, use `which pymol`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Beyond these, you'll need two files containing structures of human and fruit
+    fly thioredoxins to work with: `datasets/ch3/1xwc.pdb` and `datasets/ch3/3trx.pdb`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '3D structure protein alignment with bio3d can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library and the PDB structure files:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, carry out the alignment of the structures:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Launch and render the alignment in PyMOL:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As ever, the first steps are to load the library then the input data. Here,
+    in step 1, we load two separate PDB files with the `read.pdb()` function. In step
+    2, we do the alignment with the `pdbaln()` function. All the PDB objects we want
+    to align are first put into a **list** object with the appropriate name. The `fit`
+    argument is set to `TRUE` to carry out the superposition of the structures based
+    on all the aligned sequences (the superposition being carried out is sequence-based).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `exefile` argument tells `pdbaln()` where to carry out the sequence-based
+    alignment portion, as done here; a value of `"msa"` uses the aligners in the **msa** package,
+    but you can use a path to an alternative executable, or replace `exefile` with
+    your valid email address using the `web.args="your.email@something.org"` form
+    to carry out the alignment over the web at EBI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we have an alignment object in `pdbs`, we can visualize it in PyMOL. We
+    set the path to PyMOL in the `pymol_path` variable and pass that to the `pymol()` function
+    along with the type set to `"launch"`, which will create an interactive PyMOL
+    session. Alternatively, omitting `type` will result in a PyMOL script being written
+    that you can use later. PyMol should show the picture that follows. The screengrab
+    shows the rendering of the two aligned proteins: the human version in red and
+    the fly version in yellow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/1e6e656a-6628-4a81-acf7-c5ce4fa6debd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's More...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `pdbaln()` function works well for structures of similar length. For structures
+    with less equal PDBs, you can try the `struct.aln()` function.
+  prefs: []
+  type: TYPE_NORMAL

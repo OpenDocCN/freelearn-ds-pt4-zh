@@ -1,0 +1,984 @@
+- en: Proteomics from Spectrum to Annotation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Mass spectrometry** (**MS**) data usually comprises spectra that must be
+    bioinformatically processed to identify candidate peptides. These peptides include
+    assignments, and counts can then be analyzed using a wide range of techniques
+    and packages. The wide range of graphical user interface-driven tools for proteomics
+    means that there is a proliferation of file formats that can be tough to deal
+    with initially. These recipes will explore how to take advantage of the excellent
+    parsers and reformatters available in the new `RforProteomics` project and associated
+    tools for analysis and verification of spectra, and even show you how to view
+    your peptides in genome browsers alongside other genomic information such as gene
+    models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Representing raw MS data visually
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Viewing proteomics data in a genome browser
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualizing distributions of peptide hit counts to find thresholds
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Converting MS formats to move data between tools
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Matching spectra to peptides for verification with protViz
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Applying quality control filters to spectra
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Identifying genomic loci that match peptides
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sample data you'll need is available from this book's GitHub repository
+    at [https://github.com/danmaclean/R_Bioinformatics_Cookbook](https://github.com/danmaclean/R_Bioinformatics_Cookbook)[.](https://github.com/danmaclean/R_Bioinformatics_Cookbook) If
+    you want to use the code examples as they are written, then you will need to make
+    sure that this data is located in your working directory's subdirectory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the R packages that you''ll need. In general, you can install these
+    with `install.packages("package_name")`. The packages listed under `Bioconductor`
+    need to be installed with the dedicated installer, as described here. If you need
+    to do anything else, the installation will be described in the recipes in which
+    the packages are used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Bioconductor`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`EnsDb.Hsapiens.v86`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`MSnID`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`MSnbase`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`mzR`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`proteoQC`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`rtracklayer`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`data.table`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dplyr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ggplot2`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`protViz`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Bioconductor` is huge and has its own installation manager. You can install
+    the manager with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you can install the packages with this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further information is available at [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally in R, a user will load a library and use the functions directly by
+    name. This is great in interactive sessions, but it can cause confusion when many
+    packages are loaded. To clarify which package and function I'm using at a given
+    moment, I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Occasionally, in the middle of a recipe, I''ll interrupt the code so you can
+    see some intermediate output or the structure of an object that''s important for
+    you to understand. Whenever that happens, you''ll see a code block, where each
+    line begins with ##, that is, double hash symbols. Consider the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`letters[1:5]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will give us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`## a b c d e`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the output lines are prefixed with `##`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Representing raw MS data visually
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The raw data of proteomics analysis is the spectra that's generated by the mass
+    spectrometers. Each type of mass spectrometer has a different native file format
+    in which the spectra are encoded. Examining and analyzing the spectra begins with
+    loading in the files and coercing them into a common object type. In this recipe,
+    we'll look at how to load the varied file types, look at the metadata, and plot
+    the spectra themselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll need the `Bioconductor` package, `mzR`, and some files
+    from this book's data repository, in the `datasets/ch6`folder. We'll use three
+    different files, selected not so much for the data in them, but because they each
+    represent one of the most common MS file types, `mzXML`, `mzdata`, and `mzML`.
+    The example files all come from the `mzdata` package. Since they're extracted,
+    you won't need to install this package, but if you'd like more example files,
+    it's a good place to look.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Raw MS data can be represented visually using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load the files into objects:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'View the metadata where available:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plot the spectra:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we load the libraries we'll need. The main one is `mzR`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we define the paths to the files we will load using the system-agnostic
+    `file.path()` function, which returns a character vector with the filename in
+    it. Then, we use that filename in the `openMSfile()` function from `mzR` to actually
+    create an `mzR` object representing the data in the respective files. Note that
+    we essentially run the same code three times, changing only the file and input
+    file type each time. The `openMSfile()` function will automatically detect the
+    format of the file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we use the `mzR` package accessor functions, `runInfo()` and `sampleInfo()`,
+    to extract some of the metadata in the input files. Note that `sampleInfo()` with
+    `ms1` doesn't return anything—this is because that particular file didn't have
+    that data in it. The metadata that can be returned is dependent on the file and
+    file type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 4*, we use the `MSnbase` package to load in a file with its `readMSData()` function.
+    This uses `mzR` on its backend, so it can do the same, but it returns a modified
+    object of the `MSnbase` class. This means that some generic plot functions will
+    work. We then use the `plot()` function to create an image of all the spectra
+    in the file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4d0b67ad-9667-473b-80ee-bba4bffa2395.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'And then, by using indexing, we create an image of just the fifth spectrum
+    in the file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9b263019-d698-464b-bba8-5db036393517.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Viewing proteomics data in a genome browser
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Once we have mass spectrometer data and have identified the peptides and proteins
+    the spectra describe using search engine software such as Xtandem, MSGF+, or Mascot,
+    we may want to look at those in their genomic context alongside other important
+    data. In this recipe, we'll look at how to extract peptides and the Uniprot IDs
+    from a search file, find the genes those Uniprot IDs map to, and then create a
+    genome browser track showing those genes. These can be sent to the UCSC human
+    genome browser, and the interactive web page, which will be loaded in your local
+    browser automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, you'll need the Bioconductor packages `MSnID`, `EnsDB.Hsapiens.v86`,
+    and `rtracklayer`, and the `HeLa_180123_m43_r2_CAM.mzid.gz` file from the `datasets/ch6`
+    folder of this book's repository. For this recipe to work, you'll also need to
+    be connected to the internet, and have a recent web browser that can run the UCSC
+    genome browser located at [https://genome.ucsc.edu](https://genome.ucsc.edu).
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Proteomics data can be viewed in a genome browser using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create and populate the search file object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract rows containing useful hits and columns containing useful information:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract the Uniprot IDs from the `accession` column:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a database connection and obtain genes matching our Uniprot IDs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set up the genome browser track:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set up the browser session and view:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Step 1* is our standard library loading step.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 2* is the data loading step. This is a little unusual. Instead of just
+    calling a file-reading function, we must first create and empty the `MSnID` object
+    and load the data into it. We create `msnid` with the `MSnID()` function and then
+    pass it to the `read_mzid()` function to actually put data into it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 3* is concerned with extracting the information we are concerned about
+    from the `msnid` object. We require rows that match actual hits, not decoys, so
+    we access the `msnid@psms` slot directly, which contains the useful data and subset
+    that retains a row if its value of `isDecoy` is `FALSE`. This gives us an object
+    that we save in the `real_hits` variable. Next, we use `real_hits` to select a
+    few useful columns from the many in the original object.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 4* helps us extract the Uniprot IDs embedded in the accession column
+    field. It is important to note that these values come from the names that are
+    used in the search engine''s database. Naturally, this step will vary according
+    to the precise formatting of the database, but the general pattern applies. We
+    have a fairly densely nested set of functions that breaks down like this: the
+    inner, anonymous function, `function(x){x[2]}`, returns the second element of
+    any vector it is passed. We use `lapply()` to apply that function to every element
+    in the list returned from `strsplit()` on the accession column. Finally, as `lapply()`
+    returns lists, we use `unlist()` to flatten it to the vector we require. Sometimes,
+    this will generate NAs as there is no Uniprot ID, so we remove them from the vector
+    with subsetting and `is.na()`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 5*, we connect to the Ensembl database package and use the `genes()` function
+    to get Ensembl genes that match our Uniprot IDs. The vector of Uniprot IDs is
+    passed in the `UniprotFilter()` function and, with the `columns` argument, we
+    select the data we wish to get back from the database. This gives us a `GRanges` object
+    that contains all the information we require in order to build a browser track.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 6*, we use the helper function, `GRangesForUCSCGenome()`, passing it
+    the version of the genome we wish to view—`hg38`, and then the basic chromosome
+    name, coordinates, and strand information a `GRanges` object needs. We can use
+    the `seqnames()`, `ranges()`, and `strand()` accessor functions to pull these
+    out of the `genes_for_prots` object we created previously. The seqnames in UCSC
+    are prefixed with `chr`, so we use paste to add that to our seqnames data. We
+    also create columns for the gene name and gene ID, preserving that information
+    in our eventual view. We save the resulting object in the `track` variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, in *Step 7*, we can render the track we created. First, we create a
+    session object that represents a session on UCSC and add the track to it with
+    the `session()` and `track()` functions, respectively. We select which of the
+    many peptides to focus on by passing the first peptide just to the `view()` function,
+    which actually spawns a new web browser window with the data requested. The second
+    argument to `view()` specifies a zoom level and, by formulating the argument as `first_peptide
+    * -5`, we get a zoom that will fit five of the requested features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At the time of writing, this recipe generated the following view. Note that
+    the very top track is our `my_peptides` track:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/349edda3-92f4-4d48-9e45-582d00e9480c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You may have noticed that this recipe actually plots whole genes, and not the
+    peptide hits we started with. Plotting the genes is the simplest case, but going
+    to the peptides requires only a small change. In *Step 5*, we create an object, `genes_for_prots`,
+    which gives the start and end of the genes. The earlier `msnid@psms` object contains
+    starts and ends of peptides within those genes, indexed from the start of the
+    hit, so by adding one to the other, it is possible to create an object that represents
+    the peptides and not the genes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For those of you not working with organisms in the UCSC browser, it is still
+    possible to generate a GFF file of the hits to upload into another genome browser—many
+    offer this functionality. Simply stop the recipe at the end of *Step 5* and use
+    the `rtracklayer::export()` function to create a GFF file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing distributions of peptide hit counts to find thresholds
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Every MS experiment will need some idea of the peptide hit counts that represent
+    noise or unusual features, such as over-represented peptides in the proteome.
+    In this recipe, we'll use some neat visualization tricks using `tidyverse` tools
+    such as `dplyr` and `ggplot` to create graphics that will help you get an idea
+    of the spread and limits of the peptide hits in your mass spectrometry experiment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, you'll require the `MSnId`, `data.table`, `dplyr`, and `ggplot` packages.We'll
+    use the `mzid` file, `HeLa_180123_m43_r2_CAM.mzid.gz`, from the `datasets/ch6` folder
+    of this book's repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Visualizing distributions of peptide hit counts to find thresholds can be done
+    using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the libraries and data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Filter out decoy data rows and get a count of every time a peptide appears:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a violin and jitter plot of the hit counts:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a plot of cumulative hit counts for peptides sorted by hit count:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Filter out very low and very high peptide hits and then replot them:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we do some library loading and add a data loading step. As we mentioned
+    previously, with `MSnID`, this is a little unusual. Instead of just calling a
+    file reading function, we must first create and empty the `MSnID` object and load
+    the data into it. We create `msnid` with the `MSnID()` function and then pass
+    it to the `read_mzid()` function to actually put data into it. Next, we use the
+    `as()` function to convert `msnid` into a `data.table` object—a data frame-like
+    object that is optimized for large datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step* *2*, we prepare a plot using the `tidyverse` packages, `dplyr` and
+    `ggplot`. `tidyverse` packages all work really well in concert as they're centered
+    on working with data frames. The usual way of working is to use the piping operator, `%>%`,
+    to pass data from one function to another without having to save the interim object.
+    By convention, the result of the upstream function is passed as the first argument
+    of the downstream function, so we don't need to specify it. This results in the
+    construction we have here. We take the `peptide_info` object and pass it through
+    the `%>%` operator to the `dplyr filter()` function, which does its work and passes
+    its result onto the `group_by()` function and so on. Each function does its work
+    and passes the data on. So, in this pipeline, we use `filter()` to keep all the
+    rows that are not decoys, and then use `group_by(pepSeq)` to group the long `data.table`
+    into subtables according to the value of the `pepSeq` row – effectively getting
+    one table per peptide sequence. The next step uses `summarise()`, which generates
+    a summary table containing a column called `count` that contains the result of
+    the `n()` function, which counts rows in a table, giving us a table with one row
+    per peptide, telling us how many times the peptide appears in the table. It's
+    a good idea to step through the code one function at a time if it isn't clear
+    how these objects are building up. Finally, we use `mutate()` to add a new column
+    called `sample` to the table, which simply creates a column of the same length
+    as the current table, fills it with the word `peptide_counts`, and adds it to
+    the table. The table is saved in a variable called `per_peptide_counts`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 3*, we pipe the `per_peptide_counts` data to the `ggplot()` function,
+    which sets up a `ggplot` object. These are built-in layers, so we use the `+`
+    operator to add an aesthetic layer using the `aes()` function. This usually contains
+    the variables to plot on the x and y axes – here, these are `sample` and `count`.
+    Then, we use `+` again to add a `geom` – a layer that defines what a plot should
+    look like. First, we add `geom_jitter()`, which plots the points, adding a bit
+    of random x and y noise to spread them out a little. We then add another geom,
+    `geom_violin()`, which gives a violin density plot. Finally, we add a scale layer,
+    converting the scale into a log base 10 scale. The resulting plot looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ca924fb6-0eb5-4b31-b30b-74551e87dad2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In *Step 4*, we create a cumulative hits plot by piping the `per_peptide_counts`
+    data to the `arrange()` function, which sorts a data frame in ascending order
+    by the variable specified (in this case, count). The result is piped to mutate
+    to add a new column called `cumulative_hits`, which gets the result of the `cumsum()`
+    function on the count column. We also add a column called `peptide`, which gets
+    the row number of the table, but also gives us a convenient variable so that we
+    can order the peptides in the plot. We can generate the plot by piping the sorted
+    data directly to `ggplot()` and adding the `aes()` function so that `peptide`
+    is on the x-axis and `cumulative_hits` is on the y-axis. Then by adding `geom_line()`,
+    the resulting plot appears as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bd630ef1-f6af-4ca3-8a35-f55ce24d8de0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: From the two plots, we can see the spread of hits and assess which thresholds
+    we wish to apply.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With *Step 5*, we use the `filter()` function again to retain rows with a value
+    of count over 5 and below 2500 and put that new data into the same plot recipe
+    we made in *Step 3*. This gives us the following plot, showing the removal of
+    points outside the thresholds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/42a4fa9b-af31-4481-9e57-c5964eff9868.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Converting MS formats to move data between tools
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It's an unavoidable fact of bioinformatics life that we spend a lot of time
+    converting between file formats. In this brief recipe, we'll look at some convenient
+    methods in R, that allows us to convert between MS data formats.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we require the `mzR` package and the `threonine_i2_e35_pH_tree.mzXML`
+    file from the `datasets/ch6` folder of this book's repository. Some of the dependencies
+    rely on encapsulated Java code, so you'll need to install a **Java Runtime Environment**
+    (**JRE**) for your system; refer to [https://docs.oracle.com/goldengate/1212/gg-winux/GDRAD/java.htm](https://docs.oracle.com/goldengate/1212/gg-winux/GDRAD/java.htm) for
+    instructions. Install the JRE before the R packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Converting MS formats to move data between tools can be done using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library and import the source data file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract the header and peak data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Write the data into a new format file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first step is a straightforward data loading step that we've seen in previous
+    recipes. We use the `openMSfile()` function, which autodetects the input file
+    type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 2* is the key step; to create output, we need to make a header object
+    and a peak list. So, we use the `header()` and `spectra()` accessor functions
+    to extract them from our `mzdata` object. The output function will require a list,
+    so if you only have one spectrum in the file, use the `list()` function to wrap
+    the `spectra()` function.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The final step is to write the file; here, the first argument is the peak list,
+    the second is the name of the file to be created, and the third is the output
+    format of your choice – you can choose from `mzml`, `mzxml`, and `mzdata`. The
+    final argument states whether the retention times are coded in seconds; selecting
+    `FALSE` sets the output to be written in minutes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Matching spectra to peptides for verification with protViz
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Although most spectra/peptide matching is done in high throughput search engines,
+    there are times when you'd like to check the quality of competing ambiguous matches
+    against one another, or against a completely arbitrary sequence of interest. Running
+    the whole search engine pipeline is probably overkill, so, in this recipe, we'll
+    look at a convenient method to run a single spectrum against a single peptide
+    sequence and get a plot of congruence between theoretical ion sizes and those
+    present in the spectrum.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, all we need is the `protViz` package, the `mzR` package, and
+    the `MM8.mzml` file from the `datasets/ch6` folder of this book's repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Matching spectra to peptides with `protViz` can be done by using the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in the libraries and the MS data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract the peaks and retention time from the spectrum:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a plot of theoretical versus observed ion masses:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we load the libraries and use the `mzR` function, `openMSFile()`,
+    to create the object representing the mass spectrometer data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we use the `peaks()` function, which will extract the retention
+    time and peak intensity as a matrix object. Note that the first column contains
+    the retention time, while the second contains the intensity. The second argument
+    to `peaks()` is the index of the spectrum we want, so we're getting the second
+    spectrum in this file. If this argument is omitted, we get a list of all spectra.
+    For the next step, we need to wrap the retention time and intensity data in a
+    list, which we do by using the `list()` function, with members named `mZ` and
+    `intensity`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we can make the plot using the `psm()` function. This function takes
+    a sequence as its first argument (here, it''s a nonsense one to guarantee a poor
+    match) and the spectrum data list we made previously as its second argument. By
+    setting the plot argument to `TRUE`, we get the following resulting plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3da98830-bbff-4fcc-9616-c7f61cf712f4.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the plot, each point represents the difference between a predicted ion mass
+    and the nearest mass observed in the spectra. Here, we can see that the ions b8,
+    b7, and c1 are all around 1 Da, or more divergent in mass from any of the predicted
+    masses, suggesting a poor fit to the spectrum for this peptide sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying quality control filters to spectra
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Quality control of raw proteomics data is an essential step in ensuring that
+    pipelines and analyses give believable and useful results. A large number of metrics
+    and plots of data are needed to get a view of whether a particular experiment
+    has been a success, and that means carrying out a lot of analysis before we start
+    to actually derive any new knowledge from the data. In this recipe, we'll look
+    at an integrated pipeline that carries out a wide range of relevant and useful
+    QC steps and presents the result as a single helpful and readable report.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we'll be examining an Escherichia coli cell membrane proteomics
+    experiment. This will require a large file that was too big to host in this book's
+    repository, so we'll use code to download it directly. Due to this, you will need
+    to be online for this recipe to work. We'll also need a file of the target organism
+    peptides, that is, the `Escherichia_coli.pep.all.fa` file, which can be found
+    in the `datasets/ch6` folder of this book's repository. Our main functions will
+    come from the `proteoQC` library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Quality control filters can be applied to spectra using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the library and download the source data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a design file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Set up the QC pipeline and run the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: After loading in the library in *Step 1*, we set up the URL to the file we want
+    to pull over the internet from [http://www.proteomexchange.org/](http://www.proteomexchange.org/);
+    we're after just one file in accession `PXD006247`, and we save the URL in the
+    `online_file` variable. We also create an `mzmxl_file` variable that points to
+    a non-existent file, `PXD006247_mz.xml.gzX`, on our local filesystem – this will
+    be the saved name of the downloaded file. The `download.file()` function actually
+    does the downloading; the first argument is the online source, while the second
+    argument is the place to put the file on the local machine when it downloads.
+    The final argument, `internal`, is the download method to use. The setting we've
+    chosen should use a system-agnostic downloader that works anywhere, but you can
+    change this to other faster or more system-specific settings if you like. The
+    documentation will explain these options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we create a design file that describes the experiment. In our
+    small demo, we only have one file, but you can specify many more here. In the
+    first part, we create a dataframe with the columns **file**, **sample**, **bioRep**,
+    **techRep**, and **fraction**. We only have one file, so the table only has one
+    row. It looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **file** | **sample** | **bioRep** | **techRep** | **fraction** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `PXD006247_mz.xml.gz` | 1 | 1 | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: If you had a more complicated experiment, you'd have many more rows describing
+    the sample and bioRep, for example, for each file. We then save this file to disk
+    for use in the next step using `write.table()` along with the appropriate options.
+    Note that although, for the sake of demonstration, we've created this file programmatically,
+    the file would be equally valid if we'd created it by hand in a spreadsheet program
+    or text editor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we set up and run the QC pipeline in *Step 3*. The main function, `msQCpipe()`,
+    is the workhorse and needs a few option settings. The `spectralist` option needs
+    the path to the design file we created so that it knows which files to open and
+    how to treat them. The `fasta` option requires the file of the target organism
+    protein sequences in `fasta` format. This allows the QC pipeline to carry out
+    spectral peptide identification using `XTandem` from the `rtandem` package. The
+    `outdir` argument gets the path to a new folder that will hold the numerous report
+    files that will be created. Here, our folder will be called `qc_result`, and it
+    will be a sub-directory of the current working directory. The arguments `enzyme`,
+    `varmod`, and `fixmod` describe the enzyme used for digest (1 = trypsin), the
+    variable modifications that may be present, and the fixed modifications that will
+    be present on all residues. The arguments `tol` and `itol` specify tolerances
+    on peptide mass values and error windows. The `cpu` argument specifies the compute
+    cores to use on the source machine and `mode` specifies the sort of run to do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the QC pipeline completes, we get a series of reports in the `qc_result`
+    folder. The `qc_report.html` file contains the browsable results of QC. The many
+    pages describing the results should allow you to see the extent to which the experiment
+    was a success.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To find the proper values for the `enzyme`, `varmod`, and `fixmod` variables,
+    you can use the `showMods()` and `showEnzymes()` functions to see a list and their
+    key numbers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identifying genomic loci that match peptides
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Finding the exact places on a genome that a peptide matches to can be a challenging
+    task, especially if the genome is one that is not represented by the original
+    search file. In this recipe, we'll look at mixing in a classic command-line BLAST
+    recipe to find short, nearly precise matches for peptides on a translated genome
+    sequence to various R genomics pipelines by targeting a `GRanges` object of the
+    BLAST hits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll use the `MSnID`, `dplyr`, `withR`, `GenomicRanges`, and
+    `Biostrings` packages and a search engine output file of Escherichia coli-derived
+    spectra, which can be found in the `PXD006247.mzXML.mzid` file in this book's
+    `datasets/ch6` folder. You'll also need to have a locally installed version of
+    BLAST+. You can install this using the conda package manager with `conda install
+    -c bioconda blast` . You'll also need to know where the tblastn program from BLAST+
+    was installed. You can find this on macOS and Linux systems with the Terminal
+    command, `which tblastn`, and on Windows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Genomic loci that match peptides can be identified using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in the libraries and the data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract the peptide sequence and save it as a fasta file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Prepare the filenames for the BLAST run:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Prepare the `BLAST` command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run BLAST as a background process:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Convert BLAST into `GFF` and `GRanges`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Step 1* loads the libraries and uses the `MSnID` package to load the data
+    into an object that we then process using a `dplyr` pipeline, as described in
+    *Step 2* of *Recipe 3* in this chapter. Look there for an in-depth explanation
+    of this sort of syntax if you''re not familiar with it. Briefly, even though the
+    pipeline removes rows that are decoys, it keeps only the `spectrumID` and `pepSeq`
+    columns and adds a new column called `fasta_id`, which pastes the spectrum ID
+    as a unique number. The resulting data frame is saved to the `peptide_info` variable.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Step 2* creates a `Biostrings` object from the `peptide_info$pepSeq` column
+    using the `peptide_info$fasta_id` column for the names with the `names()` function.
+    The resulting string_set `BioStrings` object is then written to disk in a fasta
+    format file with the name `peptides.fa` using the `writeXStringSet()` function.
+    Note the index `[1]` on the end of `string_set`; this is a small hack to make
+    sure only the first peptide is written. We want this *only* because this is a
+    demonstration and we want the code to complete in a short amount of time. For
+    a genuine analysis, you can leave the index completely and write all the sequences
+    to disk.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we just set up the filenames for the input and output files for
+    the BLAST run. Note that the reference genome we map to `ecoli_genome.fasta` will
+    be in the `datasets/ch6` folder of this book's repository .
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 4*, we specify the `BLAST` command, while the code here is a simple
+    pasting of variables and text to make one long character string that we save in
+    the command. This is worth looking at in some detail. The first lines specify
+    the BLAST+ program to run; here, `tblastn`, which uses protein inputs and a translated
+    nucleotide database. The next three lines specify the input peptide sequences,
+    the reference genome against which to BLAST, and the output file in which we save
+    the results. The final long lines specify the BLAST+ options that allow for short,
+    nearly precise matches. With these particular options set, BLAST runs can take
+    a while, so it's a good idea to run just one sequence while you're developing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 5*, with the `BLAST` command specified, we can run the actual BLAST.
+    Our main function here is the base R function, `system()`, which will run a system
+    command in the background. However, to help this function be portable across systems,
+    we are using the `withR` library function `with_path()`, which temporarily adds
+    a particular folder to the system's PATH – a list of folders that contain programs.
+    This step is necessary because sometimes, R and RStudio don't pick up non-standard
+    install locations like those used by the conda package manager. Hence, the first
+    argument here is the path to the `tblastn` folder. Note that `/Users/macleand/miniconda2/bin` is
+    the path on my machine; you'll need to get the value for your machine using something
+    like `which tblastn` on the terminal or command line and substitute that. Once
+    that path is added by `with_path()`, it will run its second argument, our `system()`
+    function, which, in turn, runs BLAST. The actual running of the BLAST program
+    will take some time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the command completes, in *Step 6*, we start by loading the output file
+    made by BLAST into the results variable using the `read.table()` function. We
+    then create a custom function to convert the rows of results to a GFF-compatible
+    table. The `blast_to_gff()` function uses the `dplyr mutate()` function to add
+    the relevant columns, and then it uses the `select()` function with the `-` option
+    to select columns not beginning with the letter V, which all the original columns
+    did. We can now use the `GenomicRanges` function, `makeGRangesFromDataFrame()`,
+    to convert our GFF style dataframe into a `GRanges` object. This is the final
+    part, and we now have an object of genomic loci that matches peptides that can
+    be used in all the standard genomics pipelines in R and that are used in the genomics
+    recipes in this book.
+  prefs: []
+  type: TYPE_NORMAL

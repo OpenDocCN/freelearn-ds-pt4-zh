@@ -1,0 +1,827 @@
+- en: '13'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Accelerating Genetic Algorithms – the Power of Concurrency
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter delves into the use of concurrency, with a special focus on multiprocessing,
+    as a means to boost the performance of genetic algorithms. We will explore both
+    built-in Python functionalities and an external library to achieve this enhancement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The chapter starts by highlighting the potential benefits of applying **concurrency**
+    to genetic algorithms. We then proceed to put this theory into practice by experimenting
+    with various **multiprocessing** approaches to a CPU-intensive version of the
+    well-known One-Max problem. This enables us to gauge the extent of performance
+    improvements achievable through these techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of this chapter, you will be able to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understand why genetic algorithms can be computationally intensive and time-consuming
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Recognize why genetic algorithms are well-suited for concurrent execution
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement a CPU-intensive version of the One-Max problem, which we have previously
+    explored
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learn how to use Python’s built-in multiprocessing module to accelerate the
+    genetic algorithm process
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Become familiar with the SCOOP library and learn how to integrate it with the
+    DEAP framework to further enhance the efficiency of genetic algorithms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Experiment with both methods and gain insights into the application of multiprocessing
+    to the problem at hand
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will use Python 3 with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**deap**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**numpy**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**scoop** – introduced in this chapter'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you use the **requirements.txt** file we provide (see [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091)),
+    these libraries are already included in your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The programs that will be used in this chapter can be found in this book’s GitHub
+    repository at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_13](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_13).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the Code in Action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/OEBOd](https://packt.link/OEBOd)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Long runtimes in real-world genetic algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The example programs we’ve explored so far, while addressing practical problems,
+    were intentionally designed to converge quickly to a reasonable solution. However,
+    in the context of real-world applications, the use of genetic algorithms often
+    proves to be highly time-consuming due to the way they operate – exploring the
+    solution space by considering a diverse set of potential solutions. The main factors
+    affecting the running time of a typical genetic algorithm are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**The number of generations**: Genetic algorithms operate through a series
+    of generations, each involving the evaluation, selection, and manipulation of
+    the population.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The population size**: Genetic algorithms maintain a population of potential
+    solutions; more complex problems typically require larger populations. This increases
+    the number of individuals that need evaluation, selection, and manipulation in
+    each generation.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fitness evaluation**: The fitness of each individual in the population must
+    be evaluated to determine how well it solves the problem. Depending on the complexity
+    of the fitness function or the nature of the optimization problem, the evaluation
+    process can be both computationally expensive and time-consuming.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Genetic operations**: Selection is used to choose pairs of individuals that
+    will serve as parents for each new generation. Crossover and mutation are applied
+    to each of these pairs and, depending on the algorithm’s design, can be computationally
+    intensive, especially when dealing with complex data structures. In practice,
+    however, the duration of the fitness function often dominates the time consumed
+    per individual.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: One obvious way to mitigate the long running times of genetic algorithms is
+    the use of parallelization, as we will explore further in the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parallelizing genetic algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Within a single generation, genetic algorithms can be considered **embarrassingly
+    parallelizable** – they can be effortlessly divided into multiple independent
+    tasks, with minimal or no dependency or interaction between them. This is because
+    the fitness evaluation and manipulation of individuals in the population are typically
+    independent tasks. Each individual’s fitness is evaluated based on its own characteristics,
+    and genetic operators (crossover and mutation) are applied independently to pairs
+    of individuals. This independence allows for the straightforward parallel execution
+    of these tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two parallelization methods – **multithreading** and **multiprocessing** – come
+    to mind, as we will explore in the following subsections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multithreading
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Multithreading is a concurrent execution model that allows multiple threads
+    to exist within the same process, sharing the same resources, such as memory space,
+    but running independently. Each thread represents a separate flow of control,
+    allowing a program to execute multiple tasks concurrently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In a multithreaded environment, threads can be thought of as lightweight processes
+    that share the same address space. Multithreading is particularly beneficial for
+    tasks that can be divided into smaller, independent units of work, enabling efficient
+    use of available resources and enhancing responsiveness. This is illustrated by
+    the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.1: Multiple threads running concurrently within a single process](img/B20851_13_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.1: Multiple threads running concurrently within a single process'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, multithreading in Python faces some limitations that impact its effectiveness
+    for our use case. A major factor is the **Global Interpreter Lock** (**GIL**)
+    in CPython, the standard implementation of Python. The GIL is a **mutex** (mutually
+    exclusive lock) that protects access to Python objects, preventing multiple native
+    threads from executing Python bytecodes at the same time. As a result, the benefits
+    of multithreading are primarily seen in I/O-bound tasks, as we will explore in
+    the following chapter. For computation-intensive tasks that don’t frequently release
+    the GIL, common in many numerical computations, multithreading may not provide
+    the expected performance improvements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discussions within the Python community and ongoing research suggest that the
+    limitations imposed by the GIL may be lifted in a future version of Python, potentially
+    enhancing multithreading efficiency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, the approach described next is a highly viable option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multiprocessing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Multiprocessing is a concurrent computing paradigm that involves the simultaneous
+    execution of multiple processes within a computer system. In contrast to multithreading,
+    multiprocessing allows for the creation of independent processes, each with its
+    dedicated memory space. These processes can run concurrently on different CPU
+    cores or processors, making it a powerful technique to parallelize tasks and capitalize
+    on modern multi-core architectures, as illustrated in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.2: Multiple processes running concurrently on separate cores](img/B20851_13_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.2: Multiple processes running concurrently on separate cores'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Operating independently, each process avoids limitations associated with shared
+    memory models, such as the GIL in Python. Multiprocessing proves particularly
+    effective for CPU-bound tasks, commonly encountered in genetic algorithms, where
+    the computational workload can be divided into parallelizable units.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As multiprocessing seems to be a viable way to enhance the performance of genetic
+    algorithms, we will explore its implementation throughout the remainder of this
+    chapter, using a new version of the OneMax problem as our benchmark.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Back to the OneMax problem
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091), *Using the DEAP Framework*,
+    we utilized the OneMax problem as the “Hello World” of genetic algorithms. As
+    a quick recap, the objective is to discover the binary string of a specified length
+    that maximizes the sum of its digits. For instance, when dealing with a OneMax
+    problem of length 5, candidate solutions such as 10010 (sum of digits = 2) and
+    01110 (sum of digits = 3) are considered, ultimately leading to the optimal solution
+    of 11111 (sum of digits = 5).
+  prefs: []
+  type: TYPE_NORMAL
+- en: While, in [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091), we used a problem
+    length of 100, a population size of 200, and 50 generations, here we will tackle
+    a significantly scaled-down version, having a length of 10, a population size
+    of 20, and only 5 generations. The reasons for this adjustment will become apparent
+    shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A baseline benchmark program
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The initial version of this Python program is `01_one_max_start.py`, available
+    at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/01_one_max_start.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/01_one_max_start.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main functionality of this program is outlined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Candidate solutions are represented using a list of integers, with values 0
+    and 1.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The **oneMaxFitness()** function calculates the fitness by summing the elements
+    of the list:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: For genetic operators, we employ *tournament selection* with a tournament size
+    of 4, *single-point crossover*, and *flip-bit mutation*.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The *elitist* approach is applied, utilizing the **elitism.eaSimpleWithElitism()**
+    function.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The program’s runtime duration is measured using **time.time()** function calls,
+    surrounding the invocation of the **main()** function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Running the program yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output indicates that the program achieved the optimal solution of 1111111111
+    by the 5th generation, completing its run in less than 10 milliseconds (considering
+    only the first two decimal digits of the elapsed time).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another noteworthy detail, which will play a part in subsequent experiments,
+    is the number of fitness evaluations carried out at each generation. The relevant
+    values can be found in the second column from the left, `nevals`. Despite a population
+    size of 20, there are typically fewer than 20 evaluations per generation. This
+    is because the algorithm skips the fitness function if it has already been calculated
+    for a similar individual. Summing the values in this column, we find that the
+    total number of fitness evaluations executed during the program’s run amounts
+    to 95.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Simulating computational intensity
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As mentioned earlier, the most computationally intensive task in a genetic algorithm
+    is often the fitness evaluation of individuals. To simulate this aspect, we will
+    now intentionally extend the execution time of our fitness function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This modification is implemented in the Python program, `02_one_max_busy.py`,
+    available at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/02_one_max_busy.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/02_one_max_busy.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This program is based on the previous one, with the following modifications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A **busy_wait()** function is added. This function exercises an empty loop
+    for a specified duration (in seconds):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The original fitness function is updated to incorporate a call to the **busy_wait()**
+    function before calculating the sum of the digits:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **DELAY_SECONDS** constantis added, and its value is set to 3:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Running the modified program yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: As anticipated, the output of the modified program is identical to that of the
+    original, with the notable exception of the elapsed time, which has significantly
+    increased to approximately 285 seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This duration makes perfect sense; as highlighted in the previous section, there
+    are 95 executions of the fitness function throughout the program’s run (the sum
+    of the values in the `nevals` column). With each execution now taking an additional
+    3 seconds, the anticipated additional time is calculated as 95 times 3 seconds,
+    totaling 285 seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While examining these results, let’s also establish the theoretical limit, or
+    the best-case scenario we can aim for. As indicated in the output, the execution
+    of our benchmark genetic algorithm involves six “rounds” of fitness calculations
+    – one for the initial generation (“generation zero”) and one for each of the five
+    subsequent generations. The best achievable time in the context of perfect concurrency
+    within each generation is 3 seconds, equal to the duration of a single fitness
+    evaluation. Therefore, the optimal result we could theoretically achieve would
+    be 18 seconds, calculated as 6 times 3 seconds per round.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this theoretical limit in mind, we can now proceed to explore the application
+    of multiprocessing to our benchmark.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multiprocessing using the Pool class
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In Python, the `multiprocessing.Pool` module provides a convenient mechanism
+    to parallelize operations across multiple processes. With the `Pool` class, a
+    pool of worker processes is created, allowing tasks to be distributed among them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Pool` class abstracts away the details of managing individual processes
+    by providing the `map` and `apply` methods. Conversely, the DEAP framework makes
+    it very easy to utilize this abstraction. All operations specified in the `toolbox`
+    module are internally executed via a default `map` function. Replacing this map
+    with the `map` from the `Pool` class means that these operations, including fitness
+    evaluations, are now distributed among the worker processes in the pool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s illustrate this by incorporating multiprocessing into our previous program.
+    This modification is implemented in the `03_one_max_pool.py` Python program, available
+    at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/03_one_max_pool.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/03_one_max_pool.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Only a few modifications are required, as outlined here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **multiprocessing** is imported:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **map** method of a **multiprocessing.Pool** class instance is registered
+    as the **map** function to be used by DEAP’s toolbox module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The genetic algorithm flow, implemented in the **main()** function, now runs
+    under a **with** statement that manages the creation and cleanup of the **multiprocessing.Pool**
+    instance:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Running the modified program on a four-core computer yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: As anticipated, the output remains identical to that of the original program,
+    while the duration is significantly shorter compared to the previous one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The running time of this program may vary across different computers and even
+    in successive runs on the same machine. As discussed earlier, the optimal result
+    for this benchmark is around 18 seconds. If your computer already approaches this
+    theoretical limit, you can make the benchmark program more CPU-intensive by doubling
+    (or more, if needed) the population size. Remember to adjust all versions of our
+    benchmark program, both in this chapter and the next, to reflect the new population
+    size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the use of a four-core computer, you might expect the duration to be precisely
+    one-quarter of the previous one. However, in this case, we can see that the ratio
+    between the durations is approximately 3.6 (≈285/79), falling short of the expected
+    4.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Several factors contribute to us not fully realizing the time-saving potential.
+    A significant factor is the presence of overhead associated with the parallelization
+    process, introducing an additional computational burden when dividing tasks among
+    multiple processes and coordinating their execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moreover, the granularity of the tasks plays a role. While the fitness function
+    consumes most of the processing time, smaller tasks such as the genetic operators
+    of crossover and mutation may encounter a scenario where the overhead of parallelization
+    outweighs the benefits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, certain parts of the algorithm, such as handling the hall-of-fame
+    and calculating statistics, are not parallelized. This limitation restricts the
+    extent to which parallelization can be exploited.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate the last point, let’s examine a snapshot of the Activity Monitor
+    application on a Mac while the program is running:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.3: Activity Monitor showing the four genetic algorithm processes
+    in action](img/B20851_13_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.3: Activity Monitor showing the four genetic algorithm processes
+    in action'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As expected, the four Python processes handling the multiprocessor program are
+    heavily utilized, although not at 100%. This prompts the question, can we “squeeze”
+    more out of the CPUs at our disposal and further reduce the duration of the program’s
+    run? In the following section, we will explore this possibility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Increasing the number of processes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Since the four CPUs at our disposal were not utilized at 100%, a question arises:
+    can we further increase utilization by employing more than four concurrent processes?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we created the instance of the `Pool` class by calling `multiprocessing.Pool()`
+    without any arguments, the number of processes created defaulted to the number
+    of CPUs available – four, in our case. However, we can use the optional `processes`
+    argument to set the desired number of processes, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: For our next experiment, we will utilize this option to vary the number of processes
+    and compare the resulting durations. This is implemented in the Python `04_one_max_pool_loop.py`
+    program, available at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/04_one_max_pool_loop.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/04_one_max_pool_loop.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This program introduces a few modifications to the previous one, as outlined
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **main()** function is renamed **run()**, as we are going to run it several
+    times. It now accepts an argument, **num_processes**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The instantiation of the **Pool** object echoes this argument to create a process
+    pool of the requested size:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The **plot_graph()** function is added to help illustrate the results.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The code launching the program, found at the bottom of the file, now creates
+    a loop, calling the **run()** function multiple times, with the **num_processes**
+    argument incrementing from 1 to 20\. Additionally, it collects the resulting durations
+    in a list, **run_times**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'At the end of the loop, the values in the **run_times** list to draw two plots,
+    with the aid of the **plot_graph()** function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Before we continue to describe the results of this experiment, keep in mind
+    that the actual figures may vary between different computers. As a result, your
+    specific results may differ somewhat. Nevertheless, the main observations should
+    hold true.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Running this program on our four-core computer yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition, two plots are generated. The first plot, displayed in the following
+    figure, illustrates the runtimes of the program for different numbers of processes.
+    As anticipated, the runtime consistently decreased as the number of processes
+    increased, surpassing the capacity of the four available CPUs. Notably, the improvements
+    became marginal beyond eight processes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.4: The durations of the program run over the different numbers
+    of processes](img/B20851_13_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.4: The durations of the program run over the different numbers of
+    processes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The dashed red line in this plot represents the shortest duration achieved
+    in our test – about 31 seconds. For the sake of comparison, let''s recall the
+    theoretical limit in this test: with 6 rounds of fitness calculations at 3 seconds
+    each, the best possible result is 18 seconds.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second plot, shown in the following figure, depicts the reciprocal of the
+    duration (or 1/duration), representing the “speed” of the program, across different
+    numbers of processes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 13.5: The durations of the program run over the different numbers
+    of processes](img/B20851_13_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.5: The durations of the program run over the different numbers of
+    processes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This plot reveals that the program’s speed increases almost linearly with the
+    addition of up to eight processes, but the rate of increase slows beyond this
+    point. Notably, the graph shows a significant performance improvement when moving
+    from 15 to 16 processes, a trend also observable in the previous plot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The performance gains observed when the number of processes exceeds the number
+    of available physical CPU cores, a phenomenon known as “oversubscription,” can
+    be linked to various factors. These include task overlapping, I/O and wait times,
+    multithreading, hyper-threading, and optimizations by the operating system. The
+    marked performance boost from 15 to 16 processes might be influenced by the computer’s
+    hardware architecture and the operating system’s process scheduling strategies.
+    Additionally, the specific structure of the program’s workload, as indicated by
+    the fact that 3 out of 6 rounds of fitness calculations involved exactly 16 fitness
+    evaluations (as shown in the `nevals` column), could also contribute to this increase.
+    It’s important to note that these effects can differ, based on the computer’s
+    architecture and the nature of the problems being solved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The takeaway from this experiment is the importance of experimenting with various
+    process counts to find the optimal configuration for your program. Fortunately,
+    you don’t need to rerun your entire genetic algorithm each time – a few generations
+    should be enough to compare and figure out the best setup.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multiprocessing using the SCOOP library
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Another approach to introduce multiprocessing is by utilizing **SCOOP**, a Python
+    library designed to parallelize and distribute code execution across multiple
+    processes. **SCOOP**, which stands for **Simple COncurrent Operations in Python**,
+    provides a straightforward interface for parallel computing in Python, which we’ll
+    explore shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying SCOOP to a DEAP-based program is quite similar to using the `multiprocessing.Pool`
+    module, as demonstrated by the Python `05_one_max_scoop.py` program, available
+    at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/05_one_max_scoop.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_13/05_one_max_scoop.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This program requires only a couple of modifications to the original non-multiprocessing
+    version of the `02_one_max_busy.py` program; these are outlined here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import SCOOP’s **futures** module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Register the **map** method of SCOOP’s **futures** module as the “map” function
+    to be used by DEAP’s toolbox module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'And that’s it! However, launching this program requires using SCOOP as the
+    main module, via the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running this program on the same four-core computer yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: python3 -m scoop -n 16 05_one_max_scoop.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: SCOOP 0.7 2.0 on darwin using Python 3.11.1
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying 16 worker(s) over 1 host(s).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Worker distribution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '127.0.0.1: 15 + origin'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Launching 16 worker(s) using /bin/zsh.
+  prefs: []
+  type: TYPE_NORMAL
+- en: gen     nevals  max     avg
+  prefs: []
+  type: TYPE_NORMAL
+- en: 0       20      7       4.35
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1       14      7       6.1
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2       16      9       6.85
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3       16      9       7.6
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4       16      9       8.45
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5       13      10      8.9
+  prefs: []
+  type: TYPE_NORMAL
+- en: Best Individual =  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lost track of future or Received an unexpected future. These warnings indicate
+    communication issues, related to resource constraints caused by oversubscription.
+    Despite these warnings, SCOOP is generally capable of recovering and successfully
+    reproducing the expected results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A few more experiments reveal that we could achieve times as low as 20 seconds
+    when using SCOOP with process counts of 20 and above. This marks a significant
+    improvement over the 31 seconds we managed with the `multiprocessing.Pool` module
+    for the same problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This enhancement might stem from SCOOP’s distinct approach to parallelization.
+    For instance, its dynamic task allocation could be more effective than the static
+    method used by `multiprocessing.Pool`. Additionally, SCOOP might handle the overhead
+    of process management more efficiently and could be better at scheduling tasks
+    on the available cores. However, this doesn’t mean SCOOP will always have the
+    upper hand over `multiprocessing.Pool`. It’s wise to try out both methods and
+    see how they perform with your specific algorithm and problem. The good news is
+    that switching between the two is relatively simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having said that, it’s important to mention that SCOOP offers a key feature
+    that sets it apart from `multiprocessing.Pool` – **distributed computing**. This
+    feature allows for parallel processing across multiple machines. We will briefly
+    explore this capability in the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributed computing with SCOOP
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'SCOOP not only supports multiprocessing on a single machine but also enables
+    distributed computing across multiple interconnected nodes. This functionality
+    can be configured in one of two ways:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Using the** **--hostfile** **parameter**: This parameter should be followed
+    by the name of a file containing a list of hosts. The format for each line in
+    this file is **<hostname or IP address> <num_of_processes>**, where each line
+    specifies a host and the corresponding number of processes to run on that host.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Using the** **--hosts** **parameter**: This option requires a list of hostnames.
+    Each hostname should be listed as many times as the number of processes you intend
+    to run on that host.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For more detailed information and practical examples, you are encouraged to
+    consult SCOOP’s official documentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A different approach to extending beyond the limitations of a single machine
+    will be explored in the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you were introduced to the concept of applying concurrency
+    to genetic algorithms via multiprocessing, a natural strategy to alleviate their
+    computationally intensive nature. Two main approaches were demonstrated – using
+    Python’s built-in `multiprocessing.Pool` class and the SCOOP library. We employed
+    a CPU-intensive version of the familiar One-Max problem as a benchmark, through
+    which several insights were gained. The final part of the chapter addressed the
+    potential of using the SCOOP library for distributed computing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will take the idea of concurrency to the next level
+    by employing a client-server model. This approach will utilize both multiprocessing
+    and multithreading, ultimately leveraging the power of cloud computing to further
+    enhance performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For more information on the topics that were covered in this chapter, refer
+    to the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Advanced Python Programming: Build high performance, concurrent, and multi-threaded
+    apps with Python using proven design patterns* by Dr. Gabriele Lanaro, Quan Nguyen,
+    and Sakis Kasampalis, February 2019'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'SCOOP framework documentation: [https://scoop.readthedocs.io/en/latest/](https://scoop.readthedocs.io/en/latest/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Python multiprocessing module documentation: [https://docs.python.org/3/library/multiprocessing.html](https://docs.python.org/3/library/multiprocessing.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE

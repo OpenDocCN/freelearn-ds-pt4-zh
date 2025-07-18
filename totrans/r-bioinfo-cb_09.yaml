@@ -1,0 +1,929 @@
+- en: Useful Statistical and Machine Learning Methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In bioinformatics, the statistical analysis of datasets of varied size and composition
+    is a frequent task. R is, of course, a hugely powerful statistical language with
+    abundant options for all sorts of tasks. In this chapter, we will focus a little
+    on some of those useful but not so often discussed methods that, while none of
+    them make up an analysis in and of themselves, can be powerful additions to the
+    analyses that you likely do quite often. We'll look at recipes for simulating
+    datasets and machine learning methods for class prediction and dimensionality
+    reduction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following recipes will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Correcting p-values to account for multiple hypotheses
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Generating a simulated dataset to represent a background
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learning groupings within data and classifying with kNN
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicting classes with random forests
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicting classes with SVM
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learning groups in data without prior information
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Identifying the most important variables in data with random forests
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Identifying the most important variables in data with PCA
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The sample data you'll need is available from this book's GitHub repository
+    at [https://github.com/PacktPublishing/R-Bioinformatics-Cookbook](https://github.com/PacktPublishing/R-Bioinformatics-Cookbook). If
+    you want to use the code examples as they are written, then you will need to make
+    sure that this data is in a sub-directory of whatever your working directory is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the R packages that you''ll need. In general, you can install these
+    with `install.packages("package_name")`. The packages listed under `Bioconductor`
+    need to be installed with the dedicated installer. If you need to do anything
+    further, installation will be described in the recipes in which the packages are
+    used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Bioconductor`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Biobase`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`caret`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`class`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dplyr`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`e1071`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`factoextra`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`fakeR`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`magrittR`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`randomForest`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`RColorBrewer`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Bioconductor` is huge and has its own installation manager. You can install
+    the manager with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you can install the packages with this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Further information is available at [https://www.bioconductor.org/install/](https://www.bioconductor.org/install/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally, in R, a user will load a library and use the functions directly by
+    name. This is great in interactive sessions but it can cause confusion when many
+    packages are loaded. To clarify which package and function I'm using at a given
+    moment, I will occasionally use the `packageName::functionName()` convention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, in the middle of a recipe, I''ll interrupt the code so you can see
+    some intermediate output or the structure of an object that''s important to understand.
+    Whenever that happens, you''ll see a code block where each line begins with `##`
+    (double hash) symbols. Consider the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`letters[1:5]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will give us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`## a b c d e`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the output lines are prefixed with `##`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Correcting p-values to account for multiple hypotheses
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In bioinformatics, particularly in genomics projects, we often perform statistical
+    tests thousands of times in an analysis. But this can be a source of significant
+    error in our results. Consider a gene expression experiment that has small numbers
+    of measurements per treatment (often only three) but has tens of thousands of
+    genes. A user doing a statistical test at *p <= 0.05* will reject the null hypothesis
+    incorrectly five percent of the time. Correcting for performing multiple hypotheses
+    allows us to reduce the error rate from such analyses. We will look at a simple-to-apply
+    method for making such a correction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: All of the functions we need are base R and we will create our own data with
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Correcting p-values to account for multiple hypotheses can be done using the
+    following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run 10,000 t-tests:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Assess the number of p*-*values, `<= 0.05`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Adjust the p-values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Re-assess the number of p-values, `<= 0.05`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first line in *Step 1* simply fixes the random number generator so that
+    we get consistent results between computers; you won't need this other than to
+    compare the results in this book. The next part is to create a custom function
+    that creates two sets (*x* and *y*) of 10 random numbers, then performs a t-test
+    and returns the p-value. As these are just random numbers from the same distribution,
+    there is no real difference. The final line uses the `sapply()` function to run
+    our custom function and create a vector of 10,000 p-values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we simply count the number of p-values that are lower than 0.05\.
+    We get this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This indicates that we have 506 falsely called significant results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we use the `p.adjust()` function to apply a correction method.
+    The `argument` method can be one of several available methods. In practice, it's
+    best to try `holm` or `BH` (Benjamini Hochberg) as these give accurate false detection
+    rates. A widely used but not very useful method is `Bonferroni`; avoid this in
+    most cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 4*, we re-assess the number of p-values that are lower than 0.05\.
+    This time, it''s as we expect:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Generating a simulated dataset to represent a background
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Constructing simulated datasets for sensible controls, making appropriate comparisons
+    to an expected background distribution, and having a proper background population
+    from which to draw samples can be important aspects of many studies. In this recipe,
+    we'll look at various ways of generating these either from scratch or by mixing
+    up an existing dataframe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll use the `fakeR` package and the `iris` built-in dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Generating a simulated dataset to represent a background can be done using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Make a random dataset with the same characteristics as a given set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a vector of normal random numbers with the mean and standard deviation
+    of a given vector:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a vector of uniform random integers in a range:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a vector of the number of binomial successes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make a vector of random selections from a list, with a different probability
+    for each:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Step* *1* uses the `fakeR` package function called `simulate_dataset()` to
+    create a new dataset with the same number of values, identical column names, the
+    same number of factor levels and level names, and the same number of rows as the
+    source dataset (`iris`). The values are randomized but, otherwise, the dataframe
+    is identical. Note how using the `str()` function reports identical structures
+    for `iris` and the new `fake_iris` object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: In *Step 2*, our objective is to make a vector of random numbers with the same
+    mean and standard deviation as those in the iris `Sepal.Length` column. To that
+    end, we first calculate those quantities with `mean()` and `sd()`. Then, we use
+    them as parameter values for the `mean` and `sd` arguments of the `rnorm()` function.
+    Running `hist()` to plot the resulting `random_sepal_lengths` vector confirms
+    the distribution and parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 3*, we wish to create a vector of numeric (floating point) values
+    that can occur with equal probability—this is analogous to repeated rolls of a
+    dice: each option is equally likely. Indeed, in this recipe, we set the low value
+    of the range (`low_num`) to 1 and the high value (`high_num`) to 6 to mimic that.
+    We ask the `runif()` function for 1,500 values with those low and high values
+    and, by plotting the result with `hist()`again, we can see the relatively level
+    frequencies in each bin, confirming the uniformity of those values.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 4*, we wish to mimic a coin-toss style probability experiment—a so-called
+    binomial success probability distribution. We first must decide on the number
+    of trials each time—in a coin-toss experiment, this is the number of coins we
+    toss. Here, we set the `number_of_coins` variable to 1\. We must also decide the
+    probability of success. Again, mimicking a coin-toss means we set the `p_heads`
+    variable to 0.5\. To run the simulation, we pass these values to the `rbinom()` function,
+    asking for 1,500 separate repeats of the experiment. The `hist()` function shows
+    us the frequency of 0 successes (a tails toss) and 1 success (a heads toss) over
+    all 1,500 repeats is roughly equal. Next, we change the number of trials to 5,
+    by changing the value of the `number_of_coins` variable. This mimics an experiment
+    where we are using five coins at every repetition. We again use `rbinom()` and
+    plot the result with `hist()`, this time observing that two and three successes
+    (heads) are the most common outcomes from a trial with five coins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, in *Step 5*, we look at selecting items from a vector with the `sample()` function.
+    The first argument to sample is the vector to sample from—so, here, the integers
+    1 to 10\. The second argument is the number of items to select—here, we select
+    10\. Note that, by default, `sample()` will select without replacement, so that
+    no item will appear twice, though each item in the vector has an equal probability
+    of being selected each time. The second use of `sample()` sets the value of the
+    `replacement` argument to `TRUE`, meaning that items can be selected repeatedly.
+    This use also sets the `prob` argument—a vector containing the probabilities of
+    selecting each value in the initial vector. Running this sample and putting the
+    result through the `table()` function confirms that we get selections in the approximate
+    probabilities expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning groupings within data and classifying with kNN
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The **k-Nearest Neighbors** (**kNN**) algorithm is a supervised learning algorithm that,
+    given a data point, will try to classify it based on its similarity to a set of
+    training examples of known classes. In this recipe, we'll look at taking a dataset,
+    dividing it into a test and train set, and predicting the test classes from a
+    model built on the training set. These sorts of approaches are widely applicable
+    in bioinformatics and can be invaluable in clustering when we have some known
+    examples of our target classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For this recipe, we''ll need a few new packages: `caret`, `class`, `dplyr`,
+    and `magrittr`. As a dataset, we will use the built-in `iris` dataset.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Learning groupings within data and classifying with kNN can be done using the
+    following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Scale the data and remove non-numeric columns:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract a training and test dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make the model and predictions on the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Compare the prediction with the actual class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we initially use `set.seed()` to ensure random number reproducibility
+    and then scale each column of the dataset using the `dplyr mutate_if()` function.
+    The first argument of `mutate_if()` is a condition to be tested; the `.funs` argument
+    is the function to be applied if the condition is true. Here, then, we're applying
+    the `scale()` function to a column of the `iris` dataframe and if it is numeric,
+    returning a dataframe we call `scaled_iris`. Performing scaling between columns
+    is very important in kNN as the magnitude of the actual values can have a strong
+    effect, so we need them to be of similar scale between columns. Next, we make
+    a copy of the `Species` column from the data as this contains the class labels
+    and remove it from the dataframe by assigning `NULL` to the column—for the next
+    steps, the dataframe should contain only numeric data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we decide which rows should be in our training set and our test
+    set. We use the `sample()` function to select from a vector of 1 to the number
+    of rows in `iris`; we select 80% of the row numbers without a replacement so that
+    `train_rows` is a vector of integers giving the rows from `scaled_iris`, which
+    we will use in our training set. In the rest of this step, we use subsetting and
+    negative subsetting to prepare the subsets of `scaled_iris` we will need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we apply the kNN algorithm with the `knn()` function to build the
+    model and classify the test set in a single operation. The `train` argument gets
+    the portion of the data we set aside for training, the `test` argument the portion
+    for testing, and the `cl` (class) argument gets the labels for the training set.
+    The `k` argument is the number of neighbors that should be used in classifying
+    each unknown test point. The function returns a vector of predicted classes for
+    each row in the test data, which we save in `test_set_predictions`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 4*, we assess the predictions using the `caret` package function,
+    `confusionMatrix().` This takes the predicted classes and real classes and creates
+    a set of statistics, including the following table, which contains the `Real`
+    labels in the rows and the `Predicted` labels in the columns. This model predicted
+    one `versicolor` row as `virginica`, incorrectly, with all other predictions correct:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Predicting classes with random forests
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Random forests is another supervised learning algorithm that uses ensembles
+    of decision trees to make many class predictions so that the most frequently called
+    class becomes the model's final prediction. Random forests is useful generally
+    as it will work with categorical and numerical data together and can be applied
+    to classification and regression, and we'll use it again for predicting the most
+    important variables in our data in the *Identifying the most important variables
+    in data with random forests* recipe in this chapter. In this recipe, we'll use
+    random forests to predict classes of data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll need the `caret`and `randomForest` packages and the built-in
+    `iris` dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Predicting classes with random forests can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Prepare a training set from the `iris` data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Build a model on the training data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Use the model to make predictions on the test data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The whole of *Step 1* is the preparation of training and test sets. We use the `sample()` function
+    to select from a vector of 1 to the number of rows in `iris`; we select 80% of
+    the row numbers without a replacement so that `train_rows` is a vector of integers
+    giving the rows from `iris`, which we will use in our training set. In the rest
+    of this step, we use subsetting and negative subsetting to prepare the subsets
+    of `iris` we will need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we proceed directly to build a model we make predictions with.
+    The `randomForest()` function takes, at its first argument, an R formula naming
+    the column to be predicted (in other words, `Species`, the response variable),
+    and the dataframe columns to use as training data—here, we use all columns, which
+    we express as a `.` character. The `data` argument is the name of the source dataframe
+    and the `mtry` argument is a tunable parameter that tells the algorithm how many
+    splits to use. The best value of this is usually around the square root of the
+    number of columns, but optimizing it can be helpful. The resulting model is saved
+    in a variable called `model`, which can be printed for inspection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At *Step 3*, we use the `predict()` function with `model`, the `test_set` data,
+    and the `type` argument set to `class` to predict the classes of the test set.
+    We then assess them with `caret::confusionMatrix()`to give the following result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result indicates that the test set was classified perfectly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'It is possible to perform regression (the prediction of a numeric value) with
+    a very similar approach. Look at the similarity of the following code for building
+    a regression and doing an assessment. Here, we predict sepal length based on the
+    other columns. After model building, we run the prediction as before; note how
+    we drop the `type` argument (as regression is actually the default). Finally,
+    we assess by calculating the **Mean Squared Error **(**MSE**), in which we square
+    the difference between the prediction and the actual value for sepal length and
+    then take the mean of both:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Predicting classes with SVM
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The **support vector machine** (**SVM**) algorithm is a classifier that works
+    by finding the maximum distance between classes in multiple dimensions of data—effectively
+    the largest gap between classes—and uses the middle point of that gap as a boundary
+    for classification. In this recipe, we'll look at using the SVM for peforming
+    supervised class prediction and illustrating the boundary graphically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll continue to use the built-in `iris` dataset and the `e1071` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Predicting classes with SVM can be done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Build the training and test sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Construct the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plot the boundary of the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Make predictions on the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we have the probably familiar train and test set generation step
+    we discussed in the previous recipes. Briefly, here, we create a vector of row
+    numbers to use as a training set and use subsetting and negative subsetting to
+    extract to new sub-datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 2*, we proceed to create the model using the `svm()` function. The
+    first argument is an R formula that specifies the column to use as the classes
+    (the response variable, `Species`), and after `~`, we use the `.` character to
+    mean that all other columns are to be used as the data from which to build the
+    model. We set the `data` argument to the `train_set` dataframe and select appropriate
+    values for the `kernel` and `gamma` type. `type` may be classification- or regression-based; `kernel`
+    is one of a variety of functions that are designed for different data and problems;
+    and `gamma` is a parameter for the kernel. You may wish to check the function
+    documentation for details. These values can also be optimized empirically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Step 3*, we create some objects that we can use to render the four-dimensional
+    boundary in two dimensions. First, we select the columns we don't want to plot
+    (those to hold constant), then we use the `lapply()` function to iterate over
+    a character vector of those column names and apply a function to calculate the
+    mean of the named column. We add column names to the resultant list in the `cols_to_hold` variable. We
+    then use the generic `plot()` function, passing the model, the training data to
+    plot, the two dimensions to plot as a formula (`Petal.Width ~ Petal.Length`),
+    and a `slice` argument that takes our means from the other columns in the `held_constant`
+    list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The result looks like this, showing the margins in colors for each class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/95c47bd6-d945-4fc3-a22d-3c00437a076f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In *Step 4*, we repeat the predictions on the test set using `predict()` and
+    generate the confusion matrix with `caret::confusionMatrix()` to see the accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning groups in data without prior information
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It is common in bioinformatics to want to classify things into groups without
+    first knowing what or how many groups there may be. This process is usually known
+    as clustering and is a type of unsupervised machine learning. A common place for
+    this approach is in genomics experiments, particularly RNAseq and related expression
+    technologies. In this recipe, we'll start with a large gene expression dataset
+    of around 150 samples, learn how to estimate how many groups of samples there
+    are, and apply a method to cluster them based on the reduction of dimensionality
+    with **Principal Component Analysis **(**PCA**), followed by a k-means cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll need the `factoextra` and `biobase` libraries (the latter
+    from `Bioconductor`) and the `modencodefly_eset.RData` file from the `datasets/ch1`
+    folder of this book's repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Learning about groups in data without prior information can be done using the
+    following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the data and run a PCA:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Extract the principal components and estimate the optimal clusters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Perform k-means clustering and visualizing:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step* *1*, we use the `load()` function to import the `modencodefly.eset`
+    object into memory; this is a gene expression dataset. Then, we use the `Biobase`
+    function, called `exprs()` to extract the expression measurements as a rectangular
+    matrix and pass that to the `prcomp()` function, which  performs PCA and returns
+    a PCA object, which we store in the `expr_pca` variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then plot the PCA with the `factoextra` function, `fviz_screeplot()`, and
+    see the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d0a8b873-4af6-4684-b24c-7bd281470469.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This shows how much of the variance within the data is captured by each principal
+    component. The first three components capture over 70% of the variance. Hence,
+    we can use these three instead of the whole 150-column dataset, simplifying the
+    process and speeding up the analysis greatly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we extract the main components using subsetting on the rotation
+    slot of the `expr_pca` object, extracting the first three columns—these correspond
+    to the first three components. We save these in a variable called `main_components`
+    and use the `fviz_nbclust()` function on `main_components` and the `kmeans` function
+    to create the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/236e1075-e0a6-4720-97b5-72b15747af67.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this function, the data is divided into increasing amounts of clusters and
+    the `wss` (**Within Sum of Squares**), a measure of variability within the cluster.
+    The diagram shows that the **Within Sum of Squares** measure decreases greatly
+    up until about 5 clusters, after which no improvement is seen, indicating that
+    the data contains about 5 clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 3*, we perform a k-means cluster using the `kmeans()` function, providing
+    `main_components` as data for the first argument and `5` for the number of clusters
+    as the second argument. The values for the `nstart` and `iter.max` arguments are
+    reasonable options for most runs of the algorithm. Finally, we pass the `kmeans_clust`
+    object to the `fviz_cluster()` function and set some display options to get the
+    following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7358aec3-8fc4-4b59-82dd-606ade79fcfb.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's more
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We have performed k-means clustering for the samples or columns of this dataset.
+    If you wish to do the same for genes or rows, extract the main components from
+    the unrotated data in the *x* slot in *Step 2*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you wish to get the actual cluster IDs for each sample, that is stored in
+    the `cluster` slot of the `kmeans_clus` object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Identifying the most important variables in data with random forests
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've already seen the random forests algorithm in use in this chapter, in the
+    *Predicting classes with random forests* recipe, where we used it for class prediction
+    and regression. Here, we're going to use it for a different purpose—to try and
+    work out which of the variables in a dataset contribute most to the classification
+    or regression accuracy of the trained model. This requires only a simple change
+    to the code we already have and a new function or two.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We'll need the `randomForest` package and the built-in `iris` dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Identifying the most important variables in data with random forests can be
+    done using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Prepare the training and test data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Train the model and create the `importance` plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Step 1*, we perform a similar dataset split to those in several previous
+    recipes. Using the `sample()` function, we create a list of 80% of the row numbers
+    of the original `iris` data and then, using subsetting and negative subsetting,
+    we extract the rows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Step 2*, we train the model using the `randomForest()` function. The first
+    argument here is a formula; we''re specifying that `Species` is the value we wish
+    to predict based on all other variables, which are described by `. `. `data` is
+    our `train_set` object. The key in this recipe is to make sure we set the `importance`
+    variable to `TRUE`, meaning the model will test variables that, when left out
+    of the model building, cause the biggest decrease in accuracy. Once the model
+    is built and tested, we can visualize the importance of each variable with the
+    `varImpPlot()` function. In doing so, we get the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c17eef5b-627c-46bf-8368-9da91dad763d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see that it is the `Petal.Width` and `Petal.Length` variables that, when
+    left out, cause the greatest decrease in model accuracy, so are, by this measure,
+    the most important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identifying the most important variables in data with PCA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've seen PCA in use in the *Learning groups in data without prior information* recipe
+    as a dimensionality reduction technique—a method for reducing the size of our
+    dataset whilst retaining the important information. As you might imagine, that
+    means that we can get an idea of which of the original variables are contributing
+    most to our reduced representation and we can, therefore, work out which are the
+    most important. We'll see how that works in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this recipe, we'll use the `factoextra` package and the built-in `iris`
+    dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Identifying the most important variables in data with PCA can be done using
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Perform PCA:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a variable plot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This brief recipe begins in *Step 1* with the simple construction of `pca_result`
+    from the `prcomp()` function. We pass the `iris` data as the first argument (without
+    the fifth categorical column) and scale and center the data—this stops magnitude
+    differences from measurements in different scales taking up inappropriate weights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the `pca_result` constructed, we can plot the variables using the `fviz_pca_var()`
+    function to get the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4c0dc688-49cd-460f-a55c-fddc5a822b85.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In it, we can see arrows depicting each variable. The angle at which an arrow
+    moves away from the center indicates a characteristic of the variable; the closer
+    the arrows are, the more similar the variables—hence, `Petal.Length` and `Petal.Width`
+    are highly correlated variables. The color of the arrows indicates a complicated
+    quantity (called `cos2`), which represents the quality of the contribution of
+    the variable. The higher the contribution of the variable, the higher `cos2`.
+    Here, we can see that `Sepal.Width` and `Petal.Length` contribute well to the
+    PCA. `Petal.Width` is too similar to be considered. This is a different result
+    to that of the *Identifying the most important variables in data with random forests* recipe,
+    as the two techniques are asking different questions.
+  prefs: []
+  type: TYPE_NORMAL

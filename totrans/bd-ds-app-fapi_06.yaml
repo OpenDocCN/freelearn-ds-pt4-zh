@@ -1,0 +1,663 @@
+- en: '5'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Dependency Injection in FastAPI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’ll focus on one of the most interesting parts of FastAPI:
+    **dependency injection**. You’ll see that it is a powerful and readable approach
+    to reusing logic across your project. Indeed, it will allow you to create complex
+    building blocks for your project, which you’ll be able to use everywhere in your
+    logic. An authentication system, a query parameter validator, or a rate limiter
+    are typical use cases for dependencies. In FastAPI, a dependency injection can
+    even call another one recursively, allowing you to build high-level blocks from
+    basic features. By the end of this chapter, you’ll be able to create your own
+    dependencies for FastAPI and use them at several levels of your project.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is dependency injection?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating and using a function dependency
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating and using a parameterized dependency with a class
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using dependencies at the path, router, and global level
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To run the code examples, you’ll need a Python virtual environment, which we
+    set up in [*Chapter 1*](B19528_01.xhtml#_idTextAnchor024), *Python Development*
+    *Environment Setup*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You’ll find all the code examples for this chapter in the dedicated GitHub repository
+    at [https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05).
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is dependency injection?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Generally speaking, **dependency injection** is a system to automatically instantiate
+    objects and the ones they depend on. The responsibility of developers is then
+    to only provide a declaration of how an object should be created, and let the
+    system resolve all the dependency chains and create the actual objects at runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'FastAPI allows you to declare only the objects and variables you wish to have
+    at hand by declaring them in the path operation function arguments. Actually,
+    we already used dependency injection in the previous chapters. In the following
+    example, we use the `Header` function to retrieve the `user-agent` header:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_what_is_dependency_injection_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_what_is_dependency_injection_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_what_is_dependency_injection_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Internally, the `Header` function has some logic to automatically get the `request`
+    object, check for the required header, return its value, or raise an error if
+    it’s not present. From the developer’s perspective, however, we don’t know how
+    it handled the required objects for this operation: we just ask for the value
+    we need. *That’s* *dependency injection*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Admittedly, you could reproduce this example quite easily in the function body
+    by picking the `user-agent` property in the `headers` dictionary of the `request`
+    object. However, the dependency injection approach has numerous advantages over
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The *intent is clear*: you know what the endpoint expects in the request data
+    without reading the function’s code.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You have a *clear separation of concerns between the logic of the endpoint
+    and the more generic logic*: the header retrieval and the associated error-handling
+    doesn’t pollute the rest of the logic; it’s self-contained in the dependency function.
+    Besides, it can be reused easily in other endpoints.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the case of FastAPI, it’s used to *generate the OpenAPI schema* so that the
+    automatic documentation can clearly show which parameters are expected for this
+    endpoint.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Put another way, whenever you need utility logic to retrieve or validate data,
+    make security checks, or call external logic that you’ll need several times across
+    your application, a dependency is an ideal choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: FastAPI relies heavily on this dependency injection system and encourages developers
+    to use it to implement their building blocks. It may be a bit puzzling if you
+    come from other web frameworks such as Flask or Express, but you’ll surely be
+    quickly convinced by its power and relevance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To convince you, we’ll now see how you can create and use your very own dependency,
+    in the form of a function to begin with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating and using a function dependency
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In FastAPI, a dependency can be defined either as a function or as a callable
+    class. In this section, we’ll focus on the functions, which are the ones you’ll
+    probably work with most of the time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we said, a dependency is a way to wrap some logic that will retrieve some
+    sub-values or sub-objects, make something with them, and finally, return a value
+    that will be injected into the endpoint calling it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at the first example where we define a function dependency to retrieve
+    pagination query parameters, `skip` and `limit`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_function_dependency_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are two parts to this example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we have the dependency definition, with the `pagination` function. You
+    see that we define two arguments, `skip` and `limit`, which are integers with
+    default values. Those will be the query parameters on our endpoint. We define
+    them exactly like we would have done on a path operation function. That’s the
+    beauty of this approach: FastAPI will recursively handle the arguments on the
+    dependency and match them with the request data, such as query parameters or headers
+    if needed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We simply return those values as a tuple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Second, we have the path operation function, `list_items`, which uses the `pagination`
+    dependency. You see here that the usage is quite similar to what we have done
+    for header or body values: we define the name of our resulting argument and we
+    use a function result as a default value. In the case of a dependency, we use
+    the `Depends` function. Its role is to take a function in the argument and execute
+    it when the endpoint is called. The sub-dependencies are automatically discovered
+    and executed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the endpoint, we have the pagination directly in the form of a tuple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s run this example with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we’ll try to call the `/items` endpoint and see whether it’s able to retrieve
+    the query parameters. You can try this with the following HTTPie command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `limit` and `skip` query parameters have correctly been retrieved thanks
+    to our function dependency. You can also try to call the endpoint without the
+    query parameter and notice that it will return the default values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Type hint of a dependency return value
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may have noticed that we had to type hint the result of our dependency in
+    the path operation arguments, even though we already type hinted the dependency
+    function itself. Unfortunately, this is a limitation of FastAPI and its `Depends`
+    function, which isn’t able to forward the type of the dependency function. Therefore,
+    we have to type hint the result by hand, as we did here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And that’s it! As you see, it’s very simple and straightforward to create and
+    use a dependency in FastAPI. Of course, you can now reuse it at will in several
+    endpoints, as you can see in the rest of the example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_function_dependency_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can do more complex things in those dependencies, just like we would in
+    a regular path operation function. In the following example, we add some validation
+    to those pagination parameters and cap the limit at `100`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_function_dependency_02.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_02.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_02.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, our dependency starts to become more complex:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We added the `Query` function to our arguments to add a validation constraint;
+    now, a `422` error will be raised if `skip` or `limit` are negative integers.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We ensure that the limit is, at most, `100.`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The code on our path operation functions doesn’t have to change; we have a clear
+    separation of concerns between the logic of the endpoint and the more generic
+    logic for the pagination parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s see another typical use of dependencies: get an object or raise a `404`
+    error.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting an object or raising a 404 error
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In a REST API, you’ll typically have endpoints to get, update, and delete a
+    single object given its identifier in the path. On each one, you’ll likely have
+    the same logic: try to retrieve this object in the database or raise a `404` error
+    if it doesn’t exist. That’s a perfect use case for a dependency! In the following
+    example, you’ll see how to implement it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_function_dependency_03.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_03.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_03.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The dependency definition is simple: it takes, in an argument, the ID of the
+    post we want to retrieve. It will be pulled from the corresponding path parameter.
+    Then, we check whether it exists in our dummy dictionary database: if it does,
+    we return it; otherwise, we raise an HTTP exception with a `404` status code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That’s the key takeaway of this example: *you can raise errors in your dependencies*.
+    It’s extremely useful to check for some pre-conditions before your endpoint logic
+    is executed. Another typical example of this is authentication: if the endpoint
+    requires a user to be authenticated, we can raise a `401` error in the dependency
+    by checking for the token or the cookie.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can use this dependency in each of our API endpoints, as you can see
+    in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_function_dependency_03.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_03.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_function_dependency_03.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, we just had to define the `post` argument and use the `Depends`
+    function on our `get_post_or_404` dependency. Then, within the path operation
+    logic, we are guaranteed to have our `post` object at hand and we can focus on
+    our core logic, which is now very concise. The `get` endpoint, for example, just
+    has to return the object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, the only point of attention is to not forget the ID parameter
+    in the path of those endpoints. According to the rules of FastAPI, if you don’t
+    set this parameter in the path, it will automatically be regarded as a query parameter,
+    which is not what we want here. You can find more details about this in the *Path
+    parameters* section of [*Chapter 3*](B19528_03.xhtml#_idTextAnchor058), *Developing
+    a RESTful API* *with FastAPI*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s all for the function dependencies. As we said, those are the main building
+    blocks of a FastAPI project. In some cases, however, you’ll need to have some
+    parameters on those dependencies – for example, with values coming from environment
+    variables. For this, we can define class dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: "Creating and using a parameterized dependency \Lwith a class"
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we defined dependencies as regular functions, which
+    work well in most cases. Still, you may need to set some parameters on a dependency
+    to finely tune its behavior. Since the arguments of the function are set by the
+    dependency injection system, we can’t add an argument to the function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the pagination example, we added some logic to cap the limit value at `100`.
+    If we wanted to set this maximum limit dynamically, how would we do that?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The solution is to create a class that will be used as a dependency. This way,
+    we can set class properties – with the `__init__` method, for example – and use
+    them in the logic of the dependency itself. This logic will be defined in the
+    `__call__` method of the class. If you remember what we learned in the *Callable
+    object* section of [*Chapter 2*](B19528_02.xhtml#_idTextAnchor032), *Python Programming
+    Specificities*, you know that it makes the object callable, meaning it can be
+    called like a regular function. Actually, that is all that `Depends` requires
+    for a dependency: being callable. We’ll use this property to create a parameterized
+    dependency thanks to a class.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we reimplemented the pagination example with a class,
+    allowing us to set the maximum limit dynamically:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_class_dependency_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_class_dependency_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_class_dependency_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, the logic in the `__call__` method is the same as in the function
+    we defined in the previous example. The only difference here is that we can pull
+    our maximum limit from our class properties, which we can set at the object initialization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, you can simply create an instance of this class and use it as a dependency
+    with `Depends` on your path operation function, as you can see in the following
+    code block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_class_dependency_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_class_dependency_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_class_dependency_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we hardcoded the `50` value, but we could very well pull it from a configuration
+    file or an environment variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The other advantage of a class dependency is that it can maintain local values
+    in memory. This property can be very useful if we have to make some heavy initialization
+    logic, such as loading a machine learning model, for example, which we want to
+    do only once at startup. Then, the callable part just has to call the loaded model
+    to make the prediction, which should be quite fast.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using class methods as dependencies
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Even if the `__call__` method is the most straightforward way to make a class
+    dependency, you can directly pass a method to `Depends`. Indeed, as we said, it
+    simply expects a callable as an argument, and a class method is a perfectly valid
+    callable!
+  prefs: []
+  type: TYPE_NORMAL
+- en: This approach can be very useful if you have common parameters or logic that
+    you need to reuse in slightly different cases. For example, you could have one
+    pre-trained machine learning model made with scikit-learn. Before applying the
+    decision function, you may want to apply different preprocessing steps, depending
+    on the input data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To do this, simply write your logic in a class method and pass it to the `Depends`
+    function through the dot notation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can see this in the following example, where we implement another style
+    for our pagination dependency, with `page` and `size` parameters instead of `skip`
+    and `limit`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_class_dependency_02.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_class_dependency_02.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_class_dependency_02.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The logic of the two methods is quite similar. We just look at different query
+    parameters. Then, on our path operation functions, we set the `/items` endpoint
+    to work with the `skip`/`limit` style, while the `/things` endpoint will work
+    with the `page`/`size` style:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_class_dependency_02.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_class_dependency_02.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_class_dependency_02.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, we only have to pass the method we want through the dot notation
+    on the `pagination` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To sum up, the class dependency approach is more advanced than the function
+    approach but can be very useful for cases when you need to set parameters dynamically,
+    perform heavy initialization logic, or reuse common logic on several dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Until now, we’ve assumed that we care about the return value of the dependency.
+    While this will probably be the case most of the time, you may occasionally need
+    to call a dependency to check for some conditions but don’t really need the returned
+    value. FastAPI allows such use cases, and that’s what we’ll see now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using dependencies at the path, router, and global level
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we said, dependencies are the recommended way to create building blocks in
+    a FastAPI project, allowing you to reuse logic across endpoints while maintaining
+    maximum code readability. Until now, we’ve applied them to a single endpoint,
+    but couldn’t we expand this approach to a whole router? Or even a whole FastAPI
+    application? Actually, we can!
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main motivation for this is to be able to apply some global request validation
+    or perform side logic on several routes without the need to add a dependency on
+    each endpoint. Typically, an authentication method or a rate limiter could be
+    very good candidates for this use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To show you how it works, we’ll implement a simple dependency that we will
+    use across all the following examples. You can see it in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_path_dependency_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_path_dependency_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_path_dependency_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This dependency will simply look for a header in the request named `Secret-Header`.
+    If it’s missing or not equal to `SECRET_VALUE`, it will raise a `403` error. Please
+    note that this approach is only for the sake of the example; there are better
+    ways to secure your API, which we’ll cover in [*Chapter 7*](B19528_07.xhtml#_idTextAnchor448),
+    *Managing Authentication and Security* *in FastAPI*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a dependency on a path decorator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Until now, we’ve assumed that we were always interested in the return value
+    of the dependency. As our `secret_header` dependency clearly shows here, this
+    is not always the case. This is why you can add a dependency on a path operation
+    decorator instead of the arguments. You can see how in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_path_dependency_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_path_dependency_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_path_dependency_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The path operation decorator accepts an argument, `dependencies`, which expects
+    a list of dependencies. You see that, just like for dependencies you pass in arguments,
+    you need to wrap your function (or callable) with the `Depends` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, whenever the `/protected-route` route is called, the dependency will be
+    called and will check for the required header.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you may have guessed, since `dependencies` is a list, you can add as many
+    dependencies as you need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s interesting, but what if we want to protect a whole set of endpoints?
+    It would be a bit cumbersome and error-prone to add it manually to each one. Fortunately,
+    FastAPI provides a way to do that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a dependency on a whole router
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you recall the *Structuring a bigger project with multiple routers* section
+    in [*Chapter 3*](B19528_03.xhtml#_idTextAnchor058), *Developing a RESTful API
+    with FastAPI*, you know that you can create several routers in your project to
+    clearly split the different parts of your API and “wire” them to your main FastAPI
+    application. This is done with the `APIRouter` class and the `include_router`
+    method of the `FastAPI` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With this approach, it can be interesting to inject a dependency into the whole
+    router, so that it’s called for every route of this router. You have two ways
+    of doing this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Set the `dependencies` argument on the `APIRouter` class, as you can see in
+    the following example:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: chapter05_router_dependency_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_router_dependency_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_router_dependency_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Set the `dependencies` argument on the `include_router` method, as you can
+    see in the following example:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: chapter05_router_dependency_02.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_router_dependency_02.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_router_dependency_02.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In both cases, the `dependencies` argument expects a list of dependencies. You
+    can see that, just like for dependencies you pass in arguments, you need to wrap
+    your function (or callable) with the `Depends` function. Of course, since it’s
+    a list, you can add several dependencies if you need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, how to choose between the two approaches? In both cases, the effect will
+    be exactly the same, so we could say it doesn’t really matter. Philosophically,
+    we could say that we should declare a dependency on the `APIRouter` class if it’s
+    needed in the context of this router. Put another way, we could ask ourselves
+    the question, *Does this router work without this dependency if we run it independently*?
+    If the answer to this question is *no*, then you should probably set the dependency
+    on the `APIRouter` class. Otherwise, declaring it in the `include_router` method
+    may make more sense. But again, this is an intellectual choice that won’t change
+    the functionality of your API, so feel free to choose the one you’re more comfortable
+    with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are now able to set dependencies for a whole router. In some cases, it could
+    also be interesting to declare them for a whole application!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a dependency on a whole application
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you have a dependency that implements some logging or rate-limiting functionality,
+    for example, it could be interesting to execute it for every endpoint of your
+    API. Fortunately, FastAPI allows this, as you can see in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chapter05_global_dependency_01.py
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_global_dependency_01.py](https://github.com/PacktPublishing/Building-Data-Science-Applications-with-FastAPI-Second-Edition/tree/main/chapter05/chapter05_global_dependency_01.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once again, you only have to set the `dependencies` argument directly on the
+    main `FastAPI` class. Now, the dependency is applied to every endpoint in your
+    API!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *Figure 5**.1*, we propose a simple decision tree to determine at which
+    level you should inject your dependency:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.1 – At which level should I inject my dependency?](img/Figure_5.1_B19528.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.1 – At which level should I inject my dependency?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Well done! You should now be comfortable with one of the most iconic features
+    of FastAPI: dependency injection. By implementing your own dependencies, you’ll
+    be able to keep common logic that you wish to reuse across your API separate from
+    the endpoints’ logic. This will make your project clean and maintainable while
+    retaining maximum readability; dependencies just need to be declared as arguments
+    of the path operation functions, which will help you to understand the intent
+    without having to read the body of the function.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Those dependencies can be both simple wrappers to retrieve and validate request
+    parameters, or complex services performing machine learning tasks. Thanks to the
+    class-based approach, you can indeed set dynamic parameters or keep a local state
+    for your most advanced tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, those dependencies can also be used at a router or global level, allowing
+    you to perform common logic or checks for a set of routes or a whole application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s the end of the first part of this book! You’re now acquainted with the
+    main features of FastAPI and should now be able to write clean and performant
+    REST APIs with the framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next part, we’ll take your knowledge to the next level and show you how
+    you can implement and deploy a robust, secure, and tested web backend. The first
+    chapter will be dedicated to databases, a must-have for most APIs to be able to
+    read and write data.
+  prefs: []
+  type: TYPE_NORMAL

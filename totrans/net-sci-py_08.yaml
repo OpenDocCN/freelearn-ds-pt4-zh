@@ -1,0 +1,1178 @@
+- en: '8'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Egocentric Network Analysis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The previous chapter was a whirlwind. We covered so much material, learning
+    how to visualize and analyze whole networks. In comparison, this chapter should
+    feel much simpler. It will also be much shorter. In previous chapters, we learned
+    how to get and create network data, how to build graphs from network data, how
+    to clean graph data, and how to do interesting things such as identifying communities.
+    In this chapter, we will be doing what is called **egocentric** **network analysis**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The good news is that everything that was learned in the previous chapter applies
+    to egocentric networks. Centralities can be useful for finding important nodes.
+    Community algorithms can be useful for identifying communities. The great news
+    is that there really isn’t a lot that we need to cover in this chapter. Egocentric
+    network analysis is simpler in scale as well as in scope. It’s most important
+    that I explain how to get started, show what you can do, and explain future steps
+    you might want to take to go further in your analysis. As with any kind of analysis,
+    there is always more that you can do, but we will keep things very simple in this
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics in the chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Doing egocentric network analysis
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Investigating ego nodes and connections
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Identifying other research opportunities
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will mostly be using the Python libraries NetworkX and
+    pandas. These libraries should be installed by now, so they should be ready for
+    your use. If they are not installed, you can install Python libraries with the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For instance, to install NetworkX, you would do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: In [*Chapter 4*](B17105_04.xhtml#_idTextAnchor158), we also introduced a `draw_graph()`
+    function that uses both NetworkX and `scikit-network`. You will need that code
+    any time that we do network visualization. You will need it for this chapter and
+    most chapters in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code is available on GitHub: [https://github.com/PacktPublishing/Network-Science-with-Python](https://github.com/PacktPublishing/Network-Science-with-Python).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Egocentric network analysis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Egocentric network analysis** is a form of network analysis that is useful
+    for investigating the relationships that exist around a specific person in a social
+    network. Rather than looking at the whole social network, we will zoom in on an
+    individual and the individuals that this person interacts with. Egocentric network
+    analysis uses a simpler form of a network called an **egocentric network** (**ego
+    network**). From this point on, I will refer to these networks as *ego networks*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In an ego network, there are two types of nodes: **ego** and **alters**. The
+    ego node is the node of an individual that you are investigating. Alters, on the
+    other hand, are all other nodes that exist in an ego network. If I were to make
+    an ego network based on my own life, I would be the ego, and the people I know
+    would be the alters. If I wanted to investigate the people who mention or are
+    mentioned by the **@spotifykr** Twitter account in the K-pop social network from
+    the previous chapter, I would create an ego network for spotifykr. spotifykr would
+    be the ego, and all other nodes would be altered.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What’s the point of this? Well, you can learn a lot about a person or organization
+    based on the people who interact with that person. Like attracts like, in many
+    cases. In my own life, most of my friends are engineers or data scientists, but
+    my other friends are artists. I enjoy knowing creative and analytical people.
+    Someone else might have a completely different makeup of the types of people they
+    hang out with. Analyzing and visualizing ego networks can give us insights into
+    relationships that we may be unable to see or notice living in the moment. We
+    may have a hunch that certain types of relationships exist or how a person is
+    being influenced, but being able to analyze and visualize an ego network itself
+    is illuminating.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One nice thing about working with ego networks rather than whole networks is
+    that ego networks tend to be much smaller and less complex than whole networks.
+    That makes sense, as ego networks are subsets of a larger ecosystem. For instance,
+    in a social network of millions of people, an ego network will focus on the ego
+    node, and the alter nodes that surround it. As these networks are much smaller
+    and less complex, this can allow for easy work with otherwise computationally
+    expensive algorithms. There’s less data to crunch. However, ego networks obviously
+    scale based on the popularity of an individual. The ego network for a celebrity
+    influencer will be much more complex than my own ego network. I don’t have millions
+    of followers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Uses for egocentric network analysis
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In social network analysis, ego networks are used to understand the relationships
+    and communities that exist around a person. However, that is not at all the limit
+    of what you can do with ego network analysis. I have used ego networks in a variety
+    of different kinds of work to understand people’s relationships, communication
+    flow, and influence. I have also used networks to map out production data flows
+    across a data center, and ego networks to investigate data flows and processes
+    that exist around a piece of software or database table. If you can create a network,
+    you can use ego networks to drill into the network for a closer look. You are
+    not limited to analyzing people. You can use this to analyze families of malware,
+    for instance. You can use this to understand how amplification works across social
+    media. You can use this to inspect a component involved in a supply chain. You
+    are limited by your own creativity and the data you are able to create or acquire.
+    Anywhere that a network exists, ego networks can be used for analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Explaining the analysis methodology
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This chapter is going to be completely hands-on and repeatable. We will use
+    a pre-built NetworkX network of the characters involved in the novel *Les Miserables*.
+    I chose to use this network because it is large and complex enough to be interesting,
+    but also because it has clear communities that can be seen inside various ego
+    networks. This is an excellent network for practice with social network analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The NetworkX network comes with weights, which allow us to draw thicker edges
+    between nodes that have more interactions than those that have fewer interactions.
+    However, for this analysis, I have chosen to drop the weights, as I want you to
+    pay most attention to the alters and communities that exist around an ego node.
+    For this analysis, I am more interested in the structure of the ego network and
+    the communities that exist inside the ego network. I do recommend that you challenge
+    yourself. As you make your way through the code of this chapter, maybe keep the
+    weights rather than dropping them, and see how it affects the network visualizations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start by doing a quick whole network spotcheck, just to see what the
+    network looks like and to pick up centralities that could be useful for identifying
+    interesting nodes that could use an ego network analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After that, we’ll look at four separate ego networks. We will start by learning
+    just a little bit about the ego character from the novel, but we will not go into
+    depth. Then, we will visualize the ego network both with and without its center.
+    In an ego network, if you drop the ego node, it’s called dropping the center.
+    The ego node sits in the center. In an ego network, all alters have an edge between
+    themselves and the ego node. If an alter is in an ego network, the alter has some
+    form of relationship with the ego. So, what do you think will happen if you drop
+    the ego node from an ego network? The ego network becomes simpler and may even
+    break into pieces. This breakage is especially useful when it happens, as it becomes
+    very easy to identify different communities, as they show as clusters of nodes.
+    So, we will perform ego network analysis with the center dropped.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will look to identify the alters that exist in an ego network, identify the
+    most important alters, and we’ll compare the density of each of the four ego networks.
+    We will also look for communities as well as bridges that exist between communities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s get started!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whole network spot check
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Before we can do anything with ego networks, we must first construct our graph.
+    We have done this several times by now, so this should be familiar territory,
+    but this time, we are going to use one of NetworkX’s pre-built graphs. Loading
+    a pre-built graph is simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: NetworkX has several other graphs available, so be sure to browse the documentation
+    as you may find other networks of interest for your own work and learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This graph contains edge weights. While this is useful for understanding the
+    number of interactions that take place between nodes, I have chosen to remove
+    it from our graph so that we have clearer lines and so that we can focus on the
+    ego networks themselves. These commands will convert the graph into a pandas edge
+    list DataFrame – keeping only the source and target fields – and create a new
+    graph using the DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that our revised graph is built, we can take a look at the number of nodes
+    and edges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With only `77` nodes and `254` edges, this is a simple network, and we can
+    easily visualize it in *Figure 8**.1*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This produces the following network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.1 – Les Miserables whole network](img/B17105_08_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.1 – Les Miserables whole network
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is good enough to move on, but I want to remind you of something we learned
+    about in the previous chapter. We can use `k_core` to remove nodes from the visualization
+    that have less than `k` nodes. In this case, I have chosen to not show nodes with
+    fewer than two nodes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will draw a network visualization, showing nodes that have two or more
+    edges, effectively removing isolates and nodes with only a single edge. This will
+    give us a quick understanding and preview of the structure of our network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.2 – Les Miserables whole network (k=2)](img/B17105_08_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.2 – Les Miserables whole network (k=2)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After visualizing a network, I tend to collect the PageRank scores of all nodes
+    on a network. PageRank is a fast algorithm that scales well regardless of network
+    size, so this is a good go-to algorithm for quickly identifying node importance,
+    as discussed in the previous chapter. As a reminder, the `pagerank` algorithm
+    calculates an importance score based on the number of incoming and outgoing edges
+    that a node has. For this network, we are using an undirected graph, so `pagerank`
+    is really calculating the score based on the number of edges that a node has,
+    as there is no such thing as `in_degree` or `out_degree` in an undirected network.
+    Here is how we can calculate `pagerank` and put the scores into a pandas DataFrame
+    for quick analysis and visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s visualize the `pagerank` algorithm calculation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.3 – Top 20 PageRank nodes in the Les Miserables network](img/B17105_08_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.3 – Top 20 PageRank nodes in the Les Miserables network
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A picture can help us see the difference more easily in the PageRank between
+    each of the nodes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The visualization is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.4 – Top 20 PageRank nodes visualized in the Les Miserables network](img/B17105_08_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.4 – Top 20 PageRank nodes visualized in the Les Miserables network
+  prefs: []
+  type: TYPE_NORMAL
+- en: Excellent. We can clearly see that **Valjean** is a very important character
+    in this story. We will definitely want to inspect Valjean’s ego network, as well
+    as the ego networks of **Myriel** and **Gavroche**. In an attempt to make sure
+    that we don’t get too similar ego networks, I have chosen **Joly** as the fourth
+    character to inspect. Joly is much further down on the PageRank list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is all of the whole network analysis that we will be doing in this chapter.
+    From this point on, we will be learning about ego networks. Let’s go!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Investigating ego nodes and connections
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In egocentric network analysis, we are interested in learning more about the
+    communities that exist around a single node in a network. We are much less interested
+    in the structure and makeup of the entire network. We are “zooming in,” so to
+    speak. We will use egocentric network analysis to inspect the communities that
+    exist around core characters from *Les Miserables*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego 1 – Valjean
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: According to Wikipedia, Jean Valjean is the protagonist of Les Miserables. Knowing
+    this, it makes sense that Valjean has the highest PageRank score of all characters
+    in the network. The main character of any story typically interacts with more
+    characters than anyone else, and PageRank will reflect that. For the sake of this
+    chapter, this is as much background digging as we will do per character. If you
+    want to do a thorough analysis of the networks that exist in a piece of literature,
+    you should go much deeper. In this chapter, I am most interested in showing how
+    to work with ego networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Full ego network
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Before we can analyze an ego network, we must first create one. In NetworkX,
+    this is called `ego_graph` and one can be created by simply passing in the full
+    graph as well as the name of the node that you would like to analyze:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That’s it. That’s how to create an ego network. There are other parameters
+    that you can pass in, but in practice, this is about as complicated as it gets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now visualize the ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.5 – The Valjean ego network](img/B17105_08_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.5 – The Valjean ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you look closely, you should see that Valjean is in the center of his own
+    ego network. This makes sense. The ego (Valjean) has some form of relationship
+    with all of the alters (other nodes) that exist in the ego network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before moving on, there is something important that I want to point out. An
+    ego network is just another network. Everything that we learned about in the previous
+    chapter – *centralities*, *communities*, *degrees*, `k_core`, and `k_corona` –
+    also applies to ego networks. Consider that the previous chapter mentioned that
+    certain centralities are computationally expensive and time-consuming to run against
+    whole networks. That is not always or even usually the case for ego networks,
+    in my experience. Algorithms that were impractical for whole networks can be useful
+    on ego networks, and can be applied with ease. There is an overlap between what
+    can be useful for whole network analysis and egocentric network analysis. Everything
+    that we learned in the previous chapter can be applied to ego networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dropping the center from an ego network
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'One important option that is often overlooked is the ability to drop the center
+    of an ego network. In simple terms, this means dropping Valjean out of his ego
+    network. I find this very useful to do because when you drop a central node, often
+    a network will shatter into pieces, making it much easier to identify the communities
+    that exist in a network. We can drop the center out of an ego network like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, that we have removed the center node – the ego – let’s visualize the network
+    again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 8.6 – The Valjean ego network with the center dropped](img/B17105_08_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.6 – The Valjean ego network with the center dropped
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare this visualization to the previous one. What do you see? I can see that
+    there is one large cluster of nodes that seems to have at least two communities
+    as part of it at the top and to the left. I can also see a community of three
+    nodes that has split off as an island on the right. And finally, I can see four
+    isolate nodes. I hope it’s clear to you that dropping the center can make it much
+    easier to see these kinds of things.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego network (dropped center, denoised)
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'I often use `k_core` to denoise a network, and the same can be done for ego
+    networks. Let’s drop all nodes with less than one edge, effectively dropping the
+    four isolate nodes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let’s use the preceding code to visualize it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.7 – The Valjean ego network with the center and isolates dropped](img/B17105_08_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.7 – The Valjean ego network with the center and isolates dropped
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we have an even cleaner network, and it is clear that there are two clusters
+    of nodes. A quick search on Wikipedia shows that **Myriel** is a bishop, **Magloire**
+    is his servant and sister, and **Baptistine** is also his sister. It makes sense
+    that they are part of their own community.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alter list and amount
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The same way we looked up nodes that exist in a whole network can also be used
+    on an ego network. Rather than `G.nodes`, we’ll use `ego_1.nodes`, as `ego_1`
+    is our ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There are two different ways that we can get the number of alters that exist
+    in the ego network. Remember, we dropped the center node (the ego), so all remaining
+    nodes are alters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first method is just to simply count the number of nodes in the network:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: That’s fine, but what if we want to see the number of edges as well?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s just cut to the chase and use the `nx.info()` function instead of looking
+    up how to get a list of all edges in a network, as this is easier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The whole network had `77` nodes, so clearly, the ego network is simpler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important alters
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Getting a list of alters is one thing, but it is more useful if we can get
+    a list of alters accompanied by some relevant centrality score to be able to gauge
+    the importance of individual nodes in a network. Remember, there is no one centrality
+    score to rule them all. We could have used PageRank, closeness centrality, betweenness
+    centrality, or any of the other measures. These are the nodes that are connected
+    to most other nodes in the ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s visualize this and take a look at our centralities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.8 – The Valjean ego network alters'' degree centrality](img/B17105_08_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.8 – The Valjean ego network alters' degree centrality
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`degree_centrality` of around `0.457`. That makes sense, considering how central
+    Javert is in the ego network.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.9 – Javert’s network position in the Valjean ego network](img/B17105_08_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.9 – Javert’s network position in the Valjean ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: The other alters with the highest centralities are much more difficult to see.
+    **MmeThenardier** is in the center, poking out on the right.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego network density
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s wrap up this ego network by getting the network density. Density has
+    to do with the level of connectedness between all the nodes in a network. In order
+    to have a density of `1.0`, every single node would have an edge with every single
+    other node in a network. To have a density of `0.0`, a network would be made entirely
+    of isolates, with no edges between any nodes. Can you guess roughly what the density
+    would be for this network? It looks loosely connected to me, with a few pockets
+    of densely connected communities. So, my guess would be a pretty low score. Let’s
+    use NetworkX to calculate the density:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: A density of around `0.12` is a loosely connected network. I’ve calculated density
+    because I want to use this to be able to compare the density of each of the ego
+    networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might be wondering why we are looking at betweenness centrality and density
+    or wondering what the relationship is between centrality and density. Centrality
+    scores are useful for understanding the importance of a node in a network. Density
+    tells us about the overall composition of the network. If a network is dense,
+    then nodes are more connected than in a sparse network. Centrality and density
+    scores are a way to get a quick understanding of a network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego 2 – Marius
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Wikipedia lists Marius Pontmercy as another protagonist in the novel. Let’s
+    look at his ego network next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Full ego network
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'First, we’ll construct the whole ego network without dropping the center:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we’ll visualize the whole ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.10 – Marius’ ego network](img/B17105_08_010.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.10 – Marius’ ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Perfect. One thing is clear: this ego network looks completely different than
+    Valjean’s. Looking at the bottom left, I can see a densely connected community
+    of individuals. Looking to the right, I can see a character that **Marius** has
+    fond feelings for, but no spoilers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego network (dropped center)
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s drop the center (ego) out of this network and see how it looks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will draw our ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.11 – Marius’ ego network with the center dropped](img/B17105_08_011.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.11 – Marius’ ego network with the center dropped
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dropping the center also has drastically different results than when we did
+    it for Valjean’s ego network. In Valjean’s case, four isolates detached from the
+    network. In Marius’ ego network, even with the center dropped, there are no isolates.
+    The members of his ego network are connected well enough that removing Marius’
+    node did not break the network apart. This network is resilient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The densely connected community that exists in this ego network is also easily
+    visible on the right. I can also see Valjean near the center of the network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Previously, we used `k_core` to remove the isolate nodes so that we could look
+    at the remaining nodes more easily after dropping the center. In Marius’ ego network,
+    we will skip that step. There are no isolates to remove.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alter list and amount
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s take a look at the alters that exist in Marius’ ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let’s get the number of nodes and edges the easy way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Perfect. This is a very simple network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important alters
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now, let’s see which alters sit in central positions. They are in powerful
+    positions in the network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will give us our degree centralities. Let’s take a closer look!
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.12 – Marius’ ego network alters'' degree centrality](img/B17105_08_012.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.12 – Marius’ ego network alters' degree centrality
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wow, interesting. I would have suspected that Valjean would have been one of
+    the most central nodes, but several people are ahead of him. Can you guess why?
+    They are part of the densely connected community, and each of them is connected
+    to more members of the ego network than **Valjean**. There should be a lot of
+    information sharing in this community. Looking at Valjean’s placement now, I can
+    see that he is a central figure, but he is less connected than the members of
+    the densely connected community.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do note that several nodes have the same centrality score. That can happen.
+    Centrality scores are just the result of math, not magic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego network density
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Finally, so that we can compare ego networks, let’s calculate the density score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Remember, Valjean’s ego network had a density of around `0.12`. Marius’ ego
+    network is almost three times as dense. This would explain why it did not shatter
+    into pieces when Marius’ central node was removed. A densely connected network
+    is more resilient to breakage when central nodes are removed. This is important
+    to remember when considering how real-world networks can be bolstered to provide
+    greater availability. From a human standpoint, this community will continue to
+    exist even when key nodes are removed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego 3 – Gavroche
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In *Les Miserables*, Gavroche is a young boy who lives on the streets of Paris.
+    Keeping that in mind, I would imagine that his ego network would look very different
+    from an adult or someone who is much more connected in society. Let’s take a look.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Full ego network
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'First, let’s visualize the network with the center intact:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will render Gavroche’s ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.13 – Gavroche’s ego network](img/B17105_08_013.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.13 – Gavroche’s ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interesting. Gavroche is well connected. Knowing that he is a child who lives
+    on the streets, it’s interesting to see **Child1** and **Child2** listed at the
+    top. The relationship between these three characters seems like it might be pretty
+    interesting to understand. I can also see one person (**MmeBurgon**) whose node
+    will become an isolate when Gavroche’s center node is dropped. Finally, I see
+    what looks like two communities on the bottom left and right of the ego network.
+    These should become more clear after dropping the center of this network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego network (dropped center)
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s drop the center node and visualize the network again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will render Gavroche’s ego network with the center dropped. This should
+    make the separate communities more easily identifiable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.14 – Gavroche’s ego network with the center dropped](img/B17105_08_014.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.14 – Gavroche’s ego network with the center dropped
+  prefs: []
+  type: TYPE_NORMAL
+- en: Perfect. As expected, one node became an isolate, the two children formed their
+    own little cluster, and the remaining connected component contains two separate
+    communities of people. It could be interesting to use a community detection algorithm
+    on the largest cluster, but let’s move on. It’s clear, though, that Valjean is
+    positioned between these two communities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s not much point in removing isolates from this network, as there is only
+    one, so let’s push forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alter list and amount
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s see which other characters are a part of Gavroche’s ego network. In other
+    words, I want to know who Gavroche knows. This will tell us which characters play
+    a part in his life:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Enter the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This simple line will give us all of the nodes in Gavroche’s ego network, sorted
+    alphabetically:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Great. I can see some familiar names, and I can clearly see `Child1` and `Child2`
+    as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let’s see how many nodes and edges exist in this network, doing this
+    the easy way:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This should give us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Wow. This is much more connected than the protagonist’s own ego network. Valjean’s
+    ego network had `36` nodes and `76` edges. How do you think having fewer nodes
+    and more edges will affect this network’s density score?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we get to that, let’s look at centralities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important alters
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Once again, let’s use degree centrality to see who the most connected people
+    are in this ego network. These steps should start to look similar by now as they
+    are. We are using different centralities to understand which nodes are important
+    in our network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give us a DataFrame of characters by degree centrality. Let’s look
+    closer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.15 – Gavroche’s ego network alters'' degree centrality](img/B17105_08_015.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.15 – Gavroche’s ego network alters' degree centrality
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wow, **Enjoiras** is one highly connected individual, and there are several
+    other highly connected individuals as well. We can see them in the especially
+    well-connected community.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego network density
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Finally, let’s calculate density so that we can compare ego networks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: That is very interesting. Gavroche is a kid who lives on the streets of Paris,
+    but his social network is denser than any of the others that we have seen before.
+    Valjean’s ego network density was around `0.12`, Marius’ was around `0.33`, and
+    Gavroche’s is even higher. I never would have expected this. If I read this story,
+    I am going to pay close attention to this character. He seems well connected,
+    and I wonder how that plays out in the story.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego 4 – Joly
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Near the beginning of this chapter, I chose four individuals for creating ego
+    networks. The first three had high PageRank scores, and I specifically chose someone
+    with a lower PageRank score for the fourth, as I was hoping for a drastically
+    different ego network than the other three.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Joly is a medicine student, and I wonder if this will affect his ego network.
+    Students often socialize with other students, so I’ll investigate a few of his
+    direct connections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Full ego network
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'First, let’s create and visualize an ego network with the center intact:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will render Jolys ego network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.16 – Joly’s ego network](img/B17105_08_016.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.16 – Joly’s ego network
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wow. Very often, when visualizing networks, one will just jump out at me as
+    being really unique. Of the four that we have done for this chapter, this one
+    stands out. It does not look like a typical ego network. It is densely connected.
+    Everybody in Joly’s ego network is well connected, and if we were to remove Joly’s
+    node, the ego network would likely change very little. Before we do this, let’s
+    take a look at a few of these individuals to see whether any of the others are
+    either medicine students or members of Les Amis de l’ABC, which is an association
+    of revolutionary students that Joly is a part of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bossuet
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Bossuet Lesgle is known as the unluckiest student and is a member of Les Amis
+    de l’ABC. Being both a student and a member of the revolutionary students, it
+    makes sense that he is connected to Joly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enjoiras
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Enjoiras is the leader of Les Amis de l’ABC. This connection also makes sense.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bahoret
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Bahoret is another member of Les Amis de l’ABC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gavroche
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Gavroche does not appear to be a member of Les Amis de l’ABC, but he assists
+    in fighting alongside them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even without knowing much of the story or even much about the individual characters,
+    we can easily identify members of the same community by inspecting whole and ego
+    networks as well as communities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego network (dropped center)
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now, let’s drop the center out of the ego network and see whether my hypothesis
+    is correct that the ego network will not change very much because it is densely
+    connected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will draw Joly’s ego network with the center dropped. If there are separate
+    communities in this network, they will be shown separately as clusters. If there
+    is only one community, then that community will show as a single cluster:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.17 – Joly’s ego network with the center dropped](img/B17105_08_017.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.17 – Joly’s ego network with the center dropped
+  prefs: []
+  type: TYPE_NORMAL
+- en: That’s very interesting. With Joly removed, the ego network is definitely intact,
+    and central individuals remain central. This is a resilient network, and as they
+    are a group of revolutionaries, it would be in their best interests to be resilient
+    for their revolution to stand a chance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are no isolates, so there is no point in denoising this network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alter list and amount
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s get a list of all of the individuals who are a part of this ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give us a sorted list of characters who are part of this ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: Compared to the other ego networks, there are very few individuals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s get the number of nodes and edges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should tell us a bit about the size and complexity of this ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: This network has fewer nodes and fewer edges than other networks we’ve looked
+    at, but it is visibly denser than any of the other networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important alters
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s take a look at the most important alters in the ego network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Figure 8.18 – Joly’s ego network alters'' degree centrality](img/B17105_08_018.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.18 – Joly’s ego network alters' degree centrality
+  prefs: []
+  type: TYPE_NORMAL
+- en: These centralities are incredible, compared to the others that we have seen.
+    The centrality scores of `1.0` for `1.0` have very high-degree centralities. This
+    is a well-connected network. How do you think that will affect the density score?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ego network density
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s calculate the density of this ego network. I suspect that this ego network
+    will have a very high density:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That is incredibly high compared to the other density scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Valjean’s ego network had a density of around `0.12`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Marius’s ego network was around `0.33`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Gavroche’s ego network was around `0.35`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Joly’s ego network was around `0.86`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: That is dramatically higher than any of the other density scores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But this makes sense. Joly is both a student and a member of a revolutionary
+    group. I would expect both of these groups to be well connected with other students
+    and revolutionaries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Insights between egos
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We’ve looked at four different ego networks. We could have created an ego network
+    for every single node in the network, but that would have been very time-consuming.
+    When I do egocentric network analysis, I typically start by shortlisting several
+    nodes of interest that I would like to investigate. I am typically looking for
+    something, such as the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Who is most connected
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Who has the most `out_degrees`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Who has the highest `pagerank`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Who has a tie to known opposition
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this chapter, we investigated characters from the novel *Les Miserables*,
+    so I purposefully chose individuals with the highest PageRank scores, as I anticipated
+    that they’d have interesting ego networks. This strategy worked very well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are a few takeaways from all of this that I’d like to leave you with
+    before concluding this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, it is possible to bolster a network by adding connections, and this will
+    make it resilient to failure. If one node is removed, the network can remain intact
+    and not shatter into pieces. This has implications for many things. For the flow
+    of information to remain constant, an information-sharing network will want to
+    be resilient to attack, for instance. Where else might having a network be resilient
+    to failure be of value?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Second, removing the center node of an ego network can tell you a lot about
+    the communities that exist in a network, as well as the resiliency of that network.
+    When removing the center, which networks had isolates and islands? Which networks
+    stayed completely intact? Which communities were we able to see?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s see what’s next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identifying other research opportunities
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When doing any kind of network analysis, it is important to know that there
+    is always more that you can do; for instance, we could do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could embed additional information into the graph, such as weights or node
+    types (teacher, student, revolutionary, and so on)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We could color nodes by node type for easier identification of communities
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We could size nodes by the number of degrees or the centrality score to make
+    it easier to identify important nodes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We could use directed networks to understand the directionality of information
+    sharing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There is always more that you can do, but it is important to know that enough
+    is enough. You should use what you need. For this chapter, I originally got stuck
+    trying to do too much, and I lost time trying to figure out how to do things that
+    weren’t actually all that important to teaching this topic. Keep it simple and
+    add only what you need and what is helpful. Add more as time permits if it is
+    useful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned a new kind of network analysis, called egocentric
+    network analysis. I tend to call egocentric networks *ego networks*, to be concise.
+    We’ve learned that we don’t have to analyze a network as a whole. We can analyze
+    it in parts, allowing us to investigate a node's placement in the context of its
+    relationship with another node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Personally, egocentric network analysis is my favorite form of network analysis
+    because I enjoy investigating the level of the individual things that exist in
+    a network. Whole network analysis is useful as a broad map, but with egocentric
+    network analysis, you can gain a really intimate understanding of the various
+    relationships between things that exist in a network. I hope you enjoyed reading
+    and learning from this chapter as much as I enjoyed writing it. I hope this inspires
+    you to learn more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will dive into community detection algorithms!
+  prefs: []
+  type: TYPE_NORMAL

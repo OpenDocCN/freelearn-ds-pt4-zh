@@ -1,0 +1,1163 @@
+- en: '14'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Beyond Local Resources – Scaling Genetic Algorithms in the Cloud
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter builds on the previous one, which focused on using multiprocessing
+    to enhance genetic algorithm performance. It restructures the genetic algorithm
+    into a **client-server** model, where the client employs **asynchronous I/O**,
+    and the server manages fitness function calculations. The server component is
+    then deployed to the cloud via **AWS Lambda**, demonstrating a practical application
+    of serverless architecture in optimizing genetic algorithm computations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter starts by discussing the advantages of dividing genetic algorithms
+    into client and server components. It then progresses to implementing this client-server
+    model while using the same One-Max benchmark problem from the previous chapter.
+    The server is built using Flask, while the client leverages Python’s `asyncio`
+    library for asynchronous operations. The chapter includes experiments with deploying
+    the Flask application on production-grade servers before ultimately deploying
+    it on AWS Lambda, a serverless computing service, showcasing how cloud resources
+    can be used to enhance the computational efficiency of genetic algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, you will do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understand the restructuring of genetic algorithms into a client-server model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learn how to use Flask to create a server that performs fitness calculations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Develop an asynchronous I/O client in Python that interacts with the Flask server
+    for genetic algorithm evaluations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Gain familiarity with Python WSGI HTTP servers such as Gunicorn and Waitress
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learn how to deploy the Flask server component to the cloud using Zappa for
+    serverless execution on AWS Lambda
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be using Python 3 with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**deap**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**numpy**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**aiohttp** – introduced in this chapter'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you use the **requirements.txt** file we provide (see [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091)),
+    these libraries are already included in your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition, a separate server virtual environment will be created and used
+    for a separate server module, with the following supporting libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**flask**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**gunicorn**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**waitress**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**zappa**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The programs that will be used in this chapter can be found in this book’s GitHub
+    repository at [https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_14](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_14).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the Code in Action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/OEBOd](https://packt.link/OEBOd)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next level in genetic algorithm performance –embracing a client-server architecture
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we implemented our genetic algorithm in a multiprocessor
+    approach, leveraging the “embarrassingly parallelizable” nature of genetic algorithms
+    to significantly reduce the time required for each generation to complete. Recognizing
+    that the most time-consuming aspect of the algorithm is typically the computation
+    of the fitness function, we established a benchmark that simulates a CPU-intensive
+    fitness function. By employing Python’s built-in multiprocessing capabilities
+    as well as an external library named SCOOP, we successfully managed to decrease
+    the runtime substantially.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, these implementations were constrained to a single program operating
+    on a single machine. When addressing real-world problems, this approach is likely
+    to encounter resource limitations of the machine—not just in terms of available
+    CPU cores but also in essential resources such as memory and storage. In contrast
+    to our benchmark program, which primarily consumes CPU time, real-world fitness
+    functions may have extensive demands for both processing power and memory, presenting
+    a significant challenge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have observed that the SCOOP library supports distributed computing by utilizing
+    additional machines on our network. However, in this chapter, we will explore
+    a different approach that involves dividing our program into two separate components.
+    This methodology will afford us greater flexibility in selecting the platforms
+    for these components. Such a strategy opens up opportunities for more diverse
+    and powerful computing solutions, including cloud-based services or specialized
+    hardware, thereby overcoming some limitations inherent in relying solely on networked
+    machines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The upcoming sections will detail the design and implementation of this new
+    structure, which we will carry out in several stages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a client-server model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our plan is to divide the execution of the genetic algorithm into two distinct
+    parts—client and server—outlined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Client Component**: The client will oversee the evolutionary logic in a centralized
+    manner. This includes managing the initialization of populations, selection processes,
+    and genetic operations such as crossover and mutation.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Server Component**: The server will be tasked with executing the resource-intensive
+    fitness function calculations. It will employ multiprocessing to fully leverage
+    its computational resources, circumventing the limitations imposed by Python’s
+    **Global Interpreter** **Lock** (**GIL**).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Client’s Use of Asynchronous I/O**: Additionally, the client will employ
+    asynchronous I/O, which operates on a single-threaded, event-driven model. This
+    approach can efficiently handle I/O-bound tasks, allowing the program to concurrently
+    manage other operations while waiting for I/O processes to complete. In adopting
+    asynchronous I/O for server communication, the client is able to send a request
+    and then proceed with other tasks, rather than waiting passively for a response.
+    This is akin to a waiter who delivers a guest’s order to the kitchen and, instead
+    of waiting there, takes the next order from another table while the previous orders
+    are being prepared. Similarly, our client optimizes the workflow by not blocking
+    the main thread of execution while waiting for server responses.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This client-server model and its operational dynamics are illustrated in the
+    following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.1: Block diagram of the proposed client-server setup](img/B20851_14_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.1: Block diagram of the proposed client-server setup'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we dive into implementing this model, it’s highly recommended to set
+    up a separate Python environment specifically for the server component, as described
+    in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a separate environment
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we began coding in [*Chapter 3*](B20851_03.xhtml#_idTextAnchor091), *Using
+    the DEAP Framework*, we recommended creating a virtual environment for our programs,
+    utilizing tools such as `venv` or `conda`. Employing a virtual environment is
+    a best practice in Python development, as it allows us to keep the dependencies
+    of our projects isolated from both other Python projects and the system’s default
+    settings and dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Given that the client part manages the logic of the genetic algorithm and uses
+    the DEAP framework, we can continue developing it within the same environment
+    we’ve been using so far. However, it’s advisable to create a separate environment
+    for the server component. The reasoning is twofold: firstly, the server will not
+    be using the DEAP dependency but will instead rely on a different set of Python
+    libraries; and secondly, we ultimately plan to deploy the server outside our local
+    computer, so it’s preferable to have this deployment as lightweight as possible.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For reference, you can review the process of creating a virtual environment
+    using `venv` here: [https://docs.python.org/3/library/venv.html](https://docs.python.org/3/library/venv.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, environment management using `conda` is described here: [https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code for the server module is best kept in a separate directory as well;
+    in our repository, we keep it in a directory named `server`, under the `chapter_13`
+    directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we have created and activated a virtual environment for the server component,
+    we’re ready to dive into the coding of the components. But first, let’s take a
+    moment to recap the benchmark problem we’re tackling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Revisiting the One-Max problem, yet again
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As a reminder, in [*Chapter 13*](B20851_13.xhtml#_idTextAnchor326), *Accelerating
+    Genetic Algorithms*, we employed a version of the OneMax problem as a benchmark.
+    The goal of this program is to find the binary string of a specified length that
+    maximizes the sum of its digits. For our purposes, we used a reduced problem length
+    of 10 digits, along with smaller figures for the population size and the number
+    of generations. Additionally, we introduced a `busy_wait()` function into the
+    original fitness evaluation function. This function kept the CPU busy for three
+    seconds during each evaluation, significantly increasing the program’s execution
+    time. This setup allowed us to experiment with various multiprocessing schemes
+    and to compare their respective running durations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our experiments with the client-server model, we will continue to use this
+    same program, albeit with modifications tailored to our current requirements.
+    This approach will allow us to directly compare the results with those obtained
+    in the previous chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are finally ready to write some code—starting with the server module, which
+    will be based on Flask, the Python web application framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the server component
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Flask, known for its lightweight and flexible nature, will be the cornerstone
+    of our server component in the Python environment. Its simplicity and user-friendly
+    approach make it a popular choice, especially for projects that require adaptability
+    across various platforms and cloud installations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install Flask, make sure you are within the server’s virtual environment,
+    and use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: One of the key advantages of using Flask is that it requires minimal coding
+    effort on our part. We just need to write the handlers for incoming requests,
+    and Flask efficiently manages all the other underlying processes. Given that our
+    server component’s primary responsibility is to handle the calculation of the
+    fitness function, the amount of code we need to write is minimal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The relevant Python program we created is `fitness_evaluator.py`, available
+    at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/server/fitness_evaluator.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/server/fitness_evaluator.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This program extends the minimal application outlined in Flask’s Quickstart
+    documentation, as detailed here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we import the **Flask** class and create an instance of this class.
+    The **__name__** argument represents the name of the application’s module or package:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we define the **welcome()** function for “health-check” purposes. This
+    function returns an HTML-formatted welcome message. When we direct our browser
+    to the base URL of the server, this message is displayed, confirming that the
+    server is operational. The **@app.route("/")** decorator specifies that this function
+    should be triggered by the root URL:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We then reuse the **busy_wait()** function from the previous chapter. This
+    function simulates a CPU-intensive fitness evaluation, of a duration specified
+    by the **DELAY_SECONDS** constant:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we define the actual fitness evaluation function, **oneMaxFitness()**.
+    Decorated by the **/one_max_fitness** route, it expects a value (the genetic individual)
+    to be passed in the URL, which is then processed by the function. The function
+    calls **busy_wait** to simulate processing, then calculates the sum of 1s in the
+    provided string and returns this sum as a string. We use strings as input and
+    output for this function to accommodate HTTP’s text-based data transmission in
+    web applications:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To initiate our Flask-based web application, we first need to navigate into
+    the `server` directory, and then activate the server’s virtual environment. Once
+    activated, the application can be launched with the following command, executed
+    from the terminal within that environment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: The warning regarding Flask’s built-in server is a reminder that it’s not designed
+    for performance optimization and is meant for development purposes only. However,
+    for our current needs, this server is perfectly appropriate to test and verify
+    the logic of our application. To do this, we can simply use a web browser on our
+    local machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Upon opening a browser and navigating to the specified URL (`http://127.0.0.1:5000`),
+    we should see the “Welcome” message appear, indicating that our server is up and
+    running, as illustrated here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.2: Display of the Welcome message at the server’s root URL](img/B20851_14_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.2: Display of the Welcome message at the server’s root URL'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let’s test the fitness function by navigating to the following URL: [http://127.0.0.1:5000/one_max_fitness/1100110010](http://127.0.0.1:5000/one_max_fitness/1100110010).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Accessing this URL internally triggers a call to the `oneMaxFitness()` function
+    with `1100110010` as the argument. As expected, after a delay of several seconds
+    (introduced by the `busy_wait()` function to simulate processing time), we receive
+    a response. The browser displays the number `5`, which represents the calculated
+    sum of 1s in the input string, as illustrated in the figure here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.3: Testing the server’s fitness function via a browser](img/B20851_14_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.3: Testing the server’s fitness function via a browser'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we’ve successfully set up and verified the server, let’s move on to
+    implementing the client side.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the client component
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To start working on the client module, we need to switch back to the original
+    virtual environment used for our genetic algorithms’ programs. This can be done
+    by using a separate terminal or opening a new window in the IDE where this environment
+    is activated. The various programs implementing the client module can be found
+    at the following location:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_14](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/tree/main/chapter_14)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first program we’ll examine is `01_one_max_client.py`, which functions
+    as a straightforward (synchronous) client. This program can be found at the following
+    location:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/01_one_max_client.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/01_one_max_client.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This program adapts `01_one_max_start.py` from the previous chapter—the basic
+    OneMax problem solver. To support the delegation of fitness calculation to the
+    server, we made the following modifications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Python **urllib** module is imported. This module provides a suite of functions
+    and classes for working with URLs, which we will use to send HTTP requests to
+    the server and retrieve the responses.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The **BASE_URL** constant is defined to point to the base URL of the server:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **oneMaxFitness()** function is renamed **oneMaxFitness_client()**. This
+    function converts the given individual—a list of integers (**0** or **1**)—into
+    a single string. It then uses the **urlopen()** function from **urllib** to send
+    this string to the fitness calculation endpoint on the server, by combining the
+    base URL with the function’s route and appending the string representing the individual.
+    The function waits (synchronously) for the response and converts it back to an
+    integer:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can now launch this client program while the Flask server is up, and watch
+    the server’s output, showing requests coming in. It is evident that the requests
+    are coming one at a time, with a noticeable three-second delay between them. Meanwhile,
+    on the client side, the output mirrors what we observed in the previous chapter
+    before introducing multiprocessing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The elapsed time is similar as well, roughly 3 seconds times the amount of fitness
+    function invocations (95), reaffirming the synchronous nature of our current client-server
+    interaction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that the operation has been successful and the fitness function has been
+    effectively separated and moved to the server, let’s take the next step and convert
+    the client into an asynchronous one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the asynchronous client
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To support asynchronous I/O, we are going to use `aiohttp`, a powerful Python
+    library for asynchronous HTTP client/server networking. This library, along with
+    its dependencies, can be installed in the client’s virtual environment using the
+    following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The modules modified for the asynchronous version of the client include not
+    only the `02_one_max_async_client.py` program but also `elitism_async.py`, which
+    replaces `elitism.py` used in most of our programs so far. While `02_one_max_async_client.py`
+    contains the function that sends fitness calculation requests to the server, `elitism_async.py`
+    manages the main genetic algorithm loop and is responsible for calling that function.
+    The following subsections will delve into the details of these two programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Updating the OneMax solver
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Let’s start with `02_one_max_async_client.py`, which can be found here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/02_one_max_async_client.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/02_one_max_async_client.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The differences from the previous, synchronous program `01_one_max_client.py`
+    are highlighted here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **oneMaxFitness_client()** function has been renamed **async_oneMaxFitness_client()**.
+    In addition to **individual**, the new function also receives a **session** argument
+    of the **aiohttp.ClientSession** type; this object is responsible for managing
+    asynchronous requests while reusing connections. The function signature is preceded
+    by the **async** keyword, marking it as a *coroutine*. This designation allows
+    the function to pause its execution and yield control back to the event loop,
+    enabling the concurrent sending of requests:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The HTTP GET request to the server is sent using the **session** object. When
+    a response is received, it is available in the **response** variable:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The **main()** function, which now utilizes calls to async functions, is defined
+    with the **async** keyword as well.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The call to the genetic algorithm’s main loop now utilizes the **elitism_async**
+    module instead of the original **elitism**. This module will be examined shortly.
+    In addition, the call is preceded by the **await** keyword, required when calling
+    an async function, to signify the function’s ability to hand control back over
+    to the event loop:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The call to the **main()** function is made using **asyncio.run()**. This method
+    of invocation is used to designate the main entry point for running the asynchronous
+    program. It initiates and manages the **asyncio** event loop, thereby allowing
+    asynchronous tasks to be scheduled and executed:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Updating the genetic algorithm loop
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The counterpart program, `elitism_async.py`, can be found here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/elitism_async.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/elitism_async.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As previously mentioned, this program is a modified version of the familiar
+    `elitism.py`, tailored to execute the genetic algorithm’s main loop asynchronously
+    and manage the asynchronous calls to the fitness function. The key modifications
+    are highlighted here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, an **aiohttp.TCPConnector** object is created before the loop starts.
+    This object is in charge of creating and managing TCP connections for sending
+    HTTP requests. The **limit** parameter is used here to control the number of simultaneous
+    connections to the server:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, an **aiohttp.ClientSession** object is created. This session, which facilitates
+    the sending of HTTP requests asynchronously, is used throughout the rest of the
+    code. It’s also passed to the **async_oneMaxFitness_client()** function where
+    it is used to transmit requests to the server. The session remains active throughout
+    the loop, enabling responses to be matched with their respective requests as they
+    arrive:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The original calls to the fitness evaluation function, implemented using the
+    **map()** function to apply the **evaluate** operation to all individuals needing
+    updated fitness values (**invalid_ind**), are now replaced with the following
+    two lines of code. These lines create a list of **Task** objects named **evaluation_tasks**,
+    representing scheduled calls to the asynchronous fitness function, and then wait
+    for all of them to complete:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We are now ready to use the new asynchronous client, as will be described next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the asynchronous client
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, ensure that the Flask server is operational. If it’s not already running,
+    you can start it using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, let’s launch the `02_one_max_async_client.py` program and observe the
+    outputs both from the server and the client windows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In contrast to the previous experiment, it’s now evident that the requests
+    are reaching the server several at a time and are being handled concurrently.
+    On the client side, while the output appears similar to the previous run, the
+    runtime is significantly improved—more than 10 times faster:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have learned how to utilize a client-server model for the OneMax
+    problem, we’ll learn how to use a production app server to host the models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a production-grade app server
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we have mentioned before, the built-in server that comes with Flask is not
+    optimized for performance and is intended primarily for development purposes.
+    While it appears to perform adequately in our asynchronous experiment, when transitioning
+    an application to a production environment, it’s strongly recommended to use a
+    production-grade `mod_wsgi`. These servers are designed to meet the demands of
+    a production environment, offering enhanced performance, security, stability,
+    and scalability. As we will demonstrate next, migrating to one of these servers
+    is a relatively easy task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Gunicorn server
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first server option we will explore is **Gunicorn**, short for **Green unicorn**.
+    It is a widely used Python WSGI HTTP server for Unix systems, known for its simplicity
+    and efficiency, making it a popular choice for deploying Python web applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although Gunicorn is not natively supported on Windows, it can be used via the
+    **Windows Subsystem for Linux** (**WSL**), which is supported by Windows 10 and
+    later versions. WSL allows you to run a GNU/Linux environment directly on Windows,
+    unmodified, without the overhead of a traditional virtual machine or dual-boot
+    setup. Gunicorn can be installed and run within this Linux environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install Gunicorn, make sure you are within the server’s virtual environment,
+    and use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, launch the server with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `-b` parameter, which is optional, is used here to run the server on the
+    local URL `127.0.0.1:5000`, aligning with the original Flask server configuration.
+    By default, Gunicorn runs on port `8000`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `--workers` argument specifies the number of worker processes. In the absence
+    of this argument, Gunicorn defaults to using a single worker process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the Gunicorn server is up, running the client yields the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Recall that the best theoretical result we can achieve in this experiment is
+    18 seconds, as we have 6 “rounds” of fitness calculation, and the best possible
+    result for each round is 3 seconds, the duration of a single fitness evaluation.
+    The result we obtained here is impressively close to that theoretical limit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In case you would like to use a server native to Windows, we will cover the
+    Waitress server in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Waitress server
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Waitress** is a production-quality pure-Python WSGI server. It’s a cross-platform
+    server compatible with various operating systems, including Unix, Windows, and
+    macOS.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Waitress is often used as an alternative to Gunicorn, especially in environments
+    where Gunicorn is not available or preferred, such as Windows, or when a pure-Python
+    solution is desired.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install Waitress, make sure you are within the server’s virtual environment,
+    and use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we need to make a couple of modifications to our Flask application. The
+    modified program, `fitness_evaluator_waitress.py`, can be found here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/server/fitness_evaluator_waitress.py](https://github.com/PacktPublishing/Hands-On-Genetic-Algorithms-with-Python-Second-Edition/blob/main/chapter_14/server/fitness_evaluator_waitress.py)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The differences from the original program, `fitness_evaluator.py`, are highlighted
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we import the **serve** function from the Waitress module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we use the **serve()** function to launch the server from within the
+    program. This function allows us to specify the server’s configuration through
+    its arguments. In our case, we’re setting the host, port, and the number of threads
+    to handle requests:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The server can be started by running the following program: `fitness_evaluator_waitress.py`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Breaking out of the box
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The next logical step would be to deploy the server component of your application
+    to a separate platform. Doing so offers several key advantages, including scalability,
+    enhanced performance, and improved reliability. While deploying your server on-premises
+    using your own hardware is an option, leveraging **cloud computing services**
+    often provides a more efficient and effective solution. We will cover this in
+    more detail in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reaching for the sky with cloud computing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Cloud computing services provide businesses and individuals with on-demand access
+    to a wide range of applications, storage solutions, and computing power over the
+    internet. These services eliminate the need for substantial upfront investment
+    in physical infrastructure, allowing users to pay only for the resources they
+    use. Cloud computing supports an extensive array of applications, ranging from
+    data storage and web hosting to advanced analytics and artificial intelligence,
+    revolutionizing how organizations manage and deploy IT solutions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional advantages of cloud platforms include high-level security measures,
+    data redundancy, and global reach, ensuring low latency for users worldwide. Moreover,
+    cloud services reduce the need for upfront capital investment in hardware and
+    minimize the burden of ongoing maintenance and upgrades. This approach enables
+    a greater focus on application development rather than infrastructure management.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When considering the deployment of our Flask-based server component on a cloud
+    platform, it’s important to note that most major cloud service providers offer
+    straightforward methods to deploy Flask applications. For example, a Flask application
+    can be easily deployed to **Azure App Service**, a fully managed platform for
+    hosting web applications provided by Microsoft’s Azure cloud computing service.
+    This platform simplifies much of the deployment and management process, making
+    it a convenient choice for Flask deployments. Detailed instructions and guidelines
+    for deploying a Flask application to Azure App Service can be found at this link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://learn.microsoft.com/en-us/azure/app-service/quickstart-python](https://learn.microsoft.com/en-us/azure/app-service/quickstart-python)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Several other options are available from **Amazon Web Services** (**AWS**).
+    You can use **Amazon EC2** for comprehensive control over virtual servers, or
+    opt for **AWS Fargate** if you prefer a container-based compute service that doesn’t
+    require managing underlying servers. A more straightforward approach is using
+    **AWS Elastic Beanstalk**, a user-friendly service for deploying and scaling web
+    applications. Elastic Beanstalk automates various deployment details such as capacity
+    provisioning, load balancing, auto-scaling, and application health monitoring.
+    Deploying an existing Flask application to Elastic Beanstalk using the AWS **Command-Line
+    Interface** (**CLI**) is straightforward, as described here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/create-deploy-python-flask.html](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/create-deploy-python-flask.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the rest of this chapter, however, our focus shifts to a fourth option—**AWS
+    Lambda**. AWS Lambda represents a paradigm shift in application deployment and
+    management. As a serverless computing service, it allows the execution of code
+    without the need for provisioning or managing servers, automatically scaling in
+    response to incoming requests. This serverless approach offers a distinct set
+    of benefits for deploying Flask applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important – limitations of Lambda
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before proceeding, it’s essential to remember that the AWS Lambda service, while
+    powerful and versatile, does have certain limitations and restrictions. The most
+    significant of these is the maximum execution time limit per function invocation,
+    currently set at 15 minutes. This means that for a genetic algorithm where a single
+    evaluation of the fitness function is expected to exceed this duration, the method
+    we describe next will not be suitable, and one of the aforementioned alternative
+    approaches, such as AWS Elastic Beanstalk, should be considered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Other limitations of Lambda include constraints on memory and compute resources,
+    deployment package size, and the number of concurrent executions, as described
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Despite the aforementioned limitations, AWS Lambda remains a viable option for
+    numerous problems tackled by genetic algorithms. In many cases, the duration required
+    to complete a single evaluation of the fitness function falls well within the
+    15-minute execution time limit imposed by Lambda. Additionally, the resources
+    provided by the Lambda service are often more than adequate for these applications.
+    This compatibility makes AWS Lambda an attractive choice for executing genetic
+    algorithms efficiently, which we will explore in the following sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS Lambda and API Gateway – a winning combination
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: AWS Lambda is a serverless computing service offered by AWS, enabling the execution
+    of code without the need for server provisioning or management. As a prime example
+    of **Function-as-a-Service** (**FaaS**), a cloud computing model, Lambda empowers
+    developers to write and update code executed in response to specific events. In
+    this model, the underlying physical hardware, server operating system maintenance,
+    automatic scaling, and capacity provisioning are all managed by the platform,
+    allowing developers to concentrate on individual functions in their application
+    code. Lambda’s automatic scaling adjusts the compute capacity for each trigger,
+    ensuring high availability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The cost-effectiveness of using AWS Lambda lies in its billing structure, which
+    charges only for the actual compute time used, with no costs incurred when the
+    code is not running. Moreover, Lambda’s seamless integration with other AWS services
+    makes it an invaluable tool for developing complex applications. A key integration
+    is with **AWS API Gateway**, a fully managed service that serves as a “front door”
+    for applications, effectively enabling API Gateway to trigger Lambda functions
+    in response to HTTP requests. This integration facilitates the creation of serverless
+    architectures, where Lambda functions are invoked via API calls through API Gateway.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This powerful combination allows us to deploy our existing Flask application
+    to the AWS cloud, leveraging both the API Gateway and Lambda service. What’s more,
+    thanks to the Zappa framework, which will be described in the next section, we
+    can deploy our Flask application without any modifications, fully utilizing the
+    benefits of serverless architecture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Serverless Python with Zappa
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Zappa** is an open source framework that simplifies the deployment of Python
+    web applications on AWS Lambda. It’s particularly well-suited for Flask (as well
+    as Django—another Python web framework) applications. Zappa handles all of the
+    setup and configuration required to run a web application on Lambda, turning it
+    into a serverless application. This includes packaging the application, setting
+    up the necessary AWS configurations, and deploying it to Lambda.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, Zappa provides features such as database migrations, scheduling
+    of function executions, and integration with various AWS services, making it a
+    comprehensive tool for deploying Python web applications on AWS Lambda.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install Zappa, make sure you are within the server’s virtual environment,
+    and use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Before proceeding further, it’s important to have a working AWS account, as
+    described in the next subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up an AWS account
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To be able to deploy our server to the AWS cloud, you need a valid AWS account.
+    The **AWS Free Tier**, available to new AWS customers, allows you to explore and
+    use AWS services for free within certain usage limits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you don’t currently have an AWS account, you can sign up for a free account
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://aws.amazon.com/free/](https://aws.amazon.com/free/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, install the AWS CLI by following the instructions available here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will also need to set up your AWS credentials file, as described here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://wellarchitectedlabs.com/common/documentation/aws_credentials/](https://wellarchitectedlabs.com/common/documentation/aws_credentials/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: These will be used by Zappa behind the scenes as we continue to deploy our service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying the server module to the Lambda service
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'It’s time to deploy our Flask application to AWS using Zappa. Navigate into
+    the server directory, make sure the server virtual environment is active, and
+    issue the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will start an interactive dialog. Zappa will prompt you for various details
+    such as the production environment name (with `dev` as the default), a unique
+    S3 bucket name for storing files (it suggests a unique name for you), and the
+    name of your application (which should be set to `fitness_evaluator.app` in your
+    case). It will also ask about the global deployment option, with `n` as the default
+    choice. You can typically accept all the default values provided by Zappa during
+    this setup process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The outcome of this initialization process is a file named `zappa_settings.json`.
+    This file contains the deployment configuration for your application. If necessary,
+    you can manually edit this file to modify the configuration or add additional
+    options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are now ready to deploy our application. If you chose `dev` as the name
+    for your production environment during the Zappa configuration, use the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: The deployment process may take a few minutes. Once it’s complete, you will
+    see a message indicating `Deployment complete!` along with a URL. *This URL serves
+    as the base URL for your newly* *deployed application*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now manually test the deployment by pointing a browser to the new URL.
+    The response `/one_max_fitness/1100110010` to the base URL. The response, `5`,
+    should be displayed after a few seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we continue to use our async client module with the newly deployed server,
+    we can log in to the AWS console to review what has been deployed. This step is
+    optional—if you’re already familiar with the AWS console, feel free to skip to
+    the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining the deployment on AWS
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To review the main components deployed by Zappa, start by logging in to the
+    AWS console at [https://aws.amazon.com/console/](https://aws.amazon.com/console/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once logged in, navigate to the Lambda service, where you can view the list
+    of available Lambda functions. You should see your newly deployed function listed
+    there, similar to the following screen capture:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.4: The Lambda function created by the Zappa deployment](img/B20851_14_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.4: The Lambda function created by the Zappa deployment'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our case, the Lambda function created by Zappa is named `server-dev`. This
+    name is derived from the combination of the directory name where the application
+    resides (`server`) and the production environment name we chose (`dev`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clicking on the function’s name will bring us to the **Function overview**
+    screen, where we can further explore detailed information, such as the function’s
+    runtime environment, triggers, configuration settings, and monitoring metrics,
+    as seen here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.5: The Lambda Function overview screen](img/B20851_14_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.5: The Lambda Function overview screen'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let’s navigate to the API Gateway service, where you can view the list
+    of available APIs. You should see our newly deployed API listed there, with the
+    same name as the Lambda function, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.6: The API created by the Zappa deployment](img/B20851_14_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.6: The API created by the Zappa deployment'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clicking on the API’s name will bring us to the **Resources** screen; then,
+    selecting the **ANY** link will display a diagram that illustrates how the API
+    Gateway routes incoming requests to your Lambda function and how responses are
+    returned to the client, as shown in the following screen capture:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.7: The API Gateway Resources screen](img/B20851_14_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.7: The API Gateway Resources screen'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When you click on the Lambda symbol on the right side, it will display the name
+    of our Lambda function. This includes a hyperlink, which, when clicked, will take
+    us back to the page of our Lambda function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the client with the Lambda-based server
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To update our asynchronous client program, `02_one_max_async_client.py`, for
+    use with our newly deployed Lambda-based server, we only need to make a single
+    change: replace the existing `BASE_URL` variable value with the new URL provided
+    by the Zappa deployment.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once this is done, running the client yields output similar to previous runs,
+    demonstrating that the genetic algorithm operates the same way despite the change
+    in server infrastructure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Rerunning the client several times, the results indicate elapsed time values
+    of between 19 and 21 seconds, which are reasonable considering the server is operating
+    in a cloud environment with inherent network latency and serverless function initialization
+    times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Undeploying the server
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Once we’re finished using the server deployed via Zappa, it’s a good practice
+    to undeploy its infrastructure using the `zappa undeploy` command, initiated from
+    within our server’s virtual environment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: This action helps manage costs and resources efficiently by removing the deployed
+    AWS resources that are no longer in use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned how to restructure a genetic algorithm into a client-server
+    model. The client uses asynchronous I/O, while the server, built with Flask, handles
+    fitness function calculations. The server component was then successfully deployed
+    to the cloud using Zappa, making it operational as an AWS Lambda service. This
+    approach demonstrates the effective use of serverless computing in enhancing the
+    performance of genetic algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll explore how genetic algorithms can be creatively
+    applied in the art world. Specifically, we’ll learn how these algorithms can be
+    used to reconstruct images of famous paintings using semi-transparent, overlapping
+    shapes. This approach not only offers a unique blend of art and technology but
+    also provides an insightful look into the versatile applications of genetic algorithms
+    in fields beyond traditional computing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For more information on the topics that were covered in this chapter, please
+    refer to the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Building Web Applications with Flask* by Italo Maia, June 2015'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Expert Python Programming: Master Python by learning the best coding practices
+    and advanced programming concepts, 4th Edition* by Michal Jaworski and Tarek Ziade,
+    May 2021 (the *Asynchronous* *programming* chapter)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*AWS Lambda Quick Start Guide: Learn how to build and deploy serverless applications
+    on AWS* by Markus Klems, June 2018'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Mastering AWS Lambda: Learn how to build and deploy serverless applications*
+    by Yohan Wadia and Udita Gupta, August 2017'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Zappa framework documentation:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://github.com/zappa/Zappa](https://github.com/zappa/Zappa)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Python **asyncio** library:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://docs.python.org/3/library/asyncio.html](https://docs.python.org/3/library/asyncio.html)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
