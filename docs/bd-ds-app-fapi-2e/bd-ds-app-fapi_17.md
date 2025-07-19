@@ -1,4 +1,4 @@
-# 14
+
 
 # 使用 Stable Diffusion 模型创建分布式文本到图像 AI 系统
 

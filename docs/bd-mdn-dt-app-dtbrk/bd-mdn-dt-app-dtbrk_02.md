@@ -1,4 +1,4 @@
-# 2
+
 
 # 使用 Delta Live Tables 应用数据转换
 

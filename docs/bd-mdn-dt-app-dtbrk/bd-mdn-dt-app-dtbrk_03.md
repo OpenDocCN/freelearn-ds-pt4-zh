@@ -1,4 +1,4 @@
-# 3
+
 
 # 使用 Delta Live Tables 管理数据质量
 

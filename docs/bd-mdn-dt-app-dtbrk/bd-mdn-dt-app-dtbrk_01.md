@@ -1,4 +1,4 @@
-# 1
+
 
 # Delta Live Tables 简介
 
