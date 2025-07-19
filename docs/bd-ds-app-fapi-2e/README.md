@@ -1,6 +1,6 @@
-# Github DevOps 加速指南
+# FastAPI 数据科学应用构建指南
 
-> 原文：[`annas-archive.org/md5/677f27c30764b3701bc2b6cf6de3a30e`](https://annas-archive.org/md5/677f27c30764b3701bc2b6cf6de3a30e)
+> 原文：[`annas-archive.org/md5/a1f4ad3f5a4649378151351d58ad6e73`](https://annas-archive.org/md5/a1f4ad3f5a4649378151351d58ad6e73)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
