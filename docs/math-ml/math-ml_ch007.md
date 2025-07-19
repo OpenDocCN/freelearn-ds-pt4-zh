@@ -78,7 +78,7 @@ import numpy as np
 
 sns.set_theme(style="/span>white rc={"/span>axes.facecolor (0, 0, 0, 0)}) 
 
-# Create the data 
+# 第三章：Create the data 
 x = X.ravel() 
 labels = ["/span>sepal length /span>sepal width /span>petal length /span>petal width 
 g = np.tile(labels, len(X)) 

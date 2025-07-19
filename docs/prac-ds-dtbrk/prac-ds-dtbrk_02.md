@@ -1,6 +1,6 @@
 
 
-# Databricks 上的 ML 概述
+# 第二章：Databricks 上的 ML 概述
 
 本章将为你提供如何在 Databricks 上开始进行 ML 操作的基本理解。ML 工作区对数据科学家非常友好，支持通过提供对流行 ML 库（如 TensorFlow、PyTorch 等）的开箱即用支持，快速进行 ML 开发。
 

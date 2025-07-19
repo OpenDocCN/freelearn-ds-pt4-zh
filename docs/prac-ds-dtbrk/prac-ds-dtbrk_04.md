@@ -1,6 +1,6 @@
 
 
-# 理解 Databricks 上的 MLflow 组件
+# 第四章：理解 Databricks 上的 MLflow 组件
 
 在上一章中，我们学习了特征存储，了解了它解决的问题，以及 Databricks 如何提供内建的特征存储作为 Databricks **机器学习** (**ML**) 工作区的一部分，我们可以使用它来注册我们的特征表。
 

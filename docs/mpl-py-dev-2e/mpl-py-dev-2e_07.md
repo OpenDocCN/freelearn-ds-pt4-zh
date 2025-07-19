@@ -1,4 +1,4 @@
-# 使用 wxPython 将 Matplotlib 嵌入 wxWidgets
+# 第七章：使用 wxPython 将 Matplotlib 嵌入 wxWidgets
 
 本章将解释如何在 wxWidgets 框架中使用 Matplotlib，特别是通过 wxPython 绑定。
 

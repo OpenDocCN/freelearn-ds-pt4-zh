@@ -1,4 +1,4 @@
-# *第十一章*：使用 Pachyderm Notebooks
+# 第十一章：*第十一章*：使用 Pachyderm Notebooks
 
 在 *第十章*《*Pachyderm 语言客户端*》中，我们学习了如何使用 Pachyderm 语言客户端，包括 Pachyderm Go 客户端和 Pachyderm Python 客户端。后者可能在数据科学家中更受欢迎，因为 Python 是许多数据科学家使用的语言。而且如果你使用 Python 编写代码，你可能对开源工具 **JupyterLab** 很熟悉。
 

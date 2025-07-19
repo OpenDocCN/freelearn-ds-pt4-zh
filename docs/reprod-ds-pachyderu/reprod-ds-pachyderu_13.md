@@ -1,4 +1,4 @@
-# *第十章*: Pachyderm 语言客户端
+# 第十章：*第十章*: Pachyderm 语言客户端
 
 在前面的章节中，我们已经学习了如何通过`pachctl`来使用 Pachyderm。我们简要地介绍了 Pachyderm 的**用户界面**（**UI**）—或称为仪表板—虽然我们没有广泛使用它。Pachyderm CLI 允许您执行所有 Pachyderm 管理操作，并且通常提供比 Pachyderm UI 更多的功能。
 

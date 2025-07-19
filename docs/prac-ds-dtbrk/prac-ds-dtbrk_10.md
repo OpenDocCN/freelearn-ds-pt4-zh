@@ -1,6 +1,6 @@
 
 
-# 使用 CI/CD 自动化模型再训练和重新部署
+# 第十章：使用 CI/CD 自动化模型再训练和重新部署
 
 在*第九章*中，我们通过 Databricks 上多种开源库及其与 MLflow 的集成，探讨了多种统计测试，现在我们将重点关注 Databricks 上 MLOps 的一个核心组成部分。在本章中，我们将研究 Databricks 如何将 DevOps、DataOps 和 ModelOps 统一到一个平台中。
 

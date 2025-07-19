@@ -1,4 +1,4 @@
-# 开始使用 Matplotlib
+# 第二章：开始使用 Matplotlib
 
 现在我们已经熟悉了 Matplotlib 的功能，并且已经配置好 Python 环境，让我们直接开始创建我们的第一个图表。
 
