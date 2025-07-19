@@ -1,6 +1,6 @@
-# Github DevOps 加速指南
+# Python 网络科学
 
-> 原文：[`annas-archive.org/md5/677f27c30764b3701bc2b6cf6de3a30e`](https://annas-archive.org/md5/677f27c30764b3701bc2b6cf6de3a30e)
+> 原文：[`annas-archive.org/md5/3df7c5feb0bf40d7b9d88197a04b0b37`](https://annas-archive.org/md5/3df7c5feb0bf40d7b9d88197a04b0b37)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

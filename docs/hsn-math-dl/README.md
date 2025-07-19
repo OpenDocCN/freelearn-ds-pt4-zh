@@ -1,6 +1,6 @@
-# Github DevOps 加速指南
+# 深度学习的数学实用指南
 
-> 原文：[`annas-archive.org/md5/677f27c30764b3701bc2b6cf6de3a30e`](https://annas-archive.org/md5/677f27c30764b3701bc2b6cf6de3a30e)
+> 原文：[`annas-archive.org/md5/eb6425f289df44a65392a9f51d8ac935`](https://annas-archive.org/md5/eb6425f289df44a65392a9f51d8ac935)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
